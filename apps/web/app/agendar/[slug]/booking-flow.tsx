@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Calendar, ChevronRight, Check, User, Phone, Sparkles } from "lucide-react";
+import { Calendar, ChevronRight, Check, User, Phone, Sparkles, Loader2 } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions";
+import { getAvailableSlots } from "./availability";
+import { useEffect } from "react";
 
 interface Service {
   id: string;
@@ -25,7 +27,7 @@ interface BookingFlowProps {
 
 type Step = "SERVICE" | "DATETIME" | "INFO" | "SUCCESS";
 
-const TIME_SLOTS = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+
 
 export function BookingFlow({ tenant, services }: BookingFlowProps) {
   const [step, setStep] = useState<Step>("SERVICE");
@@ -35,6 +37,37 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+  // Fetch Slots when date or service changes
+  useEffect(() => {
+    async function fetchSlots() {
+        if (!selectedService || !date) return;
+
+        setIsLoadingSlots(true);
+        setAvailableSlots([]);
+        setSelectedTime(""); // Reset selection
+
+        try {
+            const slots = await getAvailableSlots({
+                tenantId: tenant.id,
+                serviceId: selectedService.id,
+                date
+            });
+            setAvailableSlots(slots);
+        } catch (error) {
+            console.error(error);
+            // Handle error silently or show toast
+        } finally {
+            setIsLoadingSlots(false);
+        }
+    }
+
+    if (step === "DATETIME") {
+        fetchSlots();
+    }
+  }, [date, selectedService, step, tenant.id]);
 
   // Handlers
   const handleServiceSelect = (service: Service) => {
@@ -140,23 +173,34 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
             {/* Lista de Horários */}
             <div>
                 <label className="text-xs font-bold text-gray-400 uppercase ml-1 mb-2 block">Horários Disponíveis</label>
-                <div className="grid grid-cols-3 gap-3">
-                    {TIME_SLOTS.map((time) => (
-                        <button
-                            key={time}
-                            onClick={() => handleTimeSelect(time)}
-                            className={`
-                                py-3 rounded-xl text-sm font-bold transition-all border
-                                ${selectedTime === time 
-                                    ? "bg-studio-green text-white border-studio-green shadow-lg shadow-green-100 scale-105" 
-                                    : "bg-white text-gray-600 border-stone-100 hover:border-studio-green hover:text-studio-green"
-                                }
-                            `}
-                        >
-                            {time}
-                        </button>
-                    ))}
-                </div>
+                
+                {isLoadingSlots ? (
+                    <div className="flex justify-center py-8">
+                        <Loader2 className="animate-spin text-studio-green" />
+                    </div>
+                ) : availableSlots.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-3">
+                        {availableSlots.map((time) => (
+                            <button
+                                key={time}
+                                onClick={() => handleTimeSelect(time)}
+                                className={`
+                                    py-3 rounded-xl text-sm font-bold transition-all border
+                                    ${selectedTime === time 
+                                        ? "bg-studio-green text-white border-studio-green shadow-lg shadow-green-100 scale-105" 
+                                        : "bg-white text-gray-600 border-stone-100 hover:border-studio-green hover:text-studio-green"
+                                    }
+                                `}
+                            >
+                                {time}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8 bg-stone-50 rounded-xl border border-dashed border-stone-200 text-gray-400 text-sm">
+                        Nenhum horário disponível para esta data.
+                    </div>
+                )}
             </div>
         </div>
 

@@ -22,3 +22,55 @@ body {
   font-family: ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* --- TWEAKS DO CALENDÁRIO --- */
+
+/* Ajuste da Barra de Ferramentas no Celular */
+@media (max-width: 768px) {
+  .rbc-toolbar {
+    flex-direction: column; /* Empilha os controles */
+    gap: 10px;
+    margin-bottom: 15px !important;
+  }
+
+  /* Deixa o título (Janeiro 2026) menor */
+  .rbc-toolbar-label {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #2c3e50;
+    order: -1; /* Joga o título para o topo */
+  }
+
+  /* Botões de Navegação (< Hoje >) */
+  .rbc-btn-group {
+    width: 100%;
+    display: flex;
+  }
+
+  .rbc-btn-group button {
+    flex: 1; /* Estica os botões para facilitar o toque */
+    padding: 8px 0;
+    font-size: 0.9rem;
+  }
+
+  /* Esconde os botões "Mês/Semana/Dia/Agenda" no mobile 
+     (pois o sistema já escolhe o melhor pra ela) */
+  .rbc-toolbar .rbc-btn-group:last-child {
+    display: none; 
+  }
+}
+
+/* Estilo dos Cards de Agendamento (Fica igual ao Gendo) */
+.rbc-event {
+  background-color: #2E7D32 !important; /* Verde Studio */
+  border-radius: 6px !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  font-size: 0.85rem;
+  padding: 4px !important;
+}
+
+/* Remove as linhas de grade cinza feias para ficar mais clean */
+.rbc-day-bg + .rbc-day-bg {
+  border-left: 1px dashed #e5e7eb !important;
+}
