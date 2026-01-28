@@ -14,6 +14,7 @@ interface Appointment {
   start_time: string;
   status: string;
   started_at: string | null; // Novo campo
+  finished_at: string | null;
   clients: {
     name: string;
     initials: string | null;

@@ -13,6 +13,7 @@ interface AppointmentCardProps {
     start_time: string;
     status: string;
     started_at: string | null;
+    finished_at: string | null;
     clients: {
       name: string;
       initials: string | null;
@@ -24,6 +25,11 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [elapsedTime, setElapsedTime] = useState("00:00");
   const isOngoing = appointment.status === "in_progress";
   const isDone = appointment.status === "done";
+
+  // Formata o horário (Início - Fim)
+  const startTime = format(new Date(appointment.start_time), "HH:mm");
+  const endTime = appointment.finished_at ? format(new Date(appointment.finished_at), "HH:mm") : null;
+  const timeDisplay = endTime ? `${startTime} - ${endTime}` : startTime;
 
   // Lógica do Cronômetro
   useEffect(() => {
@@ -130,7 +136,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             ) : (
               <>
                 <Clock size={14} className="text-gray-400" />
-                <span className="text-sm font-bold">{format(new Date(appointment.start_time), "HH:mm")}</span>
+                <span className="text-sm font-bold">{timeDisplay}</span>
               </>
             )}
           </div>
