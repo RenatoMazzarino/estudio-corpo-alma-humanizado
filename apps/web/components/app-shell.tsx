@@ -77,10 +77,10 @@ export function AppShell({ children }: AppShellProps) {
              <span className="text-[10px] font-medium">Caixa</span>
            </Link>
 
-           <button className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/menu")}`}>
+           <Link href="/menu" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/menu")}`}>
              <Menu size={20} />
              <span className="text-[10px] font-medium">Menu</span>
-           </button>
+           </Link>
         </nav>
 
       </div>
