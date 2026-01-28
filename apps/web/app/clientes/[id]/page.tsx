@@ -1,5 +1,5 @@
 import { AppShell } from "../../../components/app-shell";
-import { ChevronLeft, CalendarClock, DollarSign } from "lucide-react";
+import { ChevronLeft, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "../../../lib/supabase/server";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
