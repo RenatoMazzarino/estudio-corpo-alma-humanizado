@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, TrendingUp
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 
 // Interface dos dados
 interface Appointment {
@@ -49,6 +50,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
       price,
       clients ( name )
     `)
+    .eq("tenant_id", FIXED_TENANT_ID)
     .eq("status", "done") // Só conta dinheiro de quem já foi atendido
     .gte("start_time", startOfDay.toISOString()) // Usamos a DATA AGENDADA
     .lte("start_time", endOfDay.toISOString());

@@ -2,6 +2,7 @@
 
 import { createClient } from "../lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { FIXED_TENANT_ID } from "../lib/tenant-context";
 
 // Função para INICIAR o atendimento
 export async function startAppointment(id: string) {
@@ -13,7 +14,8 @@ export async function startAppointment(id: string) {
       status: "in_progress",
       started_at: new Date().toISOString() // Salva a hora exata do clique
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("tenant_id", FIXED_TENANT_ID);
 
   revalidatePath("/"); // Atualiza a tela instantaneamente
 }
@@ -28,7 +30,8 @@ export async function finishAppointment(id: string) {
       status: "done",
       finished_at: new Date().toISOString()
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("tenant_id", FIXED_TENANT_ID);
 
   revalidatePath("/");
 }
@@ -43,7 +46,8 @@ export async function cancelAppointment(id: string) {
     .update({ 
       status: "canceled"
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("tenant_id", FIXED_TENANT_ID);
 
   revalidatePath("/");
   revalidatePath("/caixa"); // Atualiza também o caixa se precisar

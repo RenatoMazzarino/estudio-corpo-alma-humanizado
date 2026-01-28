@@ -6,6 +6,8 @@ import Link from "next/link";
 import { createClient } from "../../lib/supabase/server";
 import { redirect } from "next/navigation";
 
+import { FIXED_TENANT_ID } from "../../lib/tenant-context";
+
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
@@ -41,7 +43,11 @@ async function createAppointment(formData: FormData) {
   // 1. Cria ou busca cliente
   const { data: newClient } = await supabase
     .from("clients")
-    .insert({ name: clientName, initials: clientName.slice(0, 2).toUpperCase() })
+    .insert({ 
+      name: clientName, 
+      initials: clientName.slice(0, 2).toUpperCase(),
+      tenant_id: FIXED_TENANT_ID 
+    })
     .select()
     .single();
 
@@ -56,6 +62,7 @@ async function createAppointment(formData: FormData) {
       start_time: fullDate,
       price: parseFloat(price), // NOVO: Convertendo texto para numero decimal
       status: "pending",
+      tenant_id: FIXED_TENANT_ID
     });
   }
 

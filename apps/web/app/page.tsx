@@ -5,6 +5,7 @@ import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AppointmentCard } from "../components/appointment-card"; // Importamos o novo card
+import { FIXED_TENANT_ID } from "../lib/tenant-context";
 
 // Interface dos dados (Atualizada)
 interface Appointment {
@@ -52,6 +53,7 @@ export default async function Home({ searchParams }: PageProps) {
       *,
       clients ( name, initials )
     `)
+    .eq("tenant_id", FIXED_TENANT_ID)
     .gte("start_time", startOfDay.toISOString())
     .lte("start_time", endOfDay.toISOString())
     .order("start_time", { ascending: true });
