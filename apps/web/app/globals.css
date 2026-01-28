@@ -1,50 +1,24 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@import "tailwindcss";
+
+@theme {
+  /* Paleta Oficial Estúdio Corpo & Alma */
+  --color-studio-bg: #FAF9F6;
+  
+  /* Verde Sálvia */
+  --color-studio-green: #6A806C;
+  --color-studio-green-dark: #556656;
+  
+  /* Rosa Antigo (Lotus) */
+  --color-studio-pink: #CEAEB9;
+  
+  /* Texto Principal */
+  --color-studio-text: #2D2D2D;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html,
+/* Configurações Globais */
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.imgDark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+  background-color: var(--color-studio-bg);
+  color: var(--color-studio-text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
