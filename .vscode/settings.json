@@ -4,5 +4,18 @@
       "mode": "auto"
     }
   ],
-  "css.lint.unknownAtRules": "ignore"
+  "css.lint.unknownAtRules": "ignore",
+  "sqltools.connections": [
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 54322,
+      "driver": "PostgreSQL",
+      "name": "Supabase Local",
+      "database": "postgres",
+      "username": "postgres",
+      "password": "postgres"
+    }
+  ]
 }

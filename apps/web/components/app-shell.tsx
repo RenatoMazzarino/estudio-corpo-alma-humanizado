@@ -2,8 +2,8 @@
 
 import { ReactNode, useState } from "react";
 import Image from "next/image";
-import Link from "next/link"; // Para navegação
-import { usePathname } from "next/navigation"; // Para saber onde estamos
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Monitor, Smartphone, Menu, Calendar, Wallet } from "lucide-react";
 
 interface AppShellProps {
@@ -12,13 +12,15 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [isMobile, setIsMobile] = useState(true);
-  const pathname = usePathname(); // Pega a rota atual (ex: "/" ou "/caixa")
+  const pathname = usePathname();
 
   // Função para decidir a cor do ícone (Ativo vs Inativo)
+  // Agora usando as classes corretas do Tailwind
   const getIconColor = (path: string) => 
     pathname === path ? "text-studio-green bg-green-50" : "text-gray-400 hover:bg-gray-50";
 
   return (
+    // Fundo geral usando var(--color-studio-bg)
     <div className={`min-h-screen transition-all duration-500 ${isMobile ? "bg-gray-200 py-8 flex justify-center" : "bg-studio-bg"}`}>
       
       <div 
@@ -65,19 +67,16 @@ export function AppShell({ children }: AppShellProps) {
         {/* Menu Inferior Interativo */}
         <nav className="bg-white border-t border-stone-100 h-20 absolute bottom-0 w-full flex justify-around items-center pb-2 z-30 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
            
-           {/* Botão AGENDA (Home) */}
            <Link href="/" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/")}`}>
              <Calendar size={20} />
              <span className="text-[10px] font-medium">Agenda</span>
            </Link>
 
-           {/* Botão CAIXA (Novo!) */}
            <Link href="/caixa" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/caixa")}`}>
              <Wallet size={20} />
              <span className="text-[10px] font-medium">Caixa</span>
            </Link>
 
-           {/* Botão Menu (Ainda sem tela) */}
            <button className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/menu")}`}>
              <Menu size={20} />
              <span className="text-[10px] font-medium">Menu</span>
