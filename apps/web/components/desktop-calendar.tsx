@@ -5,7 +5,8 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Hospital } from "lucide-react";
+import { ShiftManager } from "./shift-manager";
 
 const locales = {
   "pt-BR": ptBR,
@@ -48,24 +49,34 @@ interface Appointment {
   status: string;
 }
 
+interface AvailabilityBlock {
+    id: string;
+    title: string;
+    start_time: string;
+    end_time: string;
+}
+
 // Define the Event type explicitly for React Big Calendar
 interface CalendarEvent {
     id: string;
     title: string;
     start: Date;
     end: Date;
-    resource: Appointment;
+    resource: Appointment | AvailabilityBlock;
+    type: 'appointment' | 'block';
 }
 
 interface DesktopCalendarProps {
   appointments: Appointment[];
+  blocks: AvailabilityBlock[];
 }
 
-export function DesktopCalendar({ appointments }: DesktopCalendarProps) {
+export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) {
   const [view, setView] = useState<View>(Views.WEEK);
   const [date, setDate] = useState(new Date());
+  const [showShiftManager, setShowShiftManager] = useState(false);
 
-  const events: CalendarEvent[] = appointments.map((appt) => {
+  const appointmentEvents: CalendarEvent[] = appointments.map((appt) => {
     const start = new Date(appt.start_time);
     const end = appt.finished_at 
         ? new Date(appt.finished_at) 
@@ -77,8 +88,20 @@ export function DesktopCalendar({ appointments }: DesktopCalendarProps) {
         start,
         end,
         resource: appt,
+        type: 'appointment',
     };
   });
+
+  const blockEvents: CalendarEvent[] = blocks.map((block) => ({
+    id: block.id,
+    title: "⛔ " + block.title,
+    start: new Date(block.start_time),
+    end: new Date(block.end_time),
+    resource: block,
+    type: 'block',
+  }));
+
+  const events = [...appointmentEvents, ...blockEvents];
 
   // Toolbar customizada com tipagem correta
   const CustomToolbar = (toolbar: ToolbarProps<CalendarEvent, object>) => {
@@ -117,6 +140,15 @@ export function DesktopCalendar({ appointments }: DesktopCalendarProps) {
                   Dia
                 </button>
             </div>
+            
+            <button 
+                onClick={() => setShowShiftManager(!showShiftManager)}
+                className={`ml-2 p-2 px-3 rounded-lg border transition-all flex items-center gap-2 text-sm font-medium shadow-sm ${showShiftManager ? 'bg-studio-green text-white border-studio-green' : 'bg-white text-studio-green border-stone-200 hover:border-studio-green'}`}
+                title="Gerenciar Escalas"
+             >
+                <Hospital size={16} />
+                <span>Escalas</span>
+             </button>
         </div>
         
         <div className="flex gap-2">
@@ -135,7 +167,13 @@ export function DesktopCalendar({ appointments }: DesktopCalendarProps) {
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 overflow-hidden h-full">
+    <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 overflow-hidden h-full relative">
+       {showShiftManager && (
+         <div className="absolute top-24 left-6 z-50 w-96 shadow-2xl animate-in fade-in zoom-in-95 duration-200 bg-white rounded-2xl ring-1 ring-black/5">
+            <ShiftManager />
+         </div>
+       )}
+
       <style>{`
         .rbc-calendar { font-family: inherit; }
         .rbc-header { padding: 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase; color: #6b7280; border-bottom: none; }
@@ -189,6 +227,20 @@ export function DesktopCalendar({ appointments }: DesktopCalendarProps) {
           max={new Date(0, 0, 0, 19, 0, 0)} // 19:00
           components={{
             toolbar: CustomToolbar
+          }}
+          eventPropGetter={(event) => {
+            if (event.type === 'block') {
+                return {
+                    className: 'event-block',
+                    style: {
+                        backgroundColor: '#fee2e2 !important', // red-100
+                        borderLeft: '4px solid #ef4444 !important', // red-500
+                        color: '#991b1b !important', // red-800
+                        opacity: 0.8
+                    }
+                }
+            }
+            return {};
           }}
           formats={{
             timeGutterFormat: (date, culture, localizer) => 

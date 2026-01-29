@@ -19,7 +19,17 @@ interface Appointment {
   } | null;
 }
 
-export default async function Home() {
+interface Block {
+    id: string;
+    title: string;
+    start_time: string;
+    end_time: string;
+}
+
+export default async function Home(props: { searchParams: Promise<{ view?: string }> }) {
+  const searchParams = await props.searchParams;
+  const forceMobile = searchParams?.view === 'mobile';
+
   const supabase = await createClient();
   const today = new Date();
 
@@ -27,7 +37,8 @@ export default async function Home() {
   const startRange = startOfMonth(today);
   const queryStartDate = startRange.toISOString();
 
-  const { data } = await supabase
+  // Fetch Appointments
+  const { data: appointmentsData } = await supabase
     .from("appointments")
     .select(`
       id, service_name, start_time, finished_at, status,
@@ -38,22 +49,32 @@ export default async function Home() {
     .neq("status", "canceled")
     .order("start_time", { ascending: true });
 
-  const appointments = (data as unknown) as Appointment[] || [];
+  const appointments = (appointmentsData as unknown) as Appointment[] || [];
+
+  // Fetch Availability Blocks
+  const { data: blocksData } = await supabase
+    .from("availability_blocks")
+    .select("id, title, start_time, end_time")
+    .eq("tenant_id", FIXED_TENANT_ID)
+    .gte("end_time", queryStartDate);
+
+  const blocks = (blocksData as unknown) as Block[] || [];
+
   const todayStr = format(today, "yyyy-MM-dd");
 
   return (
     <AppShell>
       {/* VERSÃO DESKTOP */}
-      <div className="hidden md:block h-full">
+      <div className={`${forceMobile ? 'hidden' : 'hidden md:block'} h-full`}>
         <div className="flex justify-between items-center mb-6">
            <h2 className="text-2xl font-bold text-studio-text font-serif">Agenda da Semana</h2>
         </div>
-        <DesktopCalendar appointments={appointments} />
+        <DesktopCalendar appointments={appointments} blocks={blocks} />
       </div>
 
       {/* VERSÃO MOBILE */}
-      <div className="md:hidden">
-        <MobileAgenda appointments={appointments} />
+      <div className={`${forceMobile ? 'block' : 'md:hidden'}`}>
+        <MobileAgenda appointments={appointments} blocks={blocks} />
       </div>
 
       {/* Botão Flutuante (FAB) - Visível em todos os tamanhos */}

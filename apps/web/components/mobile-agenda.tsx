@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { format, addDays, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Coffee, Hospital } from "lucide-react"; // Adicionado Hospital Icon
+import { Coffee, Hospital } from "lucide-react"; 
 import Link from "next/link";
-import { ShiftManager } from "./shift-manager"; // Import componente
+import { ShiftManager } from "./shift-manager"; 
 
 interface AppointmentClient {
     name: string;
@@ -21,21 +21,44 @@ interface Appointment {
   status: string;
 }
 
-interface MobileAgendaProps {
-  appointments: Appointment[];
+interface AvailabilityBlock {
+    id: string;
+    title: string;
+    start_time: string;
+    end_time: string;
 }
 
-export function MobileAgenda({ appointments }: MobileAgendaProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showShiftManager, setShowShiftManager] = useState(false); // Estado para mostrar o gestor
+interface MobileAgendaProps {
+  appointments: Appointment[];
+  blocks: AvailabilityBlock[];
+}
 
-  // Gera os próximos 14 dias para o seletor
+export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showShiftManager, setShowShiftManager] = useState(false); 
+
   const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
-  // Filtra agendamentos do dia selecionado
   const dailyAppointments = appointments.filter((appt) => 
     isSameDay(new Date(appt.start_time), selectedDate)
-  ).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  );
+
+  const dailyBlocks = blocks.filter((block) => 
+    isSameDay(new Date(block.start_time), selectedDate)
+  );
+  
+  const items = [
+      ...dailyAppointments.map(a => ({ ...a, type: 'appointment' as const })),
+      ...dailyBlocks.map(b => ({ 
+          id: b.id, 
+          service_name: b.title, 
+          start_time: b.start_time, 
+          finished_at: b.end_time, 
+          clients: { name: 'Bloqueio', initials: '⛔' }, 
+          status: 'blocked',
+          type: 'block' as const
+      }))
+  ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
   return (
     <div className="bg-stone-50 min-h-[600px] flex flex-col">
@@ -46,7 +69,6 @@ export function MobileAgenda({ appointments }: MobileAgendaProps) {
             <h1 className="text-xl font-bold text-studio-green font-serif">Agenda</h1>
             
             <div className="flex items-center gap-2">
-                {/* Botão Escala */}
                 <button 
                     onClick={() => setShowShiftManager(!showShiftManager)}
                     className={`p-2 rounded-full transition-colors ${showShiftManager ? 'bg-studio-green text-white' : 'bg-studio-green/10 text-studio-green'}`}
@@ -101,19 +123,20 @@ export function MobileAgenda({ appointments }: MobileAgendaProps) {
             {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
         </h2>
 
-        {dailyAppointments.length > 0 ? (
-            dailyAppointments.map((appt) => {
+        {items.length > 0 ? (
+            items.map((appt) => {
                 const start = format(new Date(appt.start_time), "HH:mm");
                 const end = appt.finished_at ? format(new Date(appt.finished_at), "HH:mm") : "";
+                const isBlock = appt.type === 'block'; 
                 
                 return (
-                    <div key={appt.id} className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform">
+                    <div key={appt.id} className={`bg-white rounded-2xl p-4 shadow-sm border ${isBlock ? 'border-red-100 bg-red-50/50' : 'border-stone-100'} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}>
                         {/* Linha Lateral Colorida */}
-                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-studio-green"></div>
+                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isBlock ? 'bg-red-400' : 'bg-studio-green'}`}></div>
 
                         {/* Coluna Horário */}
                         <div className="flex flex-col items-center min-w-14">
-                            <span className="text-lg font-bold text-gray-800">{start}</span>
+                            <span className={`text-lg font-bold ${isBlock ? 'text-red-800' : 'text-gray-800'}`}>{start}</span>
                             <span className="text-[10px] text-gray-400">{end}</span>
                         </div>
 
@@ -122,15 +145,17 @@ export function MobileAgenda({ appointments }: MobileAgendaProps) {
 
                         {/* Coluna Detalhes */}
                         <div className="flex-1">
-                            <h3 className="font-bold text-gray-800 text-sm">{appt.clients?.name}</h3>
-                            <p className="text-xs text-gray-500">{appt.service_name}</p>
+                            <h3 className={`font-bold text-sm ${isBlock ? 'text-red-700' : 'text-gray-800'}`}>{appt.clients?.name}</h3>
+                            <p className={`text-xs ${isBlock ? 'text-red-500' : 'text-gray-500'}`}>{appt.service_name}</p>
                         </div>
 
-                         {/* Ações (Link para editar/detalhes) */}
-                         <Link 
-                            href={`/clientes/${appt.clients?.name ? '1' : ''}`} 
-                            className="absolute inset-0 z-10"
-                        />
+                         {/* Ações (Link para editar/detalhes) - Desabilita link se for bloqueio */}
+                         {!isBlock && (
+                             <Link 
+                                href={`/clientes/${appt.clients?.name ? '1' : ''}`} 
+                                className="absolute inset-0 z-10"
+                            />
+                         )}
                     </div>
                 );
             })

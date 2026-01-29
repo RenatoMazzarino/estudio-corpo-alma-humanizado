@@ -40,12 +40,14 @@ export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) 
       blocksToInsert.push({
         tenant_id: FIXED_TENANT_ID,
         title: 'Plantão',
-        start_time: start.toISOString(), // Supabase espera ISO string com timezone
+        start_time: start.toISOString(),
         end_time: end.toISOString(),
         reason: 'Plantão'
       });
     }
   }
+
+  console.log(`[CreateShift] Inserting ${blocksToInsert.length} blocks for ${monthStr} (${type})`);
 
   if (blocksToInsert.length > 0) {
     const { error } = await supabase
@@ -53,13 +55,18 @@ export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) 
       .insert(blocksToInsert);
 
     if (error) {
-      console.error("Erro ao criar escala:", error);
-      throw new Error(`Erro ao criar escala: ${error.message}`);
+      console.error("[CreateShift] DB Error:", error);
+      throw new Error(`Erro no banco: ${error.message}`);
     }
   }
 
-  revalidatePath('/admin/escala');
-  revalidatePath('/'); // Revalida a home caso exiba bloqueios
+  try {
+      // revalidatePath('/admin/escala'); // Rota não existe
+      revalidatePath('/'); 
+      console.log("[CreateShift] Revalidations done");
+  } catch (e) {
+      console.error("[CreateShift] Revalidate Error:", e);
+  }
 }
 
 /**
