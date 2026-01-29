@@ -15,14 +15,11 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
   // null = vendo lista; 'new' = criando; Service = editando
   const [activeScreen, setActiveScreen] = useState<Service | 'new' | null>(null);
 
-  // Removido handleDelete por enquanto pois não estava sendo usado no layout de cards clicáveis
-  // Se quiser reincluir botão de delete, pode ser adicionado dentro do card ou no form
-  
   return (
-    <div className="relative min-h-[calc(100vh-80px)] overflow-hidden">
+    <div className="relative h-full bg-stone-50">
       
       {/* TELA 1: LISTA (Só aparece se não estiver editando/criando) */}
-      <div className={`transition-all duration-300 ${activeScreen ? '-translate-x-full opacity-0 absolute inset-0' : 'translate-x-0 opacity-100'}`}>
+      <div className={`transition-all duration-300 p-4 ${activeScreen ? '-translate-x-full opacity-0 absolute inset-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
         
         {/* Header da Lista */}
         <div className="flex items-center justify-between mb-6 px-1">
@@ -31,7 +28,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
               <ChevronLeft size={20} />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-stone-800">Catálogo de Serviços</h1>
+              <h1 className="text-xl font-bold text-stone-800">Catálogo</h1>
               <p className="text-xs text-stone-500">Gerencie seus serviços</p>
             </div>
           </div>
@@ -44,7 +41,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
         </div>
 
         {/* Lista de Cards */}
-        <div className="space-y-3 pb-20">
+        <div className="space-y-3 pb-24">
           {initialServices.length === 0 && (
             <div className="text-center py-10 text-stone-400">
               <p>Nenhum serviço ainda.</p>
@@ -56,18 +53,16 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
             <div 
               key={service.id}
               onClick={() => setActiveScreen(service)}
-              className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm flex items-center gap-4 active:scale-[0.99] transition-transform cursor-pointer group"
+              className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm flex items-center gap-4 active:scale-[0.99] transition-transform cursor-pointer group hover:border-studio-green/30"
             >
               {/* Ícone / "Foto" */}
               <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${service.accepts_home_visit ? 'bg-purple-50 text-purple-600' : 'bg-studio-green/10 text-studio-green'}`}>
                  {service.accepts_home_visit ? <MapPin size={24} /> : <span className="font-serif text-xl font-bold">{service.name.charAt(0)}</span>}
-                 {/* Ajustado service.title para service.name conforme DB */}
               </div>
 
               {/* Informações */}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-stone-800 truncate">{service.name}</h3>
-                {/* description não existe no DB, removido ou tratado */}
+                <h3 className="font-bold text-stone-800 text-sm truncate">{service.name}</h3>
                 <p className="text-xs text-stone-500 truncate mb-1">
                     {service.description || "Sem descrição"}
                 </p> 
@@ -79,7 +74,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
 
               {/* Preço e Seta */}
               <div className="text-right">
-                <span className="block font-bold text-stone-800">R$ {service.price}</span>
+                <span className="block font-bold text-stone-800 text-sm">R$ {service.price}</span>
                 <ChevronRight size={16} className="text-stone-300 ml-auto mt-1 group-hover:text-studio-green" />
               </div>
             </div>
@@ -88,7 +83,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
       </div>
 
       {/* TELA 2: FORMULÁRIO (Slide Over) */}
-      <div className={`absolute inset-0 bg-white transition-transform duration-300 z-10 ${activeScreen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`absolute inset-0 bg-stone-50 transition-transform duration-300 z-20 overflow-y-auto ${activeScreen ? 'translate-x-0' : 'translate-x-full'}`}>
         {activeScreen && (
           <ServiceForm 
             service={activeScreen === 'new' ? undefined : activeScreen}

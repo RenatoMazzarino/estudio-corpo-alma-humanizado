@@ -7,6 +7,8 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Hospital } from "lucide-react";
 import { ShiftManager } from "./shift-manager";
+import { AppointmentDetailsModal } from "./appointment-details-modal";
+import { useRouter } from "next/navigation";
 
 const locales = {
   "pt-BR": ptBR,
@@ -36,8 +38,12 @@ const messages = {
 };
 
 interface AppointmentClient {
+    id: string; // Adicionado id
     name: string;
     initials: string | null;
+    phone?: string;
+    health_tags?: string[];
+    endereco_completo?: string;
 }
 
 interface Appointment {
@@ -47,6 +53,8 @@ interface Appointment {
   finished_at: string | null;
   clients: AppointmentClient | null;
   status: string;
+  price?: number | null; // Adicionado
+  is_home_visit?: boolean; // Adicionado
 }
 
 interface AvailabilityBlock {
@@ -75,6 +83,9 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
   const [view, setView] = useState<View>(Views.WEEK);
   const [date, setDate] = useState(new Date());
   const [showShiftManager, setShowShiftManager] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  
+  const router = useRouter();
 
   const appointmentEvents: CalendarEvent[] = appointments.map((appt) => {
     const start = new Date(appt.start_time);
@@ -102,6 +113,22 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
   }));
 
   const events = [...appointmentEvents, ...blockEvents];
+
+  const handleSelectEvent = (event: CalendarEvent) => {
+      if (event.type === 'appointment') {
+          // Cast resource to Appointment
+          setSelectedAppointment(event.resource as Appointment);
+      }
+      // Se for block, nada acontece por enquanto (ou abrir shift manager)
+  };
+
+  const handleCloseModal = () => {
+      setSelectedAppointment(null);
+  };
+
+  const handleUpdate = () => {
+      router.refresh(); // Atualiza dados da página via Server Components
+  };
 
   // Toolbar customizada com tipagem correta
   const CustomToolbar = (toolbar: ToolbarProps<CalendarEvent, object>) => {
@@ -176,89 +203,116 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 overflow-hidden h-full relative">
-       {showShiftManager && (
-         <div className="absolute top-24 left-6 z-50 w-96 shadow-2xl animate-in fade-in zoom-in-95 duration-200 bg-white rounded-2xl ring-1 ring-black/5">
-            <ShiftManager />
-         </div>
-       )}
-
-      <style>{`
-        .rbc-calendar { font-family: inherit; }
-        .rbc-header { padding: 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase; color: #6b7280; border-bottom: none; }
-        .rbc-time-header-content { border-left: 1px solid #f3f4f6; }
-        .rbc-time-content { border-top: 1px solid #f3f4f6; }
-        .rbc-time-view { border: none; }
-        .rbc-day-slot .rbc-time-slot { border-top: 1px dashed #f3f4f6; }
-        .rbc-timeslot-group { border-bottom: none; min-height: 60px; } /* Espaçamento maior */
-        
-        /* Eventos */
-        .rbc-event {
-            background-color: rgba(106, 128, 108, 0.15) !important; /* studio-green/15 */
-            border-left: 4px solid #6A806C !important;
-            border-radius: 4px !important; /* rounded-r-lg like */
-            border-top: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
-            color: #2D2D2D !important;
-            padding: 4px 8px !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        .rbc-event-label { display: none; } /* Esconde horário default feio */
-        .rbc-event-content { font-size: 12px; font-weight: 600; }
-        
-        /* Hoje */
-        .rbc-today { background-color: transparent !important; }
-        
-        /* Time Gutter */
-        .rbc-time-gutter .rbc-timeslot-group { border-bottom: none; }
-        .rbc-label { font-size: 11px; color: #9ca3af; font-weight: 500; }
-
-        /* Current Time Indicator (Gambiarra visual se suportado, senao default) */
-        .rbc-current-time-indicator { background-color: #ef4444; height: 2px; }
-      `}</style>
-      
-      <div style={{ height: 600 }}>
-        <Calendar<CalendarEvent, object>
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: "100%" }}
-          culture="pt-BR"
-          messages={messages}
-          views={['day', 'week']} // Limitando para ficar clean
-          view={view}
-          onView={setView}
-          date={date}
-          onNavigate={setDate}
-          min={new Date(0, 0, 0, 8, 0, 0)} // 08:00
-          max={new Date(0, 0, 0, 19, 0, 0)} // 19:00
-          components={{
-            toolbar: CustomToolbar
-          }}
-          eventPropGetter={(event) => {
-            if (event.type === 'block') {
-                return {
-                    className: 'event-block',
-                    style: {
-                        backgroundColor: '#fee2e2 !important', // red-100
-                        borderLeft: '4px solid #ef4444 !important', // red-500
-                        color: '#991b1b !important', // red-800
-                        opacity: 0.8
+    <>
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 overflow-hidden h-full relative">
+           {showShiftManager && (
+             <div className="absolute top-24 left-6 z-50 w-96 shadow-2xl animate-in fade-in zoom-in-95 duration-200 bg-white rounded-2xl ring-1 ring-black/5">
+                <ShiftManager />
+             </div>
+           )}
+    
+          <style>{`
+            .rbc-calendar { font-family: inherit; }
+            .rbc-header { padding: 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase; color: #6b7280; border-bottom: none; }
+            .rbc-time-header-content { border-left: 1px solid #f3f4f6; }
+            .rbc-time-content { border-top: 1px solid #f3f4f6; }
+            .rbc-time-view { border: none; }
+            .rbc-day-slot .rbc-time-slot { border-top: 1px dashed #f3f4f6; }
+            .rbc-timeslot-group { border-bottom: none; min-height: 60px; } /* Espaçamento maior */
+            
+            /* Eventos */
+            .rbc-event {
+                background-color: rgba(106, 128, 108, 0.15) !important; /* studio-green/15 */
+                border-left: 4px solid #6A806C !important;
+                border-radius: 4px !important; /* rounded-r-lg like */
+                border-top: none !important;
+                border-right: none !important;
+                border-bottom: none !important;
+                color: #2D2D2D !important;
+                padding: 4px 8px !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            }
+            .rbc-event-label { display: none; } /* Esconde horário default feio */
+            .rbc-event-content { font-size: 12px; font-weight: 600; }
+            
+            /* Hoje */
+            .rbc-today { background-color: transparent !important; }
+            
+            /* Time Gutter */
+            .rbc-time-gutter .rbc-timeslot-group { border-bottom: none; }
+            .rbc-label { font-size: 11px; color: #9ca3af; font-weight: 500; }
+    
+            /* Current Time Indicator (Gambiarra visual se suportado, senao default) */
+            .rbc-current-time-indicator { background-color: #ef4444; height: 2px; }
+          `}</style>
+          
+          <div style={{ height: 600 }}>
+            <Calendar<CalendarEvent, object>
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: "100%" }}
+              culture="pt-BR"
+              messages={messages}
+              views={['day', 'week']} // Limitando para ficar clean
+              view={view}
+              onView={setView}
+              date={date}
+              onNavigate={setDate}
+              onSelectEvent={handleSelectEvent} // Click Handler
+              min={new Date(0, 0, 0, 8, 0, 0)} // 08:00
+              max={new Date(0, 0, 0, 19, 0, 0)} // 19:00
+              components={{
+                toolbar: CustomToolbar
+              }}
+              eventPropGetter={(event) => {
+                if (event.type === 'block') {
+                    return {
+                        className: 'event-block',
+                        style: {
+                            backgroundColor: '#fee2e2 !important', // red-100
+                            borderLeft: '4px solid #ef4444 !important', // red-500
+                            color: '#991b1b !important', // red-800
+                            opacity: 0.8
+                        }
                     }
                 }
-            }
-            return {};
-          }}
-          formats={{
-            timeGutterFormat: (date, culture, localizer) => 
-                localizer?.format(date, 'HH:mm', culture) || '',
-            dayFormat: (date, culture, localizer) =>
-                localizer?.format(date, 'EEE dd', culture) || ''
-          }}
-        />
-      </div>
-    </div>
+                // Custom style for completed/paid appointments?
+                if (event.type === 'appointment') {
+                    const appt = event.resource as Appointment;
+                    if (appt.status === 'completed') {
+                         return {
+                            className: 'event-completed',
+                            style: {
+                                backgroundColor: '#f0fdf4 !important', // green-50
+                                borderLeft: '4px solid #16a34a !important', // green-600
+                                color: '#14532d !important',
+                                opacity: 0.7
+                            }
+                        }
+                    }
+                }
+                return {};
+              }}
+              formats={{
+                timeGutterFormat: (date, culture, localizer) => 
+                    localizer?.format(date, 'HH:mm', culture) || '',
+                dayFormat: (date, culture, localizer) =>
+                    localizer?.format(date, 'EEE dd', culture) || ''
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Modal de Detalhes */}
+        {selectedAppointment && (
+            <AppointmentDetailsModal 
+                appointment={selectedAppointment as any} // Cast necessário enquanto interfaces não batem 100% ou se tiver detalhes faltando props
+                onClose={handleCloseModal}
+                onUpdate={handleUpdate}
+            />
+        )}
+    </>
   );
 }

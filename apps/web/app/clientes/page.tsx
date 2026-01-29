@@ -1,92 +1,81 @@
-import { AppShell } from "../../components/app-shell";
-import { ChevronLeft, Search, Plus, User } from "lucide-react";
-import Link from "next/link";
 import { createClient } from "../../lib/supabase/server";
+import { User, Search, Plus } from "lucide-react";
+import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
   const supabase = await createClient();
+  const query = searchParams?.q || "";
 
-  // Busca clientes do tenant
-  const { data: clients } = await supabase
-    .from("clients")
-    .select("id, name, initials, phone, appointments(count)")
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .order("name");
+  let dbQuery = supabase
+    .from('clients')
+    .select('*')
+    .eq('tenant_id', FIXED_TENANT_ID)
+    .order('name');
+  
+  if (query) {
+    dbQuery = dbQuery.ilike('name', `%${query}%`);
+  }
+
+  const { data: clients } = await dbQuery;
 
   return (
-    <AppShell>
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-            <Link href="/menu" className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
-            <ChevronLeft size={20} />
-            </Link>
-            <h1 className="text-lg font-bold text-gray-800">Meus Clientes</h1>
-        </div>
-        <Link 
-            href="/clientes/novo" 
-            className="bg-studio-green text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg shadow-green-100 flex items-center gap-2 hover:bg-studio-green-dark transition"
-        >
-            <Plus size={16} /> Novo
-        </Link>
-      </div>
-
-      {/* Busca (Visual) - Poderia virar funcional depois */}
-      <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input 
-          type="text" 
-          placeholder="Buscar cliente..." 
-          className="w-full bg-white border-stone-100 border rounded-2xl py-3.5 pl-11 pr-4 text-gray-600 focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-        />
-      </div>
-
-      {/* Lista de Clientes */}
-      <div className="space-y-3 pb-20">
-        {clients?.map((client) => {
-           // Type assertion para resolver o count que vem do supabase
-           const countResult = client.appointments as unknown as { count: number }[];
-           const visitCount = countResult?.[0]?.count || 0;
-           
-           return (
-            <Link 
-                href={`/clientes/${client.id}`}
-                key={client.id} 
-                className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-between hover:shadow-md transition cursor-pointer"
-            >
-            <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-studio-green text-white flex items-center justify-center font-bold text-lg">
-                {client.initials}
-                </div>
-                <div>
-                <h3 className="font-bold text-gray-800">{client.name}</h3>
-                <div className="flex flex-col">
-                    <span className="text-xs text-gray-400">{client.phone || "Sem telefone"}</span>
-                    <span className="text-[10px] font-bold text-studio-green mt-1">
-                        {visitCount} {visitCount === 1 ? 'Visita' : 'Visitas'}
-                    </span>
-                </div>
-                </div>
+    <div className="flex flex-col h-full bg-stone-50">
+        
+        {/* Header Fixo */}
+        <div className="bg-white p-4 shadow-sm border-b border-stone-100 sticky top-0 z-10 text-gray-800">
+            <div className="flex items-center justify-between mb-4">
+                <h1 className="text-2xl font-bold font-serif text-studio-green">Clientes</h1>
+                <Link href="/clientes/novo" className="bg-studio-green text-white p-2 rounded-full shadow-lg hover:bg-studio-green-dark transition shadow-green-200">
+                    <Plus size={24} />
+                </Link>
             </div>
             
-            <div className="flex flex-col items-end">
-                {/* Badge de visitas (opcional/future) */}
-                <span className="bg-stone-50 text-stone-500 text-[10px] font-bold px-2 py-1 rounded-full border border-stone-100 mb-1">
-                    Ver Perfil
-                </span>
-            </div>
-            </Link>
-        );
-        })}
+            {/* Search Bar - Server Action via GET Form */}
+            <form className="relative">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                    name="q"
+                    defaultValue={query}
+                    placeholder="Buscar cliente..." 
+                    className="w-full bg-stone-100 border-none rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-studio-green/20 outline-none placeholder:text-gray-400 text-gray-800"
+                />
+            </form>
+        </div>
 
-        {clients?.length === 0 && (
-          <div className="text-center py-10 text-gray-400">
-            <User size={48} className="mx-auto mb-2 opacity-50" />
-            <p>Nenhum cliente encontrado.</p>
-          </div>
-        )}
-      </div>
-    </AppShell>
+        {/* Lista Scrollável */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
+            {clients?.map((client: any) => (
+                <Link href={`/clientes/${client.id}`} key={client.id} className="block">
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-stone-100 shadow-sm active:scale-95 transition-transform hover:border-studio-green/30">
+                        <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-studio-green font-bold text-lg border border-green-100">
+                            {client.initials || <User size={20} />}
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-bold text-gray-800 text-base">{client.name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                                {client.phone && (
+                                    <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md">
+                                        {client.phone}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </Link>
+            ))}
+            
+            {(!clients || clients.length === 0) && (
+                <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                    <User size={48} className="text-stone-300 mb-4" />
+                    <p className="text-stone-400 text-sm">Nenhum cliente encontrado.</p>
+                </div>
+            )}
+        </div>
+    </div>
   );
 }

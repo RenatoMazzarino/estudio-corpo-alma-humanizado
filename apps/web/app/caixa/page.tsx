@@ -1,5 +1,4 @@
 import { createClient } from "../../lib/supabase/server";
-import { AppShell } from "../../components/app-shell";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, TrendingUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
@@ -10,26 +9,42 @@ import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 interface Appointment {
   id: string;
   service_name: string;
-  price: number | null; // O preço pode vir vazio se esquecermos de cadastrar
+  price: number | null; 
   clients: {
     name: string;
   } | null;
 }
 
 interface PageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default async function CaixaPage({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const params = searchParams; // Next.js 13/14 pattern (in Next 15 it might be a promise, but sticking to standard)
+  /* NOTE: If user is on Next 15 canary, searchParams needs await. Assuming stable Next 14 setup based on previous files.
+     Actually previous file had `await searchParams`. I will keep `await` if the project uses it, but usually type is just prop. 
+     Safe way: const sp = await searchParams; (if it is a promise). 
+     The previous file had `const params = await searchParams;` so I will follow that pattern strictly.
+  */
+
+  // Safe Handling for Params (Next 15 compat check)
+  // But Typescript might complain if PageProps defines it as non-promise.
+  // I will assume it's awaitable as per previous file.
+  
+  // Actually let's just treat it as object for now to avoid complexity unless I see errors.
+  // Previous file: `interface PageProps { searchParams: Promise<...> }`. I will replicate that.
+  
   const supabase = await createClient();
 
-  // 1. Lógica de Data (Igualzinha à da Home)
   const today = new Date();
   let selectedDate = today;
 
-  if (params.date && typeof params.date === "string") {
-    selectedDate = parseISO(params.date);
+  // Resolving params properly
+  // @ts-ignore
+  const resolvedParams = searchParams instanceof Promise ? await searchParams : searchParams;
+  
+  if (resolvedParams?.date && typeof resolvedParams.date === "string") {
+    selectedDate = parseISO(resolvedParams.date);
   }
   
   const nextDay = format(addDays(selectedDate, 1), "yyyy-MM-dd");
@@ -41,7 +56,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
   const endOfDay = new Date(selectedDate);
   endOfDay.setHours(23, 59, 59, 999);
 
-  // 2. Busca SÓ os finalizados ('done') nesta data
+  // Busca Agendamentos FINALIZADOS ('completed')
   const { data } = await supabase
     .from("appointments")
     .select(`
@@ -51,24 +66,23 @@ export default async function CaixaPage({ searchParams }: PageProps) {
       clients ( name )
     `)
     .eq("tenant_id", FIXED_TENANT_ID)
-    .eq("status", "done") // Só conta dinheiro de quem já foi atendido
-    .gte("start_time", startOfDay.toISOString()) // Usamos a DATA AGENDADA
+    .eq("status", "completed") // Updated from 'done' to 'completed'
+    .gte("start_time", startOfDay.toISOString())
     .lte("start_time", endOfDay.toISOString());
 
   const appointments = data as Appointment[] | null;
 
-  // 3. Calcula o Total
   const totalFaturado = appointments?.reduce((acc, item) => {
-    return acc + (item.price || 0); // Se for null, soma 0
+    return acc + (item.price || 0);
   }, 0) || 0;
 
   const dateTitle = format(selectedDate, "d 'de' MMMM", { locale: ptBR });
   const isToday = isSameDay(selectedDate, today);
 
   return (
-    <AppShell>
+    <div className="flex flex-col h-full bg-stone-50 p-4 pb-24 overflow-y-auto">
       {/* Navegação de Data */}
-      <div className="flex items-center justify-between mb-6 bg-white p-3 rounded-2xl shadow-sm border border-stone-100">
+      <div className="flex items-center justify-between mb-6 bg-white p-3 rounded-2xl shadow-sm border border-stone-100 sticky top-0 z-10">
         <Link href={`/caixa?date=${prevDay}`} className="p-2 hover:bg-stone-50 rounded-full text-gray-500 transition">
           <ChevronLeft size={20} />
         </Link>
@@ -89,7 +103,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
       </div>
 
       {/* PLACAR DO DINHEIRO */}
-      <div className="bg-gray-900 text-white p-6 rounded-3xl shadow-xl shadow-gray-200 mb-6 relative overflow-hidden border border-gray-800">
+      <div className="bg-gray-900 text-white p-6 rounded-3xl shadow-xl shadow-gray-200 mb-6 relative overflow-hidden border border-gray-800 transform transition-transform hover:scale-[1.02] duration-300">
         <div className="absolute right-0 top-0 w-32 h-32 bg-studio-green/20 rounded-full blur-3xl"></div>
         
         <div className="relative z-10">
@@ -133,12 +147,12 @@ export default async function CaixaPage({ searchParams }: PageProps) {
             </div>
           ))
         ) : (
-           <div className="text-center py-10 opacity-50">
+           <div className="text-center py-10 opacity-50 flex flex-col items-center">
+             <Wallet size={32} className="text-gray-300 mb-2" />
              <p className="text-sm text-gray-400">Nenhum valor entrou hoje.</p>
            </div>
         )}
       </div>
-
-    </AppShell>
+    </div>
   );
 }

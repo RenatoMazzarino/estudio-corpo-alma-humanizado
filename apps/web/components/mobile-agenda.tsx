@@ -3,13 +3,18 @@
 import { useState } from "react";
 import { format, addDays, isSameDay, addMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Coffee, Hospital, Car } from "lucide-react"; 
-import Link from "next/link";
+import { Coffee, Hospital, Car, CheckCircle, Plus } from "lucide-react"; 
 import { ShiftManager } from "./shift-manager"; 
+import { AppointmentDetailsModal } from "./appointment-details-modal";
+import { useRouter } from "next/navigation";
 
 interface AppointmentClient {
+    id: string;
     name: string;
     initials: string | null;
+    phone?: string;
+    health_tags?: string[];
+    endereco_completo?: string;
 }
 
 interface Appointment {
@@ -21,6 +26,7 @@ interface Appointment {
   status: string;
   is_home_visit?: boolean;
   total_duration_minutes?: number | null;
+  price?: number | null;
 }
 
 interface AvailabilityBlock {
@@ -38,6 +44,9 @@ interface MobileAgendaProps {
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showShiftManager, setShowShiftManager] = useState(false); 
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  
+  const router = useRouter();
 
   const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
@@ -56,11 +65,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           service_name: "Plantão", 
           start_time: b.start_time, 
           finished_at: b.end_time, 
-          clients: { name: b.title, initials: '⛔' }, 
+          clients: { id: 'block', name: b.title, initials: '⛔' } as AppointmentClient, 
           status: 'blocked',
           type: 'block' as const,
           is_home_visit: false,
-          total_duration_minutes: null
+          total_duration_minutes: null,
+          price: 0
       }))
   ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
@@ -138,14 +148,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     end = format(new Date(appt.finished_at), "HH:mm");
                 } else if (appt.total_duration_minutes) {
                     end = format(addMinutes(startTimeDate, appt.total_duration_minutes), "HH:mm");
-                } else if (appt.type === 'block') {
-                    // Start is usually 00:00 for full day block, hide end time if full day?
-                    // But if partial... let's show nothing for now for blocks unless logic demands
-                    end = ""; 
-                }
+                } 
                 
                 const isBlock = appt.type === 'block'; 
                 const isHome = appt.is_home_visit;
+                const isCompleted = appt.status === 'completed';
                 
                 // Style Logic
                 let containerClass = "bg-white border-stone-100";
@@ -158,14 +165,23 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     decorationColor = "bg-red-400";
                     textColor = "text-red-800";
                     subTextColor = "text-red-500";
+                } else if (isCompleted) {
+                    containerClass = "bg-green-50/50 border-green-200 opacity-80";
+                    decorationColor = "bg-green-600";
+                    textColor = "text-green-900";
+                    subTextColor = "text-green-700";
                 } else if (isHome) {
                     containerClass = "bg-purple-50/30 border-purple-100";
                     decorationColor = "bg-purple-500";
-                    // textColor keeps gray for readability or slightly purple
                 }
 
                 return (
-                    <div key={appt.id} className={`rounded-2xl p-4 shadow-sm border ${containerClass} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}>
+                    <button 
+                        key={appt.id} 
+                        onClick={() => !isBlock && setSelectedAppointment(appt as unknown as Appointment)}
+                        disabled={isBlock}
+                        className={`w-full text-left rounded-2xl p-4 shadow-sm border ${containerClass} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}
+                    >
                         {/* Linha Lateral Colorida */}
                         <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${decorationColor}`}></div>
 
@@ -183,19 +199,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                             <div className="flex items-center gap-2">
                                 <h3 className={`font-bold text-sm ${isBlock ? 'text-red-700' : 'text-gray-800'}`}>{appt.clients?.name}</h3>
                                 {isHome && <Car size={14} className="text-purple-500" />}
+                                {isCompleted && <CheckCircle size={14} className="text-green-600" />}
                             </div>
                             <p className={`text-xs ${subTextColor}`}>{appt.service_name}</p>
                             {isHome && <span className="text-[10px] text-purple-600 font-medium tracking-wide">Atendimento Domiciliar</span>}
+                            {isCompleted && <span className="text-[10px] text-green-600 font-medium tracking-wide">Finalizado</span>}
                         </div>
-
-                         {/* Ações (Link para editar/detalhes) - Desabilita link se for bloqueio */}
-                         {!isBlock && (
-                             <Link 
-                                href={`/clientes/${appt.clients?.name ? '1' : ''}`} 
-                                className="absolute inset-0 z-10"
-                            />
-                         )}
-                    </div>
+                    </button>
                 );
             })
         ) : (
@@ -209,6 +219,20 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         )}
 
       </div>
+
+      {/* FAB - Novo Agendamento */}
+      <button className="absolute bottom-6 right-6 w-14 h-14 bg-studio-green text-white rounded-full shadow-lg shadow-green-200 flex items-center justify-center hover:bg-studio-green-dark transition-transform active:scale-95 z-40">
+            <Plus size={28} />
+      </button>
+      
+      {/* Modal - Renderizado Condicionalmente */}
+      {selectedAppointment && (
+        <AppointmentDetailsModal 
+            appointment={selectedAppointment as any} 
+            onClose={() => setSelectedAppointment(null)}
+            onUpdate={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }
