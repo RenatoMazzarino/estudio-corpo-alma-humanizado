@@ -13,6 +13,8 @@ interface Appointment {
   start_time: string;
   status: string;
   finished_at: string | null;
+  is_home_visit: boolean;
+  total_duration_minutes: number | null;
   clients: {
     name: string;
     initials: string | null;
@@ -42,6 +44,7 @@ export default async function Home(props: { searchParams: Promise<{ view?: strin
     .from("appointments")
     .select(`
       id, service_name, start_time, finished_at, status,
+      is_home_visit, total_duration_minutes,
       clients ( name, initials )
     `)
     .eq("tenant_id", FIXED_TENANT_ID)

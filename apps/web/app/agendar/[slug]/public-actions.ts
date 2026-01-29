@@ -10,15 +10,13 @@ interface PublicBookingData {
     time: string;
     clientName: string;
     clientPhone: string;
+    isHomeVisit?: boolean;
 }
 
 export async function submitPublicAppointment(data: PublicBookingData) {
     const supabase = await createClient();
 
-    // 1. Criar ou Buscar Cliente (Publicamente, vamos simplificar e criar um novo ou usar existente com mesmo nome?)
-    // Para simplificar V1: Cria um cliente novo se não achar pelo nome exato, ou usa o existente.
-    
-    // Check if client exists
+    // 1. Criar ou Buscar Cliente
     let clientId: string;
 
     const { data: existingClient } = await supabase
@@ -30,7 +28,6 @@ export async function submitPublicAppointment(data: PublicBookingData) {
     
     if (existingClient) {
         clientId = existingClient.id;
-        // Opcional: Atualizar telefone se não tiver
     } else {
         const { data: newClient, error: clientError } = await supabase
             .from("clients")
@@ -56,9 +53,41 @@ export async function submitPublicAppointment(data: PublicBookingData) {
 
     if (!service) throw new Error("Serviço não encontrado");
 
-    // 3. Criar Agendamento
+    // 3. Buscar Settings para buffer (opcional, ou confiar no service/hardcoded para total_duration)
+    // Para simplificar, vamos calcular o preço e usar um calculation básico aqui ou buscar settings.
+    // O ideal é buscar settings.
+    const { data: settings } = await supabase
+        .from("settings")
+        .select("default_home_buffer, default_studio_buffer")
+        .eq("tenant_id", data.tenantId)
+        .single();
+
+    // 3. Calcular Valores
+    const isHome = data.isHomeVisit || false;
+    let finalPrice = Number(service.price);
+    let totalDuration = service.duration_minutes;
+    
+    if (isHome) {
+        finalPrice += Number(service.home_visit_fee || 0);
+        // Buffer Domiciliar
+        const homeBuffer = settings?.default_home_buffer || 60;
+        totalDuration += homeBuffer; // Duração Total (Serviço + Trânsito)
+    } else {
+        // Buffer Estúdio (opcional se salvamos no total_duration ou não. Normalmente total_duration no banco inclui buffer?
+        // A especificação diz: "slot deve ter tamanho = serviceDuration + buffer". 
+        // Vamos salvar o total_duration_minutes como o tempo ocupado REAL (com buffer).
+        const studioBuffer = service.custom_buffer_minutes ?? (settings?.default_studio_buffer || 30);
+        totalDuration += studioBuffer;
+    }
+
     const startDateTime = new Date(`${data.date}T${data.time}:00`);
-    const endDateTime = addMinutes(startDateTime, service.duration_minutes);
+    // finished_at é quando o SERVIÇO acaba (sem buffer) ou com buffer? 
+    // Geralmente finished_at é quando o cliente VAI EMBORA.
+    // O total_duration_minutes é o BLOCO TOTAL (com trânsito).
+    // Se for Home Visit: finished_at = start + service_duration. E o resto é trânsito.
+    // Mas para simplificar colisão, vamos assumir finished_at = start + service_duration.
+    
+    const finishedAt = addMinutes(startDateTime, service.duration_minutes);
 
     const { error: bookingError } = await supabase
         .from("appointments")
@@ -66,13 +95,16 @@ export async function submitPublicAppointment(data: PublicBookingData) {
             client_id: clientId,
             service_name: service.name,
             start_time: startDateTime.toISOString(),
-            finished_at: endDateTime.toISOString(),
-            price: service.price,
+            finished_at: finishedAt.toISOString(),
+            price: finalPrice,
             status: "pending", 
-            tenant_id: data.tenantId
+            tenant_id: data.tenantId,
+            is_home_visit: isHome,
+            total_duration_minutes: totalDuration,
+            payment_status: 'pending' // Estado inicial financeiro
         });
 
-    if (bookingError) throw new Error("Erro ao salvar agendamento");
+    if (bookingError) throw new Error("Erro ao salvar agendamento: " + bookingError.message);
 
     return { success: true };
 }

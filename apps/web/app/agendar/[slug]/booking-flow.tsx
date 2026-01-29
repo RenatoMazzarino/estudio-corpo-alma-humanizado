@@ -1,21 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Calendar, ChevronRight, Check, User, Phone, Sparkles, Loader2 } from "lucide-react";
+import { Calendar, ChevronRight, Check, User, Phone, Sparkles, Loader2, Home, MapPin } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions";
 import { getAvailableSlots } from "./availability";
-import { useEffect } from "react";
 
 interface Service {
   id: string;
   name: string;
   price: number;
   duration_minutes: number;
-  accepts_home_visit?: boolean | null;
-  home_visit_fee?: number | null;
-  custom_buffer_minutes?: number | null;
-  description?: string | null;
+  accepts_home_visit: boolean;
+  home_visit_fee: number;
+  custom_buffer_minutes: number;
+  description: string;
 }
 
 interface Tenant {
@@ -29,13 +28,12 @@ interface BookingFlowProps {
   services: Service[];
 }
 
-type Step = "SERVICE" | "DATETIME" | "INFO" | "SUCCESS";
-
-
+type Step = "SERVICE" | "LOCATION" | "DATETIME" | "INFO" | "SUCCESS";
 
 export function BookingFlow({ tenant, services }: BookingFlowProps) {
   const [step, setStep] = useState<Step>("SERVICE");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [isHomeVisit, setIsHomeVisit] = useState(false);
   const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [clientName, setClientName] = useState("");
@@ -44,25 +42,25 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
-  // Fetch Slots when date or service changes
+  // Fetch Slots
   useEffect(() => {
     async function fetchSlots() {
         if (!selectedService || !date) return;
 
         setIsLoadingSlots(true);
         setAvailableSlots([]);
-        setSelectedTime(""); // Reset selection
+        setSelectedTime(""); 
 
         try {
             const slots = await getAvailableSlots({
                 tenantId: tenant.id,
                 serviceId: selectedService.id,
-                date
+                date,
+                isHomeVisit // Passando o flag
             });
             setAvailableSlots(slots);
         } catch (error) {
             console.error(error);
-            // Handle error silently or show toast
         } finally {
             setIsLoadingSlots(false);
         }
@@ -71,12 +69,23 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
     if (step === "DATETIME") {
         fetchSlots();
     }
-  }, [date, selectedService, step, tenant.id]);
+  }, [date, selectedService, step, tenant.id, isHomeVisit]);
 
   // Handlers
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
-    setStep("DATETIME");
+    // Se o serviço permite home visit, vamos para a etapa LOCATION
+    if (service.accepts_home_visit) {
+        setStep("LOCATION");
+    } else {
+        setIsHomeVisit(false);
+        setStep("DATETIME");
+    }
+  };
+
+  const handleLocationSelect = (home: boolean) => {
+      setIsHomeVisit(home);
+      setStep("DATETIME");
   };
 
   const handleTimeSelect = (time: string) => {
@@ -100,7 +109,8 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
             date,
             time: selectedTime,
             clientName,
-            clientPhone
+            clientPhone,
+            isHomeVisit
         });
         setStep("SUCCESS");
     } catch {
@@ -110,8 +120,16 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
     }
   };
 
-  // Render Steps
-  
+  // Helper de Preço
+  const getTotalPrice = () => {
+      if (!selectedService) return 0;
+      let price = Number(selectedService.price);
+      if (isHomeVisit) {
+          price += Number(selectedService.home_visit_fee || 0);
+      }
+      return price;
+  };
+
   // 1. SERVICES
   if (step === "SERVICE") {
     return (
@@ -128,10 +146,16 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                  <ChevronRight className="text-studio-green" />
               </div>
               <h3 className="font-bold text-gray-800">{service.name}</h3>
-              <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+              {service.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{service.description}</p>}
+              <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
                 <span>{service.duration_minutes} min</span>
                 <span className="w-1 h-1 rounded-full bg-gray-300" />
                 <span className="font-semibold text-studio-green">R$ {service.price}</span>
+                {service.accepts_home_visit && (
+                    <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-auto">
+                        Opção Domiciliar
+                    </span>
+                )}
               </div>
             </button>
           ))}
@@ -140,11 +164,67 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
     );
   }
 
-  // 2. DATE & TIME
+  // 2. LOCATION (New!)
+  if (step === "LOCATION") {
+      return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+             <button onClick={() => setStep("SERVICE")} className="text-sm text-gray-400 flex items-center gap-1 mb-2 hover:text-gray-600">
+                <ChevronRight className="rotate-180" size={14} /> Voltar
+             </button>
+
+             <h2 className="text-xl font-bold text-gray-800 mb-4">Onde será o atendimento?</h2>
+             
+             <div className="space-y-3">
+                 {/* Opção Estúdio */}
+                 <button 
+                    onClick={() => handleLocationSelect(false)}
+                    className="w-full bg-white p-5 rounded-2xl shadow-sm border border-stone-100 text-left hover:border-studio-green hover:shadow-md transition-all flex items-center gap-4 group"
+                 >
+                     <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center text-stone-400 group-hover:bg-green-50 group-hover:text-studio-green transition-colors">
+                         <MapPin size={24} />
+                     </div>
+                     <div className="flex-1">
+                         <h3 className="font-bold text-gray-800">No Estúdio</h3>
+                         <p className="text-sm text-gray-500">R. Exemplo, 123 - Centro</p>
+                     </div>
+                     <div className="text-right">
+                         <span className="font-bold text-studio-green">R$ {selectedService?.price}</span>
+                     </div>
+                 </button>
+
+                 {/* Opção Domiciliar */}
+                 <button 
+                    onClick={() => handleLocationSelect(true)}
+                    className="w-full bg-white p-5 rounded-2xl shadow-sm border border-stone-100 text-left hover:border-purple-500 hover:shadow-md transition-all flex items-center gap-4 group"
+                 >
+                     <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-purple-400 group-hover:bg-purple-100 group-hover:text-purple-600 transition-colors">
+                         <Home size={24} />
+                     </div>
+                     <div className="flex-1">
+                         <h3 className="font-bold text-gray-800">Em Domicílio</h3>
+                         <p className="text-sm text-gray-500 flex flex-col">
+                            <span>Vamos até você (com maca e materiais)</span>
+                         </p>
+                     </div>
+                     <div className="text-right flex flex-col items-end">
+                         <span className="font-bold text-purple-600">
+                             R$ {(Number(selectedService?.price) + Number(selectedService?.home_visit_fee || 0)).toFixed(2)}
+                         </span>
+                         <span className="text-[10px] text-purple-400 bg-purple-50 px-1.5 rounded">
+                             + Taxa inclusa
+                         </span>
+                     </div>
+                 </button>
+             </div>
+        </div>
+      )
+  }
+
+  // 3. DATE & TIME
   if (step === "DATETIME") {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
-        <button onClick={() => setStep("SERVICE")} className="text-sm text-gray-400 flex items-center gap-1 mb-2 hover:text-gray-600">
+        <button onClick={() => setStep(selectedService?.accepts_home_visit ? "LOCATION" : "SERVICE")} className="text-sm text-gray-400 flex items-center gap-1 mb-2 hover:text-gray-600">
             <ChevronRight className="rotate-180" size={14} /> Voltar
         </button>
 
@@ -152,12 +232,13 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
             <h2 className="text-xl font-bold text-gray-800 mb-4">Escolha o melhor horário</h2>
             
             {/* Resumo do Serviço */}
-            <div className="bg-stone-50 p-3 rounded-xl flex justify-between items-center mb-6 border border-stone-100">
+            <div className={`p-3 rounded-xl flex justify-between items-center mb-6 border ${isHomeVisit ? 'bg-purple-50 border-purple-100' : 'bg-stone-50 border-stone-100'}`}>
                 <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-studio-green" />
+                    {isHomeVisit ? <Home size={16} className="text-purple-500" /> : <Sparkles size={16} className="text-studio-green" />}
                     <span className="font-bold text-gray-700">{selectedService?.name}</span>
+                    {isHomeVisit && <span className="text-[10px] bg-purple-200 text-purple-800 px-1.5 rounded font-bold">HOME</span>}
                 </div>
-                <span className="text-sm text-gray-500">R$ {selectedService?.price}</span>
+                <span className="text-sm font-bold text-gray-600">R$ {getTotalPrice().toFixed(2)}</span>
             </div>
 
             {/* Input Data */}
@@ -219,7 +300,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
     );
   }
 
-  // 3. INFO
+  // 4. INFO
   if (step === "INFO") {
      return (
       <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
@@ -258,13 +339,19 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                 <span>Serviço:</span>
                 <span className="font-bold">{selectedService?.name}</span>
             </div>
+            {isHomeVisit && (
+                 <div className="flex justify-between text-purple-600">
+                    <span>Local:</span>
+                    <span className="font-bold">Em Domicílio</span>
+                </div>
+            )}
             <div className="flex justify-between">
                 <span>Data:</span>
                 <span className="font-bold">{date ? format(new Date(date), "dd/MM/yyyy") : ""} às {selectedTime}</span>
             </div>
             <div className="flex justify-between border-t border-orange-200 pt-2 mt-2">
                 <span>Total:</span>
-                <span className="font-bold text-lg">R$ {selectedService?.price.toFixed(2)}</span>
+                <span className="font-bold text-lg">R$ {getTotalPrice().toFixed(2)}</span>
             </div>
         </div>
 
@@ -280,7 +367,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
      );
   }
 
-  // 4. SUCCESS
+  // 5. SUCCESS
   if (step === "SUCCESS") {
       return (
           <div className="text-center py-10 animate-in zoom-in duration-500">

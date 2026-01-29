@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { format, addDays, isSameDay } from "date-fns";
+import { format, addDays, isSameDay, addMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Coffee, Hospital } from "lucide-react"; 
+import { Coffee, Hospital, Car } from "lucide-react"; 
 import Link from "next/link";
 import { ShiftManager } from "./shift-manager"; 
 
@@ -19,6 +19,8 @@ interface Appointment {
   finished_at: string | null;
   clients: AppointmentClient | null;
   status: string;
+  is_home_visit?: boolean;
+  total_duration_minutes?: number | null;
 }
 
 interface AvailabilityBlock {
@@ -51,12 +53,14 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       ...dailyAppointments.map(a => ({ ...a, type: 'appointment' as const })),
       ...dailyBlocks.map(b => ({ 
           id: b.id, 
-          service_name: b.title, 
+          service_name: "Plantão", 
           start_time: b.start_time, 
           finished_at: b.end_time, 
-          clients: { name: 'Bloqueio', initials: '⛔' }, 
+          clients: { name: b.title, initials: '⛔' }, 
           status: 'blocked',
-          type: 'block' as const
+          type: 'block' as const,
+          is_home_visit: false,
+          total_duration_minutes: null
       }))
   ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
@@ -125,18 +129,49 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         {items.length > 0 ? (
             items.map((appt) => {
-                const start = format(new Date(appt.start_time), "HH:mm");
-                const end = appt.finished_at ? format(new Date(appt.finished_at), "HH:mm") : "";
-                const isBlock = appt.type === 'block'; 
+                const startTimeDate = new Date(appt.start_time);
+                const start = format(startTimeDate, "HH:mm");
                 
+                // Calculate End Time Logic
+                let end = "";
+                if (appt.finished_at && appt.type === 'appointment') {
+                    end = format(new Date(appt.finished_at), "HH:mm");
+                } else if (appt.total_duration_minutes) {
+                    end = format(addMinutes(startTimeDate, appt.total_duration_minutes), "HH:mm");
+                } else if (appt.type === 'block') {
+                    // Start is usually 00:00 for full day block, hide end time if full day?
+                    // But if partial... let's show nothing for now for blocks unless logic demands
+                    end = ""; 
+                }
+                
+                const isBlock = appt.type === 'block'; 
+                const isHome = appt.is_home_visit;
+                
+                // Style Logic
+                let containerClass = "bg-white border-stone-100";
+                let decorationColor = "bg-studio-green";
+                let textColor = "text-gray-800";
+                let subTextColor = "text-gray-500";
+                
+                if (isBlock) {
+                    containerClass = "bg-red-50/50 border-red-100";
+                    decorationColor = "bg-red-400";
+                    textColor = "text-red-800";
+                    subTextColor = "text-red-500";
+                } else if (isHome) {
+                    containerClass = "bg-purple-50/30 border-purple-100";
+                    decorationColor = "bg-purple-500";
+                    // textColor keeps gray for readability or slightly purple
+                }
+
                 return (
-                    <div key={appt.id} className={`bg-white rounded-2xl p-4 shadow-sm border ${isBlock ? 'border-red-100 bg-red-50/50' : 'border-stone-100'} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}>
+                    <div key={appt.id} className={`rounded-2xl p-4 shadow-sm border ${containerClass} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}>
                         {/* Linha Lateral Colorida */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isBlock ? 'bg-red-400' : 'bg-studio-green'}`}></div>
+                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${decorationColor}`}></div>
 
                         {/* Coluna Horário */}
                         <div className="flex flex-col items-center min-w-14">
-                            <span className={`text-lg font-bold ${isBlock ? 'text-red-800' : 'text-gray-800'}`}>{start}</span>
+                            <span className={`text-lg font-bold ${textColor}`}>{start}</span>
                             <span className="text-[10px] text-gray-400">{end}</span>
                         </div>
 
@@ -145,8 +180,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                         {/* Coluna Detalhes */}
                         <div className="flex-1">
-                            <h3 className={`font-bold text-sm ${isBlock ? 'text-red-700' : 'text-gray-800'}`}>{appt.clients?.name}</h3>
-                            <p className={`text-xs ${isBlock ? 'text-red-500' : 'text-gray-500'}`}>{appt.service_name}</p>
+                            <div className="flex items-center gap-2">
+                                <h3 className={`font-bold text-sm ${isBlock ? 'text-red-700' : 'text-gray-800'}`}>{appt.clients?.name}</h3>
+                                {isHome && <Car size={14} className="text-purple-500" />}
+                            </div>
+                            <p className={`text-xs ${subTextColor}`}>{appt.service_name}</p>
+                            {isHome && <span className="text-[10px] text-purple-600 font-medium tracking-wide">Atendimento Domiciliar</span>}
                         </div>
 
                          {/* Ações (Link para editar/detalhes) - Desabilita link se for bloqueio */}
