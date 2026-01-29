@@ -22,7 +22,7 @@ export default async function PublicBookingPage(props: PageProps) {
   // 2. Buscar Serviços do Tenant
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, price, duration_minutes")
+    .select("id, name, price, duration_minutes, accepts_home_visit, home_visit_fee, description, custom_buffer_minutes")
     .eq("tenant_id", tenant.id)
     .order("name");
 

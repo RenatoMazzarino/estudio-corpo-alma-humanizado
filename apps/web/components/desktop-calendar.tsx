@@ -119,7 +119,16 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
 
     const label = () => {
       const date = toolbar.date;
-      return <span className="text-xl font-bold text-gray-800 font-serif capitalize">{format(date, 'MMMM yyyy', { locale: ptBR })}</span>;
+      const view = toolbar.view;
+
+      let formattedLabel = '';
+      if (view === 'day') {
+          formattedLabel = format(date, "d 'de' MMMM", { locale: ptBR });
+      } else {
+          formattedLabel = format(date, 'MMMM yyyy', { locale: ptBR });
+      }
+
+      return <span className="text-xl font-bold text-gray-800 font-serif capitalize">{formattedLabel}</span>;
     };
 
     return (
