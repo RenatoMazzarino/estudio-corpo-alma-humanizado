@@ -4,7 +4,66 @@ import { createClient } from "../lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../lib/tenant-context";
 
-// Função para INICIAR o atendimento
+// --- SERVIÇOS ---
+
+export async function upsertService(formData: FormData) {
+  const supabase = await createClient();
+
+  // Campos existentes
+  const id = formData.get("id") as string;
+  const name = formData.get("name") as string;
+  const price = parseFloat(formData.get("price") as string);
+  const duration_minutes = parseInt(formData.get("duration_minutes") as string);
+
+  // Novos campos adicionados
+  const accepts_home_visit = formData.get("accepts_home_visit") === "on";
+  const home_visit_fee = parseFloat(formData.get("home_visit_fee") as string) || 0;
+  const custom_buffer_minutes = parseInt(formData.get("custom_buffer_minutes") as string) || 0;
+
+  const description = formData.get("description") as string;
+  
+  const payload = {
+    name,
+    description,
+    price,
+    duration_minutes,
+    accepts_home_visit,
+    home_visit_fee,
+    custom_buffer_minutes,
+    tenant_id: FIXED_TENANT_ID,
+  };
+
+  const { error } = id 
+    ? await supabase.from("services").update(payload).eq("id", id)
+    : await supabase.from("services").insert(payload);
+
+  if (error) {
+    throw new Error("Erro ao salvar serviço: " + error.message);
+  }
+
+  revalidatePath("/catalogo"); 
+  revalidatePath("/admin/servicos"); 
+}
+
+export async function deleteService(id: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("services")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", FIXED_TENANT_ID);
+
+  if (error) {
+    throw new Error("Erro ao remover serviço: " + error.message);
+  }
+
+  revalidatePath("/catalogo");
+  revalidatePath("/admin/servicos");
+}
+
+// --- AGENDAMENTOS (Mantidos) ---
+
 export async function startAppointment(id: string) {
   const supabase = await createClient();
   
@@ -20,7 +79,6 @@ export async function startAppointment(id: string) {
   revalidatePath("/"); // Atualiza a tela instantaneamente
 }
 
-// Função para FINALIZAR o atendimento
 export async function finishAppointment(id: string) {
   const supabase = await createClient();
   
@@ -36,8 +94,6 @@ export async function finishAppointment(id: string) {
   revalidatePath("/");
 }
 
-// Função para CANCELAR o atendimento (Soft Delete)
-// Não apagamos do banco, apenas marcamos como 'canceled' para manter histórico
 export async function cancelAppointment(id: string) {
   const supabase = await createClient();
   

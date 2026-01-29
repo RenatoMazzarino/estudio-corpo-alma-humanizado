@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { format, addDays, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Coffee } from "lucide-react";
+import { Coffee, Hospital } from "lucide-react"; // Adicionado Hospital Icon
 import Link from "next/link";
+import { ShiftManager } from "./shift-manager"; // Import componente
 
 interface AppointmentClient {
     name: string;
@@ -26,6 +27,7 @@ interface MobileAgendaProps {
 
 export function MobileAgenda({ appointments }: MobileAgendaProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showShiftManager, setShowShiftManager] = useState(false); // Estado para mostrar o gestor
 
   // Gera os próximos 14 dias para o seletor
   const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
@@ -39,13 +41,31 @@ export function MobileAgenda({ appointments }: MobileAgendaProps) {
     <div className="bg-stone-50 min-h-[600px] flex flex-col">
       
       {/* 1. Header Fixo com Seletor de Dias */}
-      <div className="bg-white px-4 py-4 shadow-sm border-b border-stone-100 z-10">
+      <div className="bg-white px-4 py-4 shadow-sm border-b border-stone-100 z-10 transition-all duration-300">
          <div className="flex justify-between items-center mb-4">
             <h1 className="text-xl font-bold text-studio-green font-serif">Agenda</h1>
-            <div className="w-8 h-8 bg-studio-green/10 rounded-full flex items-center justify-center text-xs font-bold text-studio-green">
-                EC
+            
+            <div className="flex items-center gap-2">
+                {/* Botão Escala */}
+                <button 
+                    onClick={() => setShowShiftManager(!showShiftManager)}
+                    className={`p-2 rounded-full transition-colors ${showShiftManager ? 'bg-studio-green text-white' : 'bg-studio-green/10 text-studio-green'}`}
+                >
+                    <Hospital size={20} />
+                </button>
+                
+                <div className="w-8 h-8 bg-studio-green/10 rounded-full flex items-center justify-center text-xs font-bold text-studio-green">
+                    EC
+                </div>
             </div>
          </div>
+
+        {/* Gerenciador de Plantões (Expandable) */}
+        {showShiftManager && (
+            <div className="mb-4 animate-in slide-in-from-top-2 fade-in">
+                <ShiftManager />
+            </div>
+        )}
 
         {/* Strip Calendar */}
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
@@ -110,7 +130,7 @@ export function MobileAgenda({ appointments }: MobileAgendaProps) {
                          <Link 
                             href={`/clientes/${appt.clients?.name ? '1' : ''}`} 
                             className="absolute inset-0 z-10"
-                         />
+                        />
                     </div>
                 );
             })

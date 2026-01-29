@@ -12,6 +12,10 @@ interface Service {
   name: string;
   price: number;
   duration_minutes: number;
+  accepts_home_visit?: boolean | null;
+  home_visit_fee?: number | null;
+  custom_buffer_minutes?: number | null;
+  description?: string | null;
 }
 
 interface Tenant {
