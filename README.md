@@ -17,6 +17,23 @@ pnpm check-types
 pnpm build
 ```
 
+## Windows (PowerShell)
+
+```powershell
+corepack enable
+pnpm install
+pnpm dev
+```
+
+Se alternar entre WSL e Windows, apague `node_modules` e `.next` antes de reinstalar:
+
+```powershell
+Remove-Item -Recurse -Force node_modules, apps/web/node_modules, apps/web/.next
+pnpm install
+```
+
+> O `pnpm dev` usa o Turbo local (sem necessidade de instalação global).
+
 > Em WSL, garanta que o `pnpm` esteja usando o Node Linux (corepack). Isso evita binários nativos incompatíveis (ex.: lightningcss).
 
 ---
