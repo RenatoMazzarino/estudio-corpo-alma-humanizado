@@ -1,3 +1,25 @@
+# estudio-corpo-alma-humanizado
+
+## Requisitos
+
+- Node.js 20.11.1+ (use `.nvmrc`).
+- pnpm 9 (via `corepack enable`).
+- Docker + Supabase CLI (instalado via `pnpm install`).
+
+## Setup rápido
+
+```sh
+corepack enable
+pnpm install
+pnpm lint
+pnpm check-types
+pnpm build
+```
+
+> Em WSL, garanta que o `pnpm` esteja usando o Node Linux (corepack). Isso evita binários nativos incompatíveis (ex.: lightningcss).
+
+---
+
 # Turborepo starter
 
 This Turborepo starter is maintained by the Turborepo core team.
