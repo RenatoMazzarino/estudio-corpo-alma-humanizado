@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       appointments: {
@@ -43,6 +18,7 @@ export type Database = {
           is_home_visit: boolean | null
           payment_status: string | null
           price: number | null
+          service_id: string | null
           service_name: string
           start_time: string
           started_at: string | null
@@ -58,6 +34,7 @@ export type Database = {
           is_home_visit?: boolean | null
           payment_status?: string | null
           price?: number | null
+          service_id?: string | null
           service_name: string
           start_time: string
           started_at?: string | null
@@ -73,6 +50,7 @@ export type Database = {
           is_home_visit?: boolean | null
           payment_status?: string | null
           price?: number | null
+          service_id?: string | null
           service_name?: string
           start_time?: string
           started_at?: string | null
@@ -86,6 +64,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
           {
@@ -126,6 +111,44 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      business_hours: {
+        Row: {
+          close_time: string
+          created_at: string | null
+          day_of_week: number
+          id: string
+          is_closed: boolean | null
+          open_time: string
+          tenant_id: string
+        }
+        Insert: {
+          close_time: string
+          created_at?: string | null
+          day_of_week: number
+          id?: string
+          is_closed?: boolean | null
+          open_time: string
+          tenant_id: string
+        }
+        Update: {
+          close_time?: string
+          created_at?: string | null
+          day_of_week?: number
+          id?: string
+          is_closed?: boolean | null
+          open_time?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_hours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {
@@ -462,9 +485,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

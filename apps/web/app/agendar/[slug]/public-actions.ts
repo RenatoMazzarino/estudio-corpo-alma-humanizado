@@ -101,6 +101,7 @@ export async function submitPublicAppointment(data: PublicBookingData) {
         .from("appointments")
         .insert({
             client_id: clientId,
+            service_id: service.id,
             service_name: service.name,
             start_time: startDateTime.toISOString(),
             finished_at: finishedAt.toISOString(),

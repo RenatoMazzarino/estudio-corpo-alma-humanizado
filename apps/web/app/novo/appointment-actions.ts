@@ -50,6 +50,7 @@ export async function createAppointment(formData: FormData) {
 
     const { error: appointmentError } = await supabase.from("appointments").insert({
       client_id: newClient.id,
+      service_id: service.id,
       service_name: service.name,
       start_time: startDateTime.toISOString(),
       finished_at: endDateTime.toISOString(), // Salvando o horário previsto de término
