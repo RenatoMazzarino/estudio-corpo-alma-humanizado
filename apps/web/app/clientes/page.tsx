@@ -3,6 +3,13 @@ import { User, Search, Plus } from "lucide-react";
 import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 
+interface ClientListItem {
+  id: string;
+  name: string;
+  initials: string | null;
+  phone: string | null;
+}
+
 export default async function ClientesPage({
   searchParams,
 }: {
@@ -21,7 +28,8 @@ export default async function ClientesPage({
     dbQuery = dbQuery.ilike('name', `%${query}%`);
   }
 
-  const { data: clients } = await dbQuery;
+  const { data } = await dbQuery;
+  const clients = data as ClientListItem[] | null;
 
   return (
     <div className="flex flex-col h-full bg-stone-50">
@@ -49,7 +57,7 @@ export default async function ClientesPage({
 
         {/* Lista Scrollável */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
-            {clients?.map((client: any) => (
+            {clients?.map((client) => (
                 <Link href={`/clientes/${client.id}`} key={client.id} className="block">
                     <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-stone-100 shadow-sm active:scale-95 transition-transform hover:border-studio-green/30">
                         <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-studio-green font-bold text-lg border border-green-100">

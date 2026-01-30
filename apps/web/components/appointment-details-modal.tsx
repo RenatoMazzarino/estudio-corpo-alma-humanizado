@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { format, differenceInSeconds } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
     X, Play, Pause, CheckCircle, 
-    DollarSign, CreditCard, Banknote, Smartphone, 
+    CreditCard, Banknote, Smartphone, 
     MapPin, Clock, FileText, User
 } from "lucide-react";
 import { finishAppointment } from "../app/admin/atendimento/actions";
 
 // Tipagem deve vir de um arquivo compartilhado idealmente
-interface AppointmentDetails {
+export interface AppointmentDetails {
     id: string;
     service_name: string;
     start_time: string;
@@ -23,9 +23,9 @@ interface AppointmentDetails {
         id: string; // Importante para fetch de notas se precisássemos aqui
         name: string;
         initials: string | null;
-        phone?: string;
-        health_tags?: string[];
-        endereco_completo?: string;
+        phone?: string | null;
+        health_tags?: string[] | null;
+        endereco_completo?: string | null;
     } | null;
 }
 

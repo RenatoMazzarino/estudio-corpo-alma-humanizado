@@ -7,7 +7,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Hospital } from "lucide-react";
 import { ShiftManager } from "./shift-manager";
-import { AppointmentDetailsModal } from "./appointment-details-modal";
+import { AppointmentDetailsModal, AppointmentDetails } from "./appointment-details-modal";
 import { useRouter } from "next/navigation";
 
 const locales = {
@@ -41,9 +41,9 @@ interface AppointmentClient {
     id: string; // Adicionado id
     name: string;
     initials: string | null;
-    phone?: string;
-    health_tags?: string[];
-    endereco_completo?: string;
+    phone?: string | null;
+    health_tags?: string[] | null;
+    endereco_completo?: string | null;
 }
 
 interface Appointment {
@@ -54,7 +54,7 @@ interface Appointment {
   clients: AppointmentClient | null;
   status: string;
   price?: number | null; // Adicionado
-  is_home_visit?: boolean; // Adicionado
+  is_home_visit?: boolean | null; // Adicionado
 }
 
 interface AvailabilityBlock {
@@ -83,7 +83,7 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
   const [view, setView] = useState<View>(Views.WEEK);
   const [date, setDate] = useState(new Date());
   const [showShiftManager, setShowShiftManager] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
   
   const router = useRouter();
 
@@ -117,7 +117,7 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
   const handleSelectEvent = (event: CalendarEvent) => {
       if (event.type === 'appointment') {
           // Cast resource to Appointment
-          setSelectedAppointment(event.resource as Appointment);
+          setSelectedAppointment(event.resource as AppointmentDetails);
       }
       // Se for block, nada acontece por enquanto (ou abrir shift manager)
   };
@@ -308,7 +308,7 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
         {/* Modal de Detalhes */}
         {selectedAppointment && (
             <AppointmentDetailsModal 
-                appointment={selectedAppointment as any} // Cast necessário enquanto interfaces não batem 100% ou se tiver detalhes faltando props
+                appointment={selectedAppointment}
                 onClose={handleCloseModal}
                 onUpdate={handleUpdate}
             />

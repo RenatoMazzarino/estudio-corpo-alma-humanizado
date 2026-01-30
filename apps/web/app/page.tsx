@@ -10,7 +10,7 @@ interface Appointment {
   start_time: string;
   status: string;
   finished_at: string | null;
-  is_home_visit: boolean;
+  is_home_visit: boolean | null;
   total_duration_minutes: number | null;
   price: number | null;
   clients: {
@@ -22,6 +22,10 @@ interface Appointment {
     endereco_completo: string | null;
   } | null;
 }
+
+type RawAppointment = Omit<Appointment, "clients"> & {
+  clients: Appointment["clients"] | Appointment["clients"][] | null;
+};
 
 export default async function Home() {
   const supabase = await createClient();
@@ -43,16 +47,10 @@ export default async function Home() {
     .gte("start_time", queryStartDate)
     .lte("start_time", queryEndDate);
 
-  const appointments: Appointment[] = (appointmentsData || []).map((appt: any) => ({
-    id: appt.id,
-    service_name: appt.service_name,
-    start_time: appt.start_time,
-    finished_at: appt.finished_at,
-    status: appt.status,
-    is_home_visit: appt.is_home_visit,
-    total_duration_minutes: appt.total_duration_minutes,
-    price: appt.price,
-    clients: appt.clients 
+  const rawAppointments = (appointmentsData ?? []) as unknown as RawAppointment[];
+  const appointments: Appointment[] = rawAppointments.map((appt) => ({
+    ...appt,
+    clients: Array.isArray(appt.clients) ? appt.clients[0] ?? null : appt.clients,
   }));
 
   // 2. Buscar Bloqueios

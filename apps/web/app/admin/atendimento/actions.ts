@@ -84,8 +84,9 @@ export async function finishAppointment({ appointmentId, paymentMethod, finalAmo
     
     return { success: true };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error("Erro em finishAppointment:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: message };
   }
 }

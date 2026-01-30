@@ -5,16 +5,16 @@ import { format, addDays, isSameDay, addMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Coffee, Hospital, Car, CheckCircle, Plus } from "lucide-react"; 
 import { ShiftManager } from "./shift-manager"; 
-import { AppointmentDetailsModal } from "./appointment-details-modal";
+import { AppointmentDetailsModal, AppointmentDetails } from "./appointment-details-modal";
 import { useRouter } from "next/navigation";
 
 interface AppointmentClient {
     id: string;
     name: string;
     initials: string | null;
-    phone?: string;
-    health_tags?: string[];
-    endereco_completo?: string;
+    phone?: string | null;
+    health_tags?: string[] | null;
+    endereco_completo?: string | null;
 }
 
 interface Appointment {
@@ -24,7 +24,7 @@ interface Appointment {
   finished_at: string | null;
   clients: AppointmentClient | null;
   status: string;
-  is_home_visit?: boolean;
+  is_home_visit?: boolean | null;
   total_duration_minutes?: number | null;
   price?: number | null;
 }
@@ -44,7 +44,7 @@ interface MobileAgendaProps {
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showShiftManager, setShowShiftManager] = useState(false); 
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
   
   const router = useRouter();
 
@@ -178,7 +178,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 return (
                     <button 
                         key={appt.id} 
-                        onClick={() => !isBlock && setSelectedAppointment(appt as unknown as Appointment)}
+                        onClick={() => !isBlock && setSelectedAppointment(appt as AppointmentDetails)}
                         disabled={isBlock}
                         className={`w-full text-left rounded-2xl p-4 shadow-sm border ${containerClass} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}
                     >
@@ -228,7 +228,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       {/* Modal - Renderizado Condicionalmente */}
       {selectedAppointment && (
         <AppointmentDetailsModal 
-            appointment={selectedAppointment as any} 
+            appointment={selectedAppointment} 
             onClose={() => setSelectedAppointment(null)}
             onUpdate={() => router.refresh()}
         />

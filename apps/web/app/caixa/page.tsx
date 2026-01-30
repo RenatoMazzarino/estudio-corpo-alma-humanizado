@@ -20,31 +20,13 @@ interface PageProps {
 }
 
 export default async function CaixaPage({ searchParams }: PageProps) {
-  const params = searchParams; // Next.js 13/14 pattern (in Next 15 it might be a promise, but sticking to standard)
-  /* NOTE: If user is on Next 15 canary, searchParams needs await. Assuming stable Next 14 setup based on previous files.
-     Actually previous file had `await searchParams`. I will keep `await` if the project uses it, but usually type is just prop. 
-     Safe way: const sp = await searchParams; (if it is a promise). 
-     The previous file had `const params = await searchParams;` so I will follow that pattern strictly.
-  */
-
-  // Safe Handling for Params (Next 15 compat check)
-  // But Typescript might complain if PageProps defines it as non-promise.
-  // I will assume it's awaitable as per previous file.
-  
-  // Actually let's just treat it as object for now to avoid complexity unless I see errors.
-  // Previous file: `interface PageProps { searchParams: Promise<...> }`. I will replicate that.
-  
   const supabase = await createClient();
 
   const today = new Date();
   let selectedDate = today;
 
-  // Resolving params properly
-  // @ts-ignore
-  const resolvedParams = searchParams instanceof Promise ? await searchParams : searchParams;
-  
-  if (resolvedParams?.date && typeof resolvedParams.date === "string") {
-    selectedDate = parseISO(resolvedParams.date);
+  if (searchParams?.date && typeof searchParams.date === "string") {
+    selectedDate = parseISO(searchParams.date);
   }
   
   const nextDay = format(addDays(selectedDate, 1), "yyyy-MM-dd");
