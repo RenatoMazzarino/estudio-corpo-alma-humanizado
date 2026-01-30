@@ -59,8 +59,7 @@ export default async function ClientProfilePage(props: PageProps) {
       <div className="space-y-3 pb-20">
         {history && history.length > 0 ? (
             history.map((apt) => {
-                const normalizedStatus = apt.status === "done" ? "completed" : apt.status;
-                const isCompleted = normalizedStatus === "completed";
+                const isCompleted = apt.status === "completed";
                 return (
                 <div key={apt.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between items-center">
                     <div>

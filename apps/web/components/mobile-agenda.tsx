@@ -152,8 +152,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 
                 const isBlock = appt.type === 'block'; 
                 const isHome = appt.is_home_visit;
-                const normalizedStatus = appt.status === "done" ? "completed" : appt.status;
-                const isCompleted = normalizedStatus === 'completed';
+                const isCompleted = appt.status === 'completed';
                 
                 // Style Logic
                 let containerClass = "bg-white border-stone-100";
