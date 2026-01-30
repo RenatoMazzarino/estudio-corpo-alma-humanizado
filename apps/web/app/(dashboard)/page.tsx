@@ -1,7 +1,7 @@
-import { MobileAgenda } from "../components/mobile-agenda";
-import { FIXED_TENANT_ID } from "../lib/tenant-context";
+import { MobileAgenda } from "../../components/mobile-agenda";
+import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
-import { listAppointmentsInRange, listAvailabilityBlocksInRange } from "../src/modules/appointments/repository";
+import { listAppointmentsInRange, listAvailabilityBlocksInRange } from "../../src/modules/appointments/repository";
 
 // Interface dos dados
 interface Appointment {

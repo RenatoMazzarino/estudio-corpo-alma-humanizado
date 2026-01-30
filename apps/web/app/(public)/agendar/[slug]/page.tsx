@@ -1,7 +1,7 @@
 import { BookingFlow } from "./booking-flow";
 import { notFound } from "next/navigation";
-import { getTenantBySlug } from "../../../src/modules/settings/repository";
-import { listPublicServices } from "../../../src/modules/services/repository";
+import { getTenantBySlug } from "../../../../src/modules/settings/repository";
+import { listPublicServices } from "../../../../src/modules/services/repository";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

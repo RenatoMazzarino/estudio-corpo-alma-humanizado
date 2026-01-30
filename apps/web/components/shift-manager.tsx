@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createShiftBlocks, clearMonthBlocks } from "../app/admin/escala/actions";
+import { createShiftBlocks, clearMonthBlocks } from "../app/(dashboard)/admin/escala/actions";
 import { format, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar, Trash2, CheckCircle2 } from "lucide-react";

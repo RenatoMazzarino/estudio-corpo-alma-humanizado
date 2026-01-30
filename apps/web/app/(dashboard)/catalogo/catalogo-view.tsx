@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Service } from "../../types/service";
-import { ServiceForm } from "../../components/service-form";
+import { Service } from "../../../types/service";
+import { ServiceForm } from "../../../components/service-form";
 import Link from "next/link";
 import { Plus, ChevronRight, Clock, MapPin, ChevronLeft } from "lucide-react";
 

@@ -1,7 +1,7 @@
-import { FIXED_TENANT_ID } from "../../lib/tenant-context";
-import { Service } from "../../types/service";
+import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { Service } from "../../../types/service";
 import { CatalogoView } from "./catalogo-view";
-import { listServices } from "../../src/modules/services/repository";
+import { listServices } from "../../../src/modules/services/repository";
 
 export const dynamic = 'force-dynamic';
 

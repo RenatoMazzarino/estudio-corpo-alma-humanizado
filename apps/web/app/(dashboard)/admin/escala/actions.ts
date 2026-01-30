@@ -1,7 +1,7 @@
 "use server";
 
-import { createShiftBlocks as createShiftBlocksImpl, clearMonthBlocks as clearMonthBlocksImpl } from "../../../src/modules/appointments/actions";
-import type { ActionResult } from "../../../src/shared/errors/result";
+import { createShiftBlocks as createShiftBlocksImpl, clearMonthBlocks as clearMonthBlocksImpl } from "../../../../src/modules/appointments/actions";
+import type { ActionResult } from "../../../../src/shared/errors/result";
 
 export async function createShiftBlocks(
   type: "even" | "odd",

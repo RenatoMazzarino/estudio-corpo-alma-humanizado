@@ -1,7 +1,7 @@
 import { User, Search, Plus } from "lucide-react";
 import Link from "next/link";
-import { FIXED_TENANT_ID } from "../../lib/tenant-context";
-import { listClients } from "../../src/modules/clients/repository";
+import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { listClients } from "../../../src/modules/clients/repository";
 
 interface ClientListItem {
   id: string;

@@ -1,7 +1,7 @@
 "use server";
 
-import { submitPublicAppointment as submitPublicAppointmentImpl } from "../../../src/modules/appointments/actions";
-import type { ActionResult } from "../../../src/shared/errors/result";
+import { submitPublicAppointment as submitPublicAppointmentImpl } from "../../../../src/modules/appointments/actions";
+import type { ActionResult } from "../../../../src/shared/errors/result";
 
 interface PublicAppointmentInput {
   tenantSlug: string;

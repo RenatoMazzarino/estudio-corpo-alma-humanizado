@@ -1,12 +1,11 @@
-import { AppShell } from "../../components/app-shell";
 import { format } from "date-fns";
 
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
-import { FIXED_TENANT_ID } from "../../lib/tenant-context";
+import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppointmentForm } from "./appointment-form";
-import { listServices } from "../../src/modules/services/repository";
+import { listServices } from "../../../src/modules/services/repository";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -32,7 +31,7 @@ export default async function NewAppointment(props: PageProps) {
   const { data: services } = await listServices(FIXED_TENANT_ID);
 
   return (
-    <AppShell>
+    <>
       {/* Cabeçalho */}
       <div className="flex items-center gap-3 mb-6">
         <Link href={`/?date=${safeDate}`} className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
@@ -42,11 +41,7 @@ export default async function NewAppointment(props: PageProps) {
       </div>
 
       {/* Formulário Inteligente (Client Component) */}
-      <AppointmentForm 
-        services={services || []} 
-        safeDate={safeDate} 
-      />
-
-    </AppShell>
+      <AppointmentForm services={services || []} safeDate={safeDate} />
+    </>
   );
 }

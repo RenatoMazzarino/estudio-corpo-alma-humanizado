@@ -1,6 +1,6 @@
 "use server";
 
-import { getAvailableSlots as getAvailableSlotsImpl } from "../../../src/modules/appointments/availability";
+import { getAvailableSlots as getAvailableSlotsImpl } from "../../../../src/modules/appointments/availability";
 
 interface GetSlotsParams {
   tenantId: string;

@@ -1,11 +1,10 @@
-import { AppShell } from "../../../components/app-shell";
 import { ChevronLeft, User, Phone, FileText, Save } from "lucide-react";
 import Link from "next/link";
 import { createClientAction } from "./actions";
 
 export default function NewClientPage() {
   return (
-    <AppShell>
+    <>
       <div className="flex items-center gap-3 mb-6">
         <Link href="/clientes" className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
           <ChevronLeft size={20} />
@@ -67,6 +66,6 @@ export default function NewClientPage() {
         </button>
 
       </form>
-    </AppShell>
+    </>
   );
 }

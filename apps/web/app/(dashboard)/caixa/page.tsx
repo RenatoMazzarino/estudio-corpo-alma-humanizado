@@ -2,8 +2,8 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, TrendingUp
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FIXED_TENANT_ID } from "../../lib/tenant-context";
-import { listCompletedAppointmentsInRange } from "../../src/modules/appointments/repository";
+import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { listCompletedAppointmentsInRange } from "../../../src/modules/appointments/repository";
 
 // Interface dos dados
 interface Appointment {

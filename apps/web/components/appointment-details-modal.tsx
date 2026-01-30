@@ -8,7 +8,7 @@ import {
     CreditCard, Banknote, Smartphone, 
     MapPin, Clock, FileText, User
 } from "lucide-react";
-import { finishAppointment } from "../app/admin/atendimento/actions";
+import { finishAppointment } from "../app/(dashboard)/admin/atendimento/actions";
 
 // Tipagem deve vir de um arquivo compartilhado idealmente
 export interface AppointmentDetails {
