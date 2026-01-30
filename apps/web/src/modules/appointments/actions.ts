@@ -18,7 +18,7 @@ import {
 } from "../../shared/validation/appointments";
 import { z } from "zod";
 import { getClientById, updateClient } from "../clients/repository";
-import { insertTransaction } from "../finance/repository";
+import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
 import {
   deleteAvailabilityBlocksInRange,
   insertAvailabilityBlocks,
@@ -50,15 +50,43 @@ export async function finishAppointment(id: string): Promise<ActionResult<{ id: 
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const { error } = await updateAppointment(FIXED_TENANT_ID, id, {
+  const { data: updatedAppointment, error } = await updateAppointmentReturning<{
+    price: number | null;
+    service_name: string | null;
+  }>(FIXED_TENANT_ID, id, {
     status: "completed",
     finished_at: new Date().toISOString(),
-  });
+  }, "price, service_name");
 
   const mappedError = mapSupabaseError(error);
-  if (mappedError) return fail(mappedError);
+  if (mappedError || !updatedAppointment) {
+    return fail(mappedError ?? new AppError("Agendamento não atualizado", "UNKNOWN", 500));
+  }
+
+  const { data: existingTransaction, error: existingError } = await getTransactionByAppointmentId(
+    FIXED_TENANT_ID,
+    id
+  );
+  const mappedExistingError = mapSupabaseError(existingError);
+  if (mappedExistingError) return fail(mappedExistingError);
+
+  if (!existingTransaction) {
+    const { error: transactionError } = await insertTransaction({
+      tenant_id: FIXED_TENANT_ID,
+      appointment_id: id,
+      type: "income",
+      category: "Serviço",
+      description: `Recebimento Agendamento #${id.slice(0, 8)}`,
+      amount: updatedAppointment.price ?? 0,
+      payment_method: null,
+    });
+
+    const mappedTransactionError = mapSupabaseError(transactionError);
+    if (mappedTransactionError) return fail(mappedTransactionError);
+  }
 
   revalidatePath("/");
+  revalidatePath("/caixa");
   return ok({ id });
 }
 
@@ -199,18 +227,27 @@ export async function finishAdminAppointment(
     if (mappedNotesError) return fail(mappedNotesError);
   }
 
-  const { error: transactionError } = await insertTransaction({
-    tenant_id: FIXED_TENANT_ID,
-    appointment_id: parsed.data.appointmentId,
-    type: "income",
-    category: "Serviço",
-    description: `Recebimento Agendamento #${parsed.data.appointmentId.slice(0, 8)}`,
-    amount: parsed.data.finalAmount,
-    payment_method: parsed.data.paymentMethod,
-  });
+  const { data: existingTransaction, error: existingError } = await getTransactionByAppointmentId(
+    FIXED_TENANT_ID,
+    parsed.data.appointmentId
+  );
+  const mappedExistingError = mapSupabaseError(existingError);
+  if (mappedExistingError) return fail(mappedExistingError);
 
-  if (transactionError) {
-    console.error("Erro ao salvar transação:", transactionError);
+  if (!existingTransaction) {
+    const { error: transactionError } = await insertTransaction({
+      tenant_id: FIXED_TENANT_ID,
+      appointment_id: parsed.data.appointmentId,
+      type: "income",
+      category: "Serviço",
+      description: `Recebimento Agendamento #${parsed.data.appointmentId.slice(0, 8)}`,
+      amount: parsed.data.finalAmount,
+      payment_method: parsed.data.paymentMethod,
+    });
+
+    if (transactionError) {
+      console.error("Erro ao salvar transação:", transactionError);
+    }
   }
 
   revalidatePath("/");

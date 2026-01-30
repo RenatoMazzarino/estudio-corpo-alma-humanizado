@@ -4,6 +4,7 @@ import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { listCompletedAppointmentsInRange } from "../../../src/modules/appointments/repository";
+import { listTransactionsInRange } from "../../../src/modules/finance/repository";
 
 // Interface dos dados
 interface Appointment {
@@ -23,6 +24,16 @@ interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
+interface Transaction {
+  id: string;
+  appointment_id: string | null;
+  description: string | null;
+  amount: number | null;
+  type: "income" | "expense" | "refund" | string;
+  payment_method: string | null;
+  created_at: string;
+}
+
 export default async function CaixaPage({ searchParams }: PageProps) {
   const today = new Date();
   let selectedDate = today;
@@ -40,7 +51,21 @@ export default async function CaixaPage({ searchParams }: PageProps) {
   const endOfDay = new Date(selectedDate);
   endOfDay.setHours(23, 59, 59, 999);
 
-  // Busca Agendamentos FINALIZADOS ('completed')
+  // Busca transações do dia (ledger)
+  const { data: transactionsData } = await listTransactionsInRange(
+    FIXED_TENANT_ID,
+    startOfDay.toISOString(),
+    endOfDay.toISOString()
+  );
+
+  const transactions = (transactionsData ?? []) as Transaction[];
+  const incomeTransactions = transactions.filter((transaction) => transaction.type === "income");
+
+  const totalFaturado = incomeTransactions.reduce((acc, item) => {
+    return acc + (item.amount || 0);
+  }, 0);
+
+  // Busca agendamentos finalizados para reconciliação
   const { data } = await listCompletedAppointmentsInRange(
     FIXED_TENANT_ID,
     startOfDay.toISOString(),
@@ -53,9 +78,16 @@ export default async function CaixaPage({ searchParams }: PageProps) {
     clients: Array.isArray(appt.clients) ? appt.clients[0] ?? null : appt.clients,
   }));
 
-  const totalFaturado = appointments?.reduce((acc, item) => {
-    return acc + (item.price || 0);
-  }, 0) || 0;
+  const appointmentTotal = appointments.reduce((acc, item) => acc + (item.price || 0), 0);
+  const appointmentMap = new Map(appointments.map((item) => [item.id, item]));
+  const incomeAppointmentIds = new Set(
+    incomeTransactions.map((transaction) => transaction.appointment_id).filter(Boolean) as string[]
+  );
+  const missingTransactions = appointments.filter((appointment) => !incomeAppointmentIds.has(appointment.id));
+  const orphanTransactions = incomeTransactions.filter(
+    (transaction) => transaction.appointment_id && !appointmentMap.has(transaction.appointment_id)
+  );
+  const hasMismatch = missingTransactions.length > 0 || orphanTransactions.length > 0 || totalFaturado !== appointmentTotal;
 
   const dateTitle = format(selectedDate, "d 'de' MMMM", { locale: ptBR });
   const isToday = isSameDay(selectedDate, today);
@@ -97,36 +129,72 @@ export default async function CaixaPage({ searchParams }: PageProps) {
           </h2>
           <p className="text-gray-400 text-xs mt-2 flex items-center gap-1">
             <TrendingUp size={12} className="text-green-400" />
-            Baseado em {appointments?.length || 0} atendimentos finalizados
+            Baseado em {incomeTransactions.length} transações de entrada
           </p>
         </div>
       </div>
+
+      {hasMismatch && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-700 p-4 rounded-2xl mb-6 text-sm">
+          <div className="flex items-center gap-2 font-bold mb-1">
+            <AlertCircle size={14} />
+            Divergência na reconciliação
+          </div>
+          <p className="text-xs">
+            Total de atendimentos concluídos:{" "}
+            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(appointmentTotal)}.
+            Total do ledger:{" "}
+            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalFaturado)}.
+          </p>
+          {missingTransactions.length > 0 && (
+            <p className="text-xs mt-2">
+              {missingTransactions.length} atendimento(s) concluído(s) sem transação registrada.
+            </p>
+          )}
+          {orphanTransactions.length > 0 && (
+            <p className="text-xs mt-1">
+              {orphanTransactions.length} transação(ões) de entrada sem atendimento associado.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Lista de Entradas */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-2">Histórico do Dia</h3>
         
-        {appointments && appointments.length > 0 ? (
-          appointments.map((item) => (
-            <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center">
-              <div>
-                <h4 className="font-bold text-gray-800 text-sm">{item.clients?.name}</h4>
-                <p className="text-xs text-gray-500">{item.service_name}</p>
-              </div>
-              <div className="text-right">
-                 {/* Se o preço for Zero/Null, mostramos um aviso visual */}
-                 {item.price ? (
+        {transactions.length > 0 ? (
+          transactions.map((transaction) => {
+            const appointment = transaction.appointment_id
+              ? appointmentMap.get(transaction.appointment_id) || null
+              : null;
+            const displayName = appointment?.clients?.name || transaction.description || "Transação";
+            const displayService = appointment?.service_name || transaction.type;
+            const value = transaction.amount || 0;
+
+            return (
+              <div
+                key={transaction.id}
+                className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex justify-between items-center"
+              >
+                <div>
+                  <h4 className="font-bold text-gray-800 text-sm">{displayName}</h4>
+                  <p className="text-xs text-gray-500">{displayService}</p>
+                </div>
+                <div className="text-right">
+                  {value ? (
                     <span className="font-bold text-gray-800">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
+                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)}
                     </span>
-                 ) : (
+                  ) : (
                     <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-md flex items-center gap-1">
                       <AlertCircle size={10} /> Sem Valor
                     </span>
-                 )}
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
            <div className="text-center py-10 opacity-50 flex flex-col items-center">
              <Wallet size={32} className="text-gray-300 mb-2" />

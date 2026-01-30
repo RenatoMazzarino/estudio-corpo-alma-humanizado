@@ -19,3 +19,14 @@ export async function insertTransaction(payload: TransactionInsert) {
   const supabase = createServiceClient();
   return supabase.from("transactions").insert(payload);
 }
+
+export async function getTransactionByAppointmentId(tenantId: string, appointmentId: string) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("transactions")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("appointment_id", appointmentId)
+    .limit(1)
+    .maybeSingle();
+}
