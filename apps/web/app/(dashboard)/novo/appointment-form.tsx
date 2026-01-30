@@ -1,8 +1,10 @@
 "use client";
 
 import { Calendar, Clock, User, Sparkles, Banknote } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
+import { getAvailableSlots } from "./availability";
+import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 
 interface Service {
   id: string;
@@ -23,6 +25,10 @@ interface AppointmentFormProps {
 export function AppointmentForm({ services, safeDate }: AppointmentFormProps) {
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(safeDate);
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const serviceId = e.target.value;
@@ -36,6 +42,36 @@ export function AppointmentForm({ services, safeDate }: AppointmentFormProps) {
     }
   };
 
+  useEffect(() => {
+    async function fetchSlots() {
+      if (!selectedServiceId || !selectedDate) {
+        setAvailableSlots([]);
+        setSelectedTime("");
+        return;
+      }
+
+      setIsLoadingSlots(true);
+      try {
+        const slots = await getAvailableSlots({
+          tenantId: FIXED_TENANT_ID,
+          serviceId: selectedServiceId,
+          date: selectedDate,
+          isHomeVisit: false,
+        });
+        setAvailableSlots(slots);
+        setSelectedTime(slots[0] ?? "");
+      } catch (error) {
+        console.error(error);
+        setAvailableSlots([]);
+        setSelectedTime("");
+      } finally {
+        setIsLoadingSlots(false);
+      }
+    }
+
+    fetchSlots();
+  }, [selectedServiceId, selectedDate]);
+
   return (
     <form action={createAppointment} className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 space-y-5">
       
@@ -47,7 +83,8 @@ export function AppointmentForm({ services, safeDate }: AppointmentFormProps) {
                 <input 
                 name="date"
                 type="date" 
-                defaultValue={safeDate}
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
                 className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
                 required
                 />
@@ -121,13 +158,28 @@ export function AppointmentForm({ services, safeDate }: AppointmentFormProps) {
             <label className="text-xs font-bold text-gray-400 uppercase ml-1">Horário</label>
             <div className="relative">
                 <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                name="time"
-                type="time" 
-                defaultValue="09:00"
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
-                required
-                />
+                <select
+                  name="time"
+                  value={selectedTime}
+                  onChange={(event) => setSelectedTime(event.target.value)}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green appearance-none"
+                  required
+                  disabled={!selectedServiceId || !selectedDate || isLoadingSlots}
+                >
+                  {!selectedServiceId || !selectedDate ? (
+                    <option value="">Selecione data e serviço</option>
+                  ) : isLoadingSlots ? (
+                    <option value="">Carregando horários...</option>
+                  ) : availableSlots.length === 0 ? (
+                    <option value="">Sem horários disponíveis</option>
+                  ) : (
+                    availableSlots.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))
+                  )}
+                </select>
             </div>
             </div>
         </div>

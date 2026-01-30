@@ -1,9 +1,10 @@
 "use server";
 
-import { addMinutes, endOfDay, format, getDaysInMonth, parseISO, setDate, startOfDay } from "date-fns";
+import { endOfDay, format, getDaysInMonth, parseISO, setDate, startOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
@@ -16,12 +17,10 @@ import {
   startAppointmentSchema,
 } from "../../shared/validation/appointments";
 import { z } from "zod";
-import { createClient as createClientRepo, getClientById, updateClient } from "../clients/repository";
+import { getClientById, updateClient } from "../clients/repository";
 import { insertTransaction } from "../finance/repository";
-import { getServiceById } from "../services/repository";
 import {
   deleteAvailabilityBlocksInRange,
-  insertAppointment,
   insertAvailabilityBlocks,
   updateAppointment,
   updateAppointmentReturning,
@@ -98,41 +97,18 @@ export async function createAppointment(formData: FormData): Promise<void> {
     throw new AppError("Dados incompletos", "VALIDATION_ERROR", 400, parsed.error);
   }
 
-  const { data: newClient, error: clientError } = await createClientRepo({
-    name: parsed.data.clientName,
-    initials: parsed.data.clientName.slice(0, 2).toUpperCase(),
-    tenant_id: FIXED_TENANT_ID,
-  });
-
-  const mappedClientError = mapSupabaseError(clientError);
-  if (mappedClientError || !newClient) {
-    throw mappedClientError ?? new AppError("Erro ao criar cliente", "UNKNOWN", 500);
-  }
-
-  const { data: service, error: serviceError } = await getServiceById(parsed.data.serviceId);
-  const mappedServiceError = mapSupabaseError(serviceError);
-  if (mappedServiceError || !service) {
-    throw mappedServiceError ?? new AppError("Serviço não encontrado", "NOT_FOUND", 404);
-  }
-
   const startDateTime = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
-  const endDateTime = addMinutes(startDateTime, service.duration_minutes);
-
-  const { error: appointmentError } = await insertAppointment({
-    client_id: newClient.id,
-    service_id: service.id,
-    service_name: service.name,
+  const supabase = createServiceClient();
+  const { error: appointmentError } = await supabase.rpc("create_internal_appointment", {
+    p_tenant_id: FIXED_TENANT_ID,
+    service_id: parsed.data.serviceId,
     start_time: startDateTime.toISOString(),
-    finished_at: endDateTime.toISOString(),
-    price: service.price,
-    status: "pending",
-    tenant_id: FIXED_TENANT_ID,
+    client_name: parsed.data.clientName,
+    is_home_visit: false,
   });
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
-  if (mappedAppointmentError) {
-    throw mappedAppointmentError;
-  }
+  if (mappedAppointmentError) throw mappedAppointmentError;
 
   revalidatePath(`/?date=${parsed.data.date}`);
 }

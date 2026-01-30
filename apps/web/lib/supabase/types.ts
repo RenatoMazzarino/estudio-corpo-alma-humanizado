@@ -379,7 +379,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_internal_appointment: {
+        Args: {
+          client_name: string
+          client_phone?: string
+          is_home_visit?: boolean
+          p_tenant_id: string
+          service_id: string
+          start_time: string
+        }
+        Returns: string
+      }
+      create_public_appointment: {
+        Args: {
+          client_name: string
+          client_phone: string
+          is_home_visit?: boolean
+          service_id: string
+          start_time: string
+          tenant_slug: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
