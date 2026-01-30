@@ -23,8 +23,9 @@ interface AppointmentCardProps {
 
 export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [elapsedTime, setElapsedTime] = useState("00:00");
-  const isOngoing = appointment.status === "in_progress";
-  const isDone = appointment.status === "done";
+  const normalizedStatus = appointment.status === "done" ? "completed" : appointment.status;
+  const isOngoing = normalizedStatus === "in_progress";
+  const isDone = normalizedStatus === "completed";
 
   // Formata o horário (Início - Fim)
   const startTime = format(new Date(appointment.start_time), "HH:mm");

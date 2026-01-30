@@ -19,13 +19,17 @@ export async function submitPublicAppointment(data: PublicBookingData) {
     // 1. Criar ou Buscar Cliente
     let clientId: string;
 
-    const { data: existingClient } = await supabase
+    const { data: existingClient, error: existingClientError } = await supabase
         .from("clients")
         .select("id")
         .eq("tenant_id", data.tenantId)
         .eq("name", data.clientName)
         .single();
     
+    if (existingClientError && existingClientError.code !== "PGRST116") {
+        throw new Error("Erro ao buscar cliente: " + existingClientError.message);
+    }
+
     if (existingClient) {
         clientId = existingClient.id;
     } else {
@@ -45,22 +49,26 @@ export async function submitPublicAppointment(data: PublicBookingData) {
     }
 
     // 2. Buscar dados do serviço para calcular duração e preço
-    const { data: service } = await supabase
+    const { data: service, error: serviceError } = await supabase
         .from("services")
         .select("*")
         .eq("id", data.serviceId)
         .single();
 
-    if (!service) throw new Error("Serviço não encontrado");
+    if (serviceError || !service) throw new Error("Serviço não encontrado");
 
     // 3. Buscar Settings para buffer (opcional, ou confiar no service/hardcoded para total_duration)
     // Para simplificar, vamos calcular o preço e usar um calculation básico aqui ou buscar settings.
     // O ideal é buscar settings.
-    const { data: settings } = await supabase
+    const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("default_home_buffer, default_studio_buffer")
         .eq("tenant_id", data.tenantId)
         .single();
+
+    if (settingsError && settingsError.code !== "PGRST116") {
+        throw new Error("Erro ao buscar configurações: " + settingsError.message);
+    }
 
     // 3. Calcular Valores
     const isHome = data.isHomeVisit || false;

@@ -18,7 +18,7 @@ export async function createAppointment(formData: FormData) {
   }
 
   // 1. Cria ou busca cliente
-  const { data: newClient } = await supabase
+  const { data: newClient, error: clientError } = await supabase
     .from("clients")
     .insert({ 
       name: clientName, 
@@ -28,14 +28,18 @@ export async function createAppointment(formData: FormData) {
     .select()
     .single();
 
+  if (clientError || !newClient) {
+    throw new Error("Erro ao criar cliente: " + (clientError?.message ?? "cliente inválido"));
+  }
+
   // 2. Busca info do Serviço
-  const { data: service } = await supabase
+  const { data: service, error: serviceError } = await supabase
     .from("services")
     .select("*")
     .eq("id", serviceId)
     .single();
 
-  if (!service) {
+  if (serviceError || !service) {
       throw new Error("Serviço não encontrado");
   }
 
@@ -44,7 +48,7 @@ export async function createAppointment(formData: FormData) {
     const startDateTime = new Date(`${date}T${time}:00`);
     const endDateTime = addMinutes(startDateTime, service.duration_minutes);
 
-    await supabase.from("appointments").insert({
+    const { error: appointmentError } = await supabase.from("appointments").insert({
       client_id: newClient.id,
       service_name: service.name,
       start_time: startDateTime.toISOString(),
@@ -53,6 +57,10 @@ export async function createAppointment(formData: FormData) {
       status: "pending",
       tenant_id: FIXED_TENANT_ID
     });
+
+    if (appointmentError) {
+      throw new Error("Erro ao criar agendamento: " + appointmentError.message);
+    }
   }
 
   // 4. Redirecionamento

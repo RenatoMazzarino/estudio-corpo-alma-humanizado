@@ -50,7 +50,7 @@ export default function NewClientPage() {
             <div className="relative">
                 <FileText className="absolute left-4 top-4 text-gray-400" size={18} />
                 <textarea 
-                name="notes"
+                name="observacoes_gerais"
                 placeholder="Ex: Alérgica a amendoim..."
                 rows={4}
                 className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green resize-none"

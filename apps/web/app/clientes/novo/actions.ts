@@ -9,19 +9,23 @@ export async function createClientAction(formData: FormData) {
   
   const name = formData.get("name") as string;
   const phone = formData.get("phone") as string;
-  const notes = formData.get("notes") as string;
+  const observacoes_gerais = (formData.get("observacoes_gerais") as string | null) || null;
 
   if (!name) {
     throw new Error("Nome é obrigatório");
   }
 
-  await supabase.from("clients").insert({
+  const { error } = await supabase.from("clients").insert({
     name,
     phone,
-    notes,
+    observacoes_gerais,
     initials: name.slice(0, 2).toUpperCase(),
     tenant_id: FIXED_TENANT_ID
   });
+
+  if (error) {
+    throw new Error("Erro ao criar cliente: " + error.message);
+  }
 
   redirect("/clientes");
 }

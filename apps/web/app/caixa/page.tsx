@@ -48,7 +48,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
       clients ( name )
     `)
     .eq("tenant_id", FIXED_TENANT_ID)
-    .eq("status", "completed") // Updated from 'done' to 'completed'
+    .in("status", ["completed", "done"])
     .gte("start_time", startOfDay.toISOString())
     .lte("start_time", endOfDay.toISOString());
 

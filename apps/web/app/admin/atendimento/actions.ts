@@ -51,12 +51,16 @@ export async function finishAppointment({ appointmentId, paymentMethod, finalAmo
         const newEntry = `\n[${dateStr} - ${service_name}]: ${notes}`;
         
         // Append
-        await supabase
+        const { error: notesError } = await supabase
             .from("clients")
             .update({
                 observacoes_gerais: currentNotes + newEntry
             })
             .eq("id", client_id);
+
+        if (notesError) {
+            throw new Error("Erro ao atualizar observações do cliente: " + notesError.message);
+        }
     }
 
     // 3. Registrar Transação no Caixa
@@ -80,7 +84,7 @@ export async function finishAppointment({ appointmentId, paymentMethod, finalAmo
 
     // 4. Revalidar rotas
     revalidatePath("/"); // Agenda Home
-    revalidatePath("/admin/caixa"); // Futura tela de caixa
+    revalidatePath("/caixa");
     
     return { success: true };
 

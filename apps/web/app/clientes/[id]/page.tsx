@@ -52,13 +52,16 @@ export default async function ClientProfilePage(props: PageProps) {
       </div>
 
       {/* Seção 1: Prontuário (Client Component para edição) */}
-      <NotesSection clientId={client.id} initialNotes={client.notes} />
+      <NotesSection clientId={client.id} initialNotes={client.observacoes_gerais} />
 
       {/* Seção 2: Histórico */}
       <h2 className="font-bold text-gray-800 mb-3 ml-1">Histórico de Visitas</h2>
       <div className="space-y-3 pb-20">
         {history && history.length > 0 ? (
-            history.map((apt) => (
+            history.map((apt) => {
+                const normalizedStatus = apt.status === "done" ? "completed" : apt.status;
+                const isCompleted = normalizedStatus === "completed";
+                return (
                 <div key={apt.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex justify-between items-center">
                     <div>
                         <p className="font-bold text-gray-700">{apt.service_name}</p>
@@ -70,12 +73,13 @@ export default async function ClientProfilePage(props: PageProps) {
                     <div className="flex flex-col items-end">
                         <span className="font-bold text-studio-green text-sm">R$ {apt.price}</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold mt-1 
-                            ${apt.status === 'done' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {apt.status === 'done' ? 'Concluído' : 'Agendado'}
+                            ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {isCompleted ? 'Concluído' : 'Agendado'}
                         </span>
                     </div>
                 </div>
-            ))
+                );
+            })
         ) : (
             <div className="text-center py-8 text-gray-400 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
                 <p>Nenhuma visita registrada.</p>

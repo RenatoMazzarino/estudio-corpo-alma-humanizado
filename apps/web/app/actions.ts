@@ -42,7 +42,6 @@ export async function upsertService(formData: FormData) {
   }
 
   revalidatePath("/catalogo"); 
-  revalidatePath("/admin/servicos"); 
 }
 
 export async function deleteService(id: string) {
@@ -59,7 +58,6 @@ export async function deleteService(id: string) {
   }
 
   revalidatePath("/catalogo");
-  revalidatePath("/admin/servicos");
 }
 
 // --- AGENDAMENTOS (Mantidos) ---
@@ -67,7 +65,7 @@ export async function deleteService(id: string) {
 export async function startAppointment(id: string) {
   const supabase = await createClient();
   
-  await supabase
+  const { error } = await supabase
     .from("appointments")
     .update({ 
       status: "in_progress",
@@ -76,20 +74,28 @@ export async function startAppointment(id: string) {
     .eq("id", id)
     .eq("tenant_id", FIXED_TENANT_ID);
 
+  if (error) {
+    throw new Error("Erro ao iniciar atendimento: " + error.message);
+  }
+
   revalidatePath("/"); // Atualiza a tela instantaneamente
 }
 
 export async function finishAppointment(id: string) {
   const supabase = await createClient();
   
-  await supabase
+  const { error } = await supabase
     .from("appointments")
     .update({ 
-      status: "done",
+      status: "completed",
       finished_at: new Date().toISOString()
     })
     .eq("id", id)
     .eq("tenant_id", FIXED_TENANT_ID);
+
+  if (error) {
+    throw new Error("Erro ao finalizar atendimento: " + error.message);
+  }
 
   revalidatePath("/");
 }
@@ -97,13 +103,17 @@ export async function finishAppointment(id: string) {
 export async function cancelAppointment(id: string) {
   const supabase = await createClient();
   
-  await supabase
+  const { error } = await supabase
     .from("appointments")
     .update({ 
-      status: "canceled"
+      status: "canceled_by_studio"
     })
     .eq("id", id)
     .eq("tenant_id", FIXED_TENANT_ID);
+
+  if (error) {
+    throw new Error("Erro ao cancelar atendimento: " + error.message);
+  }
 
   revalidatePath("/");
   revalidatePath("/caixa"); // Atualiza também o caixa se precisar
