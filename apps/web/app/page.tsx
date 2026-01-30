@@ -1,7 +1,7 @@
-import { createServiceClient } from "../lib/supabase/service";
 import { MobileAgenda } from "../components/mobile-agenda";
 import { FIXED_TENANT_ID } from "../lib/tenant-context";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
+import { listAppointmentsInRange, listAvailabilityBlocksInRange } from "../src/modules/appointments/repository";
 
 // Interface dos dados
 interface Appointment {
@@ -28,7 +28,6 @@ type RawAppointment = Omit<Appointment, "clients"> & {
 };
 
 export default async function Home() {
-  const supabase = createServiceClient();
   const today = new Date();
   
   // Buscar 2 meses para ter margem
@@ -36,16 +35,11 @@ export default async function Home() {
   const queryEndDate = endOfMonth(addMonths(today, 2)).toISOString();
 
   // 1. Buscar Agendamentos
-  const { data: appointmentsData } = await supabase
-    .from("appointments")
-    .select(`
-      id, service_name, start_time, finished_at, status, price,
-      is_home_visit, total_duration_minutes,
-      clients ( id, name, initials, phone, health_tags, endereco_completo )
-    `)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .gte("start_time", queryStartDate)
-    .lte("start_time", queryEndDate);
+  const { data: appointmentsData } = await listAppointmentsInRange(
+    FIXED_TENANT_ID,
+    queryStartDate,
+    queryEndDate
+  );
 
   const rawAppointments = (appointmentsData ?? []) as unknown as RawAppointment[];
   const appointments: Appointment[] = rawAppointments.map((appt) => ({
@@ -54,12 +48,11 @@ export default async function Home() {
   }));
 
   // 2. Buscar Bloqueios
-  const { data: blocksData } = await supabase
-      .from("availability_blocks")
-      .select("id, title, start_time, end_time")
-      .eq("tenant_id", FIXED_TENANT_ID)
-      .gte("start_time", queryStartDate)
-      .lte("start_time", queryEndDate);
+  const { data: blocksData } = await listAvailabilityBlocksInRange(
+    FIXED_TENANT_ID,
+    queryStartDate,
+    queryEndDate
+  );
 
   const blocks = blocksData || [];
 

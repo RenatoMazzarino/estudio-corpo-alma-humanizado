@@ -1,39 +1,38 @@
 import { AppShell } from "../../../components/app-shell";
 import { ChevronLeft, CalendarClock } from "lucide-react";
 import Link from "next/link";
-import { createServiceClient } from "../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { NotesSection } from "./notes-section";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getClientById } from "../../../src/modules/clients/repository";
+import { listAppointmentsForClient } from "../../../src/modules/appointments/repository";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+interface AppointmentHistoryItem {
+  id: string;
+  start_time: string;
+  service_name: string;
+  price: number | null;
+  status: string;
+}
+
 export default async function ClientProfilePage(props: PageProps) {
   const params = await props.params;
-  const supabase = createServiceClient();
 
   // 1. Busca dados do Cliente
-  const { data: client } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("id", params.id)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .single();
+  const { data: client } = await getClientById(FIXED_TENANT_ID, params.id);
 
   if (!client) {
     return <div>Cliente não encontrado.</div>;
   }
 
   // 2. Busca histórico de agendamentos
-  const { data: history } = await supabase
-    .from("appointments")
-    .select("id, start_time, service_name, price, status")
-    .eq("client_id", params.id)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .order("start_time", { ascending: false });
+  const { data: historyData } = await listAppointmentsForClient(FIXED_TENANT_ID, params.id);
+  const history = (historyData as AppointmentHistoryItem[] | null) ?? [];
 
   return (
     <AppShell>
@@ -57,7 +56,7 @@ export default async function ClientProfilePage(props: PageProps) {
       {/* Seção 2: Histórico */}
       <h2 className="font-bold text-gray-800 mb-3 ml-1">Histórico de Visitas</h2>
       <div className="space-y-3 pb-20">
-        {history && history.length > 0 ? (
+        {history.length > 0 ? (
             history.map((apt) => {
                 const isCompleted = apt.status === "completed";
                 return (

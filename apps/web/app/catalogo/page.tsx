@@ -1,19 +1,12 @@
-import { createServiceClient } from "../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { Service } from "../../types/service";
 import { CatalogoView } from "./catalogo-view";
+import { listServices } from "../../src/modules/services/repository";
 
 export const dynamic = 'force-dynamic';
 
 export default async function CatalogoPage() {
-  const supabase = createServiceClient();
-
-  // Busca serviços do tenant
-  const { data } = await supabase
-    .from("services")
-    .select("*")
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .order("name", { ascending: true });
+  const { data } = await listServices(FIXED_TENANT_ID);
 
   const services = (data as Service[]) || [];
 

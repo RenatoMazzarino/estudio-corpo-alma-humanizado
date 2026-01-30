@@ -1,9 +1,9 @@
-import { createServiceClient } from "../../lib/supabase/service";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, TrendingUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
+import { listCompletedAppointmentsInRange } from "../../src/modules/appointments/repository";
 
 // Interface dos dados
 interface Appointment {
@@ -15,13 +15,15 @@ interface Appointment {
   } | null;
 }
 
+type RawAppointment = Omit<Appointment, "clients"> & {
+  clients: Appointment["clients"] | Appointment["clients"][] | null;
+};
+
 interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default async function CaixaPage({ searchParams }: PageProps) {
-  const supabase = createServiceClient();
-
   const today = new Date();
   let selectedDate = today;
 
@@ -39,20 +41,17 @@ export default async function CaixaPage({ searchParams }: PageProps) {
   endOfDay.setHours(23, 59, 59, 999);
 
   // Busca Agendamentos FINALIZADOS ('completed')
-  const { data } = await supabase
-    .from("appointments")
-    .select(`
-      id,
-      service_name,
-      price,
-      clients ( name )
-    `)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .eq("status", "completed")
-    .gte("start_time", startOfDay.toISOString())
-    .lte("start_time", endOfDay.toISOString());
+  const { data } = await listCompletedAppointmentsInRange(
+    FIXED_TENANT_ID,
+    startOfDay.toISOString(),
+    endOfDay.toISOString()
+  );
 
-  const appointments = data as Appointment[] | null;
+  const rawAppointments = (data ?? []) as unknown as RawAppointment[];
+  const appointments: Appointment[] = rawAppointments.map((appt) => ({
+    ...appt,
+    clients: Array.isArray(appt.clients) ? appt.clients[0] ?? null : appt.clients,
+  }));
 
   const totalFaturado = appointments?.reduce((acc, item) => {
     return acc + (item.price || 0);

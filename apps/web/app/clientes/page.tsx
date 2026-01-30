@@ -1,7 +1,7 @@
-import { createServiceClient } from "../../lib/supabase/service";
 import { User, Search, Plus } from "lucide-react";
 import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
+import { listClients } from "../../src/modules/clients/repository";
 
 interface ClientListItem {
   id: string;
@@ -15,20 +15,9 @@ export default async function ClientesPage({
 }: {
   searchParams: { q?: string };
 }) {
-  const supabase = createServiceClient();
   const query = searchParams?.q || "";
 
-  let dbQuery = supabase
-    .from('clients')
-    .select('*')
-    .eq('tenant_id', FIXED_TENANT_ID)
-    .order('name');
-  
-  if (query) {
-    dbQuery = dbQuery.ilike('name', `%${query}%`);
-  }
-
-  const { data } = await dbQuery;
+  const { data } = await listClients(FIXED_TENANT_ID, query);
   const clients = data as ClientListItem[] | null;
 
   return (

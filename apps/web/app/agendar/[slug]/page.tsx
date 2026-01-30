@@ -1,30 +1,43 @@
-import { createClient } from "../../../lib/supabase/server";
 import { BookingFlow } from "./booking-flow";
 import { notFound } from "next/navigation";
+import { getTenantBySlug } from "../../../src/modules/settings/repository";
+import { listPublicServices } from "../../../src/modules/services/repository";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+interface PublicService {
+  id: string;
+  name: string;
+  price: number;
+  duration_minutes: number;
+  accepts_home_visit: boolean;
+  home_visit_fee: number;
+  description: string;
+  custom_buffer_minutes: number;
+}
+
 export default async function PublicBookingPage(props: PageProps) {
   const params = await props.params;
-  const supabase = await createClient();
 
   // 1. Validar Tenant pelo Slug
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("id, name, slug")
-    .eq("slug", params.slug)
-    .single();
+  const { data: tenant } = await getTenantBySlug(params.slug);
 
   if (!tenant) notFound();
 
   // 2. Buscar Serviços do Tenant
-  const { data: services } = await supabase
-    .from("services")
-    .select("id, name, price, duration_minutes, accepts_home_visit, home_visit_fee, description, custom_buffer_minutes")
-    .eq("tenant_id", tenant.id)
-    .order("name");
+  const { data: servicesData } = await listPublicServices(tenant.id);
+  const services: PublicService[] = (servicesData ?? []).map((service) => ({
+    id: service.id,
+    name: service.name,
+    price: service.price,
+    duration_minutes: service.duration_minutes,
+    accepts_home_visit: service.accepts_home_visit ?? false,
+    home_visit_fee: service.home_visit_fee ?? 0,
+    description: service.description ?? "",
+    custom_buffer_minutes: service.custom_buffer_minutes ?? 0,
+  }));
 
   return (
     <div className="min-h-screen bg-stone-50 flex justify-center">
@@ -39,7 +52,7 @@ export default async function PublicBookingPage(props: PageProps) {
             </div>
 
             <div className="px-6 flex-1 pb-10">
-                <BookingFlow tenant={tenant} services={services || []} />
+                <BookingFlow tenant={tenant} services={services} />
             </div>
             
              <div className="p-4 text-center text-xs text-gray-300">Powered by Studio</div>
