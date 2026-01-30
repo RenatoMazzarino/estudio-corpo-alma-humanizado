@@ -92,7 +92,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <button 
         onClick={() => setIsMobile(!isMobile)}
-        className="fixed bottom-6 right-6 bg-studio-green hover:bg-studio-green-dark text-white p-4 rounded-full shadow-xl hover:scale-105 transition-all z-50 flex items-center gap-2 font-bold text-xs"
+        className="fixed bottom-24 right-6 bg-studio-green hover:bg-studio-green-dark text-white p-4 rounded-full shadow-xl hover:scale-105 transition-all z-50 flex items-center gap-2 font-bold text-xs"
       >
         {isMobile ? <><Monitor size={18} /> Web</> : <><Smartphone size={18} /> Mobile</>}
       </button>
