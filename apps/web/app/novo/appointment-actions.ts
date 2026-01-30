@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "../../lib/supabase/server";
+import { createServiceClient } from "../../lib/supabase/service";
 import { redirect } from "next/navigation";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { addMinutes } from "date-fns";
 
 export async function createAppointment(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   const clientName = formData.get("clientName") as string;
   const serviceId = formData.get("serviceId") as string;

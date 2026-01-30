@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { 
   parseISO, 
@@ -17,7 +17,7 @@ import { revalidatePath } from "next/cache";
  * @param monthStr String no formato "YYYY-MM" (ex: "2026-02")
  */
 export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   // Data base: dia 1 do mês escolhido
   const baseDate = parseISO(`${monthStr}-01`);
@@ -75,7 +75,7 @@ export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) 
  * @param monthStr String no formato "YYYY-MM" (ex: "2026-02")
  */
 export async function clearMonthBlocks(monthStr: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const baseDate = parseISO(`${monthStr}-01`);
   const startOfMonth = startOfDay(setDate(baseDate, 1)).toISOString();
@@ -95,6 +95,5 @@ export async function clearMonthBlocks(monthStr: string) {
     throw new Error(`Erro ao limpar escala: ${error.message}`);
   }
 
-  revalidatePath('/admin/escala');
   revalidatePath('/');
 }

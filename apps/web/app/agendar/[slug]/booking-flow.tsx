@@ -104,7 +104,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
     setIsSubmitting(true);
     try {
         await submitPublicAppointment({
-            tenantId: tenant.id,
+            tenantSlug: tenant.slug,
             serviceId: selectedService.id,
             date,
             time: selectedTime,

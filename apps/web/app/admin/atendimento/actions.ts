@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { format } from "date-fns";
@@ -13,7 +13,7 @@ interface FinishAppointmentParams {
 }
 
 export async function finishAppointment({ appointmentId, paymentMethod, finalAmount, notes }: FinishAppointmentParams) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   try {
     // 1. Atualizar Agendamento (Status + Financeiro)

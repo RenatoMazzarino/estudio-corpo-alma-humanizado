@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { addMinutes, format, parse, isBefore, isAfter, getDay, parseISO } from "date-fns";
 
 interface GetSlotsParams {
@@ -11,7 +11,7 @@ interface GetSlotsParams {
 }
 
 export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit = false }: GetSlotsParams): Promise<string[]> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // 1. Fetch Parallel Data: Service, Settings, BusinessHours
   const [serviceRes, settingsRes, businessHourRes] = await Promise.all([
@@ -53,9 +53,9 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   const [appointmentsRes, blocksRes] = await Promise.all([
     supabase
       .from("appointments")
-      .select("start_time, finished_at, total_duration_minutes")
+      .select("start_time, finished_at, total_duration_minutes, status")
       .eq("tenant_id", tenantId)
-      .neq("status", "canceled")
+      .not("status", "in", "(canceled_by_client,canceled_by_studio,no_show)")
       .gte("start_time", startOfDayStr)
       .lte("start_time", endOfDayStr),
     supabase

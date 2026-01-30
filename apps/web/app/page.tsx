@@ -1,4 +1,4 @@
-import { createClient } from "../lib/supabase/server";
+import { createServiceClient } from "../lib/supabase/service";
 import { MobileAgenda } from "../components/mobile-agenda";
 import { FIXED_TENANT_ID } from "../lib/tenant-context";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
@@ -28,7 +28,7 @@ type RawAppointment = Omit<Appointment, "clients"> & {
 };
 
 export default async function Home() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const today = new Date();
   
   // Buscar 2 meses para ter margem

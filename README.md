@@ -5,6 +5,7 @@
 - Node.js 20.11.1+ (use `.nvmrc`).
 - pnpm 9 (via `corepack enable`).
 - Docker + Supabase CLI (instalado via `pnpm install`).
+- `SUPABASE_SERVICE_ROLE_KEY` para operações administrativas server-side (RLS habilitado).
 
 ## Setup rápido
 

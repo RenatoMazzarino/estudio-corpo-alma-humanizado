@@ -1,13 +1,13 @@
 "use server";
 
-import { createClient } from "../lib/supabase/server";
+import { createServiceClient } from "../lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../lib/tenant-context";
 
 // --- SERVIÇOS ---
 
 export async function upsertService(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Campos existentes
   const id = formData.get("id") as string;
@@ -45,7 +45,7 @@ export async function upsertService(formData: FormData) {
 }
 
 export async function deleteService(id: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { error } = await supabase
     .from("services")
@@ -63,7 +63,7 @@ export async function deleteService(id: string) {
 // --- AGENDAMENTOS (Mantidos) ---
 
 export async function startAppointment(id: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   const { error } = await supabase
     .from("appointments")
@@ -82,7 +82,7 @@ export async function startAppointment(id: string) {
 }
 
 export async function finishAppointment(id: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   const { error } = await supabase
     .from("appointments")
@@ -101,7 +101,7 @@ export async function finishAppointment(id: string) {
 }
 
 export async function cancelAppointment(id: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   const { error } = await supabase
     .from("appointments")

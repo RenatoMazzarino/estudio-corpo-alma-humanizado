@@ -1,4 +1,4 @@
-import { createClient } from "../../lib/supabase/server";
+import { createServiceClient } from "../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { Service } from "../../types/service";
 import { CatalogoView } from "./catalogo-view";
@@ -6,7 +6,7 @@ import { CatalogoView } from "./catalogo-view";
 export const dynamic = 'force-dynamic';
 
 export default async function CatalogoPage() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Busca serviços do tenant
   const { data } = await supabase

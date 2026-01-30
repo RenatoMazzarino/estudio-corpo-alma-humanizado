@@ -1,11 +1,11 @@
 "use server";
 
-import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 
 export async function updateClientNotes(clientId: string, notes: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { error } = await supabase
     .from("clients")

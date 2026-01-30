@@ -1,4 +1,4 @@
-import { createClient } from "../../lib/supabase/server";
+import { createServiceClient } from "../../lib/supabase/service";
 import { User, Search, Plus } from "lucide-react";
 import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
@@ -15,7 +15,7 @@ export default async function ClientesPage({
 }: {
   searchParams: { q?: string };
 }) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const query = searchParams?.q || "";
 
   let dbQuery = supabase

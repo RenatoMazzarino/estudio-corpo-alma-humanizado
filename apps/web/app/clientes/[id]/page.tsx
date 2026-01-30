@@ -1,7 +1,7 @@
 import { AppShell } from "../../../components/app-shell";
 import { ChevronLeft, CalendarClock } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { NotesSection } from "./notes-section";
 import { format } from "date-fns";
@@ -13,7 +13,7 @@ interface PageProps {
 
 export default async function ClientProfilePage(props: PageProps) {
   const params = await props.params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // 1. Busca dados do Cliente
   const { data: client } = await supabase

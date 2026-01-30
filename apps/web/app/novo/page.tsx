@@ -3,7 +3,7 @@ import { format } from "date-fns";
 
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "../../lib/supabase/server";
+import { createServiceClient } from "../../lib/supabase/service";
 
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { AppointmentForm } from "./appointment-form";
@@ -27,7 +27,7 @@ function getSafeDate(dateParam: string | string[] | undefined): string {
 export default async function NewAppointment(props: PageProps) {
   const params = await props.searchParams;
   const safeDate = getSafeDate(params.date);
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Buscar serviços ativos do Tenant
   const { data: services } = await supabase

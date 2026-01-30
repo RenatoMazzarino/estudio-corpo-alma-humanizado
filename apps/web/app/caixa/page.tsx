@@ -1,4 +1,4 @@
-import { createClient } from "../../lib/supabase/server";
+import { createServiceClient } from "../../lib/supabase/service";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, TrendingUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
@@ -20,7 +20,7 @@ interface PageProps {
 }
 
 export default async function CaixaPage({ searchParams }: PageProps) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const today = new Date();
   let selectedDate = today;

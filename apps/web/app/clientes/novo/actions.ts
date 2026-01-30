@@ -1,11 +1,11 @@
 "use server";
 
-import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
 import { redirect } from "next/navigation";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 
 export async function createClientAction(formData: FormData) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   
   const name = formData.get("name") as string;
   const phone = formData.get("phone") as string;
