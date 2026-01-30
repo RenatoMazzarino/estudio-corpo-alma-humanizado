@@ -217,6 +217,108 @@ export type Database = {
           },
         ]
       }
+      notification_jobs: {
+        Row: {
+          appointment_id: string | null
+          channel: string
+          created_at: string
+          id: string
+          payload: Json
+          scheduled_for: string
+          status: string
+          template_id: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          scheduled_for: string
+          status?: string
+          template_id?: string | null
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          scheduled_for?: string
+          status?: string
+          template_id?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_jobs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel: string
+          created_at?: string
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           accepts_home_visit: boolean | null

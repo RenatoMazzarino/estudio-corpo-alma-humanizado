@@ -19,6 +19,8 @@ import {
 import { z } from "zod";
 import { getClientById, updateClient } from "../clients/repository";
 import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
+import { insertNotificationJob } from "../notifications/repository";
+import { getTenantBySlug } from "../settings/repository";
 import {
   deleteAvailabilityBlocksInRange,
   insertAvailabilityBlocks,
@@ -103,6 +105,16 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 
+  await enqueueNotificationJob({
+    tenant_id: FIXED_TENANT_ID,
+    appointment_id: id,
+    type: "appointment_canceled",
+    channel: "whatsapp",
+    payload: { appointment_id: id },
+    status: "pending",
+    scheduled_for: new Date().toISOString(),
+  });
+
   revalidatePath("/");
   revalidatePath("/caixa");
   return ok({ id });
@@ -127,7 +139,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   const startDateTime = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
   const supabase = createServiceClient();
-  const { error: appointmentError } = await supabase.rpc("create_internal_appointment", {
+  const { data: appointmentId, error: appointmentError } = await supabase.rpc("create_internal_appointment", {
     p_tenant_id: FIXED_TENANT_ID,
     service_id: parsed.data.serviceId,
     start_time: startDateTime.toISOString(),
@@ -137,6 +149,36 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) throw mappedAppointmentError;
+
+  if (appointmentId) {
+    const tenantId = FIXED_TENANT_ID;
+
+    await enqueueNotificationJob({
+      tenant_id: tenantId,
+      appointment_id: appointmentId,
+      type: "appointment_created",
+      channel: "whatsapp",
+      payload: {
+        appointment_id: appointmentId,
+        start_time: startDateTime.toISOString(),
+      },
+      status: "pending",
+      scheduled_for: new Date().toISOString(),
+    });
+
+    await enqueueNotificationJob({
+      tenant_id: tenantId,
+      appointment_id: appointmentId,
+      type: "appointment_reminder",
+      channel: "whatsapp",
+      payload: {
+        appointment_id: appointmentId,
+        start_time: startDateTime.toISOString(),
+      },
+      status: "pending",
+      scheduled_for: new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    });
+  }
 
   revalidatePath(`/?date=${parsed.data.date}`);
 }
@@ -170,7 +212,45 @@ export async function submitPublicAppointment(data: {
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 
+  if (appointmentId) {
+    const { data: tenant } = await getTenantBySlug(parsed.data.tenantSlug);
+    const tenantId = tenant?.id ?? FIXED_TENANT_ID;
+
+    await enqueueNotificationJob({
+      tenant_id: tenantId,
+      appointment_id: appointmentId,
+      type: "appointment_created",
+      channel: "whatsapp",
+      payload: {
+        appointment_id: appointmentId,
+        start_time: startDateTime.toISOString(),
+      },
+      status: "pending",
+      scheduled_for: new Date().toISOString(),
+    });
+
+    await enqueueNotificationJob({
+      tenant_id: tenantId,
+      appointment_id: appointmentId,
+      type: "appointment_reminder",
+      channel: "whatsapp",
+      payload: {
+        appointment_id: appointmentId,
+        start_time: startDateTime.toISOString(),
+      },
+      status: "pending",
+      scheduled_for: new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    });
+  }
+
   return ok({ appointmentId });
+}
+
+async function enqueueNotificationJob(payload: Parameters<typeof insertNotificationJob>[0]) {
+  const { error } = await insertNotificationJob(payload);
+  if (error) {
+    console.error("Erro ao criar job de notificação:", error);
+  }
 }
 
 interface FinishAppointmentParams {
