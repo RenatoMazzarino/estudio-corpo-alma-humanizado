@@ -2,6 +2,9 @@
 
 import { createServiceClient } from "../../../lib/supabase/service";
 import { addMinutes, format, parse, isBefore, isAfter, getDay, parseISO } from "date-fns";
+import { AppError } from "../../../src/shared/errors/AppError";
+import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
+import { getAvailableSlotsSchema } from "../../../src/shared/validation/appointments";
 
 interface GetSlotsParams {
   tenantId: string;
@@ -12,18 +15,31 @@ interface GetSlotsParams {
 
 export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit = false }: GetSlotsParams): Promise<string[]> {
   const supabase = createServiceClient();
+  const parsed = getAvailableSlotsSchema.safeParse({ tenantId, serviceId, date, isHomeVisit });
+  if (!parsed.success) {
+    throw new AppError("Dados inválidos para disponibilidade", "VALIDATION_ERROR", 400, parsed.error);
+  }
 
   // 1. Fetch Parallel Data: Service, Settings, BusinessHours
   const [serviceRes, settingsRes, businessHourRes] = await Promise.all([
-    supabase.from("services").select("duration_minutes, custom_buffer_minutes").eq("id", serviceId).single(),
-    supabase.from("settings").select("default_studio_buffer, default_home_buffer").eq("tenant_id", tenantId).single(),
+    supabase.from("services").select("duration_minutes, custom_buffer_minutes").eq("id", parsed.data.serviceId).single(),
+    supabase.from("settings").select("default_studio_buffer, default_home_buffer").eq("tenant_id", parsed.data.tenantId).single(),
     supabase
       .from("business_hours")
       .select("open_time, close_time, is_closed")
-      .eq("tenant_id", tenantId)
-      .eq("day_of_week", getDay(parse(date, "yyyy-MM-dd", new Date())))
+      .eq("tenant_id", parsed.data.tenantId)
+      .eq("day_of_week", getDay(parse(parsed.data.date, "yyyy-MM-dd", new Date())))
       .single()
   ]);
+
+  const serviceError = mapSupabaseError(serviceRes.error);
+  if (serviceError) throw serviceError;
+  if (settingsRes.error && settingsRes.error.code !== "PGRST116") {
+    throw mapSupabaseError(settingsRes.error) ?? new AppError("Erro ao carregar settings", "SUPABASE_ERROR");
+  }
+  if (businessHourRes.error && businessHourRes.error.code !== "PGRST116") {
+    throw mapSupabaseError(businessHourRes.error) ?? new AppError("Erro ao carregar horários", "SUPABASE_ERROR");
+  }
 
   const service = serviceRes.data;
   const settings = settingsRes.data;
@@ -47,21 +63,21 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   const totalSlotDuration = serviceDuration + buffer;
 
   // 3. Fetch Constraints: Appointments & Blocks
-  const startOfDayStr = `${date}T00:00:00`;
-  const endOfDayStr = `${date}T23:59:59`;
+  const startOfDayStr = `${parsed.data.date}T00:00:00`;
+  const endOfDayStr = `${parsed.data.date}T23:59:59`;
 
   const [appointmentsRes, blocksRes] = await Promise.all([
     supabase
       .from("appointments")
       .select("start_time, finished_at, total_duration_minutes, status")
-      .eq("tenant_id", tenantId)
+      .eq("tenant_id", parsed.data.tenantId)
       .not("status", "in", "(canceled_by_client,canceled_by_studio,no_show)")
       .gte("start_time", startOfDayStr)
       .lte("start_time", endOfDayStr),
     supabase
       .from("availability_blocks") // New Table
       .select("start_time, end_time")
-      .eq("tenant_id", tenantId)
+      .eq("tenant_id", parsed.data.tenantId)
       .gte("end_time", startOfDayStr) // Overlapping logic optimization could be better but this is safe
       .lte("start_time", endOfDayStr) // Blocks starting before end of day? 
       // Actually simple overlap: (BlockEnd > DayStart) AND (BlockStart < DayEnd)
@@ -77,8 +93,8 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
       // A block covers the day if: BlockStart <= DayEnd AND BlockEnd >= DayStart.
       // Supabase .or() is annoying. Let's just fetch broad and filter in JS if needed, or stick to start_time for typical usage.
       // Given the "ShiftManager" creates blocks with start_time in the day, simple filter works.
-      .gte("start_time", `${date}T00:00:00`)
-      .lte("start_time", `${date}T23:59:59`) 
+      .gte("start_time", `${parsed.data.date}T00:00:00`)
+      .lte("start_time", `${parsed.data.date}T23:59:59`) 
   ]);
 
   const appointments = appointmentsRes.data || [];
@@ -89,8 +105,8 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   const openTimeStr = businessHour.open_time.slice(0, 5);
   const closeTimeStr = businessHour.close_time.slice(0, 5);
   
-  const openTime = parse(`${date}T${openTimeStr}`, "yyyy-MM-dd'T'HH:mm", new Date());
-  const closeTime = parse(`${date}T${closeTimeStr}`, "yyyy-MM-dd'T'HH:mm", new Date());
+  const openTime = parse(`${parsed.data.date}T${openTimeStr}`, "yyyy-MM-dd'T'HH:mm", new Date());
+  const closeTime = parse(`${parsed.data.date}T${closeTimeStr}`, "yyyy-MM-dd'T'HH:mm", new Date());
 
   let currentSlot = openTime;
 

@@ -10,14 +10,25 @@ import {
   endOfDay
 } from "date-fns";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { AppError } from "../../../src/shared/errors/AppError";
+import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
 
 /**
  * Cria bloqueios em lote para dias pares ou ímpares de um mês específico.
  * @param type 'even' (dias pares) ou 'odd' (dias ímpares)
  * @param monthStr String no formato "YYYY-MM" (ex: "2026-02")
  */
-export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) {
+export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string): Promise<ActionResult<{ count: number }>> {
   const supabase = createServiceClient();
+  const parsed = z.object({
+    type: z.enum(["even", "odd"]),
+    monthStr: z.string().regex(/^\\d{4}-\\d{2}$/),
+  }).safeParse({ type, monthStr });
+
+  if (!parsed.success) {
+    return fail(new AppError("Parâmetros inválidos para escala", "VALIDATION_ERROR", 400, parsed.error));
+  }
   
   // Data base: dia 1 do mês escolhido
   const baseDate = parseISO(`${monthStr}-01`);
@@ -67,6 +78,7 @@ export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) 
   } catch (e) {
       console.error("[CreateShift] Revalidate Error:", e);
   }
+  return ok({ count: blocksToInsert.length });
 }
 
 /**
@@ -74,8 +86,12 @@ export async function createShiftBlocks(type: 'even' | 'odd', monthStr: string) 
  * Útil para corrigir erros de geração em lote.
  * @param monthStr String no formato "YYYY-MM" (ex: "2026-02")
  */
-export async function clearMonthBlocks(monthStr: string) {
+export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{ month: string }>> {
   const supabase = createServiceClient();
+  const parsed = z.object({ monthStr: z.string().regex(/^\\d{4}-\\d{2}$/) }).safeParse({ monthStr });
+  if (!parsed.success) {
+    return fail(new AppError("Parâmetros inválidos para limpeza de escala", "VALIDATION_ERROR", 400, parsed.error));
+  }
 
   const baseDate = parseISO(`${monthStr}-01`);
   const startOfMonth = startOfDay(setDate(baseDate, 1)).toISOString();
@@ -96,4 +112,5 @@ export async function clearMonthBlocks(monthStr: string) {
   }
 
   revalidatePath('/');
+  return ok({ month: monthStr });
 }

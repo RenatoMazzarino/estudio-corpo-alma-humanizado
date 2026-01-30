@@ -19,7 +19,10 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
     <form 
       action={async (formData) => {
         setLoading(true);
-        await upsertService(formData);
+        const result = await upsertService(formData);
+        if (!result.ok) {
+          alert(result.error.message);
+        }
         setLoading(false);
         if (onSuccess) onSuccess();
       }}

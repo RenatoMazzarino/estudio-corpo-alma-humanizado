@@ -89,11 +89,11 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate }: Prop
                 notes
             });
 
-            if (result.success) {
+            if (result.ok) {
                 onUpdate(); // Recarrega tela pai
                 onClose();
             } else {
-                alert("Erro ao finalizar: " + result.error);
+                alert("Erro ao finalizar: " + result.error.message);
             }
         } catch (err) {
             console.error(err);

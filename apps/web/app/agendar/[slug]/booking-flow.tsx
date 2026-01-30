@@ -103,7 +103,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
 
     setIsSubmitting(true);
     try {
-        await submitPublicAppointment({
+        const result = await submitPublicAppointment({
             tenantSlug: tenant.slug,
             serviceId: selectedService.id,
             date,
@@ -112,6 +112,10 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
             clientPhone,
             isHomeVisit
         });
+        if (!result.ok) {
+            alert(result.error.message);
+            return;
+        }
         setStep("SUCCESS");
     } catch {
         alert("Erro ao agendar. Tente novamente.");
