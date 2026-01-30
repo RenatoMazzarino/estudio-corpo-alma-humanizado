@@ -4,7 +4,7 @@ import { ReactNode, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, Smartphone, Menu, Calendar, Wallet } from "lucide-react";
+import { Monitor, Smartphone, Menu, Calendar, Wallet, Users } from "lucide-react";
 
 interface AppShellProps {
   children: ReactNode;
@@ -70,6 +70,11 @@ export function AppShell({ children }: AppShellProps) {
            <Link href="/" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/")}`}>
              <Calendar size={20} />
              <span className="text-[10px] font-medium">Agenda</span>
+           </Link>
+
+           <Link href="/clientes" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/clientes")}`}>
+             <Users size={20} />
+             <span className="text-[10px] font-medium">Clientes</span>
            </Link>
 
            <Link href="/caixa" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/caixa")}`}>
