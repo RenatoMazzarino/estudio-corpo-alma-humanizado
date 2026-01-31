@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClientAction } from "./actions";
-import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
+import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 
 function formatCpf(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
