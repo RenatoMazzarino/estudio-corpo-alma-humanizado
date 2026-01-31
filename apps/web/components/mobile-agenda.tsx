@@ -134,6 +134,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             className="overflow-x-scroll no-scrollbar pb-1 w-full touch-pan-x cursor-grab active:cursor-grabbing"
             onPointerDown={(event) => {
               if (!stripRef.current) return;
+              const target = event.target as HTMLElement;
+              if (target.closest("button")) return;
               dragState.current.dragging = true;
               dragState.current.startX = event.clientX;
               dragState.current.scrollLeft = stripRef.current.scrollLeft;
