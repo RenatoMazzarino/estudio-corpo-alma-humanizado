@@ -13,7 +13,7 @@ export async function fetchAddressByCep(rawCep: string): Promise<CepLookupResult
   const cep = normalizeCep(rawCep);
   if (cep.length !== 8) return null;
 
-  const response = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`);
+  const response = await fetch(`/api/cep?cep=${cep}`);
   if (!response.ok) return null;
   const data = (await response.json()) as {
     street?: string;

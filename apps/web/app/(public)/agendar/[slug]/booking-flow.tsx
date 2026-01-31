@@ -230,7 +230,11 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                  {/* Opção Estúdio */}
                  <button 
                     onClick={() => handleLocationSelect(false)}
-                    className="w-full bg-white p-5 rounded-2xl shadow-sm border border-stone-100 text-left hover:border-studio-green hover:shadow-md transition-all flex items-center gap-4 group"
+                    className={`w-full p-5 rounded-2xl shadow-sm border text-left transition-all flex items-center gap-4 group ${
+                      !isHomeVisit
+                        ? "border-studio-green bg-green-50 shadow-md"
+                        : "border-stone-100 bg-white hover:border-studio-green hover:shadow-md"
+                    }`}
                  >
                      <div className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center text-stone-400 group-hover:bg-green-50 group-hover:text-studio-green transition-colors">
                          <MapPin size={24} />
@@ -255,8 +259,10 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                         handleLocationSelect(true);
                       }
                     }}
-                    className={`w-full bg-white p-5 rounded-2xl shadow-sm border text-left transition-all flex flex-col gap-4 ${
-                      isHomeVisit ? "border-purple-500 shadow-md" : "border-stone-100 hover:border-purple-500 hover:shadow-md"
+                    className={`w-full p-5 rounded-2xl shadow-sm border text-left transition-all flex flex-col gap-4 ${
+                      isHomeVisit
+                        ? "border-purple-500 bg-purple-50 shadow-md"
+                        : "border-stone-100 bg-white hover:border-purple-500 hover:shadow-md"
                     }`}
                  >
                      <div className="flex items-center gap-4 w-full">
@@ -311,6 +317,9 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                            </button>
                          </div>
                          {cepStatus === "error" && <p className="text-[11px] text-red-500 ml-1">CEP inválido.</p>}
+                         {cepStatus === "success" && (
+                           <p className="text-[11px] text-green-600 ml-1">Endereço encontrado.</p>
+                         )}
                          <input
                            type="text"
                            placeholder="Logradouro"
