@@ -245,8 +245,16 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                  </button>
 
                  {/* Opção Domiciliar */}
-                 <button 
+                 <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleLocationSelect(true)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleLocationSelect(true);
+                      }
+                    }}
                     className={`w-full bg-white p-5 rounded-2xl shadow-sm border text-left transition-all flex flex-col gap-4 ${
                       isHomeVisit ? "border-purple-500 shadow-md" : "border-stone-100 hover:border-purple-500 hover:shadow-md"
                     }`}
@@ -295,6 +303,8 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                            <button
                              type="button"
                              onClick={handleCepLookup}
+                             onPointerDown={(event) => event.stopPropagation()}
+                             onClickCapture={(event) => event.stopPropagation()}
                              className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
                            >
                              {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
@@ -360,7 +370,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                          )}
                        </div>
                      )}
-                 </button>
+                 </div>
              </div>
 
             <button
