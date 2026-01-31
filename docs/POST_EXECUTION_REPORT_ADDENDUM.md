@@ -40,6 +40,7 @@ Escopo: polimento pós-execução (G9–G13)
   - `schema_dump_business_hours.sql`
   - `schema_dump_clients.sql`
 - Adicionado `.editorconfig` e `.gitattributes` para EOL/estilo cross-platform.
+- Normalização de EOL para LF nos arquivos versionados `.ts/.tsx/.sql` (commit dedicado).
 - `.gitignore` reforçado para `supabase/.temp` e `supabase/.branches`.
 - README enxuto (removeu boilerplate Turborepo).
 
