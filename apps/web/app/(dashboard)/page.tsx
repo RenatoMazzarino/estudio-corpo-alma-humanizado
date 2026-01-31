@@ -30,8 +30,9 @@ type RawAppointment = Omit<Appointment, "clients"> & {
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: { created?: string };
+  searchParams?: Promise<{ created?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const today = new Date();
   
   // Buscar 2 meses para ter margem
@@ -60,7 +61,7 @@ export default async function Home({
 
   const blocks = blocksData || [];
 
-  const showCreated = searchParams?.created === "1";
+  const showCreated = resolvedSearchParams?.created === "1";
 
   return (
     <div className="flex flex-col h-full">

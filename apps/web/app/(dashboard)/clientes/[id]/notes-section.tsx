@@ -73,7 +73,7 @@ export function NotesSection({ clientId, initialNotes }: NotesSectionProps) {
         </div>
       ) : (
         <div 
-            className="w-full bg-yellow-50/30 border border-yellow-50 rounded-xl p-4 text-gray-600 font-medium min-h-[100px] whitespace-pre-wrap cursor-pointer hover:bg-yellow-50/60 transition"
+            className="w-full bg-yellow-50/30 border border-yellow-50 rounded-xl p-4 text-gray-600 font-medium min-h-25 whitespace-pre-wrap cursor-pointer hover:bg-yellow-50/60 transition"
             onClick={() => setIsEditing(true)}
             title="Clique para editar"
         >

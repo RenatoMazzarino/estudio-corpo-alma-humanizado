@@ -41,7 +41,7 @@ export default async function PublicBookingPage(props: PageProps) {
 
   return (
     <div className="min-h-screen bg-stone-50 flex justify-center">
-      <div className="w-full max-w-[414px] bg-studio-bg min-h-screen shadow-2xl relative flex flex-col border-x border-stone-200">
+      <div className="w-full max-w-103.5 bg-studio-bg min-h-screen shadow-2xl relative flex flex-col border-x border-stone-200">
         <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 px-6 py-5 flex items-center gap-3 sticky top-0 z-10">
           <div className="w-10 h-10 bg-studio-green/10 text-studio-green rounded-2xl flex items-center justify-center font-bold">
             {tenant.name.charAt(0)}

@@ -28,7 +28,7 @@ export function AppShell({ children }: AppShellProps) {
         className={`
           bg-studio-bg flex flex-col relative transition-all duration-500 shadow-2xl overflow-hidden
           ${isMobile 
-            ? "w-full max-w-[414px] h-[850px] rounded-[2.5rem] border-8 border-gray-800"
+            ? "w-full max-w-103.5 h-212.5 rounded-[2.5rem] border-8 border-gray-800"
             : "w-full min-h-screen rounded-none border-0"
           }
         `}

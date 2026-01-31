@@ -262,6 +262,17 @@ export function ClientProfile({ client }: ClientProfileProps) {
         <div className="flex items-center gap-2">
           <MapPin size={14} className="text-gray-400" />
           <span>{addressLine}</span>
+          {addressLine && addressLine !== "Endereço não informado" && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto text-studio-green hover:text-studio-green-dark"
+              aria-label="Abrir endereço no GPS"
+            >
+              <Navigation size={16} />
+            </a>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <MessageCircle size={14} className="text-gray-400" />

@@ -76,7 +76,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
   return (
-    <div className="bg-stone-50 min-h-[600px] flex flex-col">
+    <div className="bg-stone-50 min-h-150 flex flex-col">
       
       {/* 1. Header Fixo com Seletor de Dias */}
         <div className="bg-white px-4 py-4 shadow-sm border-b border-stone-100 z-10 transition-all duration-300">
@@ -123,7 +123,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         {/* Strip Calendar */}
         <div className="bg-stone-50 border border-stone-100 rounded-2xl px-2 py-3">
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 min-w-max snap-x snap-mandatory touch-pan-x">
+          <div className="overflow-x-auto no-scrollbar pb-1 w-full">
+            <div className="flex gap-3 min-w-max snap-x snap-mandatory touch-pan-x">
               {days.map((day) => {
                   const isSelected = isSameDay(day, selectedDate);
                   return (
@@ -147,6 +148,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       </button>
                   )
               })}
+            </div>
           </div>
         </div>
       </div>

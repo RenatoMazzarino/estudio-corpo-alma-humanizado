@@ -94,7 +94,7 @@ export function ActiveSessionBar() {
   return (
     <div
       ref={barRef}
-      className="absolute z-40 w-[92%] max-w-[520px]"
+      className="absolute z-40 w-[92%] max-w-130"
       style={pos ? { left: pos.x, top: pos.y } : undefined}
       onPointerDown={(event) => {
         if (!barRef.current) return;

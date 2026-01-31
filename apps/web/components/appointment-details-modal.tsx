@@ -282,7 +282,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
 
                             {appointment.is_home_visit && (
                                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 shadow-sm">
-                                    <label className="text-xs font-bold text-purple-400 uppercase mb-2 block flex items-center gap-1">
+                                    <label className="text-xs font-bold text-purple-400 uppercase mb-2 flex items-center gap-1">
                                         <MapPin size={12} /> Endereço Domiciliar
                                     </label>
                                     <p className="text-purple-900 font-medium">
@@ -323,7 +323,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                             <textarea 
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                className="flex-1 w-full bg-white border border-stone-200 rounded-xl p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-studio-green/20 min-h-[200px]"
+                                className="flex-1 w-full bg-white border border-stone-200 rounded-xl p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-studio-green/20 min-h-50"
                                 placeholder="Escreva aqui a evolução do paciente, dores relatadas, procedimentos realizados..."
                             />
                          </div>
