@@ -1,8 +1,12 @@
 "use server";
 
-import { updateClientNotes as updateClientNotesImpl } from "../../../../src/modules/clients/actions";
+import { updateClientNotes as updateClientNotesImpl, updateClientProfileAction as updateClientProfileActionImpl } from "../../../../src/modules/clients/actions";
 import type { ActionResult } from "../../../../src/shared/errors/result";
 
 export async function updateClientNotes(clientId: string, notes: string): Promise<ActionResult<{ id: string }>> {
   return updateClientNotesImpl(clientId, notes);
+}
+
+export async function updateClientProfile(formData: FormData): Promise<ActionResult<{ id: string }>> {
+  return updateClientProfileActionImpl(formData);
 }

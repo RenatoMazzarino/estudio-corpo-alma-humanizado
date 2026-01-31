@@ -9,7 +9,8 @@ import { deleteService as deleteServiceRepo, upsertService as upsertServiceRepo 
 import { revalidatePath } from "next/cache";
 
 export async function upsertService(formData: FormData): Promise<ActionResult<{ id?: string }>> {
-  const id = formData.get("id") as string | null;
+  const rawId = formData.get("id") as string | null;
+  const id = rawId && rawId.trim().length > 0 ? rawId : null;
   const name = formData.get("name") as string | null;
   const price = formData.get("price");
   const duration_minutes = formData.get("duration_minutes");

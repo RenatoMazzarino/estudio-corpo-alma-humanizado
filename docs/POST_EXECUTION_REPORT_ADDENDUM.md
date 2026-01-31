@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G15)
+Escopo: polimento pós-execução (G9–G16)
 
 ---
 
@@ -62,6 +62,11 @@ Escopo: polimento pós-execução (G9–G15)
 - Caixa: `searchParams` tratado via `await` para evitar erro de Promise no Next.
 - Agenda: FAB agora abre `/novo` e fica acima da BottomNav.
 - Agendamento público exibe estado vazio quando não há serviços.
+
+### G16 — Ajustes de serviços, clientes e busca
+- Serviços: `id` vazio agora vira `null` (evita erro de validação em criação).
+- Clientes: `/clientes` agora aguarda `searchParams` para evitar erro de Promise.
+- Perfil de cliente: nova tela estilo “contatos” com ações (ligar/WhatsApp/email) + edição completa.
 
 ---
 

@@ -13,9 +13,10 @@ interface ClientListItem {
 export default async function ClientesPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: Promise<{ q?: string }>;
 }) {
-  const query = searchParams?.q || "";
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams?.q || "";
 
   const { data } = await listClients(FIXED_TENANT_ID, query);
   const clients = data as ClientListItem[] | null;

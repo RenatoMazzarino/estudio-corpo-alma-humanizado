@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getClientById } from "../../../../src/modules/clients/repository";
 import { listAppointmentsForClient } from "../../../../src/modules/appointments/repository";
+import { ClientProfile } from "./client-profile";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -48,6 +49,8 @@ export default async function ClientProfilePage(props: PageProps) {
           {client.initials}
         </div>
       </div>
+
+      <ClientProfile client={client} />
 
       {/* Seção 1: Prontuário (Client Component para edição) */}
       <NotesSection clientId={client.id} initialNotes={client.observacoes_gerais} />
