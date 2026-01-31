@@ -27,7 +27,11 @@ type RawAppointment = Omit<Appointment, "clients"> & {
   clients: Appointment["clients"] | Appointment["clients"][] | null;
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: { created?: string };
+}) {
   const today = new Date();
   
   // Buscar 2 meses para ter margem
@@ -56,10 +60,16 @@ export default async function Home() {
 
   const blocks = blocksData || [];
 
+  const showCreated = searchParams?.created === "1";
+
   return (
-    <MobileAgenda 
-        appointments={appointments} 
-        blocks={blocks} 
-    />
+    <div className="flex flex-col h-full">
+      {showCreated && (
+        <div className="mx-4 mt-4 mb-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-3 rounded-xl">
+          Agendamento criado com sucesso.
+        </div>
+      )}
+      <MobileAgenda appointments={appointments} blocks={blocks} />
+    </div>
   );
 }

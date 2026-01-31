@@ -96,10 +96,10 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
         }
     };
 
-    const containerClasses =
-        "bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative z-10 animate-in zoom-in-95 duration-200";
-
     const isModal = variant === "modal";
+    const containerClasses = isModal
+        ? "bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative z-10 animate-in zoom-in-95 duration-200"
+        : "bg-white w-full rounded-3xl shadow-sm border border-stone-100 overflow-hidden flex flex-col";
 
     return (
         <div className={isModal ? "absolute inset-0 z-50 flex items-center justify-center p-4" : "w-full"}>
@@ -171,6 +171,15 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                     <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
                         <div className="h-full bg-white/80 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
                     </div>
+
+                    {appointment.status !== "completed" && (
+                      <button
+                        onClick={() => setActiveTab("CHECKOUT")}
+                        className="mt-4 w-full bg-white text-studio-green font-bold py-2 rounded-xl shadow-sm hover:bg-green-50 transition"
+                      >
+                        Finalizar atendimento
+                      </button>
+                    )}
                 </div>
 
                 {/* Tabs Navigation */}

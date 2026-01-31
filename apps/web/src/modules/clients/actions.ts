@@ -7,7 +7,8 @@ import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { createClientSchema, updateClientNotesSchema, updateClientSchema } from "../../shared/validation/clients";
-import { createClient, updateClient } from "./repository";
+import { z } from "zod";
+import { createClient, updateClient, deleteClient as deleteClientRepo } from "./repository";
 
 export async function createClientAction(formData: FormData): Promise<void> {
   const name = formData.get("name") as string | null;
@@ -139,5 +140,19 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
   if (mappedError) return fail(mappedError);
 
   revalidatePath(`/clientes/${parsed.data.clientId}`);
+  return ok({ id: parsed.data.clientId });
+}
+
+export async function deleteClientAction(clientId: string): Promise<ActionResult<{ id: string }>> {
+  const parsed = z.object({ clientId: z.string().uuid() }).safeParse({ clientId });
+  if (!parsed.success) {
+    return fail(new AppError("Cliente inválido", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const { error } = await deleteClientRepo(FIXED_TENANT_ID, parsed.data.clientId);
+  const mappedError = mapSupabaseError(error);
+  if (mappedError) return fail(mappedError);
+
+  revalidatePath("/clientes");
   return ok({ id: parsed.data.clientId });
 }

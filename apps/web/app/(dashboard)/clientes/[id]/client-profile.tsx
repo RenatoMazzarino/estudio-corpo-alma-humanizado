@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil, Copy } from "lucide-react";
+import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil, Copy, Trash2 } from "lucide-react";
 import type { Database } from "../../../../lib/supabase/types";
-import { updateClientProfile } from "./actions";
+import { deleteClient, updateClientProfile } from "./actions";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -72,13 +72,30 @@ export function ClientProfile({ client }: ClientProfileProps) {
           <h2 className="text-xl font-bold text-gray-800">{client.name}</h2>
           {client.email && <p className="text-xs text-gray-400 mt-1">{client.email}</p>}
         </div>
-        <button
-          onClick={() => setEditing((prev) => !prev)}
-          className="flex items-center gap-2 text-xs font-bold text-studio-green bg-green-50 px-3 py-2 rounded-full hover:bg-green-100 transition"
-        >
-          <Pencil size={14} />
-          {editing ? "Fechar edição" : "Editar"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setEditing((prev) => !prev)}
+            className="flex items-center gap-2 text-xs font-bold text-studio-green bg-green-50 px-3 py-2 rounded-full hover:bg-green-100 transition"
+          >
+            <Pencil size={14} />
+            {editing ? "Fechar edição" : "Editar"}
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm("Tem certeza? Isso apagará este cliente.")) return;
+              const result = await deleteClient(client.id);
+              if (!result.ok) {
+                setMessage({ type: "error", text: result.error.message });
+                return;
+              }
+              window.location.href = "/clientes";
+            }}
+            className="flex items-center gap-2 text-xs font-bold text-red-600 bg-red-50 px-3 py-2 rounded-full hover:bg-red-100 transition"
+          >
+            <Trash2 size={14} />
+            Apagar
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

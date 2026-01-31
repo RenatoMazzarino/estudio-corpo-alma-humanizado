@@ -5,9 +5,10 @@ import type { ActionResult } from "../../../../src/shared/errors/result";
 
 export async function createShiftBlocks(
   type: "even" | "odd",
-  monthStr: string
-): Promise<ActionResult<{ count: number }>> {
-  return createShiftBlocksImpl(type, monthStr);
+  monthStr: string,
+  force?: boolean
+): Promise<ActionResult<{ count: number; requiresConfirm?: boolean; conflicts?: { blocks: number; appointments: number } }>> {
+  return createShiftBlocksImpl(type, monthStr, force);
 }
 
 export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{ month: string }>> {

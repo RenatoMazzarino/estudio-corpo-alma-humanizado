@@ -2,6 +2,7 @@
 
 import { endOfDay, format, getDaysInMonth, parseISO, setDate, startOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createClient } from "../../../lib/supabase/server";
 import { createServiceClient } from "../../../lib/supabase/service";
@@ -24,6 +25,8 @@ import { getTenantBySlug } from "../settings/repository";
 import {
   deleteAvailabilityBlocksInRange,
   insertAvailabilityBlocks,
+  listAppointmentsInRange,
+  listAvailabilityBlocksInRange,
   updateAppointment,
   updateAppointmentReturning,
 } from "./repository";
@@ -184,6 +187,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   }
 
   revalidatePath(`/?date=${parsed.data.date}`);
+  redirect(`/?date=${parsed.data.date}&created=1`);
 }
 
 export async function submitPublicAppointment(data: {
@@ -344,8 +348,9 @@ export async function finishAdminAppointment(
 
 export async function createShiftBlocks(
   type: "even" | "odd",
-  monthStr: string
-): Promise<ActionResult<{ count: number }>> {
+  monthStr: string,
+  force?: boolean
+): Promise<ActionResult<{ count: number; requiresConfirm?: boolean; conflicts?: { blocks: number; appointments: number } }>> {
   const parsed = z
     .object({
       type: z.enum(["even", "odd"]),
@@ -360,6 +365,19 @@ export async function createShiftBlocks(
   const baseDate = parseISO(`${monthStr}-01`);
   const totalDays = getDaysInMonth(baseDate);
   const blocksToInsert = [];
+  const selectedDays: string[] = [];
+  const monthStart = startOfDay(setDate(baseDate, 1)).toISOString();
+  const monthEnd = endOfDay(setDate(baseDate, totalDays)).toISOString();
+
+  const { data: existingBlocks } = await listAvailabilityBlocksInRange(FIXED_TENANT_ID, monthStart, monthEnd);
+  const existingBlockDays = new Set(
+    (existingBlocks ?? []).map((block) => format(new Date(block.start_time), "yyyy-MM-dd"))
+  );
+
+  const { data: existingAppointments } = await listAppointmentsInRange(FIXED_TENANT_ID, monthStart, monthEnd);
+  const appointmentDays = new Set(
+    (existingAppointments ?? []).map((appt) => format(new Date(appt.start_time), "yyyy-MM-dd"))
+  );
 
   for (let day = 1; day <= totalDays; day++) {
     const isEven = day % 2 === 0;
@@ -370,14 +388,29 @@ export async function createShiftBlocks(
       const start = startOfDay(currentDay);
       const end = endOfDay(currentDay);
 
-      blocksToInsert.push({
-        tenant_id: FIXED_TENANT_ID,
-        title: "Plantão",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        reason: "Plantão",
-      });
+      const dayKey = format(currentDay, "yyyy-MM-dd");
+      selectedDays.push(dayKey);
+      if (!existingBlockDays.has(dayKey)) {
+        blocksToInsert.push({
+          tenant_id: FIXED_TENANT_ID,
+          title: "Bloqueio",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          reason: "Bloqueio",
+        });
+      }
     }
+  }
+
+  const conflictingBlocks = selectedDays.filter((day) => existingBlockDays.has(day)).length;
+  const conflictingAppointments = selectedDays.filter((day) => appointmentDays.has(day)).length;
+
+  if ((conflictingBlocks > 0 || conflictingAppointments > 0) && !force) {
+    return ok({
+      count: 0,
+      requiresConfirm: true,
+      conflicts: { blocks: conflictingBlocks, appointments: conflictingAppointments },
+    });
   }
 
   if (blocksToInsert.length > 0) {

@@ -39,3 +39,8 @@ export async function findClientByNamePhone(tenantId: string, name: string, phon
     .eq("phone", phone)
     .single();
 }
+
+export async function deleteClient(tenantId: string, id: string) {
+  const supabase = createServiceClient();
+  return supabase.from("clients").delete().eq("id", id).eq("tenant_id", tenantId);
+}

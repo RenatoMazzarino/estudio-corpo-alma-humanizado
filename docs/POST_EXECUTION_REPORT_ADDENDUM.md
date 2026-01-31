@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G20)
+Escopo: polimento pós-execução (G9–G21)
 
 ---
 
@@ -93,6 +93,12 @@ Escopo: polimento pós-execução (G9–G20)
 - Tela de atendimento com cronômetro regressivo e botão Spotify.
 - Configurações habilitadas com horários de funcionamento e buffers.
 - Migration adiciona `actual_duration_minutes` em appointments.
+
+### G21 — Ajustes finais (bloqueios/agenda/atendimento)
+- Plantões: UI reorganizada com confirmação de conflitos e lista de bloqueios existentes.
+- Agendamento interno redireciona com notificação de sucesso.
+- Tela de atendimento ajustada para layout de página (não modal).
+- Botão para apagar cliente no perfil.
 
 ---
 
