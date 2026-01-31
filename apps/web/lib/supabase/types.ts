@@ -36,6 +36,14 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
+          actual_duration_minutes: number | null
           client_id: string | null
           created_at: string
           finished_at: string | null
@@ -43,6 +51,7 @@ export type Database = {
           is_home_visit: boolean | null
           payment_status: string | null
           price: number | null
+          service_id: string | null
           service_name: string
           start_time: string
           started_at: string | null
@@ -51,6 +60,14 @@ export type Database = {
           total_duration_minutes: number | null
         }
         Insert: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          actual_duration_minutes?: number | null
           client_id?: string | null
           created_at?: string
           finished_at?: string | null
@@ -58,6 +75,7 @@ export type Database = {
           is_home_visit?: boolean | null
           payment_status?: string | null
           price?: number | null
+          service_id?: string | null
           service_name: string
           start_time: string
           started_at?: string | null
@@ -66,6 +84,14 @@ export type Database = {
           total_duration_minutes?: number | null
         }
         Update: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          actual_duration_minutes?: number | null
           client_id?: string | null
           created_at?: string
           finished_at?: string | null
@@ -73,6 +99,7 @@ export type Database = {
           is_home_visit?: boolean | null
           payment_status?: string | null
           price?: number | null
+          service_id?: string | null
           service_name?: string
           start_time?: string
           started_at?: string | null
@@ -86,6 +113,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
           {
@@ -125,10 +159,63 @@ export type Database = {
           tenant_id?: string
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "availability_blocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_hours: {
+        Row: {
+          close_time: string
+          created_at: string | null
+          day_of_week: number
+          id: string
+          is_closed: boolean | null
+          open_time: string
+          tenant_id: string
+        }
+        Insert: {
+          close_time: string
+          created_at?: string | null
+          day_of_week: number
+          id?: string
+          is_closed?: boolean | null
+          open_time: string
+          tenant_id: string
+        }
+        Update: {
+          close_time?: string
+          created_at?: string | null
+          day_of_week?: number
+          id?: string
+          is_closed?: boolean | null
+          open_time?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_hours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clients: {
         Row: {
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
           como_conheceu: string | null
           cpf: string | null
           created_at: string
@@ -145,6 +232,13 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
           como_conheceu?: string | null
           cpf?: string | null
           created_at?: string
@@ -161,6 +255,13 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
           como_conheceu?: string | null
           cpf?: string | null
           created_at?: string
@@ -179,6 +280,108 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_jobs: {
+        Row: {
+          appointment_id: string | null
+          channel: string
+          created_at: string
+          id: string
+          payload: Json
+          scheduled_for: string
+          status: string
+          template_id: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          scheduled_for: string
+          status?: string
+          template_id?: string | null
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          scheduled_for?: string
+          status?: string
+          template_id?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_jobs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel: string
+          created_at?: string
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -261,7 +464,15 @@ export type Database = {
           updated_at?: string | null
           whatsapp_notification_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenants: {
         Row: {
@@ -326,6 +537,13 @@ export type Database = {
             referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -333,7 +551,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_internal_appointment: {
+        Args: {
+          client_name: string
+          client_phone?: string
+          is_home_visit?: boolean
+          p_address_bairro?: string
+          p_address_cep?: string
+          p_address_cidade?: string
+          p_address_complemento?: string
+          p_address_estado?: string
+          p_address_logradouro?: string
+          p_address_numero?: string
+          p_start_time: string
+          p_tenant_id: string
+          service_id: string
+        }
+        Returns: string
+      }
+      create_public_appointment: {
+        Args: {
+          client_name: string
+          client_phone: string
+          is_home_visit?: boolean
+          p_address_bairro?: string
+          p_address_cep?: string
+          p_address_cidade?: string
+          p_address_complemento?: string
+          p_address_estado?: string
+          p_address_logradouro?: string
+          p_address_numero?: string
+          p_start_time: string
+          service_id: string
+          tenant_slug: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -469,4 +722,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

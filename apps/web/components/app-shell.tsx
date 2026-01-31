@@ -4,7 +4,8 @@ import { ReactNode, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Monitor, Smartphone, Menu, Calendar, Wallet } from "lucide-react";
+import { Monitor, Smartphone, Menu, Calendar, Wallet, Users } from "lucide-react";
+import { ActiveSessionBar } from "./active-session-bar";
 
 interface AppShellProps {
   children: ReactNode;
@@ -27,7 +28,7 @@ export function AppShell({ children }: AppShellProps) {
         className={`
           bg-studio-bg flex flex-col relative transition-all duration-500 shadow-2xl overflow-hidden
           ${isMobile 
-            ? "w-full max-w-[414px] h-[850px] rounded-[2.5rem] border-8 border-gray-800"
+            ? "w-full max-w-103.5 h-212.5 rounded-[2.5rem] border-8 border-gray-800"
             : "w-full min-h-screen rounded-none border-0"
           }
         `}
@@ -64,12 +65,19 @@ export function AppShell({ children }: AppShellProps) {
           {children}
         </main>
 
+        <ActiveSessionBar />
+
         {/* Menu Inferior Interativo */}
         <nav className="bg-white border-t border-stone-100 h-20 absolute bottom-0 w-full flex justify-around items-center pb-2 z-30 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
            
            <Link href="/" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/")}`}>
              <Calendar size={20} />
              <span className="text-[10px] font-medium">Agenda</span>
+           </Link>
+
+           <Link href="/clientes" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/clientes")}`}>
+             <Users size={20} />
+             <span className="text-[10px] font-medium">Clientes</span>
            </Link>
 
            <Link href="/caixa" className={`flex flex-col items-center gap-1 p-2 rounded-lg transition ${getIconColor("/caixa")}`}>
@@ -87,7 +95,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <button 
         onClick={() => setIsMobile(!isMobile)}
-        className="fixed bottom-6 right-6 bg-studio-green hover:bg-studio-green-dark text-white p-4 rounded-full shadow-xl hover:scale-105 transition-all z-50 flex items-center gap-2 font-bold text-xs"
+        className="fixed bottom-24 right-6 bg-studio-green hover:bg-studio-green-dark text-white p-4 rounded-full shadow-xl hover:scale-105 transition-all z-50 flex items-center gap-2 font-bold text-xs"
       >
         {isMobile ? <><Monitor size={18} /> Web</> : <><Smartphone size={18} /> Mobile</>}
       </button>

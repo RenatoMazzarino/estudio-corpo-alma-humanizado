@@ -5,9 +5,7 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Hospital } from "lucide-react";
-import { ShiftManager } from "./shift-manager";
-import { AppointmentDetailsModal, AppointmentDetails } from "./appointment-details-modal";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const locales = {
@@ -82,8 +80,6 @@ interface DesktopCalendarProps {
 export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) {
   const [view, setView] = useState<View>(Views.WEEK);
   const [date, setDate] = useState(new Date());
-  const [showShiftManager, setShowShiftManager] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
   
   const router = useRouter();
 
@@ -116,18 +112,9 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
 
   const handleSelectEvent = (event: CalendarEvent) => {
       if (event.type === 'appointment') {
-          // Cast resource to Appointment
-          setSelectedAppointment(event.resource as AppointmentDetails);
+          router.push(`/atendimento/${event.id}`);
       }
       // Se for block, nada acontece por enquanto (ou abrir shift manager)
-  };
-
-  const handleCloseModal = () => {
-      setSelectedAppointment(null);
-  };
-
-  const handleUpdate = () => {
-      router.refresh(); // Atualiza dados da página via Server Components
   };
 
   // Toolbar customizada com tipagem correta
@@ -155,7 +142,7 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
           formattedLabel = format(date, 'MMMM yyyy', { locale: ptBR });
       }
 
-      return <span className="text-xl font-bold text-gray-800 font-serif capitalize">{formattedLabel}</span>;
+      return <span className="text-xl font-bold text-gray-800 capitalize">{formattedLabel}</span>;
     };
 
     return (
@@ -177,14 +164,6 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
                 </button>
             </div>
             
-            <button 
-                onClick={() => setShowShiftManager(!showShiftManager)}
-                className={`ml-2 p-2 px-3 rounded-lg border transition-all flex items-center gap-2 text-sm font-medium shadow-sm ${showShiftManager ? 'bg-studio-green text-white border-studio-green' : 'bg-white text-studio-green border-stone-200 hover:border-studio-green'}`}
-                title="Gerenciar Escalas"
-             >
-                <Hospital size={16} />
-                <span>Escalas</span>
-             </button>
         </div>
         
         <div className="flex gap-2">
@@ -205,12 +184,6 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
   return (
     <>
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 overflow-hidden h-full relative">
-           {showShiftManager && (
-             <div className="absolute top-24 left-6 z-50 w-96 shadow-2xl animate-in fade-in zoom-in-95 duration-200 bg-white rounded-2xl ring-1 ring-black/5">
-                <ShiftManager />
-             </div>
-           )}
-    
           <style>{`
             .rbc-calendar { font-family: inherit; }
             .rbc-header { padding: 12px 0; font-weight: 600; font-size: 14px; text-transform: uppercase; color: #6b7280; border-bottom: none; }
@@ -305,14 +278,6 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
           </div>
         </div>
 
-        {/* Modal de Detalhes */}
-        {selectedAppointment && (
-            <AppointmentDetailsModal 
-                appointment={selectedAppointment}
-                onClose={handleCloseModal}
-                onUpdate={handleUpdate}
-            />
-        )}
     </>
   );
 }

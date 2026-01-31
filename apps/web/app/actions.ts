@@ -1,110 +1,49 @@
 "use server";
 
-import { createClient } from "../lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { upsertService as upsertServiceImpl, deleteService as deleteServiceImpl } from "../src/modules/services/actions";
+import {
+  startAppointment as startAppointmentImpl,
+  finishAppointment as finishAppointmentImpl,
+  cancelAppointment as cancelAppointmentImpl,
+} from "../src/modules/appointments/actions";
+import { fail, ok, type ActionResult } from "../src/shared/errors/result";
+import { z } from "zod";
+import { getAppointmentById } from "../src/modules/appointments/repository";
 import { FIXED_TENANT_ID } from "../lib/tenant-context";
-
-// --- SERVIÇOS ---
+import { AppError } from "../src/shared/errors/AppError";
+import { mapSupabaseError } from "../src/shared/errors/mapSupabaseError";
 
 export async function upsertService(formData: FormData) {
-  const supabase = await createClient();
-
-  // Campos existentes
-  const id = formData.get("id") as string;
-  const name = formData.get("name") as string;
-  const price = parseFloat(formData.get("price") as string);
-  const duration_minutes = parseInt(formData.get("duration_minutes") as string);
-
-  // Novos campos adicionados
-  const accepts_home_visit = formData.get("accepts_home_visit") === "on";
-  const home_visit_fee = parseFloat(formData.get("home_visit_fee") as string) || 0;
-  const custom_buffer_minutes = parseInt(formData.get("custom_buffer_minutes") as string) || 0;
-
-  const description = formData.get("description") as string;
-  
-  const payload = {
-    name,
-    description,
-    price,
-    duration_minutes,
-    accepts_home_visit,
-    home_visit_fee,
-    custom_buffer_minutes,
-    tenant_id: FIXED_TENANT_ID,
-  };
-
-  const { error } = id 
-    ? await supabase.from("services").update(payload).eq("id", id)
-    : await supabase.from("services").insert(payload);
-
-  if (error) {
-    throw new Error("Erro ao salvar serviço: " + error.message);
-  }
-
-  revalidatePath("/catalogo"); 
-  revalidatePath("/admin/servicos"); 
+  return upsertServiceImpl(formData);
 }
 
-export async function deleteService(id: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("services")
-    .delete()
-    .eq("id", id)
-    .eq("tenant_id", FIXED_TENANT_ID);
-
-  if (error) {
-    throw new Error("Erro ao remover serviço: " + error.message);
-  }
-
-  revalidatePath("/catalogo");
-  revalidatePath("/admin/servicos");
+export async function deleteService(id: string): Promise<ActionResult<{ id: string }>> {
+  return deleteServiceImpl(id);
 }
-
-// --- AGENDAMENTOS (Mantidos) ---
 
 export async function startAppointment(id: string) {
-  const supabase = await createClient();
-  
-  await supabase
-    .from("appointments")
-    .update({ 
-      status: "in_progress",
-      started_at: new Date().toISOString() // Salva a hora exata do clique
-    })
-    .eq("id", id)
-    .eq("tenant_id", FIXED_TENANT_ID);
-
-  revalidatePath("/"); // Atualiza a tela instantaneamente
+  return startAppointmentImpl(id);
 }
 
 export async function finishAppointment(id: string) {
-  const supabase = await createClient();
-  
-  await supabase
-    .from("appointments")
-    .update({ 
-      status: "done",
-      finished_at: new Date().toISOString()
-    })
-    .eq("id", id)
-    .eq("tenant_id", FIXED_TENANT_ID);
-
-  revalidatePath("/");
+  return finishAppointmentImpl(id);
 }
 
 export async function cancelAppointment(id: string) {
-  const supabase = await createClient();
-  
-  await supabase
-    .from("appointments")
-    .update({ 
-      status: "canceled"
-    })
-    .eq("id", id)
-    .eq("tenant_id", FIXED_TENANT_ID);
+  return cancelAppointmentImpl(id);
+}
 
-  revalidatePath("/");
-  revalidatePath("/caixa"); // Atualiza também o caixa se precisar
+export async function appointmentExists(
+  id: string
+): Promise<ActionResult<{ exists: boolean }>> {
+  const parsed = z.object({ id: z.string().uuid() }).safeParse({ id });
+  if (!parsed.success) {
+    return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
+  }
+  const { data, error } = await getAppointmentById(FIXED_TENANT_ID, parsed.data.id);
+  const mappedError = mapSupabaseError(error);
+  if (mappedError) {
+    return fail(mappedError);
+  }
+  return ok({ exists: Boolean(data) });
 }

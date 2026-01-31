@@ -1,122 +1,216 @@
 # POST_EXECUTION_REPORT
 
-Data: 2026-01-29
-
-## 0) Objetivo executado
-Padronizar pnpm-only, alinhar Node 24.13.0 (Windows + WSL), atualizar Next para latest estavel (16.1.6) com Turbopack, atualizar Tailwind v4 mais recente estavel, corrigir lint/types/build e validar em **Windows** e **WSL**, com repos separados.
-
----
-
-## 1) Mudancas realizadas (arquivos e motivos)
-
-### Runtime / tooling
-- `.nvmrc` -> `24.13.0` (padrao Node no WSL).
-- `package.json` -> `engines.node: >=24.13.0`.
-- `apps/web/package.json`:
-  - `next` -> `16.1.6` (next@latest estavel).
-  - `tailwindcss` -> `^4.1.18` (latest estavel v4).
-  - `@tailwindcss/postcss` -> `^4.1.18`.
-  - `dev` -> `next dev --turbo --port 3000` (Turbopack no dev).
-- `pnpm-lock.yaml` atualizado via `pnpm add` / `pnpm install`.
-
-### Correcoes de lint / types (sem refatoracao pesada)
-- `apps/web/app/admin/atendimento/actions.ts`: remover `any` no catch.
-- `apps/web/app/caixa/page.tsx`: remover `@ts-ignore` e variavel nao usada.
-- `apps/web/app/clientes/page.tsx`: tipagem de lista (remover `any`).
-- `apps/web/app/page.tsx`: normalizar `clients` (array vs object) e cast seguro.
-- `apps/web/components/appointment-details-modal.tsx`:
-  - remover imports nao usados.
-  - exportar `AppointmentDetails` e aceitar `null` em campos nullable.
-- `apps/web/components/mobile-agenda.tsx` e `apps/web/components/desktop-calendar.tsx`:
-  - alinhar tipos de `AppointmentClient` e `is_home_visit`.
-  - remover casts com `any`.
+Data: 2026-01-30  
+Branch: `feat/master-plan-enterprise`  
+Escopo: execução completa do plano MASTER_PLAN_ENTERPRISE (V2)
 
 ---
 
-## 2) Versoes finais
+## 1) Sumário Executivo (G0…G8)
 
-### WSL (Ubuntu)
-- Node: `v24.13.0`
-- pnpm: `9.0.0`
-
-### Windows
-- Node: `v24.13.0`
-- pnpm: `9.0.0`
-
-### Repo (ambos)
-- Next.js: `16.1.6`
-- Tailwind CSS: `4.1.18`
-- @tailwindcss/postcss: `4.1.18`
-- Turbo (Turborepo): `2.8.0`
-- TypeScript: `5.9.2`
+- G0: baseline/CI/scripts concluídos e documentados.
+- G1: correções P0 no código (observacoes_gerais + status canônico + revalidatePath).
+- G2A–G2E: migrations críticas aplicadas (service_id, tenant_id UUID, status constraint, índices, RLS/RPC).
+- G3: padronização de erro + validação Zod em actions.
+- G4: modularização por domínio (repositories/actions) e /app como composição.
+- G5: route groups `(dashboard)` e `(public)`, AppShell unificado no layout.
+- G6: disponibilidade unificada + RPC com lock para evitar double booking.
+- G7: caixa baseado em ledger (`transactions`) com reconciliação.
+- G8: estrutura de notificações com `notification_jobs` + templates e jobs automáticos.
 
 ---
 
-## 3) PNPM-only (sem npm/yarn/bun)
-- Nao existem: `package-lock.json`, `npm-shrinkwrap.json`, `yarn.lock`, `bun.lockb`.
-- `pnpm-lock.yaml` e o unico lockfile.
+## 2) Mudanças por Grupo/Commit
+
+### G0
+- `.nvmrc`, `engines`, scripts `lint/check-types/build/format`, CI GitHub Actions.
+- README com pré-requisitos, `supabase:types` script.
+- Plano MASTER atualizado para V2.
+
+### G1
+- `clients.notes` → `observacoes_gerais`.
+- Status `done` → `completed` (compat temporária removida posteriormente).
+- Fixes de `revalidatePath` e tratamento de erro nas actions críticas.
+
+### G2A
+- Migration `service_id` em appointments + backfill.
+- Types regenerados.
+
+### G2B
+- `tenant_id` TEXT → UUID + FK (settings/availability_blocks/transactions).
+- Policies ajustadas, types regenerados.
+
+### G2C
+- Backfill status + constraint (canônico com `pending`).
+- Remoção de compat para `done`.
+
+### G2D
+- Índices core para consultas por tenant e período.
+
+### G2E
+- RLS habilitado para `appointments`/`clients`.
+- RPC `create_public_appointment` + policies públicas/admin.
+
+### G3
+- `AppError`, `mapSupabaseError`, `ActionResult`.
+- Zod schemas (clients/services/appointments) aplicados em actions.
+
+### G4
+- `src/modules/*` (appointments/clients/services/finance/settings).
+- /app sem acesso direto ao Supabase (repositories centralizados).
+
+### G5
+- Route groups `(dashboard)` / `(public)`.
+- AppShell centralizado no layout do dashboard.
+- Ajustes de imports e revalidações.
+
+### G6
+- RPC `create_internal_appointment` com lock (`pg_advisory_xact_lock`).
+- `create_public_appointment` atualizado com lock.
+- Fluxo interno usa slots unificados e RPC.
+
+### G7
+- `/caixa` lê `transactions` como fonte da verdade.
+- Reconciliação com appointments concluídos e alertas de divergência.
+- Transação criada ao finalizar atendimento (admin e rápido).
+
+### G8
+- Tabelas `notification_jobs` + `notification_templates`.
+- Jobs criados em criação/cancelamento/lembrete de agendamento.
 
 ---
 
-## 4) Repos separados para evitar conflito Windows/WSL
+## 3) Estado final dos comandos
 
-### Windows
-- Repo principal: `C:\Users\renat\projetos_de_dev\estudio-corpo-alma-humanizado`
+Executados no final do G8:
 
-### WSL
-- Clone dedicado: `~/repos/estudio-corpo-alma-humanizado-wsl`
-- Sincronizado a partir do repo Windows via rsync (sem `node_modules/.git/.turbo`).
-
----
-
-## 5) Saida resumida (WSL)
-
-### WSL – install
-- `pnpm install` (clone WSL) => OK
-
-### WSL – lint
-- `pnpm lint` => OK
-
-### WSL – check-types
-- `pnpm check-types` => OK
-
-### WSL – build
-- `pnpm build` => OK
-- Next build: sucesso em 16.1.6 (Turbopack)
+- `pnpm lint` ✅
+- `pnpm check-types` ✅
+- `pnpm build` ✅ (warning: erro de metadata em symlink do cache turbopack)
 
 ---
 
-## 6) Saida resumida (Windows)
+## 4) DB Changes (migrations + types)
 
-**Observacao:** PowerShell nao encontrou `node`/`nvm` no PATH. Para execucao Windows, comandos foram rodados via `cmd.exe`.
+Migrations criadas/aplicadas (ordem):
 
-### Windows – install
-- `pnpm install` => OK (node_modules Windows recriado)
+1. `20260130010000_add_service_id_to_appointments.sql`
+2. `20260130020000_align_tenant_id_uuid.sql`
+3. `20260130030000_normalize_appointment_status.sql`
+4. `20260130040000_indexes_core.sql`
+5. `20260130050000_rls_policies_core.sql`
+6. `20260130080000_internal_appointment_locking.sql`
+7. `20260130090000_notifications_structure.sql`
 
-### Windows – lint
-- `pnpm lint` => OK
+Backfills e constraints:
 
-### Windows – check-types
-- `pnpm check-types` => OK
+- `done → completed`, `canceled → canceled_by_studio`, `scheduled → pending`.
+- CHECK constraint para status canônico.
+- Índices por tenant em appointments/clients/services/blocks/transactions.
 
-### Windows – build
-- `pnpm build` => OK
-- Next build: sucesso em 16.1.6 (Turbopack)
+Types:
 
----
-
-## 7) Checklist final
-- [OK] PNPM-only (sem npm/yarn/bun lockfiles)
-- [OK] Node 24.13.0 no WSL
-- [OK] Node 24.13.0 no Windows
-- [OK] Next atualizado (16.1.6)
-- [OK] Dev com Turbopack (`next dev --turbo`)
-- [OK] Lint verde (WSL + Windows)
-- [OK] Check-types verde (WSL + Windows)
-- [OK] Build verde (WSL + Windows)
+- `apps/web/lib/supabase/types.ts` regenerado após G6 e G8 (via `pnpm supabase:types`).
 
 ---
 
-## 8) Observacoes importantes
-- Repositorio em `C:\...` e WSL usam `node_modules` diferentes. Clones separados resolvem conflitos de binarios nativos.
-- Se quiser, posso ajustar o PATH do PowerShell para reconhecer `nvm`/`node` sem CMD.
+## 5) RLS/RPC
+
+Policies:
+
+- Admin por tenant (service role) em `services`, `settings`, `availability_blocks`, `transactions`, `clients`, `appointments`.
+- Público: leitura mínima (services/business_hours) + escrita via RPC.
+
+RPCs:
+
+- `create_public_appointment(tenant_slug, service_id, start_time, client_name, client_phone, is_home_visit)`  
+  - valida tenant/service  
+  - aplica buffers  
+  - **lock** `pg_advisory_xact_lock`  
+  - bloqueia colisões/blocks  
+  - grava appointment e retorna ID
+
+- `create_internal_appointment(p_tenant_id, service_id, start_time, client_name, client_phone, is_home_visit)`  
+  - mesma regra de buffers  
+  - **lock** `pg_advisory_xact_lock`  
+  - grava appointment com `total_duration_minutes`
+
+---
+
+## 6) Modularização
+
+Estrutura final:
+
+```
+apps/web/src/modules/
+  appointments/
+    actions.ts
+    availability.ts
+    repository.ts
+  clients/
+    actions.ts
+    repository.ts
+  services/
+    actions.ts
+    repository.ts
+  finance/
+    repository.ts
+  settings/
+    repository.ts
+  notifications/
+    repository.ts
+```
+
+Regra aplicada:
+
+- /app = composição (sem `supabase.from` direto)
+- Supabase apenas via repositories
+- Actions centralizadas e validadas com Zod
+
+---
+
+## 7) Agendamento
+
+- Cálculo de slots unificado em `src/modules/appointments/availability.ts`.
+- Fluxo interno utiliza slots unificados e RPC com lock.
+- Double booking mitigado via `pg_advisory_xact_lock`.
+- Datas serializadas em UTC (`toISOString()`).
+
+---
+
+## 8) Financeiro
+
+- Ledger (`transactions`) como fonte da verdade no `/caixa`.
+- Reconciliação automática com appointments concluídos.
+- Finalização gera transação (admin e rápida).
+
+---
+
+## 9) Pendências
+
+1. **Warning no build**:  
+   - Mensagem: *Invalid file path: IO Error failed to query metadata of symlink ... .next/dev/cache/turbopack*  
+   - Impacto: baixo (cache dev).  
+   - Próximo passo: limpar `.next` se persistir, ou ajustar ignore de symlinks no ambiente.
+
+2. **Templates de notificação vazios**:  
+   - Estrutura criada, mas templates não seedados.  
+   - Próximo passo: criar seed com templates base (confirm/cancel/reminder).
+
+---
+
+## 10) Checklist “Enterprise Ready”
+
+- [x] G0: ambiente reprodutível + CI verde
+- [x] G1: P0 (observacoes/status) corrigidos
+- [x] G2A: `service_id` + types regenerados
+- [x] G2B: tenant_id UUID+FK + types regenerados
+- [x] G2C: status constraint + sem compat `done`
+- [x] G2D: índices core
+- [x] G2E: RLS completo + fluxo público via RPC
+- [x] G3: Zod + AppError + sem falhas silenciosas
+- [x] G4: modularização repository/usecases/actions
+- [x] G5: layouts/UI sem duplicação
+- [x] G6: agendamento robusto (slots + lock)
+- [x] G7: caixa ledger (transactions)
+- [x] G8: notificações (estrutura)

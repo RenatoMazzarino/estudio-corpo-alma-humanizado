@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { format, addDays, isSameDay, addMinutes } from "date-fns";
+import { useRef, useState } from "react";
+import { format, isSameDay, addMinutes, startOfMonth, endOfMonth, eachDayOfInterval, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Coffee, Hospital, Car, CheckCircle, Plus } from "lucide-react"; 
-import { ShiftManager } from "./shift-manager"; 
-import { AppointmentDetailsModal, AppointmentDetails } from "./appointment-details-modal";
+import { Coffee, Car, CheckCircle, Plus, Calendar, X, ChevronLeft, ChevronRight } from "lucide-react"; 
 import { useRouter } from "next/navigation";
 
 interface AppointmentClient {
@@ -43,12 +41,21 @@ interface MobileAgendaProps {
 
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showShiftManager, setShowShiftManager] = useState(false); 
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+  const [fabOpen, setFabOpen] = useState(false);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef<{ startX: number; scrollLeft: number; dragging: boolean }>({
+    startX: 0,
+    scrollLeft: 0,
+    dragging: false,
+  });
   
   const router = useRouter();
 
-  const days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
+  const days = eachDayOfInterval({
+    start: startOfMonth(currentMonth),
+    end: endOfMonth(currentMonth),
+  });
 
   const dailyAppointments = appointments.filter((appt) => 
     isSameDay(new Date(appt.start_time), selectedDate)
@@ -75,59 +82,104 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
   return (
-    <div className="bg-stone-50 min-h-[600px] flex flex-col">
+    <div className="bg-stone-50 min-h-150 flex flex-col">
       
       {/* 1. Header Fixo com Seletor de Dias */}
-      <div className="bg-white px-4 py-4 shadow-sm border-b border-stone-100 z-10 transition-all duration-300">
+        <div className="bg-white px-4 py-4 shadow-sm border-b border-stone-100 z-10 transition-all duration-300">
          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl font-bold text-studio-green font-serif">Agenda</h1>
+            <h1 className="text-xl font-bold text-studio-green">Agenda</h1>
             
             <div className="flex items-center gap-2">
-                <button 
-                    onClick={() => setShowShiftManager(!showShiftManager)}
-                    className={`p-2 rounded-full transition-colors ${showShiftManager ? 'bg-studio-green text-white' : 'bg-studio-green/10 text-studio-green'}`}
-                >
-                    <Hospital size={20} />
-                </button>
-                
                 <div className="w-8 h-8 bg-studio-green/10 rounded-full flex items-center justify-center text-xs font-bold text-studio-green">
                     EC
                 </div>
             </div>
          </div>
 
-        {/* Gerenciador de Plantões (Expandable) */}
-        {showShiftManager && (
-            <div className="mb-4 animate-in slide-in-from-top-2 fade-in">
-                <ShiftManager />
-            </div>
-        )}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+            <Calendar size={14} className="text-studio-green" />
+            <span className="capitalize">{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}
+              className="w-8 h-8 rounded-full bg-stone-100 text-gray-500 flex items-center justify-center hover:bg-stone-200"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date();
+                setCurrentMonth(startOfMonth(today));
+                setSelectedDate(today);
+              }}
+              className="text-xs font-bold text-studio-green bg-green-50 px-2 py-1 rounded-lg hover:bg-green-100"
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              className="w-8 h-8 rounded-full bg-stone-100 text-gray-500 flex items-center justify-center hover:bg-stone-200"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
 
         {/* Strip Calendar */}
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-            {days.map((day) => {
-                const isSelected = isSameDay(day, selectedDate);
-                return (
-                    <button
-                        key={day.toISOString()}
-                        onClick={() => setSelectedDate(day)}
-                        className={`
-                            flex flex-col items-center justify-center min-w-14 py-3 rounded-xl transition-all border
-                            ${isSelected 
-                                ? "bg-studio-green text-white shadow-lg shadow-green-100 scale-105 border-studio-green" 
-                                : "bg-white text-gray-400 border-stone-100 hover:border-studio-green/30"
-                            }
-                        `}
-                    >
-                        <span className="text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                            {format(day, "EEE", { locale: ptBR }).replace(".", "")}
-                        </span>
-                        <span className="text-xl font-bold leading-none">
-                            {format(day, "dd")}
-                        </span>
-                    </button>
-                )
-            })}
+        <div className="bg-stone-50 border border-stone-100 rounded-2xl px-2 py-3">
+          <div
+            ref={stripRef}
+            className="overflow-x-scroll no-scrollbar pb-1 w-full touch-pan-x cursor-grab active:cursor-grabbing"
+            onPointerDown={(event) => {
+              if (!stripRef.current) return;
+              const target = event.target as HTMLElement;
+              if (target.closest("button")) return;
+              dragState.current.dragging = true;
+              dragState.current.startX = event.clientX;
+              dragState.current.scrollLeft = stripRef.current.scrollLeft;
+              stripRef.current.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!stripRef.current || !dragState.current.dragging) return;
+              const diff = event.clientX - dragState.current.startX;
+              stripRef.current.scrollLeft = dragState.current.scrollLeft - diff;
+            }}
+            onPointerUp={(event) => {
+              dragState.current.dragging = false;
+              stripRef.current?.releasePointerCapture(event.pointerId);
+            }}
+            onPointerLeave={() => {
+              dragState.current.dragging = false;
+            }}
+          >
+            <div className="flex flex-nowrap gap-3 min-w-max snap-x snap-mandatory">
+              {days.map((day) => {
+                  const isSelected = isSameDay(day, selectedDate);
+                  return (
+                      <button
+                          key={day.toISOString()}
+                          onClick={() => setSelectedDate(day)}
+                          className={`
+                              snap-center flex flex-col items-center justify-center min-w-14 py-3 rounded-xl transition-all border
+                              ${isSelected 
+                                  ? "bg-studio-green text-white shadow-lg shadow-green-100 scale-105 border-studio-green" 
+                                  : "bg-white text-gray-500 border-stone-100 hover:border-studio-green/30"
+                              }
+                          `}
+                      >
+                          <span className="text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                              {format(day, "EEE", { locale: ptBR }).replace(".", "")}
+                          </span>
+                          <span className="text-xl font-bold leading-none">
+                              {format(day, "dd")}
+                          </span>
+                      </button>
+                  )
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -178,7 +230,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 return (
                     <button 
                         key={appt.id} 
-                        onClick={() => !isBlock && setSelectedAppointment(appt as AppointmentDetails)}
+                        onClick={() => !isBlock && router.push(`/atendimento/${appt.id}`)}
                         disabled={isBlock}
                         className={`w-full text-left rounded-2xl p-4 shadow-sm border ${containerClass} flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform`}
                     >
@@ -220,19 +272,38 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
       </div>
 
-      {/* FAB - Novo Agendamento */}
-      <button className="absolute bottom-6 right-6 w-14 h-14 bg-studio-green text-white rounded-full shadow-lg shadow-green-200 flex items-center justify-center hover:bg-studio-green-dark transition-transform active:scale-95 z-40">
-            <Plus size={28} />
-      </button>
-      
-      {/* Modal - Renderizado Condicionalmente */}
-      {selectedAppointment && (
-        <AppointmentDetailsModal 
-            appointment={selectedAppointment} 
-            onClose={() => setSelectedAppointment(null)}
-            onUpdate={() => router.refresh()}
-        />
-      )}
+      <div className="absolute bottom-24 right-6 z-40 flex flex-col items-end gap-3">
+        {fabOpen && (
+          <div className="flex flex-col items-end gap-2 animate-in fade-in zoom-in-95">
+            <button
+              onClick={() => {
+                setFabOpen(false);
+                router.push("/bloqueios");
+              }}
+              className="w-12 h-12 rounded-full bg-white border border-stone-200 shadow-lg flex items-center justify-center text-studio-green"
+              aria-label="Fazer bloqueio"
+            >
+              <Calendar size={18} />
+            </button>
+            <button
+              onClick={() => {
+                setFabOpen(false);
+                router.push("/novo");
+              }}
+              className="w-12 h-12 rounded-full bg-white border border-stone-200 shadow-lg flex items-center justify-center text-studio-green"
+              aria-label="Criar agendamento"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => setFabOpen((prev) => !prev)}
+          className="w-14 h-14 bg-studio-green text-white rounded-full shadow-lg shadow-green-200 flex items-center justify-center hover:bg-studio-green-dark transition-transform active:scale-95"
+        >
+          {fabOpen ? <X size={22} /> : <Plus size={28} />}
+        </button>
+      </div>
     </div>
   );
 }

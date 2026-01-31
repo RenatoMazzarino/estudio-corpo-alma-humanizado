@@ -1,0 +1,16 @@
+"use server";
+
+import { createShiftBlocks as createShiftBlocksImpl, clearMonthBlocks as clearMonthBlocksImpl } from "../../../../src/modules/appointments/actions";
+import type { ActionResult } from "../../../../src/shared/errors/result";
+
+export async function createShiftBlocks(
+  type: "even" | "odd",
+  monthStr: string,
+  force?: boolean
+): Promise<ActionResult<{ count: number; requiresConfirm?: boolean; conflicts?: { blocks: number; appointments: number } }>> {
+  return createShiftBlocksImpl(type, monthStr, force);
+}
+
+export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{ month: string }>> {
+  return clearMonthBlocksImpl(monthStr);
+}

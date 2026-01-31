@@ -53,6 +53,9 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -1948,6 +1951,9 @@ packages:
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
 
@@ -3923,3 +3929,5 @@ snapshots:
   yallist@5.0.0: {}
 
   yocto-queue@0.1.0: {}
+
+  zod@4.3.6: {}

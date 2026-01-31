@@ -24,7 +24,7 @@ interface AppointmentCardProps {
 export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [elapsedTime, setElapsedTime] = useState("00:00");
   const isOngoing = appointment.status === "in_progress";
-  const isDone = appointment.status === "done";
+  const isDone = appointment.status === "completed";
 
   // Formata o horário (Início - Fim)
   const startTime = format(new Date(appointment.start_time), "HH:mm");
@@ -102,9 +102,12 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
              <div className="flex items-center gap-2">
                {/* Botão de Cancelar (Lixeira) */}
                <button 
-                  onClick={() => {
+                  onClick={async () => {
                     if(confirm("Tem certeza que deseja cancelar este agendamento?")) {
-                      cancelAppointment(appointment.id);
+                      const result = await cancelAppointment(appointment.id);
+                      if (!result.ok) {
+                        alert(result.error.message);
+                      }
                     }
                   }}
                   className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition"
@@ -143,14 +146,24 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
           {isOngoing ? (
             <button 
-              onClick={() => finishAppointment(appointment.id)}
+              onClick={async () => {
+                const result = await finishAppointment(appointment.id);
+                if (!result.ok) {
+                  alert(result.error.message);
+                }
+              }}
               className="bg-red-50 text-red-600 border border-red-100 text-xs font-bold px-6 py-2.5 rounded-full hover:bg-red-100 transition flex items-center gap-2"
             >
               <Square size={10} fill="currentColor" /> Finalizar
             </button>
           ) : (
             <button 
-              onClick={() => startAppointment(appointment.id)}
+              onClick={async () => {
+                const result = await startAppointment(appointment.id);
+                if (!result.ok) {
+                  alert(result.error.message);
+                }
+              }}
               className="bg-studio-text text-white text-xs font-medium px-6 py-2.5 rounded-full hover:bg-black transition shadow-lg shadow-gray-200 flex items-center gap-2"
             >
               <Play size={10} fill="currentColor" /> Iniciar
