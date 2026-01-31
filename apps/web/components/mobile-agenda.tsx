@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { format, isSameDay, addMinutes, startOfMonth, endOfMonth, eachDayOfInterval, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Coffee, Car, CheckCircle, Plus, Calendar, X, ChevronLeft, ChevronRight } from "lucide-react"; 
@@ -43,6 +43,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [fabOpen, setFabOpen] = useState(false);
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef<{ startX: number; scrollLeft: number; dragging: boolean }>({
+    startX: 0,
+    scrollLeft: 0,
+    dragging: false,
+  });
   
   const router = useRouter();
 
@@ -123,7 +129,29 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         {/* Strip Calendar */}
         <div className="bg-stone-50 border border-stone-100 rounded-2xl px-2 py-3">
-          <div className="overflow-x-scroll no-scrollbar pb-1 w-full touch-pan-x">
+          <div
+            ref={stripRef}
+            className="overflow-x-scroll no-scrollbar pb-1 w-full touch-pan-x cursor-grab active:cursor-grabbing"
+            onPointerDown={(event) => {
+              if (!stripRef.current) return;
+              dragState.current.dragging = true;
+              dragState.current.startX = event.clientX;
+              dragState.current.scrollLeft = stripRef.current.scrollLeft;
+              stripRef.current.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!stripRef.current || !dragState.current.dragging) return;
+              const diff = event.clientX - dragState.current.startX;
+              stripRef.current.scrollLeft = dragState.current.scrollLeft - diff;
+            }}
+            onPointerUp={(event) => {
+              dragState.current.dragging = false;
+              stripRef.current?.releasePointerCapture(event.pointerId);
+            }}
+            onPointerLeave={() => {
+              dragState.current.dragging = false;
+            }}
+          >
             <div className="flex flex-nowrap gap-3 min-w-max snap-x snap-mandatory">
               {days.map((day) => {
                   const isSelected = isSameDay(day, selectedDate);
