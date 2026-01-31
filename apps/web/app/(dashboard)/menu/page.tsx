@@ -21,16 +21,16 @@ export default function MenuPage() {
           <ChevronRight size={20} className="text-gray-300 group-hover:text-purple-600 transition-colors" />
         </Link>
 
-        {/* Placeholder para Configurações (Futuro) */}
-        <div className="flex items-center gap-4 bg-gray-50 p-5 rounded-3xl border border-stone-100 opacity-60 cursor-not-allowed">
-            <div className="w-12 h-12 bg-gray-200 text-gray-400 rounded-2xl flex items-center justify-center">
+        <Link href="/configuracoes" className="flex items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-stone-100 hover:shadow-md transition-all group active:scale-95">
+            <div className="w-12 h-12 bg-stone-100 text-stone-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Settings size={24} />
             </div>
             <div className="flex-1">
-                <h2 className="font-bold text-gray-400 text-lg">Configurações</h2>
-                <p className="text-xs text-gray-400 font-medium">Em breve</p>
+                <h2 className="font-bold text-gray-800 text-lg">Configurações</h2>
+                <p className="text-xs text-gray-500 font-medium">Horários e preferências</p>
             </div>
-        </div>
+            <ChevronRight size={20} className="text-gray-300 group-hover:text-studio-green transition-colors" />
+        </Link>
 
       </div>
     </div>

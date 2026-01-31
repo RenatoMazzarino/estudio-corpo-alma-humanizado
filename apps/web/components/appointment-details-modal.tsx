@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -9,6 +9,9 @@ import {
     MapPin, Clock, FileText, User
 } from "lucide-react";
 import { finishAppointment } from "../app/(dashboard)/admin/atendimento/actions";
+import { startAppointment as startAppointmentAction } from "../app/actions";
+import Link from "next/link";
+import { useActiveSession } from "../src/shared/timer/useActiveSession";
 
 // Tipagem deve vir de um arquivo compartilhado idealmente
 export interface AppointmentDetails {
@@ -16,9 +19,11 @@ export interface AppointmentDetails {
     service_name: string;
     start_time: string;
     finished_at: string | null;
-    status: string;
+    status: string | null;
     price: number | null;
-    is_home_visit?: boolean;
+    is_home_visit?: boolean | null;
+    total_duration_minutes?: number | null;
+    actual_duration_minutes?: number | null;
     clients: {
         id: string; // Importante para fetch de notas se precisássemos aqui
         name: string;
@@ -31,67 +36,55 @@ export interface AppointmentDetails {
 
 interface Props {
     appointment: AppointmentDetails;
-    onClose: () => void;
+    onClose?: () => void;
     onUpdate: () => void;
+    variant?: "modal" | "page";
 }
 
 type Tab = "INFO" | "EVOLUTION" | "CHECKOUT";
 type PaymentMethod = 'pix' | 'cash' | 'card';
 
-export function AppointmentDetailsModal({ appointment, onClose, onUpdate }: Props) {
+export function AppointmentDetailsModal({ appointment, onClose, onUpdate, variant = "modal" }: Props) {
     const [activeTab, setActiveTab] = useState<Tab>("INFO");
     const [notes, setNotes] = useState("");
     const [finalAmount, setFinalAmount] = useState<string>(String(appointment.price || "0.00"));
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // Timer Logic
-    const [isRunning, setIsRunning] = useState(false);
-    const [elapsedSeconds, setElapsedSeconds] = useState(0);
-    const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
-    // Formata o cronômetro HH:MM:SS
+    const { session, remainingSeconds, progress, isPaused, startSession, togglePause, stopSession } = useActiveSession();
+    const isActiveSession = session?.appointmentId === appointment.id;
+    const totalSeconds = Math.max(1, (appointment.total_duration_minutes || 30) * 60);
+    const displayRemaining = isActiveSession ? remainingSeconds : totalSeconds;
+
     const formatTime = (totalSeconds: number) => {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const prefix = hours > 0 ? `${hours.toString().padStart(2, "0")}:` : "";
+        return `${prefix}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
-
-    const toggleTimer = () => {
-        if (isRunning) {
-            if (timerInterval.current) clearInterval(timerInterval.current);
-            setIsRunning(false);
-        } else {
-            setIsRunning(true);
-            timerInterval.current = setInterval(() => {
-                setElapsedSeconds(prev => prev + 1);
-            }, 1000);
-        }
-    };
-
-    // Cleanup timer
-    useEffect(() => {
-        return () => {
-            if (timerInterval.current) clearInterval(timerInterval.current);
-        };
-    }, []);
 
     const handleFinish = async () => {
         if (!paymentMethod) return;
 
         setIsSubmitting(true);
         try {
+            const actualDurationMinutes = isActiveSession
+                ? Math.max(0, Math.round((totalSeconds - remainingSeconds) / 60))
+                : null;
+
             const result = await finishAppointment({
                 appointmentId: appointment.id,
                 paymentMethod,
                 finalAmount: Number(finalAmount),
-                notes
+                notes,
+                actualDurationMinutes,
             });
 
             if (result.ok) {
                 onUpdate(); // Recarrega tela pai
-                onClose();
+                stopSession();
+                if (onClose) onClose();
             } else {
                 alert("Erro ao finalizar: " + result.error.message);
             }
@@ -103,23 +96,38 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate }: Prop
         }
     };
 
+    const containerClasses =
+        "bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative z-10 animate-in zoom-in-95 duration-200";
+
+    const isModal = variant === "modal";
+
     return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative z-10 animate-in zoom-in-95 duration-200">
+        <div className={isModal ? "absolute inset-0 z-50 flex items-center justify-center p-4" : "w-full"}>
+            {isModal && onClose && (
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
+            )}
+            <div className={containerClasses}>
                 
                 {/* Header */}
                 <div className="bg-studio-green p-6 text-white relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
-                        <X size={20} />
-                    </button>
+                    {isModal && onClose && (
+                      <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
+                          <X size={20} />
+                      </button>
+                    )}
                     
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold backdrop-blur-md border border-white/10">
                             {appointment.clients?.initials || <User />}
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold font-serif">{appointment.clients?.name}</h2>
+                            {appointment.clients?.id ? (
+                              <Link href={`/clientes/${appointment.clients.id}`} className="text-xl font-bold font-serif hover:underline">
+                                {appointment.clients?.name}
+                              </Link>
+                            ) : (
+                              <h2 className="text-xl font-bold font-serif">{appointment.clients?.name}</h2>
+                            )}
                             <p className="text-green-100 text-sm opacity-90 flex items-center gap-1">
                                 {appointment.service_name}
                                 {appointment.is_home_visit && (
@@ -133,15 +141,35 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate }: Prop
                     <div className="bg-green-900/30 rounded-xl p-3 flex items-center justify-between border border-white/10">
                         <div className="flex items-center gap-3">
                             <Clock size={18} className="text-green-200" />
-                            <span className="font-mono text-xl font-bold tracking-widest">{formatTime(elapsedSeconds)}</span>
+                            <span className="font-mono text-xl font-bold tracking-widest">{formatTime(displayRemaining)}</span>
                         </div>
                         <button 
-                            onClick={toggleTimer}
-                            className={`p-2 rounded-full shadow-lg transition-transform active:scale-95 flex items-center gap-2 px-4 ${isRunning ? 'bg-orange-500 text-white' : 'bg-white text-studio-green'}`}
+                            onClick={async () => {
+                                if (!isActiveSession) {
+                                    const result = await startAppointmentAction(appointment.id);
+                                    if (!result.ok) {
+                                      alert("Erro ao iniciar: " + result.error.message);
+                                      return;
+                                    }
+                                    startSession({
+                                      appointmentId: appointment.id,
+                                      clientName: appointment.clients?.name || "Cliente",
+                                      serviceName: appointment.service_name,
+                                      totalDurationMinutes: appointment.total_duration_minutes || 30,
+                                    });
+                                    return;
+                                }
+                                togglePause();
+                            }}
+                            className={`p-2 rounded-full shadow-lg transition-transform active:scale-95 flex items-center gap-2 px-4 ${isActiveSession && !isPaused ? 'bg-orange-500 text-white' : 'bg-white text-studio-green'}`}
                         >
-                            {isRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-                            <span className="text-xs font-bold uppercase">{isRunning ? 'Pausar' : 'Iniciar'}</span>
+                            {isActiveSession && !isPaused ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                            <span className="text-xs font-bold uppercase">{isActiveSession && !isPaused ? 'Pausar' : 'Iniciar'}</span>
                         </button>
+                    </div>
+
+                    <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className="h-full bg-white/80 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
                     </div>
                 </div>
 
@@ -183,6 +211,16 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate }: Prop
                                 </div>
                             </div>
 
+                            {appointment.actual_duration_minutes !== null && appointment.actual_duration_minutes !== undefined && (
+                                <div className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm">
+                                    <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Tempo do Atendimento</label>
+                                    <div className="flex items-center gap-2 text-gray-800">
+                                        <Clock size={16} className="text-studio-green" />
+                                        <span className="font-medium">{appointment.actual_duration_minutes} min</span>
+                                    </div>
+                                </div>
+                            )}
+
                             {appointment.clients?.phone && (
                                 <div className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm">
                                     <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Contato</label>
@@ -192,6 +230,18 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate }: Prop
                                     </div>
                                 </div>
                             )}
+
+                            <div className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm">
+                                <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Música</label>
+                                <a
+                                  href="https://open.spotify.com"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-2 text-sm font-bold text-studio-green hover:underline"
+                                >
+                                  Abrir Spotify
+                                </a>
+                            </div>
 
                             {appointment.is_home_visit && (
                                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 shadow-sm">

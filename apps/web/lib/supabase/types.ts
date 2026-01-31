@@ -36,6 +36,7 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          actual_duration_minutes: number | null
           client_id: string | null
           created_at: string
           finished_at: string | null
@@ -52,6 +53,7 @@ export type Database = {
           total_duration_minutes: number | null
         }
         Insert: {
+          actual_duration_minutes?: number | null
           client_id?: string | null
           created_at?: string
           finished_at?: string | null
@@ -68,6 +70,7 @@ export type Database = {
           total_duration_minutes?: number | null
         }
         Update: {
+          actual_duration_minutes?: number | null
           client_id?: string | null
           created_at?: string
           finished_at?: string | null
@@ -663,4 +666,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

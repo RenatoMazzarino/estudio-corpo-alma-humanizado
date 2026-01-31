@@ -14,6 +14,15 @@ export const cancelAppointmentSchema = z.object({
 
 export const createInternalAppointmentSchema = z.object({
   clientName: z.string().min(1, "Nome é obrigatório"),
+  clientPhone: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((value) => {
+      if (!value) return true;
+      const digits = value.replace(/\D/g, "");
+      return digits.length === 10 || digits.length === 11;
+    }, "Telefone inválido (com DDD)"),
   serviceId: z.string().uuid(),
   date: z.string().min(10),
   time: z.string().min(4),
@@ -49,4 +58,5 @@ export const finishAdminAppointmentSchema = z.object({
   paymentMethod: z.enum(["pix", "cash", "card"]),
   finalAmount: z.number().nonnegative(),
   notes: z.string().optional().default(""),
+  actualDurationMinutes: z.number().int().nonnegative().optional().nullable(),
 });

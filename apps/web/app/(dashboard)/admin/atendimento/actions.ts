@@ -8,6 +8,7 @@ interface FinishAppointmentParams {
   paymentMethod: "pix" | "cash" | "card";
   finalAmount: number;
   notes: string;
+  actualDurationMinutes?: number | null;
 }
 
 export async function finishAppointment(

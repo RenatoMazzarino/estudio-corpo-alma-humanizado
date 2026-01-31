@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G18)
+Escopo: polimento pós-execução (G9–G20)
 
 ---
 
@@ -82,6 +82,17 @@ Escopo: polimento pós-execução (G9–G18)
 
 ### G19 — Feedback de validação sem tooltip nativo
 - Removido `pattern` para evitar tooltip de formato e substituído por erro inline e disable do submit.
+
+### G20 — Agenda, plantões e atendimento
+- Agendamento interno agora sugere clientes existentes e preenche telefone (evita duplicados).
+- Regex de mês para plantões corrigida (validação de escala).
+- Botão flutuante agora abre menu com “Criar agendamento” e “Fazer bloqueio”.
+- Tela de bloqueios adicionada (`/bloqueios`) com gerenciador de plantões.
+- Cards de agenda agora abrem tela de atendimento (`/atendimento/[id]`), sem modal.
+- Barra global de cronômetro ativo com progresso e pause persistente.
+- Tela de atendimento com cronômetro regressivo e botão Spotify.
+- Configurações habilitadas com horários de funcionamento e buffers.
+- Migration adiciona `actual_duration_minutes` em appointments.
 
 ---
 

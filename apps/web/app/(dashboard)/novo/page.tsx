@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppointmentForm } from "./appointment-form";
 import { listServices } from "../../../src/modules/services/repository";
+import { listClients } from "../../../src/modules/clients/repository";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -29,6 +30,7 @@ export default async function NewAppointment(props: PageProps) {
 
   // Buscar serviços ativos do Tenant
   const { data: services } = await listServices(FIXED_TENANT_ID);
+  const { data: clients } = await listClients(FIXED_TENANT_ID);
 
   return (
     <>
@@ -41,7 +43,7 @@ export default async function NewAppointment(props: PageProps) {
       </div>
 
       {/* Formulário Inteligente (Client Component) */}
-      <AppointmentForm services={services || []} safeDate={safeDate} />
+      <AppointmentForm services={services || []} clients={clients || []} safeDate={safeDate} />
     </>
   );
 }

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Monitor, Smartphone, Menu, Calendar, Wallet, Users } from "lucide-react";
+import { ActiveSessionBar } from "./active-session-bar";
 
 interface AppShellProps {
   children: ReactNode;
@@ -63,6 +64,8 @@ export function AppShell({ children }: AppShellProps) {
         <main className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 scroll-smooth">
           {children}
         </main>
+
+        <ActiveSessionBar />
 
         {/* Menu Inferior Interativo */}
         <nav className="bg-white border-t border-stone-100 h-20 absolute bottom-0 w-full flex justify-around items-center pb-2 z-30 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">

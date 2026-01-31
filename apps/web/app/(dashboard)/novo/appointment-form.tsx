@@ -1,7 +1,7 @@
 "use client";
 
-import { Calendar, Clock, User, Sparkles, Banknote } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Calendar, Clock, User, Sparkles, Banknote, Phone } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { createAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
@@ -19,16 +19,44 @@ interface Service {
 
 interface AppointmentFormProps {
   services: Service[];
+  clients: { id: string; name: string; phone: string | null }[];
   safeDate: string;
 }
 
-export function AppointmentForm({ services, safeDate }: AppointmentFormProps) {
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
+export function AppointmentForm({ services, clients, safeDate }: AppointmentFormProps) {
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(safeDate);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+
+  const filteredClients = useMemo(() => {
+    if (!clientName.trim()) return [];
+    const lower = clientName.toLowerCase();
+    return clients
+      .filter((client) => client.name.toLowerCase().includes(lower))
+      .slice(0, 6);
+  }, [clientName, clients]);
+
+  const handleSelectClient = (name: string, phone: string | null) => {
+    setClientName(name);
+    setClientPhone(phone ? formatPhone(phone) : "");
+  };
 
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const serviceId = e.target.value;
@@ -100,10 +128,44 @@ export function AppointmentForm({ services, safeDate }: AppointmentFormProps) {
               name="clientName"
               type="text" 
               placeholder="Ex: Fernanda Silva" 
+              value={clientName}
+              onChange={(event) => setClientName(event.target.value)}
               className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
               required
             />
           </div>
+          {filteredClients.length > 0 && (
+            <div className="bg-white border border-stone-100 rounded-xl shadow-sm p-2 space-y-1">
+              {filteredClients.map((client) => (
+                <button
+                  type="button"
+                  key={client.id}
+                  onClick={() => handleSelectClient(client.name, client.phone)}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between"
+                >
+                  <span className="font-medium">{client.name}</span>
+                  {client.phone && <span className="text-xs text-gray-400">{client.phone}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Telefone (opcional)</label>
+          <div className="relative">
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              name="clientPhone"
+              type="tel"
+              placeholder="(00) 00000-0000"
+              value={clientPhone}
+              onChange={(event) => setClientPhone(formatPhone(event.target.value))}
+              inputMode="numeric"
+              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 ml-1">DDD obrigatório para vincular ao cliente existente.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

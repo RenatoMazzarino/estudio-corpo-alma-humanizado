@@ -122,12 +122,14 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
 
 export async function createAppointment(formData: FormData): Promise<void> {
   const clientName = formData.get("clientName") as string | null;
+  const clientPhone = (formData.get("clientPhone") as string | null) || null;
   const serviceId = formData.get("serviceId") as string | null;
   const date = formData.get("date") as string | null;
   const time = formData.get("time") as string | null;
 
   const parsed = createInternalAppointmentSchema.safeParse({
     clientName,
+    clientPhone,
     serviceId,
     date,
     time,
@@ -144,6 +146,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     service_id: parsed.data.serviceId,
     p_start_time: startDateTime.toISOString(),
     client_name: parsed.data.clientName,
+    client_phone: parsed.data.clientPhone ?? undefined,
     is_home_visit: false,
   });
 
@@ -258,6 +261,7 @@ interface FinishAppointmentParams {
   paymentMethod: "pix" | "cash" | "card";
   finalAmount: number;
   notes: string;
+  actualDurationMinutes?: number | null;
 }
 
 export async function finishAdminAppointment(
@@ -271,6 +275,7 @@ export async function finishAdminAppointment(
   const { data: updatedAppointment, error: appError } = await updateAppointmentReturning<{
     client_id: string | null;
     service_name: string | null;
+    started_at: string | null;
   }>(
     FIXED_TENANT_ID,
     parsed.data.appointmentId,
@@ -279,8 +284,9 @@ export async function finishAdminAppointment(
       payment_status: "paid",
       finished_at: new Date().toISOString(),
       price: parsed.data.finalAmount,
+      actual_duration_minutes: parsed.data.actualDurationMinutes ?? undefined,
     },
-    "client_id, service_name"
+    "client_id, service_name, started_at"
   );
 
   const mappedAppError = mapSupabaseError(appError);
@@ -343,7 +349,7 @@ export async function createShiftBlocks(
   const parsed = z
     .object({
       type: z.enum(["even", "odd"]),
-      monthStr: z.string().regex(/^\\d{4}-\\d{2}$/),
+      monthStr: z.string().regex(/^\d{4}-\d{2}$/),
     })
     .safeParse({ type, monthStr });
 
@@ -390,7 +396,7 @@ export async function createShiftBlocks(
 }
 
 export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{ month: string }>> {
-  const parsed = z.object({ monthStr: z.string().regex(/^\\d{4}-\\d{2}$/) }).safeParse({ monthStr });
+  const parsed = z.object({ monthStr: z.string().regex(/^\d{4}-\d{2}$/) }).safeParse({ monthStr });
   if (!parsed.success) {
     return fail(new AppError("Parâmetros inválidos para limpeza de escala", "VALIDATION_ERROR", 400, parsed.error));
   }

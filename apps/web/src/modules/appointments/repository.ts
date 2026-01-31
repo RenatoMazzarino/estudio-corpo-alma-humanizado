@@ -89,6 +89,19 @@ export async function listAvailabilityBlocksInRange(tenantId: string, start: str
     .lte("start_time", end);
 }
 
+export async function getAppointmentById(tenantId: string, id: string) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("appointments")
+    .select(
+      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes, actual_duration_minutes,
+       clients ( id, name, initials, phone, health_tags, endereco_completo )`
+    )
+    .eq("id", id)
+    .eq("tenant_id", tenantId)
+    .single();
+}
+
 export async function insertAvailabilityBlocks(
   payload: Database["public"]["Tables"]["availability_blocks"]["Insert"][]
 ) {
