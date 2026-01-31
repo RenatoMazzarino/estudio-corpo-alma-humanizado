@@ -487,8 +487,8 @@ export type Database = {
           client_phone?: string
           is_home_visit?: boolean
           p_tenant_id: string
+          p_start_time: string
           service_id: string
-          start_time: string
         }
         Returns: string
       }
@@ -497,8 +497,8 @@ export type Database = {
           client_name: string
           client_phone: string
           is_home_visit?: boolean
+          p_start_time: string
           service_id: string
-          start_time: string
           tenant_slug: string
         }
         Returns: string
@@ -635,4 +635,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

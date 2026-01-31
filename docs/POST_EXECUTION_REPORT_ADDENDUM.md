@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G16)
+Escopo: polimento pós-execução (G9–G17)
 
 ---
 
@@ -68,6 +68,13 @@ Escopo: polimento pós-execução (G9–G16)
 - Clientes: `/clientes` agora aguarda `searchParams` para evitar erro de Promise.
 - Perfil de cliente: nova tela estilo “contatos” com ações (ligar/WhatsApp/email) + edição completa.
 
+### G17 — Agendamento e máscaras
+- RPCs de agendamento agora usam `p_start_time` (corrige ambiguidade em `start_time`).
+- Migration: rename de parâmetro em `create_public_appointment` e `create_internal_appointment`.
+- Máscara de WhatsApp no agendamento público + validação com DDD.
+- Reforço de validação de telefone/CPF no cadastro de clientes.
+- Types: ajuste manual dos args das RPCs em `apps/web/lib/supabase/types.ts` (pendente de regen via CLI).
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
@@ -98,6 +105,9 @@ Escopo: polimento pós-execução (G9–G16)
 - `pnpm lint` ✅
 - `pnpm check-types` ✅
 - `pnpm build` ⚠️ (falha local com missing `lightningcss.linux-x64-gnu.node` após instalação parcial; reexecutar após `pnpm install` limpo)
+
+Notas:
+- `supabase` CLI não disponível no ambiente Codex; aplicar migration localmente via `supabase db reset` no Windows.
   - Observação: em uma execução houve `ENOMEM`, resolvido ao reexecutar.
   - Observação (ambiente Linux + Node Windows): `pnpm lint` falhou quando o Turbo tentou baixar binário Linux usando Node Windows; resolvido ao reexecutar em ambiente compatível.
 

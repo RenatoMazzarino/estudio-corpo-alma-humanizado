@@ -331,7 +331,9 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                     type="tel" 
                     placeholder="Seu WhatsApp (Opcional)"
                     value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
+                    onChange={(e) => setClientPhone(formatPhone(e.target.value))}
+                    inputMode="numeric"
+                    pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
                     className="w-full bg-white border-stone-100 border rounded-xl py-4 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
                 />
             </div>
@@ -395,3 +397,14 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
 
   return null;
 }
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 10) {
+      return digits
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
+    return digits
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2");
+  };

@@ -25,7 +25,15 @@ export const publicBookingSchema = z.object({
   date: z.string().min(10),
   time: z.string().min(4),
   clientName: z.string().min(1),
-  clientPhone: z.string().optional().default(""),
+  clientPhone: z
+    .string()
+    .optional()
+    .default("")
+    .refine((value) => {
+      if (!value) return true;
+      const digits = value.replace(/\D/g, "");
+      return digits.length === 10 || digits.length === 11;
+    }, "Telefone inválido (com DDD)"),
   isHomeVisit: z.boolean().optional(),
 });
 

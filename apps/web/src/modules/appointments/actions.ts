@@ -142,7 +142,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const { data: appointmentId, error: appointmentError } = await supabase.rpc("create_internal_appointment", {
     p_tenant_id: FIXED_TENANT_ID,
     service_id: parsed.data.serviceId,
-    start_time: startDateTime.toISOString(),
+    p_start_time: startDateTime.toISOString(),
     client_name: parsed.data.clientName,
     is_home_visit: false,
   });
@@ -203,7 +203,7 @@ export async function submitPublicAppointment(data: {
   const { data: appointmentId, error } = await supabase.rpc("create_public_appointment", {
     tenant_slug: parsed.data.tenantSlug,
     service_id: parsed.data.serviceId,
-    start_time: startDateTime.toISOString(),
+    p_start_time: startDateTime.toISOString(),
     client_name: parsed.data.clientName,
     client_phone: parsed.data.clientPhone,
     is_home_visit: parsed.data.isHomeVisit || false,

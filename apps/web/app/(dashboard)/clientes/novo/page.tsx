@@ -1,3 +1,6 @@
+ "use client";
+
+import { useState } from "react";
 import {
   ChevronLeft,
   User,
@@ -15,7 +18,30 @@ import {
 import Link from "next/link";
 import { createClientAction } from "./actions";
 
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
 export default function NewClientPage() {
+  const [phone, setPhone] = useState("");
+  const [cpf, setCpf] = useState("");
+
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
@@ -51,9 +77,14 @@ export default function NewClientPage() {
                 name="phone"
                 type="tel" 
                 placeholder="(00) 00000-0000"
+                value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                inputMode="numeric"
+                pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
                 className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
                 />
             </div>
+            <p className="text-[11px] text-gray-400 ml-1">DDD obrigatório.</p>
         </div>
 
         {/* Email */}
@@ -92,6 +123,10 @@ export default function NewClientPage() {
                 name="cpf"
                 type="text" 
                 placeholder="000.000.000-00"
+                value={cpf}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
+                inputMode="numeric"
+                pattern="\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
                 className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
                 />
             </div>

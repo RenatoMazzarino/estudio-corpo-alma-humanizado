@@ -20,8 +20,8 @@ export function ClientProfile({ client }: ClientProfileProps) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const phoneDigits = client.phone ? onlyDigits(client.phone) : "";
-  const whatsappLink = phoneDigits ? `https://wa.me/${phoneDigits}` : null;
-  const callLink = phoneDigits ? `tel:${phoneDigits}` : null;
+  const whatsappLink = phoneDigits ? `https://wa.me/55${phoneDigits}` : null;
+  const callLink = phoneDigits ? `tel:+55${phoneDigits}` : null;
 
   return (
     <div className="bg-white p-5 rounded-3xl shadow-sm border border-stone-100 space-y-4">
@@ -135,8 +135,11 @@ export function ClientProfile({ client }: ClientProfileProps) {
               name="phone"
               defaultValue={client.phone ?? ""}
               placeholder="Telefone / WhatsApp"
+              inputMode="numeric"
+              pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
               className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
             />
+            <p className="text-[11px] text-gray-400">DDD obrigatório.</p>
             <input
               name="email"
               defaultValue={client.email ?? ""}
@@ -153,6 +156,8 @@ export function ClientProfile({ client }: ClientProfileProps) {
               name="cpf"
               defaultValue={client.cpf ?? ""}
               placeholder="CPF"
+              inputMode="numeric"
+              pattern="\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
               className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
             />
             <input
