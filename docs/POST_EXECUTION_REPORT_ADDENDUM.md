@@ -30,11 +30,13 @@ Escopo: polimento pós-execução (G9–G13)
 - `package.json` root: scripts usam `pnpm exec turbo` (sem warning de turbo global).
 - `apps/web/package.json`: `dev` usa `next dev ...` (evita erro de `sh` em Windows e usa bin local do `node_modules/.bin`).
 - README atualizado com instruções PowerShell e limpeza de `node_modules/.next` ao alternar ambientes.
+- README: comando de limpeza inclui `packages/*/node_modules` para evitar EPERM no Windows.
 
 ### G11 — TSConfig/JSX
 - Adicionado `tsconfig.json` no root (solution style + `jsx: preserve`).
 - README: nota para usar TS do workspace no VS Code.
 - `.vscode/settings.json` com `typescript.tsdk` para forçar TS do workspace.
+- Ajuste no `tsconfig.json` root para `include/exclude` explícitos (evita “implicit project”).
 
 ### G12 — Higiene e Estrutura
 - SQL solto movido para `docs/sql/`:
