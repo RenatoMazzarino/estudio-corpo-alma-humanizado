@@ -125,6 +125,10 @@ Escopo: polimento pós-execução (G9–G22)
 - Agenda: scroll horizontal dos dias agora suporta arraste (pointer drag).
 - TSConfig: `incremental: true` em `apps/web` e `packages/ui` (resolve erro TS6379).
 
+### G25 — Configurações: horários consistentes
+- Business hours agora ignoram registros com `day_of_week` nulo e garantem 0..6 no carregamento.
+- Após salvar, registros inválidos são removidos para evitar “reverter” domingo.
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
