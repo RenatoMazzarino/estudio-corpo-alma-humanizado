@@ -5,7 +5,7 @@ export default function MenuPage() {
   return (
     <div className="p-4 bg-stone-50 min-h-full">
       {/* Cabeçalho */}
-      <h1 className="text-2xl font-serif font-bold text-studio-green mb-6 px-2 mt-2">Menu Principal</h1>
+      <h1 className="text-2xl font-bold text-studio-green mb-6 px-2 mt-2">Menu Principal</h1>
 
       <div className="space-y-4">
         

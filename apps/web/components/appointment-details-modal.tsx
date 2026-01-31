@@ -22,8 +22,16 @@ export interface AppointmentDetails {
     status: string | null;
     price: number | null;
     is_home_visit?: boolean | null;
+    service_duration_minutes?: number | null;
     total_duration_minutes?: number | null;
     actual_duration_minutes?: number | null;
+    address_cep?: string | null;
+    address_logradouro?: string | null;
+    address_numero?: string | null;
+    address_complemento?: string | null;
+    address_bairro?: string | null;
+    address_cidade?: string | null;
+    address_estado?: string | null;
     clients: {
         id: string; // Importante para fetch de notas se precisássemos aqui
         name: string;
@@ -31,6 +39,13 @@ export interface AppointmentDetails {
         phone?: string | null;
         health_tags?: string[] | null;
         endereco_completo?: string | null;
+        address_cep?: string | null;
+        address_logradouro?: string | null;
+        address_numero?: string | null;
+        address_complemento?: string | null;
+        address_bairro?: string | null;
+        address_cidade?: string | null;
+        address_estado?: string | null;
     } | null;
 }
 
@@ -53,7 +68,8 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
 
     const { session, remainingSeconds, progress, isPaused, startSession, togglePause, stopSession } = useActiveSession();
     const isActiveSession = session?.appointmentId === appointment.id;
-    const totalSeconds = Math.max(1, (appointment.total_duration_minutes || 30) * 60);
+    const baseDurationMinutes = appointment.service_duration_minutes ?? appointment.total_duration_minutes ?? 30;
+    const totalSeconds = Math.max(1, baseDurationMinutes * 60);
     const displayRemaining = isActiveSession ? remainingSeconds : totalSeconds;
 
     const formatTime = (totalSeconds: number) => {
@@ -101,6 +117,18 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
         ? "bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] relative z-10 animate-in zoom-in-95 duration-200"
         : "bg-white w-full rounded-3xl shadow-sm border border-stone-100 overflow-hidden flex flex-col";
 
+    const addressLine = [
+      appointment.address_logradouro ?? appointment.clients?.address_logradouro,
+      appointment.address_numero ?? appointment.clients?.address_numero,
+      appointment.address_complemento ?? appointment.clients?.address_complemento,
+      appointment.address_bairro ?? appointment.clients?.address_bairro,
+      appointment.address_cidade ?? appointment.clients?.address_cidade,
+      appointment.address_estado ?? appointment.clients?.address_estado,
+      appointment.address_cep ?? appointment.clients?.address_cep,
+    ]
+      .filter((value) => value && value.trim().length > 0)
+      .join(", ");
+
     return (
         <div className={isModal ? "absolute inset-0 z-50 flex items-center justify-center p-4" : "w-full"}>
             {isModal && onClose && (
@@ -122,11 +150,11 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                         </div>
                         <div>
                             {appointment.clients?.id ? (
-                              <Link href={`/clientes/${appointment.clients.id}`} className="text-xl font-bold font-serif hover:underline">
+                              <Link href={`/clientes/${appointment.clients.id}`} className="text-xl font-bold hover:underline">
                                 {appointment.clients?.name}
                               </Link>
                             ) : (
-                              <h2 className="text-xl font-bold font-serif">{appointment.clients?.name}</h2>
+                              <h2 className="text-xl font-bold">{appointment.clients?.name}</h2>
                             )}
                             <p className={`text-sm flex items-center gap-1 ${isModal ? "text-green-100 opacity-90" : "text-gray-500"}`}>
                                 {appointment.service_name}
@@ -155,7 +183,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                                       appointmentId: appointment.id,
                                       clientName: appointment.clients?.name || "Cliente",
                                       serviceName: appointment.service_name,
-                                      totalDurationMinutes: appointment.total_duration_minutes || 30,
+                                      totalDurationMinutes: baseDurationMinutes,
                                     });
                                     return;
                                 }
@@ -258,8 +286,18 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                                         <MapPin size={12} /> Endereço Domiciliar
                                     </label>
                                     <p className="text-purple-900 font-medium">
-                                        {appointment.clients?.endereco_completo || "Endereço não cadastrado no perfil."}
+                                        {addressLine || appointment.clients?.endereco_completo || "Endereço não cadastrado no perfil."}
                                     </p>
+                                    {addressLine && (
+                                      <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 text-xs font-bold text-purple-700 mt-2 hover:underline"
+                                      >
+                                        Abrir no Maps
+                                      </a>
+                                    )}
                                 </div>
                             )}
                             

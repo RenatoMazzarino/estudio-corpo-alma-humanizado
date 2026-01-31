@@ -81,7 +81,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       {/* 1. Header Fixo com Seletor de Dias */}
         <div className="bg-white px-4 py-4 shadow-sm border-b border-stone-100 z-10 transition-all duration-300">
          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl font-bold text-studio-green font-serif">Agenda</h1>
+            <h1 className="text-xl font-bold text-studio-green">Agenda</h1>
             
             <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-studio-green/10 rounded-full flex items-center justify-center text-xs font-bold text-studio-green">

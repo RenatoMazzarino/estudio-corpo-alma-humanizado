@@ -142,7 +142,7 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
           formattedLabel = format(date, 'MMMM yyyy', { locale: ptBR });
       }
 
-      return <span className="text-xl font-bold text-gray-800 font-serif capitalize">{formattedLabel}</span>;
+      return <span className="text-xl font-bold text-gray-800 capitalize">{formattedLabel}</span>;
     };
 
     return (

@@ -57,7 +57,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
             >
               {/* Ícone / "Foto" */}
               <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${service.accepts_home_visit ? 'bg-purple-50 text-purple-600' : 'bg-studio-green/10 text-studio-green'}`}>
-                 {service.accepts_home_visit ? <MapPin size={24} /> : <span className="font-serif text-xl font-bold">{service.name.charAt(0)}</span>}
+                 {service.accepts_home_visit ? <MapPin size={24} /> : <span className="text-xl font-bold">{service.name.charAt(0)}</span>}
               </div>
 
               {/* Informações */}

@@ -95,7 +95,9 @@ export async function getAppointmentById(tenantId: string, id: string) {
     .from("appointments")
     .select(
       `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes, actual_duration_minutes,
-       clients ( id, name, initials, phone, health_tags, endereco_completo )`
+       address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
+       clients ( id, name, initials, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
+       services ( duration_minutes )`
     )
     .eq("id", id)
     .eq("tenant_id", tenantId)

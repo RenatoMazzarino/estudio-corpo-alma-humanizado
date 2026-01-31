@@ -17,6 +17,9 @@ export default async function AtendimentoPage(props: PageProps) {
     return notFound();
   }
 
+  const serviceDuration =
+    (appointment as { services?: { duration_minutes: number | null } | null }).services?.duration_minutes ?? null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -29,7 +32,12 @@ export default async function AtendimentoPage(props: PageProps) {
         </div>
       </div>
 
-      <AppointmentDetailsPage appointment={appointment} />
+      <AppointmentDetailsPage
+        appointment={{
+          ...appointment,
+          service_duration_minutes: serviceDuration,
+        }}
+      />
     </div>
   );
 }

@@ -27,7 +27,7 @@ export default async function ClientesPage({
         {/* Header Fixo */}
         <div className="bg-white p-4 shadow-sm border-b border-stone-100 sticky top-0 z-10 text-gray-800">
             <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-bold font-serif text-studio-green">Clientes</h1>
+                <h1 className="text-2xl font-bold text-studio-green">Clientes</h1>
                 <Link href="/clientes/novo" className="bg-studio-green text-white p-2 rounded-full shadow-lg hover:bg-studio-green-dark transition shadow-green-200">
                     <Plus size={24} />
                 </Link>
