@@ -122,30 +122,32 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
 
         {/* Strip Calendar */}
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-            {days.map((day) => {
-                const isSelected = isSameDay(day, selectedDate);
-                return (
-                    <button
-                        key={day.toISOString()}
-                        onClick={() => setSelectedDate(day)}
-                        className={`
-                            flex flex-col items-center justify-center min-w-14 py-3 rounded-xl transition-all border
-                            ${isSelected 
-                                ? "bg-studio-green text-white shadow-lg shadow-green-100 scale-105 border-studio-green" 
-                                : "bg-white text-gray-400 border-stone-100 hover:border-studio-green/30"
-                            }
-                        `}
-                    >
-                        <span className="text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                            {format(day, "EEE", { locale: ptBR }).replace(".", "")}
-                        </span>
-                        <span className="text-xl font-bold leading-none">
-                            {format(day, "dd")}
-                        </span>
-                    </button>
-                )
-            })}
+        <div className="bg-stone-50 border border-stone-100 rounded-2xl px-2 py-3">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 min-w-max snap-x snap-mandatory touch-pan-x">
+              {days.map((day) => {
+                  const isSelected = isSameDay(day, selectedDate);
+                  return (
+                      <button
+                          key={day.toISOString()}
+                          onClick={() => setSelectedDate(day)}
+                          className={`
+                              snap-center flex flex-col items-center justify-center min-w-14 py-3 rounded-xl transition-all border
+                              ${isSelected 
+                                  ? "bg-studio-green text-white shadow-lg shadow-green-100 scale-105 border-studio-green" 
+                                  : "bg-white text-gray-500 border-stone-100 hover:border-studio-green/30"
+                              }
+                          `}
+                      >
+                          <span className="text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                              {format(day, "EEE", { locale: ptBR }).replace(".", "")}
+                          </span>
+                          <span className="text-xl font-bold leading-none">
+                              {format(day, "dd")}
+                          </span>
+                      </button>
+                  )
+              })}
+          </div>
         </div>
       </div>
 

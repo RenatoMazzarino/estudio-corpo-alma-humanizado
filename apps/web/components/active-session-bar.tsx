@@ -5,6 +5,7 @@ import { Pause, Play, Timer } from "lucide-react";
 import { useActiveSession } from "../src/shared/timer/useActiveSession";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { appointmentExists } from "../app/actions";
 
 function formatTime(totalSeconds: number) {
   const hours = Math.floor(totalSeconds / 3600);
@@ -15,7 +16,7 @@ function formatTime(totalSeconds: number) {
 }
 
 export function ActiveSessionBar() {
-  const { session, remainingSeconds, progress, isPaused, togglePause } = useActiveSession();
+  const { session, remainingSeconds, progress, isPaused, togglePause, stopSession } = useActiveSession();
   const pathname = usePathname();
   const barRef = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -68,6 +69,25 @@ export function ActiveSessionBar() {
       window.removeEventListener("pointerup", handleUp);
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const validateSession = async () => {
+      if (!session?.appointmentId) return;
+      try {
+        const exists = await appointmentExists(session.appointmentId);
+        if (mounted && !exists) {
+          stopSession();
+        }
+      } catch {
+        // ignore validation failure
+      }
+    };
+    validateSession();
+    return () => {
+      mounted = false;
+    };
+  }, [session?.appointmentId, stopSession]);
 
   if (!session || pathname.startsWith("/atendimento")) return null;
 

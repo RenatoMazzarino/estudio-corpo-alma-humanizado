@@ -137,7 +137,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
             <div className={containerClasses}>
                 
                 {/* Header */}
-                <div className={`p-6 text-white relative ${isModal ? "bg-studio-green" : "bg-white text-gray-800 border-b border-stone-100"}`}>
+                <div className={`p-6 relative ${isModal ? "bg-studio-green text-white" : "bg-white text-gray-800 border-b border-stone-100"}`}>
                     {isModal && onClose && (
                       <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
                           <X size={20} />

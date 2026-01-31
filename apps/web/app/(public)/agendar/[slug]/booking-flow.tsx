@@ -104,7 +104,6 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
         setEstado("");
         setCepStatus("idle");
       }
-      setStep("DATETIME");
   };
 
   const handleTimeSelect = (time: string) => {
@@ -248,27 +247,128 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                  {/* Opção Domiciliar */}
                  <button 
                     onClick={() => handleLocationSelect(true)}
-                    className="w-full bg-white p-5 rounded-2xl shadow-sm border border-stone-100 text-left hover:border-purple-500 hover:shadow-md transition-all flex items-center gap-4 group"
+                    className={`w-full bg-white p-5 rounded-2xl shadow-sm border text-left transition-all flex flex-col gap-4 ${
+                      isHomeVisit ? "border-purple-500 shadow-md" : "border-stone-100 hover:border-purple-500 hover:shadow-md"
+                    }`}
                  >
-                     <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-purple-400 group-hover:bg-purple-100 group-hover:text-purple-600 transition-colors">
-                         <Home size={24} />
+                     <div className="flex items-center gap-4 w-full">
+                       <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-purple-400 transition-colors">
+                           <Home size={24} />
+                       </div>
+                       <div className="flex-1">
+                           <h3 className="font-bold text-gray-800">Em Domicílio</h3>
+                           <p className="text-sm text-gray-500 flex flex-col">
+                              <span>Vamos até você (com maca e materiais)</span>
+                           </p>
+                       </div>
+                       <div className="text-right flex flex-col items-end">
+                           <span className="font-bold text-purple-600">
+                               R$ {(Number(selectedService?.price) + Number(selectedService?.home_visit_fee || 0)).toFixed(2)}
+                           </span>
+                           <span className="text-[10px] text-purple-400 bg-purple-50 px-1.5 rounded">
+                               + Taxa inclusa
+                           </span>
+                       </div>
                      </div>
-                     <div className="flex-1">
-                         <h3 className="font-bold text-gray-800">Em Domicílio</h3>
-                         <p className="text-sm text-gray-500 flex flex-col">
-                            <span>Vamos até você (com maca e materiais)</span>
-                         </p>
-                     </div>
-                     <div className="text-right flex flex-col items-end">
-                         <span className="font-bold text-purple-600">
-                             R$ {(Number(selectedService?.price) + Number(selectedService?.home_visit_fee || 0)).toFixed(2)}
-                         </span>
-                         <span className="text-[10px] text-purple-400 bg-purple-50 px-1.5 rounded">
-                             + Taxa inclusa
-                         </span>
-                     </div>
+
+                     {isHomeVisit && (
+                       <div className="w-full border-t border-purple-100 pt-4 space-y-3">
+                         <div className="flex gap-2">
+                           <div className="relative flex-1">
+                             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                             <input
+                               type="text"
+                               placeholder="CEP"
+                               value={cep}
+                               onChange={(e) => {
+                                 setCep(formatCep(e.target.value));
+                                 setCepStatus("idle");
+                               }}
+                               inputMode="numeric"
+                               className={`w-full bg-white border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                                 cepStatus === "error"
+                                   ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                                   : "border-stone-100 focus:ring-studio-green/20"
+                               }`}
+                             />
+                           </div>
+                           <button
+                             type="button"
+                             onClick={handleCepLookup}
+                             className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
+                           >
+                             {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                           </button>
+                         </div>
+                         {cepStatus === "error" && <p className="text-[11px] text-red-500 ml-1">CEP inválido.</p>}
+                         <input
+                           type="text"
+                           placeholder="Logradouro"
+                           value={logradouro}
+                           onChange={(e) => setLogradouro(e.target.value)}
+                           className="w-full bg-white border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                         />
+                         <div className="grid grid-cols-2 gap-3">
+                           <input
+                             type="text"
+                             placeholder="Número"
+                             value={numero}
+                             onChange={(e) => setNumero(e.target.value)}
+                             className="w-full bg-white border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                           />
+                           <input
+                             type="text"
+                             placeholder="Complemento"
+                             value={complemento}
+                             onChange={(e) => setComplemento(e.target.value)}
+                             className="w-full bg-white border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                           />
+                         </div>
+                         <div className="grid grid-cols-2 gap-3">
+                           <input
+                             type="text"
+                             placeholder="Bairro"
+                             value={bairro}
+                             onChange={(e) => setBairro(e.target.value)}
+                             className="w-full bg-white border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                           />
+                           <input
+                             type="text"
+                             placeholder="Cidade"
+                             value={cidade}
+                             onChange={(e) => setCidade(e.target.value)}
+                             className="w-full bg-white border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                           />
+                         </div>
+                         <input
+                           type="text"
+                           placeholder="Estado (UF)"
+                           value={estado}
+                           onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                           maxLength={2}
+                           className="w-full bg-white border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 uppercase"
+                         />
+                         {mapsQuery && (
+                           <a
+                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
+                             target="_blank"
+                             rel="noreferrer"
+                             className="text-xs font-semibold text-studio-green hover:underline"
+                           >
+                             Ver endereço no Maps
+                           </a>
+                         )}
+                       </div>
+                     )}
                  </button>
              </div>
+
+            <button
+              onClick={() => setStep("DATETIME")}
+              className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-black transition"
+            >
+              Continuar
+            </button>
         </div>
       )
   }
@@ -386,95 +486,6 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                     className="w-full bg-white border-stone-100 border rounded-xl py-4 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
                 />
             </div>
-            {isHomeVisit && (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder="CEP"
-                      value={cep}
-                      onChange={(e) => {
-                        setCep(formatCep(e.target.value));
-                        setCepStatus("idle");
-                      }}
-                      inputMode="numeric"
-                      className={`w-full bg-white border rounded-xl py-4 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
-                        cepStatus === "error"
-                          ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                          : "border-stone-100 focus:ring-studio-green/20"
-                      }`}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCepLookup}
-                    className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
-                  >
-                    {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
-                  </button>
-                </div>
-                {cepStatus === "error" && <p className="text-[11px] text-red-500 ml-1">CEP inválido.</p>}
-                <input
-                  type="text"
-                  placeholder="Logradouro"
-                  value={logradouro}
-                  onChange={(e) => setLogradouro(e.target.value)}
-                  className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    placeholder="Número"
-                    value={numero}
-                    onChange={(e) => setNumero(e.target.value)}
-                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Complemento"
-                    value={complemento}
-                    onChange={(e) => setComplemento(e.target.value)}
-                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    placeholder="Bairro"
-                    value={bairro}
-                    onChange={(e) => setBairro(e.target.value)}
-                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Cidade"
-                    value={cidade}
-                    onChange={(e) => setCidade(e.target.value)}
-                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Estado (UF)"
-                  value={estado}
-                  onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                  maxLength={2}
-                  className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 uppercase"
-                />
-                {mapsQuery && (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-studio-green hover:underline"
-                  >
-                    Ver endereço no Maps
-                  </a>
-                )}
-              </div>
-            )}
         </div>
         
         {/* Resumo Final */}
