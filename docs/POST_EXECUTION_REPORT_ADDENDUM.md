@@ -105,6 +105,15 @@ Escopo: polimento pós-execução (G9–G22)
 - Relógio persistente oculto na tela de atendimento (evita duplicidade).
 - Tela pública de agendamento ajustada ao padrão visual do sistema.
 
+### G23 — Endereço estruturado + CEP + cronômetro correto
+- DB: adicionados campos `address_*` em `clients` e `appointments` + RPCs recriadas com parâmetros de endereço.
+- Types Supabase ajustados manualmente (novas colunas e args das RPCs).
+- CEP lookup via BrasilAPI nos fluxos: novo cliente, editar cliente, agendamento interno e público.
+- Endereço estruturado no perfil do cliente e em agendamentos domiciliares (com link Maps).
+- Agendamento interno: toggle Estúdio/Domicílio + aviso de bloqueios ao selecionar data.
+- Cronômetro agora usa duração real do serviço (sem buffers) e agendamento carrega duração via relação `services`.
+- Padronização de fontes removendo `font-serif` em telas principais.
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
@@ -140,6 +149,7 @@ Notas:
 - `supabase` CLI não disponível no ambiente Codex; aplicar migration localmente via `supabase db reset` no Windows.
   - Observação: em uma execução houve `ENOMEM`, resolvido ao reexecutar.
   - Observação (ambiente Linux + Node Windows): `pnpm lint` falhou quando o Turbo tentou baixar binário Linux usando Node Windows; resolvido ao reexecutar em ambiente compatível.
+- Após G23, comandos não foram reexecutados no Codex; executar no Windows após `supabase db reset` + `supabase gen types` local.
 
 ---
 
