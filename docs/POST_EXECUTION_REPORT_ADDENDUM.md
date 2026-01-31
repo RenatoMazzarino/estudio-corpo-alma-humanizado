@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G17)
+Escopo: polimento pós-execução (G9–G18)
 
 ---
 
@@ -74,6 +74,11 @@ Escopo: polimento pós-execução (G9–G17)
 - Máscara de WhatsApp no agendamento público + validação com DDD.
 - Reforço de validação de telefone/CPF no cadastro de clientes.
 - Types: ajuste manual dos args das RPCs em `apps/web/lib/supabase/types.ts` (pendente de regen via CLI).
+
+### G18 — Máscaras e UX de validação (clientes)
+- Máscara e feedback visual de CPF/telefone no cadastro e edição de cliente.
+- Botões de copiar (telefone/CPF) no perfil do cliente.
+- Migration de agendamento ajustada para `DROP FUNCTION` antes de recriar (corrige erro de rename de parâmetro).
 
 ---
 

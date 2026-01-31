@@ -1,4 +1,6 @@
 -- G17: fix ambiguous start_time in RPCs by renaming parameters
+DROP FUNCTION IF EXISTS public.create_public_appointment(text, uuid, timestamptz, text, text, boolean);
+DROP FUNCTION IF EXISTS public.create_internal_appointment(uuid, uuid, timestamptz, text, text, boolean);
 CREATE OR REPLACE FUNCTION public.create_public_appointment(
   tenant_slug text,
   service_id uuid,

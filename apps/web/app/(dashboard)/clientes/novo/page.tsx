@@ -1,6 +1,6 @@
  "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   User,
@@ -41,6 +41,16 @@ function formatPhone(value: string) {
 export default function NewClientPage() {
   const [phone, setPhone] = useState("");
   const [cpf, setCpf] = useState("");
+  const phoneError = useMemo(() => {
+    if (!phone) return "";
+    const digits = phone.replace(/\D/g, "");
+    return digits.length === 10 || digits.length === 11 ? "" : "Telefone inválido (com DDD).";
+  }, [phone]);
+  const cpfError = useMemo(() => {
+    if (!cpf) return "";
+    const digits = cpf.replace(/\D/g, "");
+    return digits.length === 11 ? "" : "CPF inválido.";
+  }, [cpf]);
 
   return (
     <>
@@ -81,10 +91,15 @@ export default function NewClientPage() {
                 onChange={(e) => setPhone(formatPhone(e.target.value))}
                 inputMode="numeric"
                 pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                className={`w-full bg-stone-50 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                  phoneError
+                    ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                    : "border-stone-100 focus:ring-studio-green/20 focus:border-studio-green"
+                }`}
                 />
             </div>
             <p className="text-[11px] text-gray-400 ml-1">DDD obrigatório.</p>
+            {phoneError && <p className="text-[11px] text-red-500 ml-1">{phoneError}</p>}
         </div>
 
         {/* Email */}
@@ -127,9 +142,14 @@ export default function NewClientPage() {
                 onChange={(e) => setCpf(formatCpf(e.target.value))}
                 inputMode="numeric"
                 pattern="\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                className={`w-full bg-stone-50 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                  cpfError
+                    ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                    : "border-stone-100 focus:ring-studio-green/20 focus:border-studio-green"
+                }`}
                 />
             </div>
+            {cpfError && <p className="text-[11px] text-red-500 ml-1">{cpfError}</p>}
         </div>
 
         {/* Endereço */}

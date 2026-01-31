@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil, Copy } from "lucide-react";
 import type { Database } from "../../../../lib/supabase/types";
 import { updateClientProfile } from "./actions";
 
@@ -15,13 +15,55 @@ function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
 export function ClientProfile({ client }: ClientProfileProps) {
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [phone, setPhone] = useState(client.phone ?? "");
+  const [cpf, setCpf] = useState(client.cpf ?? "");
 
   const phoneDigits = client.phone ? onlyDigits(client.phone) : "";
   const whatsappLink = phoneDigits ? `https://wa.me/55${phoneDigits}` : null;
   const callLink = phoneDigits ? `tel:+55${phoneDigits}` : null;
+  const phoneError = useMemo(() => {
+    if (!phone) return "";
+    const digits = phone.replace(/\D/g, "");
+    return digits.length === 10 || digits.length === 11 ? "" : "Telefone inválido (com DDD).";
+  }, [phone]);
+  const cpfError = useMemo(() => {
+    if (!cpf) return "";
+    const digits = cpf.replace(/\D/g, "");
+    return digits.length === 11 ? "" : "CPF inválido.";
+  }, [cpf]);
+
+  const handleCopy = async (value?: string | null) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage({ type: "success", text: "Copiado para a área de transferência." });
+    } catch {
+      setMessage({ type: "error", text: "Não foi possível copiar agora." });
+    }
+  };
 
   return (
     <div className="bg-white p-5 rounded-3xl shadow-sm border border-stone-100 space-y-4">
@@ -75,6 +117,16 @@ export function ClientProfile({ client }: ClientProfileProps) {
         <div className="flex items-center gap-2">
           <Phone size={14} className="text-gray-400" />
           <span>{client.phone || "Telefone não informado"}</span>
+          {client.phone && (
+            <button
+              type="button"
+              onClick={() => handleCopy(client.phone)}
+              className="ml-auto text-gray-400 hover:text-gray-600"
+              aria-label="Copiar telefone"
+            >
+              <Copy size={14} />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Calendar size={14} className="text-gray-400" />
@@ -83,6 +135,16 @@ export function ClientProfile({ client }: ClientProfileProps) {
         <div className="flex items-center gap-2">
           <IdCard size={14} className="text-gray-400" />
           <span>{client.cpf || "CPF não informado"}</span>
+          {client.cpf && (
+            <button
+              type="button"
+              onClick={() => handleCopy(client.cpf)}
+              className="ml-auto text-gray-400 hover:text-gray-600"
+              aria-label="Copiar CPF"
+            >
+              <Copy size={14} />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Briefcase size={14} className="text-gray-400" />
@@ -133,13 +195,19 @@ export function ClientProfile({ client }: ClientProfileProps) {
           <div className="grid grid-cols-1 gap-3">
             <input
               name="phone"
-              defaultValue={client.phone ?? ""}
+              value={phone}
               placeholder="Telefone / WhatsApp"
               inputMode="numeric"
               pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+              className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                phoneError
+                  ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                  : "border-stone-100 focus:ring-studio-green/20"
+              }`}
             />
             <p className="text-[11px] text-gray-400">DDD obrigatório.</p>
+            {phoneError && <p className="text-[11px] text-red-500">{phoneError}</p>}
             <input
               name="email"
               defaultValue={client.email ?? ""}
@@ -154,12 +222,18 @@ export function ClientProfile({ client }: ClientProfileProps) {
             />
             <input
               name="cpf"
-              defaultValue={client.cpf ?? ""}
+              value={cpf}
               placeholder="CPF"
               inputMode="numeric"
               pattern="\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              onChange={(e) => setCpf(formatCpf(e.target.value))}
+              className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                cpfError
+                  ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                  : "border-stone-100 focus:ring-studio-green/20"
+              }`}
             />
+            {cpfError && <p className="text-[11px] text-red-500">{cpfError}</p>}
             <input
               name="profissao"
               defaultValue={client.profissao ?? ""}
