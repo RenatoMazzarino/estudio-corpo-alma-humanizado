@@ -132,6 +132,10 @@ Escopo: polimento pós-execução (G9–G22)
 ### G25 — Agendamento público (HTML válido)
 - Corrigido erro de `<button>` aninhado no fluxo público usando container clicável com acessibilidade e stopPropagation no botão interno.
 
+### G25 — CEP público via API interna
+- Endpoint `/api/cep` para evitar CORS e centralizar lookup (BrasilAPI).
+- CEP lookup agora funciona no agendamento público e mantém seleção visual dos cards.
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
