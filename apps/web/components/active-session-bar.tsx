@@ -77,13 +77,10 @@ export function ActiveSessionBar() {
       if (!session?.appointmentId) return;
       if (lastValidatedId.current === session.appointmentId) return;
       lastValidatedId.current = session.appointmentId;
-      try {
-        const exists = await appointmentExists(session.appointmentId);
-        if (mounted && !exists) {
-          stopSession();
-        }
-      } catch {
-        // ignore validation failure
+      const result = await appointmentExists(session.appointmentId);
+      if (!mounted) return;
+      if (result.ok && !result.data.exists) {
+        stopSession();
       }
     };
     validateSession();

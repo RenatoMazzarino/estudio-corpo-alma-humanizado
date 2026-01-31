@@ -31,9 +31,16 @@ export async function cancelAppointment(id: string) {
   return cancelAppointmentImpl(id);
 }
 
-export async function appointmentExists(id: string): Promise<boolean> {
+export async function appointmentExists(
+  id: string
+): Promise<ActionResult<{ exists: boolean }>> {
   const parsed = z.object({ id: z.string().uuid() }).safeParse({ id });
-  if (!parsed.success) return false;
-  const { data } = await getAppointmentById(FIXED_TENANT_ID, parsed.data.id);
-  return Boolean(data);
+  if (!parsed.success) {
+    return { ok: false, error: new Error("Invalid id") };
+  }
+  const { data, error } = await getAppointmentById(FIXED_TENANT_ID, parsed.data.id);
+  if (error) {
+    return { ok: false, error };
+  }
+  return { ok: true, data: { exists: Boolean(data) } };
 }

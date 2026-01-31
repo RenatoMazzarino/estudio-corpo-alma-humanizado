@@ -215,7 +215,10 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
 
                     {!isCompleted && (
                       <div className={`mt-3 h-1.5 rounded-full overflow-hidden ${isModal ? "bg-white/20" : "bg-stone-100"}`}>
-                          <div className={`h-full transition-all ${isModal ? "bg-white/80" : "bg-studio-green"}`} style={{ width: `${Math.round(progress * 100)}%` }} />
+                          <div
+                            className={`h-full transition-all ${isModal ? "bg-white/80" : "bg-studio-green"}`}
+                            style={{ width: `${Math.round((isActiveSession ? progress : 0) * 100)}%` }}
+                          />
                       </div>
                     )}
 
