@@ -28,12 +28,13 @@ Escopo: polimento pós-execução (G9–G13)
 
 ### G10 — `pnpm dev` no Windows
 - `package.json` root: scripts usam `pnpm exec turbo` (sem warning de turbo global).
-- `apps/web/package.json`: `dev` usa `pnpm exec next ...` (resolve “next não reconhecido”).
+- `apps/web/package.json`: `dev` usa `next dev ...` (evita erro de `sh` em Windows e usa bin local do `node_modules/.bin`).
 - README atualizado com instruções PowerShell e limpeza de `node_modules/.next` ao alternar ambientes.
 
 ### G11 — TSConfig/JSX
 - Adicionado `tsconfig.json` no root (solution style + `jsx: preserve`).
 - README: nota para usar TS do workspace no VS Code.
+- `.vscode/settings.json` com `typescript.tsdk` para forçar TS do workspace.
 
 ### G12 — Higiene e Estrutura
 - SQL solto movido para `docs/sql/`:
@@ -53,7 +54,7 @@ Escopo: polimento pós-execução (G9–G13)
 ## 3) Diagnóstico do Windows (turbo/next)
 
 **Causa provável:** scripts rodavam `turbo` e `next` diretamente; no PowerShell sem binário local resolvido, gerava “No locally installed turbo” e “next não é reconhecido”.  
-**Correção aplicada:** uso explícito de `pnpm exec turbo` no root e `pnpm exec next` no `apps/web`.
+**Correção aplicada:** uso explícito de `pnpm exec turbo` no root e `next dev` no `apps/web`.
 
 ---
 
@@ -79,6 +80,7 @@ Escopo: polimento pós-execução (G9–G13)
 - `pnpm check-types` ✅
 - `pnpm build` ✅  
   - Observação: em uma execução houve `ENOMEM`, resolvido ao reexecutar.
+  - Observação (ambiente Linux + Node Windows): `pnpm lint` falhou quando o Turbo tentou baixar binário Linux usando Node Windows; resolvido ao reexecutar em ambiente compatível.
 
 ---
 
