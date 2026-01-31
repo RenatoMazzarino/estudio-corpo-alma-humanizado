@@ -198,7 +198,7 @@ export function ClientProfile({ client }: ClientProfileProps) {
               value={phone}
               placeholder="Telefone / WhatsApp"
               inputMode="numeric"
-              pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
+              aria-invalid={phoneError ? "true" : "false"}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
               className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
                 phoneError
@@ -225,7 +225,7 @@ export function ClientProfile({ client }: ClientProfileProps) {
               value={cpf}
               placeholder="CPF"
               inputMode="numeric"
-              pattern="\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
+              aria-invalid={cpfError ? "true" : "false"}
               onChange={(e) => setCpf(formatCpf(e.target.value))}
               className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
                 cpfError
@@ -280,7 +280,8 @@ export function ClientProfile({ client }: ClientProfileProps) {
 
           <button
             type="submit"
-            className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl shadow-lg shadow-green-100 hover:bg-studio-green-dark transition-all"
+            disabled={Boolean(phoneError || cpfError)}
+            className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl shadow-lg shadow-green-100 hover:bg-studio-green-dark transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Salvar alterações
           </button>

@@ -90,7 +90,7 @@ export default function NewClientPage() {
                 value={phone}
                 onChange={(e) => setPhone(formatPhone(e.target.value))}
                 inputMode="numeric"
-                pattern="\\(\\d{2}\\) \\d{4,5}-\\d{4}"
+                aria-invalid={phoneError ? "true" : "false"}
                 className={`w-full bg-stone-50 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
                   phoneError
                     ? "border-red-200 focus:ring-red-200 focus:border-red-400"
@@ -141,7 +141,7 @@ export default function NewClientPage() {
                 value={cpf}
                 onChange={(e) => setCpf(formatCpf(e.target.value))}
                 inputMode="numeric"
-                pattern="\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}"
+                aria-invalid={cpfError ? "true" : "false"}
                 className={`w-full bg-stone-50 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
                   cpfError
                     ? "border-red-200 focus:ring-red-200 focus:border-red-400"
@@ -225,7 +225,8 @@ export default function NewClientPage() {
 
         <button 
           type="submit" 
-          className="w-full bg-studio-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-100 hover:bg-studio-green-dark transition-all mt-4 flex items-center justify-center gap-2"
+          disabled={Boolean(phoneError || cpfError)}
+          className="w-full bg-studio-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-100 hover:bg-studio-green-dark transition-all mt-4 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Save size={18} />
           Salvar Cadastro

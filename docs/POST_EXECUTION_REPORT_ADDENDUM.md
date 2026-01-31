@@ -80,6 +80,9 @@ Escopo: polimento pós-execução (G9–G18)
 - Botões de copiar (telefone/CPF) no perfil do cliente.
 - Migration de agendamento ajustada para `DROP FUNCTION` antes de recriar (corrige erro de rename de parâmetro).
 
+### G19 — Feedback de validação sem tooltip nativo
+- Removido `pattern` para evitar tooltip de formato e substituído por erro inline e disable do submit.
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
