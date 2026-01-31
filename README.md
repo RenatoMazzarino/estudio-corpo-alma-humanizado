@@ -34,6 +34,7 @@ pnpm install
 ```
 
 > O `pnpm dev` usa o Turbo local (sem necessidade de instalação global).
+> Se aparecer aviso de Turbo global, rode `pnpm install` novamente no Windows para recriar os binários locais.
 
 > Em WSL, garanta que o `pnpm` esteja usando o Node Linux (corepack). Isso evita binários nativos incompatíveis (ex.: lightningcss).
 
