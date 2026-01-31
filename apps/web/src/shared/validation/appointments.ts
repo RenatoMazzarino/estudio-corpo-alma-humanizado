@@ -23,6 +23,22 @@ export const createInternalAppointmentSchema = z.object({
       const digits = value.replace(/\D/g, "");
       return digits.length === 10 || digits.length === 11;
     }, "Telefone inválido (com DDD)"),
+  addressCep: z
+    .string()
+    .optional()
+    .nullable()
+    .refine((value) => {
+      if (!value) return true;
+      const digits = value.replace(/\D/g, "");
+      return digits.length === 8;
+    }, "CEP inválido"),
+  addressLogradouro: z.string().optional().nullable(),
+  addressNumero: z.string().optional().nullable(),
+  addressComplemento: z.string().optional().nullable(),
+  addressBairro: z.string().optional().nullable(),
+  addressCidade: z.string().optional().nullable(),
+  addressEstado: z.string().optional().nullable(),
+  isHomeVisit: z.boolean().optional(),
   serviceId: z.string().uuid(),
   date: z.string().min(10),
   time: z.string().min(4),
@@ -43,6 +59,21 @@ export const publicBookingSchema = z.object({
       const digits = value.replace(/\D/g, "");
       return digits.length === 10 || digits.length === 11;
     }, "Telefone inválido (com DDD)"),
+  addressCep: z
+    .string()
+    .optional()
+    .default("")
+    .refine((value) => {
+      if (!value) return true;
+      const digits = value.replace(/\D/g, "");
+      return digits.length === 8;
+    }, "CEP inválido"),
+  addressLogradouro: z.string().optional().default(""),
+  addressNumero: z.string().optional().default(""),
+  addressComplemento: z.string().optional().default(""),
+  addressBairro: z.string().optional().default(""),
+  addressCidade: z.string().optional().default(""),
+  addressEstado: z.string().optional().default(""),
   isHomeVisit: z.boolean().optional(),
 });
 
