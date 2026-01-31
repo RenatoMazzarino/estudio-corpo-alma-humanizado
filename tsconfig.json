@@ -5,6 +5,25 @@
     { "path": "packages/ui" }
   ],
   "compilerOptions": {
-    "jsx": "preserve"
-  }
+    "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": [
+    "apps/web/**/*.ts",
+    "apps/web/**/*.tsx",
+    "packages/ui/**/*.ts",
+    "packages/ui/**/*.tsx"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/.next",
+    "**/.turbo",
+    "supabase",
+    "docs",
+    "packages/typescript-config",
+    "packages/eslint-config"
+  ]
 }
