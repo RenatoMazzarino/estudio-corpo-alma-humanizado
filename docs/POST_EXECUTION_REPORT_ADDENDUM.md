@@ -129,6 +129,9 @@ Escopo: polimento pós-execução (G9–G22)
 - Business hours agora ignoram registros com `day_of_week` nulo e garantem 0..6 no carregamento.
 - Após salvar, registros inválidos são removidos para evitar “reverter” domingo.
 
+### G25 — Agendamento público (HTML válido)
+- Corrigido erro de `<button>` aninhado no fluxo público usando container clicável com acessibilidade e stopPropagation no botão interno.
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
