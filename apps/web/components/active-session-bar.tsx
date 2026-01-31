@@ -20,6 +20,7 @@ export function ActiveSessionBar() {
   const pathname = usePathname();
   const barRef = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const lastValidatedId = useRef<string | null>(null);
   const dragState = useRef<{ offsetX: number; offsetY: number; dragging: boolean }>({
     offsetX: 0,
     offsetY: 0,
@@ -74,6 +75,8 @@ export function ActiveSessionBar() {
     let mounted = true;
     const validateSession = async () => {
       if (!session?.appointmentId) return;
+      if (lastValidatedId.current === session.appointmentId) return;
+      lastValidatedId.current = session.appointmentId;
       try {
         const exists = await appointmentExists(session.appointmentId);
         if (mounted && !exists) {

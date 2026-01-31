@@ -123,8 +123,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         {/* Strip Calendar */}
         <div className="bg-stone-50 border border-stone-100 rounded-2xl px-2 py-3">
-          <div className="overflow-x-auto no-scrollbar pb-1 w-full">
-            <div className="flex gap-3 min-w-max snap-x snap-mandatory touch-pan-x">
+          <div className="overflow-x-scroll no-scrollbar pb-1 w-full touch-pan-x">
+            <div className="flex flex-nowrap gap-3 min-w-max snap-x snap-mandatory">
               {days.map((day) => {
                   const isSelected = isSameDay(day, selectedDate);
                   return (

@@ -68,6 +68,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
 
     const { session, remainingSeconds, progress, isPaused, startSession, togglePause, stopSession } = useActiveSession();
     const isActiveSession = session?.appointmentId === appointment.id;
+    const isCompleted = appointment.status === "completed";
     const baseDurationMinutes = appointment.service_duration_minutes ?? appointment.total_duration_minutes ?? 30;
     const totalSeconds = Math.max(1, baseDurationMinutes * 60);
     const displayRemaining = isActiveSession ? remainingSeconds : totalSeconds;
@@ -169,36 +170,54 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                     <div className={`rounded-xl p-3 flex items-center justify-between ${isModal ? "bg-green-900/30 border border-white/10" : "bg-stone-50 border border-stone-100"}`}>
                         <div className="flex items-center gap-3">
                             <Clock size={18} className={isModal ? "text-green-200" : "text-studio-green"} />
-                            <span className="font-mono text-xl font-bold tracking-widest">{formatTime(displayRemaining)}</span>
+                            <div className="flex flex-col">
+                              <span className="font-mono text-xl font-bold tracking-widest">
+                                {isCompleted
+                                  ? formatTime(Math.max(0, (appointment.actual_duration_minutes ?? baseDurationMinutes) * 60))
+                                  : formatTime(displayRemaining)}
+                              </span>
+                              {isCompleted && (
+                                <span className="text-[10px] text-gray-500 uppercase font-semibold">Tempo final</span>
+                              )}
+                            </div>
                         </div>
-                        <button 
-                            onClick={async () => {
-                                if (!isActiveSession) {
-                                    const result = await startAppointmentAction(appointment.id);
-                                    if (!result.ok) {
-                                      alert("Erro ao iniciar: " + result.error.message);
+                        {!isCompleted && (
+                          <button 
+                              onClick={async () => {
+                                  if (!isActiveSession) {
+                                      const result = await startAppointmentAction(appointment.id);
+                                      if (!result.ok) {
+                                        alert("Erro ao iniciar: " + result.error.message);
+                                        return;
+                                      }
+                                      startSession({
+                                        appointmentId: appointment.id,
+                                        clientName: appointment.clients?.name || "Cliente",
+                                        serviceName: appointment.service_name,
+                                        totalDurationMinutes: baseDurationMinutes,
+                                      });
                                       return;
-                                    }
-                                    startSession({
-                                      appointmentId: appointment.id,
-                                      clientName: appointment.clients?.name || "Cliente",
-                                      serviceName: appointment.service_name,
-                                      totalDurationMinutes: baseDurationMinutes,
-                                    });
-                                    return;
-                                }
-                                togglePause();
-                            }}
-                            className={`p-2 rounded-full shadow-lg transition-transform active:scale-95 flex items-center gap-2 px-4 ${isActiveSession && !isPaused ? 'bg-orange-500 text-white' : 'bg-white text-studio-green'}`}
-                        >
-                            {isActiveSession && !isPaused ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-                            <span className="text-xs font-bold uppercase">{isActiveSession && !isPaused ? 'Pausar' : 'Iniciar'}</span>
-                        </button>
+                                  }
+                                  togglePause();
+                              }}
+                              className={`p-2 rounded-full shadow-lg transition-transform active:scale-95 flex items-center gap-2 px-4 ${isActiveSession && !isPaused ? 'bg-orange-500 text-white' : 'bg-white text-studio-green'}`}
+                          >
+                              {isActiveSession && !isPaused ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                              <span className="text-xs font-bold uppercase">{isActiveSession && !isPaused ? 'Pausar' : 'Iniciar'}</span>
+                          </button>
+                        )}
+                        {isCompleted && (
+                          <div className="text-xs font-bold text-green-700 bg-green-50 px-3 py-2 rounded-full">
+                            Atendimento finalizado
+                          </div>
+                        )}
                     </div>
 
-                    <div className={`mt-3 h-1.5 rounded-full overflow-hidden ${isModal ? "bg-white/20" : "bg-stone-100"}`}>
-                        <div className={`h-full transition-all ${isModal ? "bg-white/80" : "bg-studio-green"}`} style={{ width: `${Math.round(progress * 100)}%` }} />
-                    </div>
+                    {!isCompleted && (
+                      <div className={`mt-3 h-1.5 rounded-full overflow-hidden ${isModal ? "bg-white/20" : "bg-stone-100"}`}>
+                          <div className={`h-full transition-all ${isModal ? "bg-white/80" : "bg-studio-green"}`} style={{ width: `${Math.round(progress * 100)}%` }} />
+                      </div>
+                    )}
 
                     {appointment.status !== "completed" && (
                       <button
