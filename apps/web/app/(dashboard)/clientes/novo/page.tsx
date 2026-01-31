@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClientAction } from "./actions";
+import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
 
 function formatCpf(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -38,9 +39,43 @@ function formatPhone(value: string) {
     .replace(/(\d{5})(\d)/, "$1-$2");
 }
 
+function formatCep(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
+}
+
+function buildAddressQuery(payload: {
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+}) {
+  const parts = [
+    payload.logradouro,
+    payload.numero,
+    payload.complemento,
+    payload.bairro,
+    payload.cidade,
+    payload.estado,
+    payload.cep,
+  ].filter((value) => value && value.trim().length > 0);
+  return parts.join(", ");
+}
+
 export default function NewClientPage() {
   const [phone, setPhone] = useState("");
   const [cpf, setCpf] = useState("");
+  const [cep, setCep] = useState("");
+  const [logradouro, setLogradouro] = useState("");
+  const [numero, setNumero] = useState("");
+  const [complemento, setComplemento] = useState("");
+  const [bairro, setBairro] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
+  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const phoneError = useMemo(() => {
     if (!phone) return "";
     const digits = phone.replace(/\D/g, "");
@@ -51,6 +86,35 @@ export default function NewClientPage() {
     const digits = cpf.replace(/\D/g, "");
     return digits.length === 11 ? "" : "CPF inválido.";
   }, [cpf]);
+
+  const handleCepLookup = async () => {
+    const normalized = normalizeCep(cep);
+    if (normalized.length !== 8) {
+      setCepStatus("error");
+      return;
+    }
+    setCepStatus("loading");
+    const result = await fetchAddressByCep(normalized);
+    if (!result) {
+      setCepStatus("error");
+      return;
+    }
+    setLogradouro(result.logradouro);
+    setBairro(result.bairro);
+    setCidade(result.cidade);
+    setEstado(result.estado);
+    setCepStatus("success");
+  };
+
+  const mapsQuery = buildAddressQuery({
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    estado,
+    cep,
+  });
 
   return (
     <>
@@ -153,16 +217,102 @@ export default function NewClientPage() {
         </div>
 
         {/* Endereço */}
-        <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Endereço Completo</label>
-            <div className="relative">
-                <MapPin className="absolute left-4 top-4 text-gray-400" size={18} />
-                <textarea 
-                name="endereco_completo"
-                placeholder="Rua, número, bairro, cidade..."
-                rows={3}
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green resize-none"
+        <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Endereço</label>
+            <div className="grid grid-cols-1 gap-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input 
+                      name="address_cep"
+                      type="text"
+                      placeholder="CEP"
+                      value={cep}
+                      onChange={(e) => {
+                        setCep(formatCep(e.target.value));
+                        setCepStatus("idle");
+                      }}
+                      inputMode="numeric"
+                      aria-invalid={cepStatus === "error" ? "true" : "false"}
+                      className={`w-full bg-stone-50 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                        cepStatus === "error"
+                          ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                          : "border-stone-100 focus:ring-studio-green/20 focus:border-studio-green"
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCepLookup}
+                    className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
+                  >
+                    {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                  </button>
+                </div>
+                {cepStatus === "error" && <p className="text-[11px] text-red-500 ml-1">CEP inválido.</p>}
+                <input 
+                  name="address_logradouro"
+                  type="text"
+                  placeholder="Logradouro"
+                  value={logradouro}
+                  onChange={(e) => setLogradouro(e.target.value)}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
                 />
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    name="address_numero"
+                    type="text"
+                    placeholder="Número"
+                    value={numero}
+                    onChange={(e) => setNumero(e.target.value)}
+                    className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  />
+                  <input 
+                    name="address_complemento"
+                    type="text"
+                    placeholder="Complemento"
+                    value={complemento}
+                    onChange={(e) => setComplemento(e.target.value)}
+                    className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    name="address_bairro"
+                    type="text"
+                    placeholder="Bairro"
+                    value={bairro}
+                    onChange={(e) => setBairro(e.target.value)}
+                    className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  />
+                  <input 
+                    name="address_cidade"
+                    type="text"
+                    placeholder="Cidade"
+                    value={cidade}
+                    onChange={(e) => setCidade(e.target.value)}
+                    className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  />
+                </div>
+                <input 
+                  name="address_estado"
+                  type="text"
+                  placeholder="Estado (UF)"
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                  maxLength={2}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green uppercase"
+                />
+                {mapsQuery && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-studio-green hover:underline ml-1"
+                  >
+                    Ver endereço no Maps
+                  </a>
+                )}
             </div>
         </div>
 

@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil, Copy, Trash2 } from "lucide-react";
+import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil, Copy, Trash2, Navigation } from "lucide-react";
 import type { Database } from "../../../../lib/supabase/types";
 import { deleteClient, updateClientProfile } from "./actions";
+import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -35,11 +36,50 @@ function formatPhone(value: string) {
     .replace(/(\d{5})(\d)/, "$1-$2");
 }
 
+function formatCep(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
+}
+
+function buildAddressLine(payload: {
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+  fallback?: string | null;
+}) {
+  const parts = [
+    payload.logradouro,
+    payload.numero,
+    payload.complemento,
+    payload.bairro,
+    payload.cidade,
+    payload.estado,
+    payload.cep,
+  ]
+    .map((value) => (value ? value.trim() : ""))
+    .filter((value) => value.length > 0);
+
+  if (parts.length > 0) return parts.join(", ");
+  return payload.fallback?.trim() || "Endereço não informado";
+}
+
 export function ClientProfile({ client }: ClientProfileProps) {
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [phone, setPhone] = useState(client.phone ?? "");
   const [cpf, setCpf] = useState(client.cpf ?? "");
+  const [cep, setCep] = useState(client.address_cep ?? "");
+  const [logradouro, setLogradouro] = useState(client.address_logradouro ?? "");
+  const [numero, setNumero] = useState(client.address_numero ?? "");
+  const [complemento, setComplemento] = useState(client.address_complemento ?? "");
+  const [bairro, setBairro] = useState(client.address_bairro ?? "");
+  const [cidade, setCidade] = useState(client.address_cidade ?? "");
+  const [estado, setEstado] = useState(client.address_estado ?? "");
+  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
 
   const phoneDigits = client.phone ? onlyDigits(client.phone) : "";
   const whatsappLink = phoneDigits ? `https://wa.me/55${phoneDigits}` : null;
@@ -55,6 +95,28 @@ export function ClientProfile({ client }: ClientProfileProps) {
     return digits.length === 11 ? "" : "CPF inválido.";
   }, [cpf]);
 
+  const addressLine = buildAddressLine({
+    logradouro: client.address_logradouro,
+    numero: client.address_numero,
+    complemento: client.address_complemento,
+    bairro: client.address_bairro,
+    cidade: client.address_cidade,
+    estado: client.address_estado,
+    cep: client.address_cep,
+    fallback: client.endereco_completo,
+  });
+
+  const mapsQuery = buildAddressLine({
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    estado,
+    cep,
+  });
+  const hasMapsQuery = mapsQuery && mapsQuery !== "Endereço não informado";
+
   const handleCopy = async (value?: string | null) => {
     if (!value) return;
     try {
@@ -63,6 +125,25 @@ export function ClientProfile({ client }: ClientProfileProps) {
     } catch {
       setMessage({ type: "error", text: "Não foi possível copiar agora." });
     }
+  };
+
+  const handleCepLookup = async () => {
+    const normalized = normalizeCep(cep);
+    if (normalized.length !== 8) {
+      setCepStatus("error");
+      return;
+    }
+    setCepStatus("loading");
+    const result = await fetchAddressByCep(normalized);
+    if (!result) {
+      setCepStatus("error");
+      return;
+    }
+    setLogradouro(result.logradouro);
+    setBairro(result.bairro);
+    setCidade(result.cidade);
+    setEstado(result.estado);
+    setCepStatus("success");
   };
 
   return (
@@ -128,6 +209,17 @@ export function ClientProfile({ client }: ClientProfileProps) {
             Email
           </a>
         )}
+        {addressLine && addressLine !== "Endereço não informado" && (
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-xs font-bold text-studio-green bg-green-50 px-3 py-2 rounded-full hover:bg-green-100 transition"
+          >
+            <Navigation size={14} />
+            Abrir mapa
+          </a>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 text-sm text-gray-600">
@@ -169,7 +261,7 @@ export function ClientProfile({ client }: ClientProfileProps) {
         </div>
         <div className="flex items-center gap-2">
           <MapPin size={14} className="text-gray-400" />
-          <span>{client.endereco_completo || "Endereço não informado"}</span>
+          <span>{addressLine}</span>
         </div>
         <div className="flex items-center gap-2">
           <MessageCircle size={14} className="text-gray-400" />
@@ -269,13 +361,91 @@ export function ClientProfile({ client }: ClientProfileProps) {
               placeholder="Tags de saúde (separe por vírgula)"
               className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
             />
-            <textarea
-              name="endereco_completo"
-              defaultValue={client.endereco_completo ?? ""}
-              placeholder="Endereço completo"
-              rows={3}
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-            />
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex gap-2">
+                <input
+                  name="address_cep"
+                  value={cep}
+                  placeholder="CEP"
+                  inputMode="numeric"
+                  aria-invalid={cepStatus === "error" ? "true" : "false"}
+                  onChange={(e) => {
+                    setCep(formatCep(e.target.value));
+                    setCepStatus("idle");
+                  }}
+                  className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                    cepStatus === "error"
+                      ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                      : "border-stone-100 focus:ring-studio-green/20"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleCepLookup}
+                  className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
+                >
+                  {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                </button>
+              </div>
+              {cepStatus === "error" && <p className="text-[11px] text-red-500">CEP inválido.</p>}
+              <input
+                name="address_logradouro"
+                value={logradouro}
+                placeholder="Logradouro"
+                onChange={(e) => setLogradouro(e.target.value)}
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="address_numero"
+                  value={numero}
+                  placeholder="Número"
+                  onChange={(e) => setNumero(e.target.value)}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                />
+                <input
+                  name="address_complemento"
+                  value={complemento}
+                  placeholder="Complemento"
+                  onChange={(e) => setComplemento(e.target.value)}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  name="address_bairro"
+                  value={bairro}
+                  placeholder="Bairro"
+                  onChange={(e) => setBairro(e.target.value)}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                />
+                <input
+                  name="address_cidade"
+                  value={cidade}
+                  placeholder="Cidade"
+                  onChange={(e) => setCidade(e.target.value)}
+                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                />
+              </div>
+              <input
+                name="address_estado"
+                value={estado}
+                placeholder="Estado (UF)"
+                onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                maxLength={2}
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 uppercase"
+              />
+              {hasMapsQuery && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-studio-green hover:underline"
+                >
+                  Ver endereço no Maps
+                </a>
+              )}
+            </div>
             <textarea
               name="observacoes_gerais"
               defaultValue={client.observacoes_gerais ?? ""}

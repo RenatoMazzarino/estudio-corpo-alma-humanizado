@@ -10,6 +10,28 @@ import { createClientSchema, updateClientNotesSchema, updateClientSchema } from 
 import { z } from "zod";
 import { createClient, updateClient, deleteClient as deleteClientRepo } from "./repository";
 
+function buildAddressLine(payload: {
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+}) {
+  const parts = [
+    payload.logradouro?.trim(),
+    payload.numero?.trim(),
+    payload.complemento?.trim(),
+    payload.bairro?.trim(),
+    payload.cidade?.trim(),
+    payload.estado?.trim(),
+    payload.cep?.trim(),
+  ].filter((value) => value && value.length > 0);
+
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 export async function createClientAction(formData: FormData): Promise<void> {
   const name = formData.get("name") as string | null;
   const phone = (formData.get("phone") as string | null) || null;
@@ -18,6 +40,13 @@ export async function createClientAction(formData: FormData): Promise<void> {
   const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
   const cpf = (formData.get("cpf") as string | null) || null;
   const endereco_completo = (formData.get("endereco_completo") as string | null) || null;
+  const address_cep = (formData.get("address_cep") as string | null) || null;
+  const address_logradouro = (formData.get("address_logradouro") as string | null) || null;
+  const address_numero = (formData.get("address_numero") as string | null) || null;
+  const address_complemento = (formData.get("address_complemento") as string | null) || null;
+  const address_bairro = (formData.get("address_bairro") as string | null) || null;
+  const address_cidade = (formData.get("address_cidade") as string | null) || null;
+  const address_estado = (formData.get("address_estado") as string | null) || null;
   const profissao = (formData.get("profissao") as string | null) || null;
   const como_conheceu = (formData.get("como_conheceu") as string | null) || null;
   const healthTagsRaw = (formData.get("health_tags") as string | null) || null;
@@ -37,6 +66,13 @@ export async function createClientAction(formData: FormData): Promise<void> {
     data_nascimento,
     cpf,
     endereco_completo,
+    address_cep,
+    address_logradouro,
+    address_numero,
+    address_complemento,
+    address_bairro,
+    address_cidade,
+    address_estado,
     profissao,
     como_conheceu,
     health_tags,
@@ -52,7 +88,23 @@ export async function createClientAction(formData: FormData): Promise<void> {
     email: parsed.data.email,
     data_nascimento: parsed.data.data_nascimento,
     cpf: parsed.data.cpf,
-    endereco_completo: parsed.data.endereco_completo,
+    endereco_completo:
+      buildAddressLine({
+        cep: parsed.data.address_cep,
+        logradouro: parsed.data.address_logradouro,
+        numero: parsed.data.address_numero,
+        complemento: parsed.data.address_complemento,
+        bairro: parsed.data.address_bairro,
+        cidade: parsed.data.address_cidade,
+        estado: parsed.data.address_estado,
+      }) ?? parsed.data.endereco_completo,
+    address_cep: parsed.data.address_cep,
+    address_logradouro: parsed.data.address_logradouro,
+    address_numero: parsed.data.address_numero,
+    address_complemento: parsed.data.address_complemento,
+    address_bairro: parsed.data.address_bairro,
+    address_cidade: parsed.data.address_cidade,
+    address_estado: parsed.data.address_estado,
     profissao: parsed.data.profissao,
     como_conheceu: parsed.data.como_conheceu,
     health_tags: parsed.data.health_tags,
@@ -93,6 +145,13 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
   const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
   const cpf = (formData.get("cpf") as string | null) || null;
   const endereco_completo = (formData.get("endereco_completo") as string | null) || null;
+  const address_cep = (formData.get("address_cep") as string | null) || null;
+  const address_logradouro = (formData.get("address_logradouro") as string | null) || null;
+  const address_numero = (formData.get("address_numero") as string | null) || null;
+  const address_complemento = (formData.get("address_complemento") as string | null) || null;
+  const address_bairro = (formData.get("address_bairro") as string | null) || null;
+  const address_cidade = (formData.get("address_cidade") as string | null) || null;
+  const address_estado = (formData.get("address_estado") as string | null) || null;
   const profissao = (formData.get("profissao") as string | null) || null;
   const como_conheceu = (formData.get("como_conheceu") as string | null) || null;
   const healthTagsRaw = (formData.get("health_tags") as string | null) || null;
@@ -113,6 +172,13 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     data_nascimento,
     cpf,
     endereco_completo,
+    address_cep,
+    address_logradouro,
+    address_numero,
+    address_complemento,
+    address_bairro,
+    address_cidade,
+    address_estado,
     profissao,
     como_conheceu,
     health_tags,
@@ -129,7 +195,23 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     email: parsed.data.email,
     data_nascimento: parsed.data.data_nascimento,
     cpf: parsed.data.cpf,
-    endereco_completo: parsed.data.endereco_completo,
+    endereco_completo:
+      buildAddressLine({
+        cep: parsed.data.address_cep,
+        logradouro: parsed.data.address_logradouro,
+        numero: parsed.data.address_numero,
+        complemento: parsed.data.address_complemento,
+        bairro: parsed.data.address_bairro,
+        cidade: parsed.data.address_cidade,
+        estado: parsed.data.address_estado,
+      }) ?? parsed.data.endereco_completo,
+    address_cep: parsed.data.address_cep,
+    address_logradouro: parsed.data.address_logradouro,
+    address_numero: parsed.data.address_numero,
+    address_complemento: parsed.data.address_complemento,
+    address_bairro: parsed.data.address_bairro,
+    address_cidade: parsed.data.address_cidade,
+    address_estado: parsed.data.address_estado,
     profissao: parsed.data.profissao,
     como_conheceu: parsed.data.como_conheceu,
     health_tags: parsed.data.health_tags,
