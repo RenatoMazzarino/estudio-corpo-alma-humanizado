@@ -114,6 +114,13 @@ Escopo: polimento pós-execução (G9–G22)
 - Cronômetro agora usa duração real do serviço (sem buffers) e agendamento carrega duração via relação `services`.
 - Padronização de fontes removendo `font-serif` em telas principais.
 
+### G24 — UI + TSConfig + scroll
+- Agenda: scroll horizontal dos dias restaurado com container de overflow dedicado.
+- Perfil do cliente: botão de GPS ao lado do endereço.
+- Correções de Tailwind v4 (classes canônicas) e conflito `block/flex`.
+- `apps/web` e `packages/ui` agora com `composite: true` para resolver referências do TS.
+- `Home` agora usa `await searchParams` (Next 16).
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
