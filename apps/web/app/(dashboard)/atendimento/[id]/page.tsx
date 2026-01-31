@@ -18,11 +18,17 @@ export default async function AtendimentoPage(props: PageProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-        <ChevronLeft size={16} />
-        Voltar
-      </Link>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/" className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
+          <ChevronLeft size={20} />
+        </Link>
+        <div>
+          <h1 className="text-lg font-bold text-gray-800">Atendimento</h1>
+          <p className="text-xs text-gray-500">Detalhes, evolução e checkout</p>
+        </div>
+      </div>
+
       <AppointmentDetailsPage appointment={appointment} />
     </div>
   );

@@ -138,7 +138,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   if (step === "SERVICE") {
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Qual procedimento você deseja?</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-2">Qual procedimento você deseja?</h2>
         <div className="grid gap-3">
           {services.map((service) => (
             <button
@@ -176,7 +176,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                 <ChevronRight className="rotate-180" size={14} /> Voltar
              </button>
 
-             <h2 className="text-xl font-bold text-gray-800 mb-4">Onde será o atendimento?</h2>
+             <h2 className="text-lg font-bold text-gray-800 mb-4">Onde será o atendimento?</h2>
              
              <div className="space-y-3">
                  {/* Opção Estúdio */}
@@ -227,13 +227,13 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   // 3. DATE & TIME
   if (step === "DATETIME") {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
         <button onClick={() => setStep(selectedService?.accepts_home_visit ? "LOCATION" : "SERVICE")} className="text-sm text-gray-400 flex items-center gap-1 mb-2 hover:text-gray-600">
             <ChevronRight className="rotate-180" size={14} /> Voltar
         </button>
 
         <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Escolha o melhor horário</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Escolha o melhor horário</h2>
             
             {/* Resumo do Serviço */}
             <div className={`p-3 rounded-xl flex justify-between items-center mb-6 border ${isHomeVisit ? 'bg-purple-50 border-purple-100' : 'bg-stone-50 border-stone-100'}`}>
@@ -307,12 +307,12 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   // 4. INFO
   if (step === "INFO") {
      return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
          <button onClick={() => setStep("DATETIME")} className="text-sm text-gray-400 flex items-center gap-1 mb-2 hover:text-gray-600">
             <ChevronRight className="rotate-180" size={14} /> Voltar
         </button>
 
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Seus Dados</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-4">Seus Dados</h2>
 
         <div className="space-y-4">
             <div className="relative">
@@ -340,7 +340,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
         </div>
         
         {/* Resumo Final */}
-        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 mt-6 space-y-2 text-sm text-orange-800">
+        <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 mt-6 space-y-2 text-sm text-stone-600">
             <div className="flex justify-between">
                 <span>Serviço:</span>
                 <span className="font-bold">{selectedService?.name}</span>
@@ -353,11 +353,11 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
             )}
             <div className="flex justify-between">
                 <span>Data:</span>
-                <span className="font-bold">{date ? format(new Date(date), "dd/MM/yyyy") : ""} às {selectedTime}</span>
+                <span className="font-bold text-gray-800">{date ? format(new Date(date), "dd/MM/yyyy") : ""} às {selectedTime}</span>
             </div>
-            <div className="flex justify-between border-t border-orange-200 pt-2 mt-2">
+            <div className="flex justify-between border-t border-stone-200 pt-2 mt-2">
                 <span>Total:</span>
-                <span className="font-bold text-lg">R$ {getTotalPrice().toFixed(2)}</span>
+                <span className="font-bold text-lg text-gray-800">R$ {getTotalPrice().toFixed(2)}</span>
             </div>
         </div>
 
@@ -377,7 +377,7 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   if (step === "SUCCESS") {
       return (
           <div className="text-center py-10 animate-in zoom-in duration-500">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-studio-green">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-studio-green">
                   <Check size={40} strokeWidth={3} />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Agendamento Confirmado!</h2>

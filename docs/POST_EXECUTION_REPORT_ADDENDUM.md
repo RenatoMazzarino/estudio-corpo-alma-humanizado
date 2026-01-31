@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G21)
+Escopo: polimento pós-execução (G9–G22)
 
 ---
 
@@ -99,6 +99,11 @@ Escopo: polimento pós-execução (G9–G21)
 - Agendamento interno redireciona com notificação de sucesso.
 - Tela de atendimento ajustada para layout de página (não modal).
 - Botão para apagar cliente no perfil.
+
+### G22 — Ajustes de UX e consistência visual
+- Relógio persistente agora fica dentro da moldura (absoluto) e é arrastável.
+- Relógio persistente oculto na tela de atendimento (evita duplicidade).
+- Tela pública de agendamento ajustada ao padrão visual do sistema.
 
 ---
 

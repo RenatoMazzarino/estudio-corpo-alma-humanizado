@@ -109,7 +109,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
             <div className={containerClasses}>
                 
                 {/* Header */}
-                <div className="bg-studio-green p-6 text-white relative">
+                <div className={`p-6 text-white relative ${isModal ? "bg-studio-green" : "bg-white text-gray-800 border-b border-stone-100"}`}>
                     {isModal && onClose && (
                       <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition">
                           <X size={20} />
@@ -117,7 +117,7 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                     )}
                     
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold backdrop-blur-md border border-white/10">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold ${isModal ? "bg-white/20 border border-white/10" : "bg-stone-100 text-stone-700"}`}>
                             {appointment.clients?.initials || <User />}
                         </div>
                         <div>
@@ -128,19 +128,19 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                             ) : (
                               <h2 className="text-xl font-bold font-serif">{appointment.clients?.name}</h2>
                             )}
-                            <p className="text-green-100 text-sm opacity-90 flex items-center gap-1">
+                            <p className={`text-sm flex items-center gap-1 ${isModal ? "text-green-100 opacity-90" : "text-gray-500"}`}>
                                 {appointment.service_name}
                                 {appointment.is_home_visit && (
-                                    <span className="bg-purple-500/80 text-white text-[10px] px-2 py-0.5 rounded-full ml-2">DOMICILIAR</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full ml-2 ${isModal ? "bg-purple-500/80 text-white" : "bg-purple-100 text-purple-700"}`}>DOMICILIAR</span>
                                 )}
                             </p>
                         </div>
                     </div>
 
                     {/* Timer Integrado no Header */}
-                    <div className="bg-green-900/30 rounded-xl p-3 flex items-center justify-between border border-white/10">
+                    <div className={`rounded-xl p-3 flex items-center justify-between ${isModal ? "bg-green-900/30 border border-white/10" : "bg-stone-50 border border-stone-100"}`}>
                         <div className="flex items-center gap-3">
-                            <Clock size={18} className="text-green-200" />
+                            <Clock size={18} className={isModal ? "text-green-200" : "text-studio-green"} />
                             <span className="font-mono text-xl font-bold tracking-widest">{formatTime(displayRemaining)}</span>
                         </div>
                         <button 
@@ -168,8 +168,8 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                         </button>
                     </div>
 
-                    <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-white/80 transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
+                    <div className={`mt-3 h-1.5 rounded-full overflow-hidden ${isModal ? "bg-white/20" : "bg-stone-100"}`}>
+                        <div className={`h-full transition-all ${isModal ? "bg-white/80" : "bg-studio-green"}`} style={{ width: `${Math.round(progress * 100)}%` }} />
                     </div>
 
                     {appointment.status !== "completed" && (
