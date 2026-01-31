@@ -121,6 +121,10 @@ Escopo: polimento pós-execução (G9–G22)
 - `apps/web` e `packages/ui` agora com `composite: true` para resolver referências do TS.
 - `Home` agora usa `await searchParams` (Next 16).
 
+### G25 — Scroll por arraste + TS incremental
+- Agenda: scroll horizontal dos dias agora suporta arraste (pointer drag).
+- TSConfig: `incremental: true` em `apps/web` e `packages/ui` (resolve erro TS6379).
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
