@@ -1,12 +1,21 @@
 -- G17: fix ambiguous start_time in RPCs by renaming parameters
 DROP FUNCTION IF EXISTS public.create_public_appointment(text, uuid, timestamptz, text, text, boolean);
+DROP FUNCTION IF EXISTS public.create_public_appointment(text, uuid, timestamptz, text, text, text, text, text, text, text, text, text, boolean);
 DROP FUNCTION IF EXISTS public.create_internal_appointment(uuid, uuid, timestamptz, text, text, boolean);
-CREATE OR REPLACE FUNCTION public.create_public_appointment(
+DROP FUNCTION IF EXISTS public.create_internal_appointment(uuid, uuid, timestamptz, text, text, text, text, text, text, text, text, text, boolean);
+CREATE FUNCTION public.create_public_appointment(
   tenant_slug text,
   service_id uuid,
   p_start_time timestamptz,
   client_name text,
   client_phone text,
+  p_address_cep text DEFAULT NULL,
+  p_address_logradouro text DEFAULT NULL,
+  p_address_numero text DEFAULT NULL,
+  p_address_complemento text DEFAULT NULL,
+  p_address_bairro text DEFAULT NULL,
+  p_address_cidade text DEFAULT NULL,
+  p_address_estado text DEFAULT NULL,
   is_home_visit boolean DEFAULT false
 ) RETURNS uuid
 LANGUAGE plpgsql
@@ -70,6 +79,17 @@ BEGIN
     INSERT INTO clients (tenant_id, name, phone, initials)
     VALUES (v_tenant_id, client_name, client_phone, upper(left(client_name, 2)))
     RETURNING id INTO v_client_id;
+  ELSE
+    UPDATE clients
+    SET
+      address_cep = COALESCE(p_address_cep, address_cep),
+      address_logradouro = COALESCE(p_address_logradouro, address_logradouro),
+      address_numero = COALESCE(p_address_numero, address_numero),
+      address_complemento = COALESCE(p_address_complemento, address_complemento),
+      address_bairro = COALESCE(p_address_bairro, address_bairro),
+      address_cidade = COALESCE(p_address_cidade, address_cidade),
+      address_estado = COALESCE(p_address_estado, address_estado)
+    WHERE id = v_client_id;
   END IF;
 
   IF EXISTS (
@@ -110,6 +130,13 @@ BEGIN
     status,
     is_home_visit,
     total_duration_minutes,
+    address_cep,
+    address_logradouro,
+    address_numero,
+    address_complemento,
+    address_bairro,
+    address_cidade,
+    address_estado,
     payment_status
   ) VALUES (
     v_tenant_id,
@@ -122,6 +149,13 @@ BEGIN
     'pending',
     is_home_visit,
     v_total_duration,
+    p_address_cep,
+    p_address_logradouro,
+    p_address_numero,
+    p_address_complemento,
+    p_address_bairro,
+    p_address_cidade,
+    p_address_estado,
     'pending'
   ) RETURNING id INTO v_appointment_id;
 
@@ -129,12 +163,19 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.create_internal_appointment(
+CREATE FUNCTION public.create_internal_appointment(
   p_tenant_id uuid,
   service_id uuid,
   p_start_time timestamptz,
   client_name text,
   client_phone text DEFAULT NULL,
+  p_address_cep text DEFAULT NULL,
+  p_address_logradouro text DEFAULT NULL,
+  p_address_numero text DEFAULT NULL,
+  p_address_complemento text DEFAULT NULL,
+  p_address_bairro text DEFAULT NULL,
+  p_address_cidade text DEFAULT NULL,
+  p_address_estado text DEFAULT NULL,
   is_home_visit boolean DEFAULT false
 ) RETURNS uuid
 LANGUAGE plpgsql
@@ -195,6 +236,17 @@ BEGIN
     INSERT INTO clients (tenant_id, name, phone, initials)
     VALUES (p_tenant_id, client_name, client_phone, upper(left(client_name, 2)))
     RETURNING id INTO v_client_id;
+  ELSE
+    UPDATE clients
+    SET
+      address_cep = COALESCE(p_address_cep, address_cep),
+      address_logradouro = COALESCE(p_address_logradouro, address_logradouro),
+      address_numero = COALESCE(p_address_numero, address_numero),
+      address_complemento = COALESCE(p_address_complemento, address_complemento),
+      address_bairro = COALESCE(p_address_bairro, address_bairro),
+      address_cidade = COALESCE(p_address_cidade, address_cidade),
+      address_estado = COALESCE(p_address_estado, address_estado)
+    WHERE id = v_client_id;
   END IF;
 
   IF EXISTS (
@@ -235,6 +287,13 @@ BEGIN
     status,
     is_home_visit,
     total_duration_minutes,
+    address_cep,
+    address_logradouro,
+    address_numero,
+    address_complemento,
+    address_bairro,
+    address_cidade,
+    address_estado,
     payment_status
   ) VALUES (
     p_tenant_id,
@@ -247,6 +306,13 @@ BEGIN
     'pending',
     is_home_visit,
     v_total_duration,
+    p_address_cep,
+    p_address_logradouro,
+    p_address_numero,
+    p_address_complemento,
+    p_address_bairro,
+    p_address_cidade,
+    p_address_estado,
     'pending'
   ) RETURNING id INTO v_appointment_id;
 
@@ -254,5 +320,5 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.create_public_appointment(text, uuid, timestamptz, text, text, boolean) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.create_internal_appointment(uuid, uuid, timestamptz, text, text, boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION public.create_public_appointment(text, uuid, timestamptz, text, text, text, text, text, text, text, text, text, boolean) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_internal_appointment(uuid, uuid, timestamptz, text, text, text, text, text, text, text, text, text, boolean) TO service_role;

@@ -36,6 +36,13 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
           actual_duration_minutes: number | null
           client_id: string | null
           created_at: string
@@ -53,6 +60,13 @@ export type Database = {
           total_duration_minutes: number | null
         }
         Insert: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
           actual_duration_minutes?: number | null
           client_id?: string | null
           created_at?: string
@@ -70,6 +84,13 @@ export type Database = {
           total_duration_minutes?: number | null
         }
         Update: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
           actual_duration_minutes?: number | null
           client_id?: string | null
           created_at?: string
@@ -188,6 +209,13 @@ export type Database = {
       }
       clients: {
         Row: {
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
           como_conheceu: string | null
           cpf: string | null
           created_at: string
@@ -204,6 +232,13 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
           como_conheceu?: string | null
           cpf?: string | null
           created_at?: string
@@ -220,6 +255,13 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
           como_conheceu?: string | null
           cpf?: string | null
           created_at?: string
@@ -514,6 +556,13 @@ export type Database = {
           client_name: string
           client_phone?: string
           is_home_visit?: boolean
+          p_address_bairro?: string
+          p_address_cep?: string
+          p_address_cidade?: string
+          p_address_complemento?: string
+          p_address_estado?: string
+          p_address_logradouro?: string
+          p_address_numero?: string
           p_start_time: string
           p_tenant_id: string
           service_id: string
@@ -525,6 +574,13 @@ export type Database = {
           client_name: string
           client_phone: string
           is_home_visit?: boolean
+          p_address_bairro?: string
+          p_address_cep?: string
+          p_address_cidade?: string
+          p_address_complemento?: string
+          p_address_estado?: string
+          p_address_logradouro?: string
+          p_address_numero?: string
           p_start_time: string
           service_id: string
           tenant_slug: string
@@ -666,4 +722,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
