@@ -29,7 +29,7 @@ pnpm dev
 Se alternar entre WSL e Windows, apague `node_modules` e `.next` antes de reinstalar:
 
 ```powershell
-Remove-Item -Recurse -Force node_modules, apps/web/node_modules, apps/web/.next
+Remove-Item -Recurse -Force node_modules, apps/web/node_modules, packages/ui/node_modules, packages/eslint-config/node_modules, packages/typescript-config/node_modules, apps/web/.next
 pnpm install
 ```
 
