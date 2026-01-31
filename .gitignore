@@ -18,6 +18,10 @@ coverage
 # Turbo
 .turbo
 
+# Supabase local artifacts
+supabase/.temp
+supabase/.branches
+
 # Vercel
 .vercel
 
