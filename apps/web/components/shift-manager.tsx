@@ -16,7 +16,10 @@ export function ShiftManager() {
     setLoading(true);
     setMessage(null);
     try {
-      await createShiftBlocks(type, selectedMonth);
+      const result = await createShiftBlocks(type, selectedMonth);
+      if (!result.ok) {
+        throw result.error;
+      }
       setMessage({ 
         type: 'success', 
         text: `Escala de dias ${type === 'even' ? 'Pares' : 'Ímpares'} criada com sucesso para ${format(new Date(selectedMonth + '-01'), 'MMMM/yyyy', { locale: ptBR })}!` 
@@ -35,7 +38,10 @@ export function ShiftManager() {
     setLoading(true);
     setMessage(null);
     try {
-      await clearMonthBlocks(selectedMonth);
+      const result = await clearMonthBlocks(selectedMonth);
+      if (!result.ok) {
+        throw result.error;
+      }
       setMessage({ type: 'success', text: "Escala do mês limpa com sucesso!" });
     } catch (error) { // Usando a variável erro explicitamente
           console.error(error);

@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G14)
+Escopo: polimento pós-execução (G9–G15)
 
 ---
 
@@ -55,6 +55,14 @@ Escopo: polimento pós-execução (G9–G14)
 - `createServiceClient` agora falha com `AppError` claro quando `SUPABASE_SERVICE_ROLE_KEY` está ausente.
 - Leitura pública de tenant e serviços usa `createPublicClient` (sem exigir service role).
 
+### G15 — Ajustes funcionais pós-uso (clientes/serviços/escala/caixa/agenda)
+- Formulário de novo cliente agora cobre email, data de nascimento, CPF, endereço, profissão, como conheceu e tags de saúde.
+- Validação de serviço aceita input com vírgula e reduz falsos “Dados inválidos para serviço”.
+- Plantões: `ShiftManager` agora trata `ActionResult` corretamente e mostra erro quando falha.
+- Caixa: `searchParams` tratado via `await` para evitar erro de Promise no Next.
+- Agenda: FAB agora abre `/novo` e fica acima da BottomNav.
+- Agendamento público exibe estado vazio quando não há serviços.
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
@@ -84,7 +92,7 @@ Escopo: polimento pós-execução (G9–G14)
 
 - `pnpm lint` ✅
 - `pnpm check-types` ✅
-- `pnpm build` ⚠️ (falha local com missing `lightningcss.linux-x64-gnu.node` após instalação parcial; reexecutar após `pnpm install` limpo)  
+- `pnpm build` ⚠️ (falha local com missing `lightningcss.linux-x64-gnu.node` após instalação parcial; reexecutar após `pnpm install` limpo)
   - Observação: em uma execução houve `ENOMEM`, resolvido ao reexecutar.
   - Observação (ambiente Linux + Node Windows): `pnpm lint` falhou quando o Turbo tentou baixar binário Linux usando Node Windows; resolvido ao reexecutar em ambiente compatível.
 

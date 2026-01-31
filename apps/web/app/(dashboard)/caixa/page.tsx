@@ -21,7 +21,7 @@ type RawAppointment = Omit<Appointment, "clients"> & {
 };
 
 interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 interface Transaction {
@@ -35,11 +35,12 @@ interface Transaction {
 }
 
 export default async function CaixaPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
   const today = new Date();
   let selectedDate = today;
 
-  if (searchParams?.date && typeof searchParams.date === "string") {
-    selectedDate = parseISO(searchParams.date);
+  if (resolvedSearchParams?.date && typeof resolvedSearchParams.date === "string") {
+    selectedDate = parseISO(resolvedSearchParams.date);
   }
   
   const nextDay = format(addDays(selectedDate, 1), "yyyy-MM-dd");

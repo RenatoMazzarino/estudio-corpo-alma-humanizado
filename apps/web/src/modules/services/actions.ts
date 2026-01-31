@@ -11,11 +11,11 @@ import { revalidatePath } from "next/cache";
 export async function upsertService(formData: FormData): Promise<ActionResult<{ id?: string }>> {
   const id = formData.get("id") as string | null;
   const name = formData.get("name") as string | null;
-  const price = Number(formData.get("price"));
-  const duration_minutes = Number(formData.get("duration_minutes"));
+  const price = formData.get("price");
+  const duration_minutes = formData.get("duration_minutes");
   const accepts_home_visit = formData.get("accepts_home_visit") === "on";
-  const home_visit_fee = Number(formData.get("home_visit_fee")) || 0;
-  const custom_buffer_minutes = Number(formData.get("custom_buffer_minutes")) || 0;
+  const home_visit_fee = formData.get("home_visit_fee") ?? "0";
+  const custom_buffer_minutes = formData.get("custom_buffer_minutes") ?? "0";
   const description = (formData.get("description") as string | null) || null;
 
   const parsed = upsertServiceSchema.safeParse({

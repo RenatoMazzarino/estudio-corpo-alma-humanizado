@@ -221,7 +221,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       </div>
 
       {/* FAB - Novo Agendamento */}
-      <button className="absolute bottom-6 right-6 w-14 h-14 bg-studio-green text-white rounded-full shadow-lg shadow-green-200 flex items-center justify-center hover:bg-studio-green-dark transition-transform active:scale-95 z-40">
+      <button
+            onClick={() => router.push("/novo")}
+            className="absolute bottom-24 right-6 w-14 h-14 bg-studio-green text-white rounded-full shadow-lg shadow-green-200 flex items-center justify-center hover:bg-studio-green-dark transition-transform active:scale-95 z-40"
+      >
             <Plus size={28} />
       </button>
       

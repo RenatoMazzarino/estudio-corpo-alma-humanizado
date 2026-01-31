@@ -13,8 +13,33 @@ export async function createClientAction(formData: FormData): Promise<void> {
   const name = formData.get("name") as string | null;
   const phone = (formData.get("phone") as string | null) || null;
   const observacoes_gerais = (formData.get("observacoes_gerais") as string | null) || null;
+  const email = (formData.get("email") as string | null) || null;
+  const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
+  const cpf = (formData.get("cpf") as string | null) || null;
+  const endereco_completo = (formData.get("endereco_completo") as string | null) || null;
+  const profissao = (formData.get("profissao") as string | null) || null;
+  const como_conheceu = (formData.get("como_conheceu") as string | null) || null;
+  const healthTagsRaw = (formData.get("health_tags") as string | null) || null;
+  const health_tags =
+    healthTagsRaw && healthTagsRaw.trim().length > 0
+      ? healthTagsRaw
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0)
+      : null;
 
-  const parsed = createClientSchema.safeParse({ name, phone, observacoes_gerais });
+  const parsed = createClientSchema.safeParse({
+    name,
+    phone,
+    observacoes_gerais,
+    email,
+    data_nascimento,
+    cpf,
+    endereco_completo,
+    profissao,
+    como_conheceu,
+    health_tags,
+  });
   if (!parsed.success) {
     throw new AppError("Dados inválidos para cliente", "VALIDATION_ERROR", 400, parsed.error);
   }
@@ -23,6 +48,13 @@ export async function createClientAction(formData: FormData): Promise<void> {
     name: parsed.data.name,
     phone: parsed.data.phone,
     observacoes_gerais: parsed.data.observacoes_gerais,
+    email: parsed.data.email,
+    data_nascimento: parsed.data.data_nascimento,
+    cpf: parsed.data.cpf,
+    endereco_completo: parsed.data.endereco_completo,
+    profissao: parsed.data.profissao,
+    como_conheceu: parsed.data.como_conheceu,
+    health_tags: parsed.data.health_tags,
     initials: parsed.data.name.slice(0, 2).toUpperCase(),
     tenant_id: FIXED_TENANT_ID,
   });

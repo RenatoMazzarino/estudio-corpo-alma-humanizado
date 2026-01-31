@@ -52,7 +52,13 @@ export default async function PublicBookingPage(props: PageProps) {
             </div>
 
             <div className="px-6 flex-1 pb-10">
-                <BookingFlow tenant={tenant} services={services} />
+                {services.length > 0 ? (
+                  <BookingFlow tenant={tenant} services={services} />
+                ) : (
+                  <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-center text-sm text-stone-500">
+                    Nenhum serviço cadastrado no momento.
+                  </div>
+                )}
             </div>
             
              <div className="p-4 text-center text-xs text-gray-300">Powered by Studio</div>

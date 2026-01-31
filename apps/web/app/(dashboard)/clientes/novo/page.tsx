@@ -1,4 +1,17 @@
-import { ChevronLeft, User, Phone, FileText, Save } from "lucide-react";
+import {
+  ChevronLeft,
+  User,
+  Phone,
+  FileText,
+  Save,
+  Mail,
+  Calendar,
+  IdCard,
+  MapPin,
+  Briefcase,
+  MessageCircle,
+  Tags,
+} from "lucide-react";
 import Link from "next/link";
 import { createClientAction } from "./actions";
 
@@ -41,6 +54,104 @@ export default function NewClientPage() {
                 className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
                 />
             </div>
+        </div>
+
+        {/* Email */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Email</label>
+            <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                name="email"
+                type="email" 
+                placeholder="exemplo@email.com"
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                />
+            </div>
+        </div>
+
+        {/* Data de Nascimento */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Data de Nascimento</label>
+            <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                name="data_nascimento"
+                type="date" 
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                />
+            </div>
+        </div>
+
+        {/* CPF */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">CPF</label>
+            <div className="relative">
+                <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                name="cpf"
+                type="text" 
+                placeholder="000.000.000-00"
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                />
+            </div>
+        </div>
+
+        {/* Endereço */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Endereço Completo</label>
+            <div className="relative">
+                <MapPin className="absolute left-4 top-4 text-gray-400" size={18} />
+                <textarea 
+                name="endereco_completo"
+                placeholder="Rua, número, bairro, cidade..."
+                rows={3}
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green resize-none"
+                />
+            </div>
+        </div>
+
+        {/* Profissão */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Profissão</label>
+            <div className="relative">
+                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                name="profissao"
+                type="text" 
+                placeholder="Ex: Fisioterapeuta"
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                />
+            </div>
+        </div>
+
+        {/* Como Conheceu */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Como Conheceu</label>
+            <div className="relative">
+                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                name="como_conheceu"
+                type="text" 
+                placeholder="Indicação, Instagram, Google..."
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                />
+            </div>
+        </div>
+
+        {/* Tags de Saúde */}
+        <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Tags de Saúde</label>
+            <div className="relative">
+                <Tags className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                name="health_tags"
+                type="text" 
+                placeholder="alergia, hipertensão, diabetes"
+                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                />
+            </div>
+            <p className="text-[11px] text-gray-400 ml-1">Separe por vírgulas.</p>
         </div>
 
         {/* Notas Initial */}
