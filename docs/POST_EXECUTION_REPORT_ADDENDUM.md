@@ -2,7 +2,7 @@
 
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
-Escopo: polimento pós-execução (G9–G13)
+Escopo: polimento pós-execução (G9–G14)
 
 ---
 
@@ -51,6 +51,10 @@ Escopo: polimento pós-execução (G9–G13)
 - Removido componente não usado `apps/web/components/bottom-nav.tsx`.
 - Removido `apps/web/app/page.module.css` sem uso.
 
+### G14 — RLS/admin service role + clientes públicos
+- `createServiceClient` agora falha com `AppError` claro quando `SUPABASE_SERVICE_ROLE_KEY` está ausente.
+- Leitura pública de tenant e serviços usa `createPublicClient` (sem exigir service role).
+
 ---
 
 ## 3) Diagnóstico do Windows (turbo/next)
@@ -80,7 +84,7 @@ Escopo: polimento pós-execução (G9–G13)
 
 - `pnpm lint` ✅
 - `pnpm check-types` ✅
-- `pnpm build` ✅  
+- `pnpm build` ⚠️ (falha local com missing `lightningcss.linux-x64-gnu.node` após instalação parcial; reexecutar após `pnpm install` limpo)  
   - Observação: em uma execução houve `ENOMEM`, resolvido ao reexecutar.
   - Observação (ambiente Linux + Node Windows): `pnpm lint` falhou quando o Turbo tentou baixar binário Linux usando Node Windows; resolvido ao reexecutar em ambiente compatível.
 

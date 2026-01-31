@@ -1,4 +1,4 @@
-import { createServiceClient } from "../../../lib/supabase/service";
+import { createPublicClient, createServiceClient } from "../../../lib/supabase/service";
 import type { Database } from "../../../lib/supabase/types";
 
 export type ServiceRow = Database["public"]["Tables"]["services"]["Row"];
@@ -11,7 +11,7 @@ export async function listServices(tenantId: string) {
 }
 
 export async function listPublicServices(tenantId: string) {
-  const supabase = createServiceClient();
+  const supabase = createPublicClient();
   return supabase
     .from("services")
     .select("id, name, price, duration_minutes, accepts_home_visit, home_visit_fee, description, custom_buffer_minutes")
