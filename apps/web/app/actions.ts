@@ -6,10 +6,12 @@ import {
   finishAppointment as finishAppointmentImpl,
   cancelAppointment as cancelAppointmentImpl,
 } from "../src/modules/appointments/actions";
-import type { ActionResult } from "../src/shared/errors/result";
+import { fail, ok, type ActionResult } from "../src/shared/errors/result";
 import { z } from "zod";
 import { getAppointmentById } from "../src/modules/appointments/repository";
 import { FIXED_TENANT_ID } from "../lib/tenant-context";
+import { AppError } from "../src/shared/errors/AppError";
+import { mapSupabaseError } from "../src/shared/errors/mapSupabaseError";
 
 export async function upsertService(formData: FormData) {
   return upsertServiceImpl(formData);
@@ -36,11 +38,12 @@ export async function appointmentExists(
 ): Promise<ActionResult<{ exists: boolean }>> {
   const parsed = z.object({ id: z.string().uuid() }).safeParse({ id });
   if (!parsed.success) {
-    return { ok: false, error: new Error("Invalid id") };
+    return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
   }
   const { data, error } = await getAppointmentById(FIXED_TENANT_ID, parsed.data.id);
-  if (error) {
-    return { ok: false, error };
+  const mappedError = mapSupabaseError(error);
+  if (mappedError) {
+    return fail(mappedError);
   }
-  return { ok: true, data: { exists: Boolean(data) } };
+  return ok({ exists: Boolean(data) });
 }
