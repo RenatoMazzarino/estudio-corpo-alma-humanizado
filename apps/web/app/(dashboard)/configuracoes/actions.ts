@@ -4,7 +4,7 @@ import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppError } from "../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
-import { updateSettings, upsertBusinessHours } from "../../../src/modules/settings/repository";
+import { updateSettings, upsertBusinessHours, deleteInvalidBusinessHours } from "../../../src/modules/settings/repository";
 
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
   const payload = [];
@@ -30,6 +30,8 @@ export async function saveBusinessHours(formData: FormData): Promise<ActionResul
   const { error } = await upsertBusinessHours(payload);
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
+
+  await deleteInvalidBusinessHours(FIXED_TENANT_ID);
 
   return ok({ ok: true });
 }

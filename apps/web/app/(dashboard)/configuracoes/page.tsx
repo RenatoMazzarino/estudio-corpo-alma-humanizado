@@ -8,12 +8,25 @@ export default async function ConfiguracoesPage() {
   const { data: businessHoursData } = await listBusinessHours(FIXED_TENANT_ID);
   const { data: settingsData } = await getSettings(FIXED_TENANT_ID);
 
-  const businessHours = (businessHoursData ?? []).map((item) => ({
-    day_of_week: item.day_of_week,
-    open_time: item.open_time,
-    close_time: item.close_time,
-    is_closed: item.is_closed,
-  }));
+  const normalized = new Map<number, { open_time: string; close_time: string; is_closed: boolean | null }>();
+  (businessHoursData ?? []).forEach((item) => {
+    if (item.day_of_week === null || item.day_of_week === undefined) return;
+    normalized.set(item.day_of_week, {
+      open_time: item.open_time,
+      close_time: item.close_time,
+      is_closed: item.is_closed,
+    });
+  });
+
+  const businessHours = Array.from({ length: 7 }, (_, day) => {
+    const existing = normalized.get(day);
+    return {
+      day_of_week: day,
+      open_time: existing?.open_time ?? "08:00",
+      close_time: existing?.close_time ?? "18:00",
+      is_closed: existing?.is_closed ?? false,
+    };
+  });
 
   return (
     <div className="space-y-6">

@@ -34,6 +34,11 @@ export async function upsertBusinessHours(
   return supabase.from("business_hours").upsert(payload, { onConflict: "tenant_id,day_of_week" });
 }
 
+export async function deleteInvalidBusinessHours(tenantId: string) {
+  const supabase = createServiceClient();
+  return supabase.from("business_hours").delete().eq("tenant_id", tenantId).is("day_of_week", null);
+}
+
 export async function updateSettings(tenantId: string, payload: Partial<SettingsRow>) {
   const supabase = createServiceClient();
   return supabase.from("settings").update(payload).eq("tenant_id", tenantId);
