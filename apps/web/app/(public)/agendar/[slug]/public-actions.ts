@@ -11,6 +11,13 @@ interface PublicAppointmentInput {
   clientName: string;
   clientPhone: string;
   isHomeVisit?: boolean;
+  addressCep?: string;
+  addressLogradouro?: string;
+  addressNumero?: string;
+  addressComplemento?: string;
+  addressBairro?: string;
+  addressCidade?: string;
+  addressEstado?: string;
 }
 
 export async function submitPublicAppointment(

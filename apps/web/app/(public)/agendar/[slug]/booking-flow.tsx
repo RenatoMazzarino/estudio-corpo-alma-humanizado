@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Calendar, ChevronRight, Check, User, Phone, Sparkles, Loader2, Home, MapPin } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions";
 import { getAvailableSlots } from "./availability";
+import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 
 interface Service {
   id: string;
@@ -38,6 +39,14 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [cep, setCep] = useState("");
+  const [logradouro, setLogradouro] = useState("");
+  const [numero, setNumero] = useState("");
+  const [complemento, setComplemento] = useState("");
+  const [bairro, setBairro] = useState("");
+  const [cidade, setCidade] = useState("");
+  const [estado, setEstado] = useState("");
+  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -85,6 +94,16 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
 
   const handleLocationSelect = (home: boolean) => {
       setIsHomeVisit(home);
+      if (!home) {
+        setCep("");
+        setLogradouro("");
+        setNumero("");
+        setComplemento("");
+        setBairro("");
+        setCidade("");
+        setEstado("");
+        setCepStatus("idle");
+      }
       setStep("DATETIME");
   };
 
@@ -110,7 +129,14 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
             time: selectedTime,
             clientName,
             clientPhone,
-            isHomeVisit
+            isHomeVisit,
+            addressCep: cep,
+            addressLogradouro: logradouro,
+            addressNumero: numero,
+            addressComplemento: complemento,
+            addressBairro: bairro,
+            addressCidade: cidade,
+            addressEstado: estado
         });
         if (!result.ok) {
             alert(result.error.message);
@@ -133,6 +159,29 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
       }
       return price;
   };
+
+  const handleCepLookup = async () => {
+    const normalized = normalizeCep(cep);
+    if (normalized.length !== 8) {
+      setCepStatus("error");
+      return;
+    }
+    setCepStatus("loading");
+    const result = await fetchAddressByCep(normalized);
+    if (!result) {
+      setCepStatus("error");
+      return;
+    }
+    setLogradouro(result.logradouro);
+    setBairro(result.bairro);
+    setCidade(result.cidade);
+    setEstado(result.estado);
+    setCepStatus("success");
+  };
+
+  const mapsQuery = [logradouro, numero, complemento, bairro, cidade, estado, cep]
+    .filter((value) => value && value.trim().length > 0)
+    .join(", ");
 
   // 1. SERVICES
   if (step === "SERVICE") {
@@ -337,6 +386,95 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
                     className="w-full bg-white border-stone-100 border rounded-xl py-4 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
                 />
             </div>
+            {isHomeVisit && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="CEP"
+                      value={cep}
+                      onChange={(e) => {
+                        setCep(formatCep(e.target.value));
+                        setCepStatus("idle");
+                      }}
+                      inputMode="numeric"
+                      className={`w-full bg-white border rounded-xl py-4 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                        cepStatus === "error"
+                          ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                          : "border-stone-100 focus:ring-studio-green/20"
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCepLookup}
+                    className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
+                  >
+                    {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                  </button>
+                </div>
+                {cepStatus === "error" && <p className="text-[11px] text-red-500 ml-1">CEP inválido.</p>}
+                <input
+                  type="text"
+                  placeholder="Logradouro"
+                  value={logradouro}
+                  onChange={(e) => setLogradouro(e.target.value)}
+                  className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Número"
+                    value={numero}
+                    onChange={(e) => setNumero(e.target.value)}
+                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Complemento"
+                    value={complemento}
+                    onChange={(e) => setComplemento(e.target.value)}
+                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Bairro"
+                    value={bairro}
+                    onChange={(e) => setBairro(e.target.value)}
+                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Cidade"
+                    value={cidade}
+                    onChange={(e) => setCidade(e.target.value)}
+                    className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Estado (UF)"
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                  maxLength={2}
+                  className="w-full bg-white border-stone-100 border rounded-xl py-4 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 uppercase"
+                />
+                {mapsQuery && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-studio-green hover:underline"
+                  >
+                    Ver endereço no Maps
+                  </a>
+                )}
+              </div>
+            )}
         </div>
         
         {/* Resumo Final */}
@@ -407,4 +545,9 @@ export function BookingFlow({ tenant, services }: BookingFlowProps) {
     return digits
       .replace(/^(\d{2})(\d)/, "($1) $2")
       .replace(/(\d{5})(\d)/, "$1-$2");
+  };
+
+  const formatCep = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 8);
+    return digits.replace(/^(\d{5})(\d)/, "$1-$2");
   };

@@ -129,10 +129,26 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const serviceId = formData.get("serviceId") as string | null;
   const date = formData.get("date") as string | null;
   const time = formData.get("time") as string | null;
+  const isHomeVisit = formData.get("is_home_visit") === "on";
+  const addressCep = (formData.get("address_cep") as string | null) || null;
+  const addressLogradouro = (formData.get("address_logradouro") as string | null) || null;
+  const addressNumero = (formData.get("address_numero") as string | null) || null;
+  const addressComplemento = (formData.get("address_complemento") as string | null) || null;
+  const addressBairro = (formData.get("address_bairro") as string | null) || null;
+  const addressCidade = (formData.get("address_cidade") as string | null) || null;
+  const addressEstado = (formData.get("address_estado") as string | null) || null;
 
   const parsed = createInternalAppointmentSchema.safeParse({
     clientName,
     clientPhone,
+    addressCep,
+    addressLogradouro,
+    addressNumero,
+    addressComplemento,
+    addressBairro,
+    addressCidade,
+    addressEstado,
+    isHomeVisit,
     serviceId,
     date,
     time,
@@ -150,7 +166,14 @@ export async function createAppointment(formData: FormData): Promise<void> {
     p_start_time: startDateTime.toISOString(),
     client_name: parsed.data.clientName,
     client_phone: parsed.data.clientPhone ?? undefined,
-    is_home_visit: false,
+    p_address_cep: parsed.data.addressCep ?? undefined,
+    p_address_logradouro: parsed.data.addressLogradouro ?? undefined,
+    p_address_numero: parsed.data.addressNumero ?? undefined,
+    p_address_complemento: parsed.data.addressComplemento ?? undefined,
+    p_address_bairro: parsed.data.addressBairro ?? undefined,
+    p_address_cidade: parsed.data.addressCidade ?? undefined,
+    p_address_estado: parsed.data.addressEstado ?? undefined,
+    is_home_visit: parsed.data.isHomeVisit ?? false,
   });
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
@@ -198,6 +221,13 @@ export async function submitPublicAppointment(data: {
   clientName: string;
   clientPhone: string;
   isHomeVisit?: boolean;
+  addressCep?: string;
+  addressLogradouro?: string;
+  addressNumero?: string;
+  addressComplemento?: string;
+  addressBairro?: string;
+  addressCidade?: string;
+  addressEstado?: string;
 }): Promise<ActionResult<{ appointmentId: string | null }>> {
   const parsed = publicBookingSchema.safeParse(data);
   if (!parsed.success) {
@@ -213,6 +243,13 @@ export async function submitPublicAppointment(data: {
     p_start_time: startDateTime.toISOString(),
     client_name: parsed.data.clientName,
     client_phone: parsed.data.clientPhone,
+    p_address_cep: parsed.data.addressCep || undefined,
+    p_address_logradouro: parsed.data.addressLogradouro || undefined,
+    p_address_numero: parsed.data.addressNumero || undefined,
+    p_address_complemento: parsed.data.addressComplemento || undefined,
+    p_address_bairro: parsed.data.addressBairro || undefined,
+    p_address_cidade: parsed.data.addressCidade || undefined,
+    p_address_estado: parsed.data.addressEstado || undefined,
     is_home_visit: parsed.data.isHomeVisit || false,
   });
 
