@@ -37,13 +37,38 @@ export async function startAppointment(id: string): Promise<ActionResult<{ id: s
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
   }
 
+  const startedAt = new Date().toISOString();
   const { error } = await updateAppointment(FIXED_TENANT_ID, id, {
     status: "in_progress",
-    started_at: new Date().toISOString(),
+    started_at: startedAt,
   });
 
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
+
+  const supabase = createServiceClient();
+  const { data: attendance } = await supabase
+    .from("appointment_attendances")
+    .select("timer_started_at")
+    .eq("appointment_id", id)
+    .maybeSingle();
+
+  const timerStartedAt = attendance?.timer_started_at ?? startedAt;
+  await supabase.from("appointment_attendances").upsert(
+    {
+      appointment_id: id,
+      tenant_id: FIXED_TENANT_ID,
+      current_stage: "session",
+      pre_status: "done",
+      session_status: "in_progress",
+      checkout_status: "locked",
+      post_status: "locked",
+      timer_status: "running",
+      timer_started_at: timerStartedAt,
+      timer_paused_at: null,
+    },
+    { onConflict: "appointment_id" }
+  );
 
   revalidatePath("/");
   return ok({ id });
@@ -58,10 +83,11 @@ export async function finishAppointment(id: string): Promise<ActionResult<{ id: 
   const { data: updatedAppointment, error } = await updateAppointmentReturning<{
     price: number | null;
     service_name: string | null;
+    actual_duration_minutes: number | null;
   }>(FIXED_TENANT_ID, id, {
     status: "completed",
     finished_at: new Date().toISOString(),
-  }, "price, service_name");
+  }, "price, service_name, actual_duration_minutes");
 
   const mappedError = mapSupabaseError(error);
   if (mappedError || !updatedAppointment) {
@@ -90,6 +116,22 @@ export async function finishAppointment(id: string): Promise<ActionResult<{ id: 
     if (mappedTransactionError) return fail(mappedTransactionError);
   }
 
+  const supabase = createServiceClient();
+  await supabase
+    .from("appointment_attendances")
+    .update({
+      pre_status: "done",
+      session_status: "done",
+      checkout_status: "done",
+      post_status: "done",
+      timer_status: "finished",
+      actual_seconds: updatedAppointment.actual_duration_minutes
+        ? updatedAppointment.actual_duration_minutes * 60
+        : undefined,
+      current_stage: "hub",
+    })
+    .eq("appointment_id", id);
+
   revalidatePath("/");
   revalidatePath("/caixa");
   return ok({ id });
@@ -107,6 +149,19 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
 
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
+
+  const supabase = createServiceClient();
+  await supabase
+    .from("appointment_attendances")
+    .update({
+      pre_status: "locked",
+      session_status: "locked",
+      checkout_status: "locked",
+      post_status: "locked",
+      stage_lock_reason: "cancelled",
+      current_stage: "hub",
+    })
+    .eq("appointment_id", id);
 
   await enqueueNotificationJob({
     tenant_id: FIXED_TENANT_ID,
@@ -320,6 +375,7 @@ export async function finishAdminAppointment(
     client_id: string | null;
     service_name: string | null;
     started_at: string | null;
+    actual_duration_minutes: number | null;
   }>(
     FIXED_TENANT_ID,
     parsed.data.appointmentId,
@@ -330,7 +386,7 @@ export async function finishAdminAppointment(
       price: parsed.data.finalAmount,
       actual_duration_minutes: parsed.data.actualDurationMinutes ?? undefined,
     },
-    "client_id, service_name, started_at"
+    "client_id, service_name, started_at, actual_duration_minutes"
   );
 
   const mappedAppError = mapSupabaseError(appError);
@@ -379,6 +435,24 @@ export async function finishAdminAppointment(
       console.error("Erro ao salvar transação:", transactionError);
     }
   }
+
+  const supabase = createServiceClient();
+  await supabase
+    .from("appointment_attendances")
+    .update({
+      pre_status: "done",
+      session_status: "done",
+      checkout_status: "done",
+      post_status: "done",
+      timer_status: "finished",
+      actual_seconds: parsed.data.actualDurationMinutes
+        ? parsed.data.actualDurationMinutes * 60
+        : updatedAppointment.actual_duration_minutes
+          ? updatedAppointment.actual_duration_minutes * 60
+          : undefined,
+      current_stage: "hub",
+    })
+    .eq("appointment_id", parsed.data.appointmentId);
 
   revalidatePath("/");
   revalidatePath("/caixa");
