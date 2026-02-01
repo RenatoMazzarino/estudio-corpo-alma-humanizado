@@ -576,9 +576,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="text-sm font-extrabold text-gray-800 capitalize">
-              {weekDays[0] && weekDays[weekDays.length - 1]
-                ? `${format(weekDays[0], "dd MMM", { locale: ptBR })} - ${format(weekDays[weekDays.length - 1], "dd MMM", { locale: ptBR })}`
-                : ""}
+              {weekDays.length > 0 ? (() => {
+                const startOfWeek = weekDays[0];
+                const endOfWeek = weekDays[weekDays.length - 1];
+                return startOfWeek && endOfWeek
+                  ? `${format(startOfWeek, "dd MMM", { locale: ptBR })} - ${format(endOfWeek, "dd MMM", { locale: ptBR })}`
+                  : "";
+              })() : ""}
             </div>
             <button
               type="button"
