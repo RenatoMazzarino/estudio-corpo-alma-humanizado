@@ -1,6 +1,17 @@
 "use client";
 
-import { Calendar, Clock, User, Sparkles, Banknote, Phone, Home, MapPin } from "lucide-react";
+import {
+  Clock,
+  Sparkles,
+  Phone,
+  MapPin,
+  Search,
+  ChevronDown,
+  Building2,
+  Car,
+  Tag,
+  Check,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
@@ -216,201 +227,167 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
   const canHomeVisit = selectedService?.accepts_home_visit ?? false;
 
   return (
-    <form action={createAppointment} className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 space-y-5">
-      
-        {/* Input: Data */}
-        <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Data do Agendamento</label>
-            <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                name="date"
-                type="date" 
-                value={selectedDate}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
-                required
-                />
-            </div>
-            {blockStatus === "loading" && (
-              <p className="text-[11px] text-gray-400 ml-1">Verificando bloqueios...</p>
-            )}
-            {blockStatus === "idle" && hasBlocks && (
-              <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-xl">
-                Há bloqueios registrados para esta data. Verifique antes de confirmar o horário.
-              </div>
-            )}
+    <form action={createAppointment} className="space-y-6">
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.12)] p-5 border border-white">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
+            1
+          </div>
+          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Cliente</h2>
         </div>
 
-        {/* Input: Cliente */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Nome da Cliente</label>
-          <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              name="clientName"
-              type="text" 
-              placeholder="Ex: Fernanda Silva" 
-              value={clientName}
-              onChange={(event) => setClientName(event.target.value)}
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
-              required
-            />
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Nome Completo</label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-gray-300 absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                name="clientName"
+                type="text"
+                placeholder="Buscar ou digitar nome..."
+                value={clientName}
+                onChange={(event) => setClientName(event.target.value)}
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700 transition-all"
+                required
+              />
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2 ml-1 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Se já existir, vinculamos automaticamente.
+            </p>
+            {filteredClients.length > 0 && (
+              <div className="mt-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-2 space-y-1">
+                {filteredClients.map((client) => (
+                  <button
+                    type="button"
+                    key={client.id}
+                    onClick={() => handleSelectClient(client.name, client.phone)}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between"
+                  >
+                    <span className="font-medium">{client.name}</span>
+                    {client.phone && <span className="text-xs text-gray-400">{client.phone}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {filteredClients.length > 0 && (
-            <div className="bg-white border border-stone-100 rounded-xl shadow-sm p-2 space-y-1">
-              {filteredClients.map((client) => (
-                <button
-                  type="button"
-                  key={client.id}
-                  onClick={() => handleSelectClient(client.name, client.phone)}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between"
-                >
-                  <span className="font-medium">{client.name}</span>
-                  {client.phone && <span className="text-xs text-gray-400">{client.phone}</span>}
-                </button>
+
+          <div>
+            <label className="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase">WhatsApp (Opcional)</label>
+            <div className="relative">
+              <Phone className="w-4 h-4 text-gray-300 absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                name="clientPhone"
+                type="tel"
+                placeholder="(00) 00000-0000"
+                value={clientPhone}
+                onChange={(event) => setClientPhone(formatPhone(event.target.value))}
+                inputMode="numeric"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm transition-all"
+              />
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2 ml-1">Ajuda a localizar cadastros antigos 💚</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.12)] p-5 border border-white">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
+            2
+          </div>
+          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">O que e Onde?</h2>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Procedimento</label>
+          <div className="relative">
+            <select
+              name="serviceId"
+              value={selectedServiceId}
+              onChange={handleServiceChange}
+              className="w-full pl-4 pr-10 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700 appearance-none transition-all"
+              required
+            >
+              <option value="" disabled>
+                Selecione...
+              </option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} ({service.duration_minutes} min)
+                </option>
               ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {selectedService && (
+            <div className="mt-3 p-3 bg-studio-green/10 rounded-2xl flex items-center justify-between border border-studio-green/10">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-sm">
+                  <Clock className="w-3 h-3" />
+                </div>
+                <span className="text-xs font-bold text-gray-600">{selectedService.duration_minutes} min</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-sm">
+                  <Tag className="w-3 h-3" />
+                </div>
+                <span className="text-xs font-bold text-gray-600">R$ {displayedPrice || "0,00"}</span>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Telefone (opcional)</label>
-          <div className="relative">
-            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              name="clientPhone"
-              type="tel"
-              placeholder="(00) 00000-0000"
-              value={clientPhone}
-              onChange={(event) => setClientPhone(formatPhone(event.target.value))}
-              inputMode="numeric"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
-            />
+        <div>
+          <label className="block text-xs font-extrabold text-studio-green mb-2 uppercase">Local</label>
+          <div className="bg-studio-bg p-1 rounded-2xl border border-gray-200 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setIsHomeVisit(false)}
+              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border-2 ${
+                !isHomeVisit
+                  ? "bg-white border-studio-green text-studio-green shadow-[0_4px_10px_rgba(106,128,108,0.1)]"
+                  : "bg-gray-100 text-gray-400 border-transparent"
+              }`}
+            >
+              <Building2 className="w-5 h-5" />
+              No Estúdio
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsHomeVisit(true)}
+              disabled={!canHomeVisit}
+              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border-2 ${
+                isHomeVisit
+                  ? "bg-white border-purple-500 text-purple-600 shadow-[0_4px_10px_rgba(168,85,247,0.15)]"
+                  : "bg-gray-100 text-gray-400 border-transparent"
+              } ${!canHomeVisit ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <Car className="w-5 h-5" />
+              Em Domicílio
+            </button>
           </div>
-          <p className="text-[11px] text-gray-400 ml-1">DDD obrigatório para vincular ao cliente existente.</p>
-        </div>
+          <input type="hidden" name="is_home_visit" value={isHomeVisit ? "on" : ""} />
+          {!canHomeVisit && selectedServiceId && (
+            <p className="text-[11px] text-gray-400 ml-1 mt-2">Serviço sem opção domiciliar.</p>
+          )}
 
-        <div className="grid grid-cols-2 gap-4">
-            {/* Input: Serviço (Select) */}
-            <div className="space-y-2 col-span-2">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Serviço</label>
-            <div className="relative">
-                <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <select
-                  name="serviceId"
-                  value={selectedServiceId}
-                  onChange={handleServiceChange}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green appearance-none"
-                  required
-                >
-                  <option value="" disabled>Selecione um serviço</option>
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.duration_minutes} min)
-                    </option>
-                  ))}
-                </select>
-                {/* Seta customizada do select */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                </div>
-            </div>
-            </div>
+          <div
+            className={`transition-all duration-300 overflow-hidden ${
+              isHomeVisit ? "max-h-[800px] opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
+            }`}
+          >
+            <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4 relative">
+              <div className="absolute -top-2 left-3/4 w-4 h-4 bg-purple-50 border-t border-l border-purple-100 transform rotate-45"></div>
 
-            <div className="space-y-2 col-span-2">
-              <label className="text-xs font-bold text-gray-400 uppercase ml-1">Local do Atendimento</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsHomeVisit(false)}
-                  className={`flex items-center gap-2 justify-center py-3 rounded-xl border text-sm font-semibold transition ${
-                    !isHomeVisit
-                      ? "bg-studio-green text-white border-studio-green shadow-md"
-                      : "bg-white text-gray-600 border-stone-100 hover:border-studio-green"
-                  }`}
-                >
-                  <MapPin size={16} />
-                  Estúdio
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsHomeVisit(true)}
-                  disabled={!canHomeVisit}
-                  className={`flex items-center gap-2 justify-center py-3 rounded-xl border text-sm font-semibold transition ${
-                    isHomeVisit
-                      ? "bg-purple-500 text-white border-purple-500 shadow-md"
-                      : "bg-white text-gray-600 border-stone-100 hover:border-purple-400"
-                  } ${!canHomeVisit ? "opacity-50 cursor-not-allowed hover:border-stone-100" : ""}`}
-                >
-                  <Home size={16} />
-                  Domicílio
-                </button>
+              <div className="flex items-center gap-2 mb-3 text-purple-700">
+                <MapPin className="w-4 h-4" />
+                <span className="text-xs font-extrabold uppercase tracking-wide">Endereço da Cliente</span>
               </div>
-              <input type="hidden" name="is_home_visit" value={isHomeVisit ? "on" : ""} />
-              {!canHomeVisit && selectedServiceId && (
-                <p className="text-[11px] text-gray-400 ml-1">Serviço sem opção domiciliar.</p>
-              )}
-            </div>
 
-            {/* Input: Valor (ReadOnly ou Hidden, mas visível para conferencia) */}
-            <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Valor (R$)</label>
-            <div className="relative">
-                <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                type="text" 
-                value={displayedPrice}
-                readOnly
-                placeholder="0.00" 
-                className="w-full bg-stone-100 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-500 font-medium cursor-not-allowed focus:outline-none"
-                />
-                {/* Enviamos o preço original se necessário, mas o backend vai recalcular pelo ID, 
-                    porém o form antigo enviava o price. O backend novo vai ignorar esse campo provavelmente e pegar do serviço, 
-                    mas se quisermos permitir override, teríamos que deixar editável. 
-                    O user não pediu override, pediu "O usuário escolhe o serviço e o horário. O sistema resolve preço e duração sozinho." 
-                    Então não precisamos enviar price. */}
-            </div>
-            </div>
-
-            {/* Input: Horário */}
-            <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Horário</label>
-            <div className="relative">
-                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <select
-                  name="time"
-                  value={selectedTime}
-                  onChange={(event) => setSelectedTime(event.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green appearance-none"
-                  required
-                  disabled={!selectedServiceId || !selectedDate || isLoadingSlots}
-                >
-                  {!selectedServiceId || !selectedDate ? (
-                    <option value="">Selecione data e serviço</option>
-                  ) : isLoadingSlots ? (
-                    <option value="">Carregando horários...</option>
-                  ) : availableSlots.length === 0 ? (
-                    <option value="">Sem horários disponíveis</option>
-                  ) : (
-                    availableSlots.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))
-                  )}
-                </select>
-            </div>
-            </div>
-        </div>
-
-        {isHomeVisit && (
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Endereço do atendimento</label>
-            <div className="grid grid-cols-1 gap-3">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="col-span-2">
                   <input
                     name="address_cep"
                     type="text"
@@ -422,38 +399,40 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                     }}
                     inputMode="numeric"
                     aria-invalid={cepStatus === "error" ? "true" : "false"}
-                    className={`w-full bg-stone-50 border rounded-xl py-3.5 pl-11 pr-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
+                    className={`w-full px-4 py-3 rounded-xl bg-white border text-sm font-medium focus:outline-none focus:ring-2 ${
                       cepStatus === "error"
                         ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                        : "border-stone-100 focus:ring-studio-green/20 focus:border-studio-green"
+                        : "border-purple-200 focus:ring-purple-300/40 focus:border-purple-400"
                     }`}
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleCepLookup}
-                  className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
+                  className="bg-purple-200 text-purple-800 rounded-xl font-bold text-xs hover:bg-purple-300 transition"
                 >
-                  {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                  {cepStatus === "loading" ? "Buscando..." : "Buscar"}
                 </button>
               </div>
-              {cepStatus === "error" && <p className="text-[11px] text-red-500 ml-1">CEP inválido.</p>}
+              <p className="text-[10px] text-purple-400/80 mb-3 ml-1">Preenchemos o restante automaticamente 😉</p>
+
               <input
                 name="address_logradouro"
                 type="text"
-                placeholder="Logradouro"
+                placeholder="Rua / Avenida"
                 value={logradouro}
                 onChange={(e) => setLogradouro(e.target.value)}
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium mb-2"
               />
-              <div className="grid grid-cols-2 gap-3">
+
+              <div className="grid grid-cols-3 gap-2">
                 <input
                   name="address_numero"
                   type="text"
-                  placeholder="Número"
+                  placeholder="Nº"
                   value={numero}
                   onChange={(e) => setNumero(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
                 />
                 <input
                   name="address_complemento"
@@ -461,17 +440,18 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                   placeholder="Complemento"
                   value={complemento}
                   onChange={(e) => setComplemento(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  className="col-span-2 w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+
+              <div className="grid grid-cols-2 gap-2 mt-2">
                 <input
                   name="address_bairro"
                   type="text"
                   placeholder="Bairro"
                   value={bairro}
                   onChange={(e) => setBairro(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
                 />
                 <input
                   name="address_cidade"
@@ -479,9 +459,10 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                   placeholder="Cidade"
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green"
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
                 />
               </div>
+
               <input
                 name="address_estado"
                 type="text"
@@ -489,30 +470,136 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                 value={estado}
                 onChange={(e) => setEstado(e.target.value.toUpperCase())}
                 maxLength={2}
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 focus:border-studio-green uppercase"
+                className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium uppercase mt-2"
               />
               {mapsQuery && (
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-semibold text-studio-green hover:underline"
+                  className="text-xs font-semibold text-purple-700 hover:underline mt-2 inline-flex"
                 >
                   Ver endereço no Maps
                 </a>
               )}
             </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Botão Salvar */}
-        <button 
-          type="submit" 
-          className="w-full bg-studio-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-100 hover:bg-studio-green-dark transition-all mt-4 flex items-center justify-center gap-2"
-        >
-          Confirmar Agendamento
-        </button>
+      <section className="bg-white rounded-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.12)] p-5 border border-white">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
+            3
+          </div>
+          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Finalização</h2>
+        </div>
 
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Valor Final</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-serif text-sm">R$</span>
+              <input
+                type="tel"
+                value={displayedPrice}
+                readOnly
+                placeholder="0,00"
+                className="w-full pl-9 pr-3 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-lg font-bold text-gray-800"
+              />
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1 ml-1">Valor calculado automaticamente.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Data</label>
+            <input
+              name="date"
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="w-full px-3 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700"
+              required
+            />
+            {blockStatus === "loading" && (
+              <p className="text-[11px] text-gray-400 mt-2 ml-1">Verificando bloqueios...</p>
+            )}
+            {blockStatus === "idle" && hasBlocks && (
+              <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-xl mt-2">
+                Há bloqueios registrados para esta data. Verifique antes de confirmar o horário.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-extrabold text-studio-green mb-2 uppercase">Horário</label>
+          <div className="grid grid-cols-4 gap-2">
+            {!selectedServiceId || !selectedDate ? (
+              <div className="col-span-4 text-xs text-gray-400">Selecione data e serviço para ver horários.</div>
+            ) : isLoadingSlots ? (
+              <div className="col-span-4 text-xs text-gray-400">Carregando horários...</div>
+            ) : availableSlots.length === 0 ? (
+              <div className="col-span-4 text-xs text-gray-400">Sem horários disponíveis.</div>
+            ) : (
+              availableSlots.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => setSelectedTime(slot)}
+                  className={`py-2 rounded-xl text-xs font-bold transition ${
+                    selectedTime === slot
+                      ? "bg-studio-green text-white shadow-md transform scale-105"
+                      : "border border-gray-200 text-gray-600 hover:border-studio-green hover:text-studio-green"
+                  }`}
+                >
+                  {slot}
+                </button>
+              ))
+            )}
+          </div>
+          <select
+            name="time"
+            value={selectedTime}
+            onChange={(event) => setSelectedTime(event.target.value)}
+            className="sr-only"
+            required
+            disabled={!selectedServiceId || !selectedDate || isLoadingSlots}
+          >
+            {!selectedServiceId || !selectedDate ? (
+              <option value="">Selecione data e serviço</option>
+            ) : isLoadingSlots ? (
+              <option value="">Carregando horários...</option>
+            ) : availableSlots.length === 0 ? (
+              <option value="">Sem horários disponíveis</option>
+            ) : (
+              availableSlots.map((slot) => (
+                <option key={slot} value={slot}>
+                  {slot}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-gray-100">
+          <label className="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase">Observações Internas</label>
+          <textarea
+            name="internalNotes"
+            rows={2}
+            className="w-full px-4 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm"
+            placeholder="Ex: Cliente prefere pressão leve..."
+          />
+        </div>
+      </section>
+
+      <button
+        type="submit"
+        className="w-full py-4 rounded-2xl bg-studio-green text-white font-extrabold shadow-[0_4px_20px_-2px_rgba(106,128,108,0.2)] hover:bg-studio-green-dark transition flex items-center justify-center gap-2 group mb-4"
+      >
+        <Check className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        Confirmar Agendamento
+      </button>
     </form>
   );
 }

@@ -33,17 +33,33 @@ export default async function NewAppointment(props: PageProps) {
   const { data: clients } = await listClients(FIXED_TENANT_ID);
 
   return (
-    <>
-      {/* Cabeçalho */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href={`/?date=${safeDate}`} className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
-          <ChevronLeft size={20} />
-        </Link>
-        <h1 className="text-lg font-bold text-gray-800">Novo Agendamento</h1>
-      </div>
+    <div className="-mx-4 -mt-4">
+      <header className="px-6 pt-10 pb-4 bg-white rounded-b-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.15)] sticky top-0 z-20">
+        <div className="flex items-center justify-between mb-2">
+          <Link
+            href={`/?date=${safeDate}`}
+            className="w-10 h-10 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+          >
+            <ChevronLeft size={20} />
+          </Link>
 
-      {/* Formulário Inteligente (Client Component) */}
-      <AppointmentForm services={services || []} clients={clients || []} safeDate={safeDate} />
-    </>
+          <div className="text-right">
+            <p className="text-xs font-extrabold text-studio-green uppercase tracking-widest">Corpo & Alma</p>
+            <p className="text-[11px] text-gray-400 flex items-center justify-end gap-1">
+              <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full"></span> Online
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h1 className="text-2xl font-serif text-gray-800">Novo Agendamento</h1>
+          <p className="text-xs text-gray-400 mt-1">Preencha os detalhes do atendimento.</p>
+        </div>
+      </header>
+
+      <main className="p-6 pb-28">
+        <AppointmentForm services={services || []} clients={clients || []} safeDate={safeDate} />
+      </main>
+    </div>
   );
 }
