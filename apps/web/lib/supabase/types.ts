@@ -49,6 +49,7 @@ export type Database = {
           finished_at: string | null
           id: string
           is_home_visit: boolean | null
+          internal_notes: string | null
           payment_status: string | null
           price: number | null
           service_id: string | null
@@ -73,6 +74,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_home_visit?: boolean | null
+          internal_notes?: string | null
           payment_status?: string | null
           price?: number | null
           service_id?: string | null
@@ -97,6 +99,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_home_visit?: boolean | null
+          internal_notes?: string | null
           payment_status?: string | null
           price?: number | null
           service_id?: string | null
@@ -124,6 +127,463 @@ export type Database = {
           },
           {
             foreignKeyName: "appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_attendances: {
+        Row: {
+          actual_seconds: number
+          appointment_id: string
+          checkout_status: string
+          confirmed_at: string | null
+          confirmed_channel: string | null
+          created_at: string
+          current_stage: string
+          paused_total_seconds: number
+          planned_seconds: number | null
+          post_status: string
+          pre_status: string
+          session_status: string
+          stage_lock_reason: string | null
+          tenant_id: string
+          timer_paused_at: string | null
+          timer_started_at: string | null
+          timer_status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_seconds?: number
+          appointment_id: string
+          checkout_status?: string
+          confirmed_at?: string | null
+          confirmed_channel?: string | null
+          created_at?: string
+          current_stage?: string
+          paused_total_seconds?: number
+          planned_seconds?: number | null
+          post_status?: string
+          pre_status?: string
+          session_status?: string
+          stage_lock_reason?: string | null
+          tenant_id?: string
+          timer_paused_at?: string | null
+          timer_started_at?: string | null
+          timer_status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_seconds?: number
+          appointment_id?: string
+          checkout_status?: string
+          confirmed_at?: string | null
+          confirmed_channel?: string | null
+          created_at?: string
+          current_stage?: string
+          paused_total_seconds?: number
+          planned_seconds?: number | null
+          post_status?: string
+          pre_status?: string
+          session_status?: string
+          stage_lock_reason?: string | null
+          tenant_id?: string
+          timer_paused_at?: string | null
+          timer_started_at?: string | null
+          timer_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_attendances_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_attendances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_checklist_items: {
+        Row: {
+          appointment_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          source: string | null
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+          source?: string | null
+          tenant_id?: string
+        }
+        Update: {
+          appointment_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          source?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_checklist_items_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_checklist_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_checkout: {
+        Row: {
+          appointment_id: string
+          confirmed_at: string | null
+          created_at: string
+          discount_reason: string | null
+          discount_type: string | null
+          discount_value: number | null
+          payment_status: string
+          subtotal: number
+          tenant_id: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          confirmed_at?: string | null
+          created_at?: string
+          discount_reason?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
+          payment_status?: string
+          subtotal?: number
+          tenant_id?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          confirmed_at?: string | null
+          created_at?: string
+          discount_reason?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
+          payment_status?: string
+          subtotal?: number
+          tenant_id?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_checkout_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_checkout_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_checkout_items: {
+        Row: {
+          amount: number
+          appointment_id: string
+          created_at: string
+          id: string
+          label: string
+          metadata: Json | null
+          qty: number
+          sort_order: number
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          appointment_id: string
+          created_at?: string
+          id?: string
+          label: string
+          metadata?: Json | null
+          qty?: number
+          sort_order?: number
+          tenant_id?: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          metadata?: Json | null
+          qty?: number
+          sort_order?: number
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_checkout_items_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_checkout_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_events: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          payload: Json
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          tenant_id?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_events_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_evolution_entries: {
+        Row: {
+          appointment_id: string
+          complaint: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          recommendations: string | null
+          sections_json: Json | null
+          status: string
+          summary: string | null
+          techniques: string | null
+          tenant_id: string
+          version: number
+        }
+        Insert: {
+          appointment_id: string
+          complaint?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          recommendations?: string | null
+          sections_json?: Json | null
+          status?: string
+          summary?: string | null
+          techniques?: string | null
+          tenant_id?: string
+          version: number
+        }
+        Update: {
+          appointment_id?: string
+          complaint?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          recommendations?: string | null
+          sections_json?: Json | null
+          status?: string
+          summary?: string | null
+          techniques?: string | null
+          tenant_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_evolution_entries_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_evolution_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_payments: {
+        Row: {
+          amount: number
+          appointment_id: string
+          created_at: string
+          id: string
+          method: string
+          paid_at: string | null
+          provider_ref: string | null
+          status: string
+          tenant_id: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          appointment_id: string
+          created_at?: string
+          id?: string
+          method: string
+          paid_at?: string | null
+          provider_ref?: string | null
+          status?: string
+          tenant_id?: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          method?: string
+          paid_at?: string | null
+          provider_ref?: string | null
+          status?: string
+          tenant_id?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_payments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_post: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          follow_up_due_at: string | null
+          follow_up_note: string | null
+          kpi_total_seconds: number
+          post_notes: string | null
+          survey_score: number | null
+          survey_status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          follow_up_due_at?: string | null
+          follow_up_note?: string | null
+          kpi_total_seconds?: number
+          post_notes?: string | null
+          survey_score?: number | null
+          survey_status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          follow_up_due_at?: string | null
+          follow_up_note?: string | null
+          kpi_total_seconds?: number
+          post_notes?: string | null
+          survey_score?: number | null
+          survey_status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_post_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_post_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -563,6 +1023,7 @@ export type Database = {
           p_address_estado?: string
           p_address_logradouro?: string
           p_address_numero?: string
+          p_internal_notes?: string
           p_start_time: string
           p_tenant_id: string
           service_id: string
