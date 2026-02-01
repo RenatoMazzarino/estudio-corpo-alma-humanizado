@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Atendimento — UI V4 (Etapas em Telas)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            studio: {
+              green: "#6A806C",
+              dark: "#4e5f50",
+              light: "#F3F6F4",
+              accent: "#D4A373",
+            },
+            paper: "#FAF9F6",
+            text: { main: "#2C3333", muted: "#868E96" },
+            dom: "#A855F7",
+            danger: "#DC2626",
+            warn: "#F59E0B",
+            ok: "#16A34A",
+          },
+          fontFamily: {
+            serif: ['"Playfair Display"', "serif"],
+            sans: ['"Lato"', "sans-serif"],
+          },
+          boxShadow: {
+            soft: "0 4px 20px -2px rgba(106, 128, 108, 0.14)",
+            lift: "0 18px 45px -20px rgba(0,0,0,0.25)",
+          },
+          borderRadius: {
+            xl2: "1.25rem",
+            xl3: "1.75rem",
+          }
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body{
+      background:#222;height:100vh;display:flex;justify-content:center;
+      font-family:"Lato",sans-serif;overflow:hidden;
+    }
+    #mobile-frame{
+      width:100%;max-width:414px;height:100%;background:#FAF9F6;
+      position:relative;overflow:hidden;display:flex;flex-direction:column;
+    }
+    .no-scrollbar::-webkit-scrollbar{display:none;}
+
+    /* Screens */
+    .screen{
+      position:absolute;inset:0;background:#FAF9F6;display:flex;flex-direction:column;
+      transition: transform .28s ease, opacity .28s ease;
+      opacity:0;pointer-events:none;transform:translateX(12%);
+    }
+    .screen.active{opacity:1;pointer-events:auto;transform:translateX(0);z-index:10;}
+    .screen.exit-left{transform:translateX(-12%);opacity:0;}
+    .screen.enter-right{transform:translateX(12%);opacity:0;}
+
+    /* One panel per screen */
+    .panel{
+      background:#fff;border:1px solid rgba(0,0,0,.04);
+      border-radius:28px;box-shadow:0 4px 20px -2px rgba(106,128,108,.12);
+      overflow:hidden;
+    }
+    .panel-h{
+      padding:18px 18px 12px;
+    }
+    .kicker{
+      font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;
+      color:#868E96;
+    }
+    .title{
+      margin-top:6px;font-size:18px;font-weight:900;color:#2C3333;
+      letter-spacing:-.01em;
+    }
+    .sub{
+      margin-top:4px;font-size:12px;color:#868E96;font-weight:700;
+    }
+    .panel-b{padding:0 18px 18px;}
+    .row{
+      display:flex;gap:12px;padding:14px 0;border-top:1px solid rgba(0,0,0,.06);
+      align-items:flex-start;
+    }
+    .row:first-child{border-top:none;padding-top:6px;}
+    .ico{
+      width:38px;height:38px;border-radius:18px;display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(0,0,0,.06);background:#F3F6F4;color:#6A806C;flex:0 0 auto;
+    }
+    .row-main{flex:1;}
+    .row-k{font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#868E96;}
+    .row-v{margin-top:4px;font-size:13px;font-weight:900;color:#2C3333;}
+    .row-s{margin-top:2px;font-size:11px;color:#868E96;}
+
+    .chip{
+      display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9999px;
+      border:1px solid rgba(0,0,0,.06);background:#F3F6F4;color:#6A806C;
+      font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;
+      white-space:nowrap;
+    }
+    .chip.ok{background:#ECFDF5;color:#16A34A;border-color:rgba(22,163,74,.12);}
+    .chip.warn{background:#FFFBEB;color:#B45309;border-color:rgba(245,158,11,.18);}
+    .chip.lock{background:#F8FAFC;color:#94A3B8;border-color:rgba(148,163,184,.25);}
+
+    /* Hub cards */
+    .hub-card{
+      border-radius:26px;background:#fff;border:1px solid rgba(0,0,0,.04);
+      box-shadow:0 4px 20px -2px rgba(106,128,108,.10);
+      padding:16px;transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .hub-card:active{transform:scale(.99);}
+    .hub-title{
+      font-family:"Playfair Display",serif;
+      font-size:20px;font-weight:700;color:#2C3333;
+    }
+    .hub-mini{
+      margin-top:6px;font-size:12px;color:#868E96;font-weight:700;line-height:1.35;
+    }
+    .hub-meta{
+      margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+    }
+    .badge{
+      display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9999px;
+      font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;
+      border:1px solid rgba(0,0,0,.06);
+      background:#F3F6F4;color:#6A806C;
+    }
+    .badge.done{background:#ECFDF5;color:#16A34A;border-color:rgba(22,163,74,.12);}
+    .badge.wait{background:#FFFBEB;color:#B45309;border-color:rgba(245,158,11,.18);}
+    .badge.lock{background:#F8FAFC;color:#94A3B8;border-color:rgba(148,163,184,.25);}
+
+    /* Bottom action bar */
+    .bar{
+      position:fixed;bottom:0;width:100%;max-width:414px;z-index:40;
+      background:#fff;border-top:1px solid rgba(0,0,0,.06);
+      padding:14px 14px 18px;border-top-left-radius:28px;border-top-right-radius:28px;
+      box-shadow:0 -10px 40px rgba(0,0,0,.06);
+    }
+
+    /* Floating bubble */
+    #bubble{
+      position:fixed;z-index:90;width:92px;height:92px;border-radius:9999px;
+      right:18px;bottom:110px;display:none;touch-action:none;user-select:none;
+      cursor:grab;filter:drop-shadow(0 18px 25px rgba(0,0,0,.22));
+    }
+    #bubble:active{cursor:grabbing;transform:scale(.98);}
+    .bubble-inner{
+      position:absolute;inset:9px;border-radius:9999px;background:#6A806C;color:#fff;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+    }
+    .ring{position:absolute;inset:0;}
+    #bubble.running::after{
+      content:"";position:absolute;inset:-6px;border-radius:9999px;
+      border:2px solid rgba(106,128,108,.55);
+      animation:ping 1.6s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    @keyframes ping{75%,100%{transform:scale(1.25);opacity:0;}}
+  </style>
+</head>
+
+<body>
+  <div id="mobile-frame">
+
+    <!-- Floating bubble (persistent) -->
+    <div id="bubble" title="Toque para voltar / Arraste para mover">
+      <svg class="ring" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.20)" stroke-width="8"></circle>
+        <circle id="ringProgress" cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,.95)" stroke-width="8"
+          stroke-linecap="round"
+          stroke-dasharray="276.46" stroke-dashoffset="276.46"
+          transform="rotate(-90 50 50)"></circle>
+      </svg>
+
+      <div class="bubble-inner">
+        <div class="text-[9px] font-extrabold uppercase tracking-widest opacity-80 -mb-0.5">Tempo</div>
+        <div id="bubbleTime" class="text-lg font-black tabular-nums tracking-tighter leading-none">00:00</div>
+        <button id="bubbleToggle" class="mt-1 w-8 h-8 rounded-full bg-white/15 hover:bg-white/20 transition flex items-center justify-center">
+          <i id="bubbleIcon" data-lucide="play" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- HUB SCREEN -->
+    <section id="screen-hub" class="screen active">
+      <header class="px-6 pt-10 pb-5 bg-white rounded-b-3xl shadow-soft z-30 sticky top-0">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-extrabold text-studio-green uppercase tracking-widest mb-1">Atendimento</p>
+            <h1 class="text-2xl font-serif text-gray-800 leading-tight">Etapas</h1>
+            <p class="text-sm text-gray-400 font-bold mt-1">Renato Mazzarino • Massagem Relaxante</p>
+          </div>
+
+          <button onclick="simulateLeave()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm" title="Simular sair da tela (bolha fica)">
+            <i data-lucide="external-link" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- subtle running banner -->
+        <div id="hubBanner" class="mt-4 hidden">
+          <div class="bg-paper border border-gray-200 rounded-2xl px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span id="hubDot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Sessão em andamento</p>
+                <p id="hubTime" class="text-lg font-black tabular-nums text-gray-800">00:00</p>
+              </div>
+            </div>
+            <button onclick="openStage('session')" class="px-4 h-11 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-[0.99] transition flex items-center gap-2">
+              <i data-lucide="arrow-right" class="w-4 h-4"></i> Voltar
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto no-scrollbar px-6 pt-6 pb-28 space-y-4">
+        <!-- PRE -->
+        <button id="card-pre" class="hub-card w-full text-left" onclick="openStage('pre')">
+          <div class="flex items-center justify-between">
+            <div class="hub-title">Pré</div>
+            <span id="badge-pre" class="badge wait"><i data-lucide="clock-3" class="w-3 h-3"></i> Pendente</span>
+          </div>
+          <div class="hub-mini">
+            Confirmação 24h, checklist, contato e logística (domicílio/estúdio).
+          </div>
+          <div class="hub-meta">
+            <span class="chip"><i data-lucide="calendar-clock" class="w-3 h-3"></i> 03 Fev • 11:30</span>
+            <span class="chip"><i data-lucide="map-pin" class="w-3 h-3"></i> Domicílio</span>
+          </div>
+        </button>
+
+        <!-- SESSION -->
+        <button id="card-session" class="hub-card w-full text-left" onclick="openStage('session')">
+          <div class="flex items-center justify-between">
+            <div class="hub-title">Sessão</div>
+            <span id="badge-session" class="badge lock"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueada</span>
+          </div>
+          <div class="hub-mini">
+            Evolução estruturada, histórico, presets e registro do atendimento.
+          </div>
+          <div class="hub-meta">
+            <span class="chip"><i data-lucide="timer" class="w-3 h-3"></i> Cronômetro</span>
+            <span class="chip"><i data-lucide="file-text" class="w-3 h-3"></i> Evolução</span>
+          </div>
+        </button>
+
+        <!-- CHECKOUT -->
+        <button id="card-checkout" class="hub-card w-full text-left" onclick="openStage('checkout')">
+          <div class="flex items-center justify-between">
+            <div class="hub-title">Checkout</div>
+            <span id="badge-checkout" class="badge lock"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueada</span>
+          </div>
+          <div class="hub-mini">
+            Itens, taxas, desconto (R$ ou %), pagamento e recibo.
+          </div>
+          <div class="hub-meta">
+            <span class="chip"><i data-lucide="receipt" class="w-3 h-3"></i> Total</span>
+            <span class="chip"><i data-lucide="qr-code" class="w-3 h-3"></i> Pix/Cartão</span>
+          </div>
+        </button>
+
+        <!-- POST -->
+        <button id="card-post" class="hub-card w-full text-left" onclick="openStage('post')">
+          <div class="flex items-center justify-between">
+            <div class="hub-title">Pós</div>
+            <span id="badge-post" class="badge lock"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueada</span>
+          </div>
+          <div class="hub-mini">
+            KPI (tempo total), pesquisa de satisfação, follow-up e notas pós.
+          </div>
+          <div class="hub-meta">
+            <span class="chip"><i data-lucide="bar-chart-3" class="w-3 h-3"></i> KPI</span>
+            <span class="chip"><i data-lucide="clipboard-check" class="w-3 h-3"></i> Pesquisa</span>
+          </div>
+        </button>
+
+        <div class="h-8"></div>
+      </main>
+    </section>
+
+    <!-- PRE SCREEN -->
+    <section id="screen-pre" class="screen enter-right">
+      <header class="px-6 pt-10 pb-5 bg-white rounded-b-3xl shadow-soft z-30 sticky top-0">
+        <div class="flex items-start justify-between gap-3">
+          <button onclick="goHub()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <div class="flex-1">
+            <p class="text-xs font-extrabold text-studio-green uppercase tracking-widest mb-1">Etapa</p>
+            <h1 class="text-2xl font-serif text-gray-800 leading-tight">Pré</h1>
+            <p class="text-sm text-gray-400 font-bold mt-1">Preparar o atendimento</p>
+          </div>
+          <button onclick="minimizeToBubble()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm" title="Minimizar (bolha persistente)">
+            <i data-lucide="minimize-2" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto no-scrollbar px-6 pt-6 pb-28">
+        <div class="panel">
+          <div class="panel-h">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="kicker">Status e logística</div>
+                <div class="title">Tudo pronto antes de iniciar</div>
+                <div class="sub">Confirmação 24h, contato, endereço, observações e checklist.</div>
+              </div>
+              <span id="chip-pre" class="chip warn"><i data-lucide="clock-3" class="w-3 h-3"></i> Pendente</span>
+            </div>
+          </div>
+
+          <div class="panel-b">
+            <div class="row">
+              <div class="ico"><i data-lucide="calendar-clock" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Data e hora</div>
+                <div class="row-v">03 de fevereiro • 11:30</div>
+                <div class="row-s">Produção: status do agendamento + lembrete automático 24h.</div>
+              </div>
+              <button onclick="toast('Enviar lembrete 24h (demo)')" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Enviar 24h</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="message-circle" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Confirmação</div>
+                <div id="preConfirm" class="row-v">Não confirmada</div>
+                <div class="row-s">Produção: registrar canal e timestamp de confirmação.</div>
+              </div>
+              <button onclick="markConfirmed()" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Confirmar</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="phone" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Contato</div>
+                <div class="row-v">(11) 98828-3270</div>
+                <div class="row-s">Atalhos rápidos sem poluir a tela.</div>
+              </div>
+              <div class="flex flex-col gap-2 mt-1">
+                <button onclick="toast('Abrir WhatsApp (demo)')" class="text-xs font-extrabold text-studio-green hover:underline">Whats</button>
+                <button onclick="toast('Copiado (demo)')" class="text-xs font-extrabold text-gray-400 hover:text-studio-green transition">Copiar</button>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="ico" style="background:#F7F0FF;color:#7C3AED;border-color:rgba(168,85,247,.18);">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <div class="row-main">
+                <div class="row-k">Endereço</div>
+                <div class="row-v">Rua Antonio Bataglioli, 4</div>
+                <div class="row-s">Jardim Santa Clara • Pedreira, SP • 13925-412</div>
+              </div>
+              <button onclick="toast('Abrir Maps (demo)')" class="text-xs font-extrabold text-dom hover:underline mt-1">Maps</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="file-text" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Observações internas</div>
+                <textarea class="mt-2 w-full bg-paper rounded-2xl p-4 text-sm text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+                  rows="3" placeholder="Ex.: cliente prefere óleo X, alergia Y, aviso de portaria..."></textarea>
+                <div class="row-s mt-2">Produção: campo do agendamento (internal_notes) + histórico opcional.</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="list-todo" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Checklist</div>
+                <div class="row-v">Pré-atendimento</div>
+                <div class="mt-3 space-y-2 text-sm">
+                  <label class="flex items-center gap-3">
+                    <input type="checkbox" class="w-4 h-4 accent-[#6A806C]">
+                    <span class="text-gray-700 font-semibold">Separar materiais e itens de higiene</span>
+                  </label>
+                  <label class="flex items-center gap-3">
+                    <input type="checkbox" class="w-4 h-4 accent-[#6A806C]">
+                    <span class="text-gray-700 font-semibold">Confirmar endereço/portaria</span>
+                  </label>
+                  <label class="flex items-center gap-3">
+                    <input type="checkbox" class="w-4 h-4 accent-[#6A806C]">
+                    <span class="text-gray-700 font-semibold">Rever restrições (anamnese)</span>
+                  </label>
+                </div>
+                <div class="row-s mt-2">Produção: checklist configurável por tipo de serviço.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+
+      <div class="bar">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleTimer()" class="w-14 h-14 rounded-2xl bg-paper border border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition shadow-sm" title="Play/Pause">
+            <i id="btnIconPre" data-lucide="play" class="w-6 h-6"></i>
+          </button>
+          <button onclick="unlockAndGo('session')" class="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase">
+            <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
+            Liberar Sessão
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SESSION SCREEN -->
+    <section id="screen-session" class="screen enter-right">
+      <header class="px-6 pt-10 pb-5 bg-white rounded-b-3xl shadow-soft z-30 sticky top-0">
+        <div class="flex items-start justify-between gap-3">
+          <button onclick="goHub()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <div class="flex-1">
+            <p class="text-xs font-extrabold text-studio-green uppercase tracking-widest mb-1">Etapa</p>
+            <h1 class="text-2xl font-serif text-gray-800 leading-tight">Sessão</h1>
+            <p class="text-sm text-gray-400 font-bold mt-1">Evolução estruturada e histórico</p>
+          </div>
+          <button onclick="minimizeToBubble()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="minimize-2" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto no-scrollbar px-6 pt-6 pb-28">
+        <div class="panel">
+          <div class="panel-h">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="kicker">Evolução</div>
+                <div class="title">Registro do atendimento</div>
+                <div class="sub">Estruturado por seções + histórico abaixo (produção-ready).</div>
+              </div>
+              <span id="chip-session" class="chip lock"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueada</span>
+            </div>
+          </div>
+
+          <div class="panel-b">
+            <div class="row">
+              <div class="ico"><i data-lucide="sparkles" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Resumo rápido</div>
+                <div class="row-v">Pressão: média • Foco: cervical/lombar</div>
+                <div class="row-s">Produção: presets configuráveis por serviço/profissional.</div>
+              </div>
+              <button onclick="toast('Abrir presets (demo)')" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Presets</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="layers-3" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Evolução estruturada</div>
+                <div class="row-s mt-2">Produção: salvar em colunas próprias + suporte a histórico por atendimento.</div>
+
+                <div class="mt-3 space-y-3">
+                  <div class="bg-paper border border-gray-200 rounded-2xl p-4">
+                    <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Queixa / objetivo</p>
+                    <textarea class="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+                      rows="3" placeholder="Ex.: tensão cervical e dor lombar após treino..."></textarea>
+                  </div>
+
+                  <div class="bg-paper border border-gray-200 rounded-2xl p-4">
+                    <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Técnicas aplicadas</p>
+                    <textarea class="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+                      rows="3" placeholder="Ex.: deslizamento, liberação miofascial leve, alongamentos..."></textarea>
+                  </div>
+
+                  <div class="bg-paper border border-gray-200 rounded-2xl p-4">
+                    <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Resposta / recomendações</p>
+                    <textarea class="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+                      rows="3" placeholder="Ex.: relatou alívio, orientar hidratação, descanso..."></textarea>
+                  </div>
+
+                  <div class="flex gap-3">
+                    <button onclick="toast('Salvar rascunho (demo)')" class="flex-1 py-3 rounded-2xl bg-paper border border-gray-200 text-gray-700 font-extrabold text-xs uppercase tracking-wide hover:bg-gray-50 transition">
+                      Rascunho
+                    </button>
+                    <button onclick="toast('Salvar evolução no banco (demo)')" class="flex-1 py-3 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-[0.99] transition">
+                      Salvar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="history" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Histórico</div>
+                <div class="row-v">Últimas sessões</div>
+
+                <div class="mt-3 space-y-3">
+                  <div class="bg-paper border border-gray-200 rounded-2xl p-4">
+                    <div class="flex items-center justify-between">
+                      <p class="text-xs font-extrabold text-gray-800">15 Jan • Sessão anterior</p>
+                      <span class="chip"><i data-lucide="file-text" class="w-3 h-3"></i> Evolução</span>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2 italic">“Desconforto lombar após treino. Foco em relaxamento e mobilidade.”</p>
+                  </div>
+
+                  <div class="bg-paper border border-gray-200 rounded-2xl p-4">
+                    <div class="flex items-center justify-between">
+                      <p class="text-xs font-extrabold text-gray-800">20 Dez • Sessão anterior</p>
+                      <span class="chip"><i data-lucide="file-text" class="w-3 h-3"></i> Evolução</span>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2 italic">“Cervical rígida. Pressão leve, recomendação de alongamentos.”</p>
+                  </div>
+                </div>
+
+                <div class="row-s mt-2">Produção: histórico paginado + filtro por serviço.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+
+      <div class="bar">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleTimer()" class="w-14 h-14 rounded-2xl bg-paper border border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition shadow-sm">
+            <i id="btnIconSession" data-lucide="play" class="w-6 h-6"></i>
+          </button>
+          <button onclick="unlockAndGo('checkout')" class="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase">
+            <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
+            Ir para Checkout
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECKOUT SCREEN -->
+    <section id="screen-checkout" class="screen enter-right">
+      <header class="px-6 pt-10 pb-5 bg-white rounded-b-3xl shadow-soft z-30 sticky top-0">
+        <div class="flex items-start justify-between gap-3">
+          <button onclick="goHub()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <div class="flex-1">
+            <p class="text-xs font-extrabold text-studio-green uppercase tracking-widest mb-1">Etapa</p>
+            <h1 class="text-2xl font-serif text-gray-800 leading-tight">Checkout</h1>
+            <p class="text-sm text-gray-400 font-bold mt-1">Taxas, desconto e pagamento</p>
+          </div>
+          <button onclick="minimizeToBubble()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="minimize-2" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto no-scrollbar px-6 pt-6 pb-28">
+        <div class="panel">
+          <div class="panel-h">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="kicker">Financeiro</div>
+                <div class="title">Fechamento do atendimento</div>
+                <div class="sub">Itens, deslocamento, desconto (R$/%), método e confirmação.</div>
+              </div>
+              <span id="chip-checkout" class="chip lock"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueada</span>
+            </div>
+          </div>
+
+          <div class="panel-b">
+            <div class="row">
+              <div class="ico"><i data-lucide="receipt" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Itens</div>
+                <div class="row-v flex items-center justify-between gap-3">
+                  <span>Massagem Relaxante</span>
+                  <span class="tabular-nums">R$ 120,00</span>
+                </div>
+                <div class="row-v flex items-center justify-between gap-3 mt-2" style="font-weight:800;color:#7C3AED;">
+                  <span class="flex items-center gap-2"><i data-lucide="car" class="w-4 h-4"></i> Taxa deslocamento</span>
+                  <span class="tabular-nums">R$ 50,00</span>
+                </div>
+                <div class="row-s mt-2">Produção: editor de itens (add-ons, taxas por regra, impostos se necessário).</div>
+              </div>
+              <button onclick="toast('Editar itens (demo)')" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Editar</button>
+            </div>
+
+            <div class="row">
+              <div class="ico" style="background:#FFFBEB;color:#B45309;border-color:rgba(245,158,11,.18);">
+                <i data-lucide="tag" class="w-4 h-4"></i>
+              </div>
+              <div class="row-main">
+                <div class="flex items-center justify-between">
+                  <div class="row-k">Desconto</div>
+                  <div class="flex gap-2">
+                    <button id="discValueBtn" onclick="setDiscountMode('value')" class="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white text-studio-green border border-studio-green/20">R$</button>
+                    <button id="discPctBtn" onclick="setDiscountMode('pct')" class="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white text-gray-400 border border-gray-200 hover:text-studio-green transition">%</button>
+                  </div>
+                </div>
+                <div class="mt-3 flex items-center gap-3">
+                  <input id="discInput" type="text" value="0,00" inputmode="decimal"
+                    class="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:ring-2 focus:ring-studio-green/20 text-sm font-black text-gray-800 transition-all" />
+                  <button onclick="toast('Aplicar desconto (demo)')" class="px-4 py-3 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-[0.99] transition">
+                    Aplicar
+                  </button>
+                </div>
+                <div class="row-s mt-2">Produção: motivo/auditoria + limite por perfil/configuração.</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="credit-card" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Pagamento</div>
+                <div class="row-v">Selecione o método</div>
+
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                  <button id="payPix" onclick="selectPay('pix')" class="py-3 px-4 rounded-xl border-2 border-studio-green bg-studio-light text-studio-green font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.99] transition">
+                    <i data-lucide="qr-code" class="w-4 h-4"></i> Pix
+                  </button>
+                  <button id="payCard" onclick="selectPay('card')" class="py-3 px-4 rounded-xl border border-gray-200 text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-[0.99] transition">
+                    <i data-lucide="credit-card" class="w-4 h-4"></i> Cartão
+                  </button>
+                  <button id="payCash" onclick="selectPay('cash')" class="py-3 px-4 rounded-xl border border-gray-200 text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-[0.99] transition">
+                    <i data-lucide="banknote" class="w-4 h-4"></i> Dinheiro
+                  </button>
+                  <button id="payOther" onclick="selectPay('other')" class="py-3 px-4 rounded-xl border border-dashed border-gray-300 text-gray-400 font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-[0.99] transition">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Outro
+                  </button>
+                </div>
+
+                <div class="mt-4 bg-paper border border-gray-200 rounded-2xl p-4 flex items-end justify-between gap-4">
+                  <div>
+                    <p class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Total a pagar</p>
+                    <p class="text-2xl font-serif font-bold text-studio-green tabular-nums">R$ 170,00</p>
+                  </div>
+                  <button onclick="toast('Confirmar pagamento (demo)')" class="px-4 py-3 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-[0.99] transition">
+                    Confirmar
+                  </button>
+                </div>
+
+                <div class="row-s mt-2">Produção: split payment, troco, taxas de cartão, comprovantes.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+
+      <div class="bar">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleTimer()" class="w-14 h-14 rounded-2xl bg-paper border border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition shadow-sm">
+            <i id="btnIconCheckout" data-lucide="play" class="w-6 h-6"></i>
+          </button>
+          <button onclick="unlockAndGo('post')" class="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase">
+            <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
+            Ir para Pós
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- POST SCREEN -->
+    <section id="screen-post" class="screen enter-right">
+      <header class="px-6 pt-10 pb-5 bg-white rounded-b-3xl shadow-soft z-30 sticky top-0">
+        <div class="flex items-start justify-between gap-3">
+          <button onclick="goHub()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <div class="flex-1">
+            <p class="text-xs font-extrabold text-studio-green uppercase tracking-widest mb-1">Etapa</p>
+            <h1 class="text-2xl font-serif text-gray-800 leading-tight">Pós</h1>
+            <p class="text-sm text-gray-400 font-bold mt-1">KPI, pesquisa e follow-up</p>
+          </div>
+          <button onclick="minimizeToBubble()" class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm">
+            <i data-lucide="minimize-2" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto no-scrollbar px-6 pt-6 pb-28">
+        <div class="panel">
+          <div class="panel-h">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="kicker">Encerramento e acompanhamento</div>
+                <div class="title">Pós-atendimento</div>
+                <div class="sub">Guardar KPI (tempo real), enviar pesquisa e registrar notas finais.</div>
+              </div>
+              <span id="chip-post" class="chip lock"><i data-lucide="lock" class="w-3 h-3"></i> Bloqueada</span>
+            </div>
+          </div>
+
+          <div class="panel-b">
+            <div class="row">
+              <div class="ico"><i data-lucide="timer" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">KPI — tempo total</div>
+                <div id="kpiTime" class="row-v tabular-nums">00:00</div>
+                <div class="row-s">Produção: guardar total_seconds (rodou de verdade) + pausas + meta planejada.</div>
+              </div>
+              <button onclick="toast('Salvar KPI (demo)')" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Salvar</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="clipboard-check" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Pesquisa de satisfação</div>
+                <div class="row-v">Não enviada</div>
+                <div class="row-s">Produção: enviar link, registrar status e resposta (NPS/CSAT).</div>
+              </div>
+              <button onclick="toast('Enviar pesquisa (demo)')" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Enviar</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="list-checks" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Follow-up</div>
+                <div class="row-v">Criar tarefa (ex.: retorno em 7 dias)</div>
+                <div class="row-s">Produção: tarefas vinculadas ao cliente + automações.</div>
+              </div>
+              <button onclick="toast('Criar tarefa (demo)')" class="text-xs font-extrabold text-studio-green hover:underline mt-1">Adicionar</button>
+            </div>
+
+            <div class="row">
+              <div class="ico"><i data-lucide="file-text" class="w-4 h-4"></i></div>
+              <div class="row-main">
+                <div class="row-k">Notas pós</div>
+                <textarea class="mt-2 w-full bg-paper rounded-2xl p-4 text-sm text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+                  rows="4" placeholder="Ex.: reagendar, preferências, cuidados, observações finais..."></textarea>
+                <div class="row-s mt-2">Produção: notas pós separadas das notas de evolução (fase atendimento).</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+
+      <div class="bar">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleTimer()" class="w-14 h-14 rounded-2xl bg-paper border border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition shadow-sm">
+            <i id="btnIconPost" data-lucide="play" class="w-6 h-6"></i>
+          </button>
+          <button onclick="finishFlow()" class="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase">
+            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+            Finalizar
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOAST -->
+    <div id="toastWrap" class="fixed top-6 w-full max-w-[414px] px-6 z-[120] hidden">
+      <div class="bg-white border border-gray-100 shadow-lift rounded-2xl p-4 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-1">
+          <p class="text-xs font-extrabold text-gray-800">Ação</p>
+          <p id="toastText" class="text-xs text-gray-500">...</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // -----------------------------
+    // STATE (demo)
+    // -----------------------------
+    const FLOW = {
+      stage: "hub",
+      stages: {
+        pre: { status: "pending" },      // pending | done
+        session: { status: "locked" },   // locked | available | done
+        checkout: { status: "locked" },
+        post: { status: "locked" },
+      },
+      timer: {
+        status: "not_started", // not_started | running | paused
+        seconds: 0,
+        planned: 60*60, // 60 min
+      },
+      bubbleVisible: false,
+    };
+
+    let tick = null;
+
+    // -----------------------------
+    // Screen navigation
+    // -----------------------------
+    const screens = {
+      hub: document.getElementById("screen-hub"),
+      pre: document.getElementById("screen-pre"),
+      session: document.getElementById("screen-session"),
+      checkout: document.getElementById("screen-checkout"),
+      post: document.getElementById("screen-post"),
+    };
+
+    function showScreen(key){
+      Object.keys(screens).forEach(k=>{
+        screens[k].classList.remove("active","exit-left");
+        screens[k].classList.add("enter-right");
+      });
+      screens[key].classList.remove("enter-right");
+      screens[key].classList.add("active");
+      FLOW.stage = key;
+      refreshUI();
+      lucide.createIcons();
+    }
+
+    function goHub(){
+      showScreen("hub");
+    }
+
+    function openStage(stage){
+      // block if locked
+      if (FLOW.stages[stage].status === "locked"){
+        toast("Etapa bloqueada. Conclua a anterior para liberar.");
+        return;
+      }
+      showScreen(stage);
+    }
+
+    function unlockAndGo(next){
+      // unlock logic
+      if (next === "session"){
+        FLOW.stages.session.status = "available";
+        FLOW.stages.pre.status = "done";
+        toast("Sessão liberada.");
+        showScreen("session");
+      }
+      if (next === "checkout"){
+        FLOW.stages.checkout.status = "available";
+        FLOW.stages.session.status = "done";
+        toast("Checkout liberado.");
+        showScreen("checkout");
+      }
+      if (next === "post"){
+        FLOW.stages.post.status = "available";
+        FLOW.stages.checkout.status = "done";
+        toast("Pós liberado.");
+        showScreen("post");
+      }
+      refreshUI();
+    }
+
+    function finishFlow(){
+      FLOW.stages.post.status = "done";
+      toast("Atendimento finalizado (demo).");
+      goHub();
+      refreshUI();
+    }
+
+    // -----------------------------
+    // PRE actions (demo)
+    // -----------------------------
+    function markConfirmed(){
+      document.getElementById("preConfirm").textContent = "Confirmada";
+      FLOW.stages.pre.status = "done";
+      FLOW.stages.session.status = "available";
+      toast("Confirmação registrada (demo).");
+      refreshUI();
+    }
+
+    // -----------------------------
+    // Timer
+    // -----------------------------
+    function fmt(sec){
+      const h = Math.floor(sec/3600);
+      const m = Math.floor((sec%3600)/60);
+      const s = sec%60;
+      if (h>0) return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+      return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    }
+
+    function updateRing(){
+      const circle = document.getElementById("ringProgress");
+      const r = 44;
+      const c = 2*Math.PI*r;
+      const progress = Math.min(FLOW.timer.seconds / FLOW.timer.planned, 1);
+      circle.style.strokeDasharray = c.toFixed(2);
+      circle.style.strokeDashoffset = (c*(1-progress)).toFixed(2);
+    }
+
+    function setTimerIcons(){
+      const iconName = (FLOW.timer.status === "running") ? "pause" : "play";
+      ["btnIconPre","btnIconSession","btnIconCheckout","btnIconPost"].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.setAttribute("data-lucide", iconName);
+      });
+      document.getElementById("bubbleIcon").setAttribute("data-lucide", iconName);
+      lucide.createIcons();
+    }
+
+    function refreshTimerUI(){
+      const t = fmt(FLOW.timer.seconds);
+      document.getElementById("bubbleTime").textContent = t;
+      document.getElementById("hubTime").textContent = t;
+      document.getElementById("kpiTime").textContent = t;
+      updateRing();
+
+      const bubble = document.getElementById("bubble");
+      bubble.classList.toggle("running", FLOW.timer.status === "running");
+
+      // banner
+      const banner = document.getElementById("hubBanner");
+      if (FLOW.timer.status === "running" || FLOW.timer.status === "paused") {
+        banner.classList.remove("hidden");
+        document.getElementById("hubDot").className = (FLOW.timer.status === "running")
+          ? "w-2 h-2 rounded-full bg-red-500 animate-pulse"
+          : "w-2 h-2 rounded-full bg-orange-400";
+      } else {
+        banner.classList.add("hidden");
+      }
+
+      // bubble visibility rule:
+      // show if timer started and bubbleVisible OR user is "outside"
+      const shouldShow = (FLOW.timer.status === "running" || FLOW.timer.status === "paused") && FLOW.bubbleVisible;
+      bubble.style.display = shouldShow ? "block" : "none";
+
+      setTimerIcons();
+    }
+
+    function toggleTimer(){
+      if (FLOW.timer.status === "not_started") {
+        FLOW.timer.status = "running";
+        FLOW.bubbleVisible = true; // production: if user leaves, keep visible
+        toast("Cronômetro iniciado.");
+      } else if (FLOW.timer.status === "running") {
+        FLOW.timer.status = "paused";
+        toast("Cronômetro pausado.");
+      } else {
+        FLOW.timer.status = "running";
+        toast("Cronômetro retomado.");
+      }
+      refreshTimerUI();
+    }
+
+    function startTicker(){
+      if (tick) clearInterval(tick);
+      tick = setInterval(()=>{
+        if (FLOW.timer.status === "running"){
+          FLOW.timer.seconds += 1;
+          refreshTimerUI();
+        }
+      }, 1000);
+    }
+
+    // -----------------------------
+    // Bubble minimize/maximize behavior
+    // -----------------------------
+    function minimizeToBubble(){
+      if (FLOW.timer.status === "not_started"){
+        toast("Inicie o cronômetro para habilitar a bolha persistente.");
+        return;
+      }
+      FLOW.bubbleVisible = true;
+      toast("Bolha ativada (persistente).");
+      refreshTimerUI();
+    }
+
+    // Tap bubble returns to hub (demo)
+    const bubble = document.getElementById("bubble");
+    bubble.addEventListener("click", ()=>{
+      // in production: if user is on another route, bring back Atendimento
+      FLOW.bubbleVisible = true;
+      showScreen("hub");
+      toast("Voltando para Etapas.");
+      refreshTimerUI();
+    });
+
+    document.getElementById("bubbleToggle").addEventListener("click", (e)=>{
+      e.stopPropagation();
+      toggleTimer();
+    });
+
+    // Drag bubble (pointer)
+    (function setupBubbleDrag(){
+      let dragging = false;
+      let startX=0,startY=0, origX=0,origY=0;
+
+      function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+
+      bubble.addEventListener("pointerdown",(e)=>{
+        dragging = true;
+        bubble.setPointerCapture(e.pointerId);
+        const rect = bubble.getBoundingClientRect();
+        startX = e.clientX; startY = e.clientY;
+        origX = rect.left; origY = rect.top;
+      });
+
+      bubble.addEventListener("pointermove",(e)=>{
+        if (!dragging) return;
+        e.preventDefault();
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        const newLeft = origX + dx;
+        const newTop = origY + dy;
+
+        const maxLeft = window.innerWidth - bubble.offsetWidth - 6;
+        const maxTop = window.innerHeight - bubble.offsetHeight - 6;
+
+        bubble.style.left = clamp(newLeft, 6, maxLeft) + "px";
+        bubble.style.top = clamp(newTop, 6, maxTop) + "px";
+        bubble.style.right = "auto";
+        bubble.style.bottom = "auto";
+      });
+
+      function end(e){
+        dragging = false;
+        try{ bubble.releasePointerCapture(e.pointerId); }catch{}
+      }
+      bubble.addEventListener("pointerup", end);
+      bubble.addEventListener("pointercancel", end);
+    })();
+
+    // Simulate leaving the Atendimento screens (demo)
+    function simulateLeave(){
+      if (FLOW.timer.status === "not_started"){
+        toast("Sem cronômetro ativo. (demo) Saída normal.");
+        return;
+      }
+      FLOW.bubbleVisible = true;
+      toast("Simulando saída… bolha permanece.");
+      refreshTimerUI();
+    }
+
+    // -----------------------------
+    // Checkout discount + payment (demo)
+    // -----------------------------
+    let discMode = "value";
+    function setDiscountMode(mode){
+      discMode = mode;
+      const v = document.getElementById("discValueBtn");
+      const p = document.getElementById("discPctBtn");
+      const input = document.getElementById("discInput");
+
+      if (mode === "value"){
+        v.className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white text-studio-green border border-studio-green/20";
+        p.className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white text-gray-400 border border-gray-200 hover:text-studio-green transition";
+        input.value="0,00";
+      } else {
+        p.className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white text-studio-green border border-studio-green/20";
+        v.className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-white text-gray-400 border border-gray-200 hover:text-studio-green transition";
+        input.value="0";
+      }
+      toast("Desconto: " + (mode==="value" ? "R$" : "%"));
+    }
+
+    function selectPay(method){
+      const map = {pix:"payPix", card:"payCard", cash:"payCash", other:"payOther"};
+      Object.keys(map).forEach(k=>{
+        const el = document.getElementById(map[k]);
+        if (k===method){
+          el.className="py-3 px-4 rounded-xl border-2 border-studio-green bg-studio-light text-studio-green font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.99] transition";
+        } else {
+          el.className="py-3 px-4 rounded-xl border border-gray-200 text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-[0.99] transition";
+        }
+      });
+      toast("Pagamento: " + method.toUpperCase());
+    }
+
+    // -----------------------------
+    // Status + Hub badges
+    // -----------------------------
+    function refreshBadges(){
+      // PRE
+      const preBadge = document.getElementById("badge-pre");
+      const preChip = document.getElementById("chip-pre");
+      if (FLOW.stages.pre.status === "done"){
+        preBadge.className = "badge done";
+        preBadge.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+        preChip.className = "chip ok";
+        preChip.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+      } else {
+        preBadge.className = "badge wait";
+        preBadge.innerHTML = `<i data-lucide="clock-3" class="w-3 h-3"></i> Pendente`;
+        preChip.className = "chip warn";
+        preChip.innerHTML = `<i data-lucide="clock-3" class="w-3 h-3"></i> Pendente`;
+      }
+
+      // SESSION
+      const sBadge = document.getElementById("badge-session");
+      const sChip = document.getElementById("chip-session");
+      if (FLOW.stages.session.status === "locked"){
+        sBadge.className = "badge lock";
+        sBadge.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Bloqueada`;
+        sChip.className = "chip lock";
+        sChip.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Bloqueada`;
+      } else if (FLOW.stages.session.status === "done"){
+        sBadge.className = "badge done";
+        sBadge.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+        sChip.className = "chip ok";
+        sChip.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+      } else {
+        sBadge.className = "badge wait";
+        sBadge.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Liberada`;
+        sChip.className = "chip";
+        sChip.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Liberada`;
+      }
+
+      // CHECKOUT
+      const cBadge = document.getElementById("badge-checkout");
+      const cChip = document.getElementById("chip-checkout");
+      if (FLOW.stages.checkout.status === "locked"){
+        cBadge.className = "badge lock";
+        cBadge.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Bloqueada`;
+        cChip.className = "chip lock";
+        cChip.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Bloqueada`;
+      } else if (FLOW.stages.checkout.status === "done"){
+        cBadge.className = "badge done";
+        cBadge.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+        cChip.className = "chip ok";
+        cChip.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+      } else {
+        cBadge.className = "badge wait";
+        cBadge.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Liberada`;
+        cChip.className = "chip";
+        cChip.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Liberada`;
+      }
+
+      // POST
+      const pBadge = document.getElementById("badge-post");
+      const pChip = document.getElementById("chip-post");
+      if (FLOW.stages.post.status === "locked"){
+        pBadge.className = "badge lock";
+        pBadge.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Bloqueada`;
+        pChip.className = "chip lock";
+        pChip.innerHTML = `<i data-lucide="lock" class="w-3 h-3"></i> Bloqueada`;
+      } else if (FLOW.stages.post.status === "done"){
+        pBadge.className = "badge done";
+        pBadge.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+        pChip.className = "chip ok";
+        pChip.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Ok`;
+      } else {
+        pBadge.className = "badge wait";
+        pBadge.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Liberada`;
+        pChip.className = "chip";
+        pChip.innerHTML = `<i data-lucide="unlock" class="w-3 h-3"></i> Liberada`;
+      }
+
+      // unlock clickability perception (demo only)
+      document.getElementById("card-session").style.opacity = (FLOW.stages.session.status === "locked") ? "0.65" : "1";
+      document.getElementById("card-checkout").style.opacity = (FLOW.stages.checkout.status === "locked") ? "0.65" : "1";
+      document.getElementById("card-post").style.opacity = (FLOW.stages.post.status === "locked") ? "0.65" : "1";
+
+      lucide.createIcons();
+    }
+
+    function refreshUI(){
+      refreshBadges();
+      refreshTimerUI();
+    }
+
+    // -----------------------------
+    // Toast
+    // -----------------------------
+    let toastT = null;
+    function toast(msg){
+      const w = document.getElementById("toastWrap");
+      document.getElementById("toastText").textContent = msg;
+      w.classList.remove("hidden");
+      clearTimeout(toastT);
+      toastT = setTimeout(()=> w.classList.add("hidden"), 1800);
+    }
+
+    // init
+    startTicker();
+    setDiscountMode("value");
+    refreshUI();
+  </script>
+</body>
+</html>
