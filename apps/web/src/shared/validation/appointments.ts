@@ -39,6 +39,7 @@ export const createInternalAppointmentSchema = z.object({
   addressCidade: z.string().optional().nullable(),
   addressEstado: z.string().optional().nullable(),
   isHomeVisit: z.boolean().optional(),
+  internalNotes: z.string().optional().nullable(),
   serviceId: z.string().uuid(),
   date: z.string().min(10),
   time: z.string().min(4),

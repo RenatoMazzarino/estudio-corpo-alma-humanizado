@@ -137,6 +137,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const addressBairro = (formData.get("address_bairro") as string | null) || null;
   const addressCidade = (formData.get("address_cidade") as string | null) || null;
   const addressEstado = (formData.get("address_estado") as string | null) || null;
+  const internalNotes = (formData.get("internalNotes") as string | null) || null;
 
   const parsed = createInternalAppointmentSchema.safeParse({
     clientName,
@@ -149,6 +150,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     addressCidade,
     addressEstado,
     isHomeVisit,
+    internalNotes,
     serviceId,
     date,
     time,
@@ -174,6 +176,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     p_address_cidade: parsed.data.addressCidade ?? undefined,
     p_address_estado: parsed.data.addressEstado ?? undefined,
     is_home_visit: parsed.data.isHomeVisit ?? false,
+    p_internal_notes: parsed.data.internalNotes ?? undefined,
   });
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);

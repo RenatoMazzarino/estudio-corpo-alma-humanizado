@@ -25,6 +25,7 @@ export interface AppointmentDetails {
     service_duration_minutes?: number | null;
     total_duration_minutes?: number | null;
     actual_duration_minutes?: number | null;
+    internal_notes?: string | null;
     address_cep?: string | null;
     address_logradouro?: string | null;
     address_numero?: string | null;
@@ -320,6 +321,13 @@ export function AppointmentDetailsModal({ appointment, onClose, onUpdate, varian
                                         Abrir no Maps
                                       </a>
                                     )}
+                                </div>
+                            )}
+
+                            {appointment.internal_notes && (
+                                <div className="bg-white p-4 rounded-xl border border-stone-100 shadow-sm">
+                                    <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Observações Internas</label>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{appointment.internal_notes}</p>
                                 </div>
                             )}
                             
