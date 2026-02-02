@@ -44,6 +44,8 @@
 - Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
 
 ## 4) Commits (hash + objetivo)
+- `9cae13c` — fix(build): importar zod no atendimento
+  - Objetivo: corrigir build da Vercel (erro de `z` indefinido em actions).
 - `72d1596` — docs(report): atualizar lista de commits
   - Objetivo: manter o relatório sincronizado com os commits recentes.
 - `2ac687c` — docs(report): atualizar auditoria db ui
