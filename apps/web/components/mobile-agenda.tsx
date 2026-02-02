@@ -34,7 +34,7 @@ import {
   X,
   Building2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface AppointmentClient {
   id: string;
@@ -93,12 +93,16 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [view, setView] = useState<AgendaView>("day");
   const [fabOpen, setFabOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
   const isUserScrolling = useRef(false);
+  const skipAutoScrollSync = useRef(false);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const now = new Date();
 
   const monthDays = useMemo(
@@ -142,6 +146,26 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   useEffect(() => {
     setMonthPickerYear(currentMonth.getFullYear());
   }, [currentMonth]);
+
+  useEffect(() => {
+    const query = searchParams.get("q") ?? "";
+    setSearchTerm(query);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const handle = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      const nextQuery = searchTerm.trim();
+      if (nextQuery) {
+        params.set("q", nextQuery);
+      } else {
+        params.delete("q");
+      }
+      router.replace(`/?${params.toString()}`, { scroll: false });
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchTerm, isSearchOpen, router, searchParams]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -196,6 +220,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
   useEffect(() => {
     if (view !== "day") return;
+    if (skipAutoScrollSync.current) {
+      skipAutoScrollSync.current = false;
+      return;
+    }
     if (isUserScrolling.current) return;
     scrollToDate(selectedDate);
   }, [selectedDate, view, scrollToDate]);
@@ -220,6 +248,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       }
       lastSnapIndex.current = index;
       if (!isSameDay(nextDay, selectedDate)) {
+        skipAutoScrollSync.current = true;
         setSelectedDate(nextDay);
       }
       isUserScrolling.current = false;
@@ -255,17 +284,19 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
   return (
     <div className="bg-studio-bg min-h-full flex flex-col">
-      <header className="px-5 pt-5 pb-3 bg-white rounded-b-2xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.15)] z-20 sticky top-0 relative">
-        <div className="flex justify-between items-start mb-2">
+      <header className="px-6 pb-4 bg-white rounded-b-3xl shadow-soft z-20 sticky top-0 relative safe-top safe-top-6">
+        <div className="flex justify-between items-start mb-3">
           <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-xs font-extrabold text-studio-green uppercase tracking-widest">Olá, Corpo & Alma</p>
-              <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                <Leaf className="w-3 h-3 text-amber-400" /> Online
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[11px] font-extrabold text-studio-green uppercase tracking-widest">
+                Olá, Corpo & Alma
+              </p>
+              <span className="text-[10px] text-muted flex items-center gap-1 uppercase tracking-wide">
+                <Leaf className="w-3 h-3 text-studio-accent" /> Online
               </span>
             </div>
 
-            <h1 className="text-xl font-serif text-gray-800 flex items-center gap-2 leading-tight">
+            <h1 className="text-2xl font-serif text-studio-text flex items-center gap-2 leading-tight">
               Sua Agenda de
               <button
                 type="button"
@@ -280,7 +311,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           <div className="flex flex-col gap-2 items-end">
             <button
               onClick={handleGoToToday}
-              className="bg-stone-50 text-studio-green px-3 py-1.5 rounded-full text-xs font-extrabold shadow-sm hover:bg-studio-green hover:text-white transition flex items-center gap-1"
+              className="bg-studio-light text-studio-green px-3 py-1.5 rounded-full text-xs font-extrabold shadow-soft hover:bg-studio-green hover:text-white transition flex items-center gap-1"
               type="button"
             >
               <CalendarCheck className="w-3 h-3" /> Hoje
@@ -288,19 +319,20 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
             <button
               type="button"
-              className="text-xs font-bold text-gray-400 hover:text-studio-green transition flex items-center gap-1"
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              className="text-xs font-bold text-muted hover:text-studio-green transition flex items-center gap-1"
             >
               <Search className="w-3 h-3" /> Buscar
             </button>
           </div>
         </div>
 
-        <div className="bg-stone-50 p-1 rounded-xl flex justify-between border border-gray-200">
+        <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
           <button
             type="button"
             onClick={() => setView("day")}
             className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-              view === "day" ? "bg-white text-studio-green shadow-sm" : "text-gray-400 hover:text-studio-green"
+              view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
             }`}
           >
             DIA
@@ -309,7 +341,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             type="button"
             onClick={() => setView("week")}
             className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-              view === "week" ? "bg-white text-studio-green shadow-sm" : "text-gray-400 hover:text-studio-green"
+              view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
             }`}
           >
             SEMANA
@@ -318,28 +350,49 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             type="button"
             onClick={() => setView("month")}
             className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-              view === "month" ? "bg-white text-studio-green shadow-sm" : "text-gray-400 hover:text-studio-green"
+              view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
             }`}
           >
             MÊS
           </button>
         </div>
 
+        {isSearchOpen && (
+          <div className="mt-3 flex items-center gap-2 bg-studio-light rounded-2xl px-3 py-2">
+            <Search className="w-4 h-4 text-muted" />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Buscar cliente, serviço ou telefone"
+              className="flex-1 bg-transparent text-sm text-studio-text placeholder:text-muted focus:outline-none"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="w-7 h-7 rounded-full bg-white text-muted flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+
         {isMonthPickerOpen && (
-          <div className="absolute left-5 right-5 top-full mt-2 bg-white rounded-2xl shadow-[0_18px_35px_-15px_rgba(0,0,0,0.25)] border border-gray-100 p-4 z-30">
+          <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-2xl shadow-float border border-line p-4 z-30">
             <div className="flex items-center justify-between mb-3">
               <button
                 type="button"
                 onClick={() => setMonthPickerYear((prev) => prev - 1)}
-                className="w-9 h-9 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="text-sm font-extrabold text-gray-800">{monthPickerYear}</div>
+              <div className="text-sm font-extrabold text-studio-text">{monthPickerYear}</div>
               <button
                 type="button"
                 onClick={() => setMonthPickerYear((prev) => prev + 1)}
-                className="w-9 h-9 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -360,8 +413,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     }}
                     className={`py-2 rounded-xl text-xs font-extrabold transition ${
                       isActive
-                        ? "bg-studio-green text-white shadow-md"
-                        : "bg-stone-50 text-gray-500 hover:text-studio-green hover:bg-studio-green/10"
+                        ? "bg-studio-green text-white shadow-soft"
+                        : "bg-studio-light text-muted hover:text-studio-green hover:bg-studio-green/10"
                     }`}
                   >
                     {label}
@@ -378,7 +431,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
-            className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth"
+            className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
           >
             {monthDays.map((day) => {
               const { dayAppointments, dayBlocks, items } = getDayData(day);
@@ -391,17 +444,17 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full h-full snap-center overflow-y-auto px-4 pb-28"
+                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-28"
                 >
                   <div className="text-center mb-4">
                     <h2
                       className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 capitalize ${
-                        isToday(day) ? "text-studio-green" : "text-gray-400"
+                        isToday(day) ? "text-studio-green" : "text-muted"
                       }`}
                     >
                       {format(day, "EEEE", { locale: ptBR })}
                     </h2>
-                    <p className="text-3xl font-serif text-gray-800 capitalize">
+                    <p className="text-3xl font-serif text-studio-text capitalize">
                       {format(day, "dd MMM", { locale: ptBR })}
                     </p>
                     <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
@@ -421,7 +474,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         </span>
                       )}
                       {appointmentCount === 0 && blockCount === 0 && (
-                        <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-stone-100 text-gray-500">
+                        <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-studio-light text-muted">
                           Agenda livre
                         </span>
                       )}
@@ -430,11 +483,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                   {isToday(day) && (
                     <div className="flex items-center gap-2 mb-4 mt-2">
-                      <span className="text-xs font-extrabold text-red-500 w-12 text-right">
+                      <span className="text-xs font-extrabold text-danger w-12 text-right">
                         {format(now, "HH:mm")}
                       </span>
-                      <div className="flex-1 h-px bg-red-400 relative">
-                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-red-500"></div>
+                      <div className="flex-1 h-px bg-danger/70 relative">
+                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-danger"></div>
                       </div>
                     </div>
                   )}
@@ -457,37 +510,37 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                         return (
                           <div key={item.id} className="flex gap-4 group mb-4">
-                            <span className="text-sm font-extrabold text-gray-800 pt-3 w-12 text-right">
+                            <span className="text-sm font-extrabold text-studio-text pt-3 w-12 text-right">
                               {start}
                             </span>
                             {isBlock ? (
-                              <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm border-l-4 border-red-400">
+                              <div className="flex-1 bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400">
                                 <div className="flex justify-between items-start mb-1">
-                                  <h3 className="font-extrabold text-gray-800 text-lg leading-tight">
+                                  <h3 className="font-extrabold text-studio-text text-lg leading-tight">
                                     {item.clientName}
                                   </h3>
                                   <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
                                     <Hospital className="w-3.5 h-3.5" />
                                   </div>
                                 </div>
-                                <p className="text-sm text-gray-600">{item.serviceName}</p>
+                                <p className="text-sm text-muted">{item.serviceName}</p>
                                 <div className="mt-2 flex items-center gap-2">
                                   <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
                                     Bloqueado
                                   </span>
-                                  {end && <span className="text-[11px] text-gray-400">Até {end}</span>}
+                                  {end && <span className="text-[11px] text-muted">Até {end}</span>}
                                 </div>
                               </div>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => router.push(`/atendimento/${item.id}`)}
-                                className={`flex-1 text-left bg-white p-4 rounded-2xl shadow-sm border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
+                                className={`flex-1 text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
                                   isHomeVisit ? "border-purple-500" : "border-studio-green"
                                 }`}
                               >
                                 <div className="flex justify-between items-start mb-1">
-                                  <h3 className="font-extrabold text-gray-800 text-lg leading-tight">
+                                  <h3 className="font-extrabold text-studio-text text-lg leading-tight">
                                     {item.clientName}
                                   </h3>
                                   <div
@@ -500,7 +553,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                     {isHomeVisit ? <Car className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
                                   </div>
                                 </div>
-                                <p className="text-sm text-gray-600">{item.serviceName}</p>
+                                <p className="text-sm text-muted">{item.serviceName}</p>
                                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                                   <span
                                     className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 ${
@@ -524,12 +577,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                     )}
                                   </span>
                                   {item.phone && (
-                                    <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                    <span className="text-[11px] text-muted flex items-center gap-1">
                                       <Phone className="w-3 h-3" /> {item.phone}
                                     </span>
                                   )}
                                   {item.address && isHomeVisit && (
-                                    <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                    <span className="text-[11px] text-muted flex items-center gap-1">
                                       <MapPin className="w-3 h-3" /> {item.address}
                                     </span>
                                   )}
@@ -542,20 +595,20 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                       {showFreeLine && (
                         <div className="flex gap-4 opacity-60">
-                          <span className="text-sm font-extrabold text-gray-400 pt-3 w-12 text-right">--:--</span>
-                          <div className="flex-1 border-t-2 border-dashed border-gray-300 mt-5 flex items-center gap-2">
-                            <span className="text-xs bg-gray-100 px-2 rounded text-gray-500 mt-[-1rem] ml-2">Livre</span>
+                          <span className="text-sm font-extrabold text-muted pt-3 w-12 text-right">--:--</span>
+                          <div className="flex-1 border-t-2 border-dashed border-line mt-5 flex items-center gap-2">
+                            <span className="text-xs bg-studio-light px-2 rounded text-muted mt-[-1rem] ml-2">Livre</span>
                           </div>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
-                      <div className="w-16 h-16 bg-white border-2 border-dashed border-stone-200 rounded-full flex items-center justify-center mb-4 text-stone-300">
+                      <div className="w-16 h-16 bg-white border-2 border-dashed border-line rounded-full flex items-center justify-center mb-4 text-muted">
                         <Sparkles size={28} />
                       </div>
-                      <h3 className="text-gray-500 font-bold text-sm">Agenda Livre</h3>
-                      <p className="text-xs text-gray-400 mt-1">Nenhum agendamento para este dia.</p>
+                      <h3 className="text-muted font-bold text-sm">Agenda Livre</h3>
+                      <p className="text-xs text-muted mt-1">Nenhum agendamento para este dia.</p>
                     </div>
                   )}
                 </div>
@@ -565,17 +618,17 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </section>
 
         <section
-          className={`${view === "week" ? "block" : "hidden"} h-full overflow-y-auto p-4 pb-28 animate-in fade-in`}
+          className={`${view === "week" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-28 animate-in fade-in`}
         >
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
               onClick={() => setSelectedDate(addDays(selectedDate, -7))}
-              className="w-9 h-9 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="text-sm font-extrabold text-gray-800 capitalize">
+            <div className="text-sm font-extrabold text-studio-text capitalize">
               {weekDays.length > 0 ? (() => {
                 const startOfWeek = weekDays[0];
                 const endOfWeek = weekDays[weekDays.length - 1];
@@ -587,7 +640,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             <button
               type="button"
               onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-              className="w-9 h-9 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -608,20 +661,20 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       setView("day");
                       setIsMonthPickerOpen(false);
                     }}
-                    className="bg-white p-4 rounded-2xl border-l-4 border-studio-green shadow-sm text-left active:scale-[0.99] transition"
+                    className="bg-white p-4 rounded-3xl border-l-4 border-studio-green shadow-soft text-left active:scale-[0.99] transition"
                   >
-                    <div className="flex justify-between border-b border-gray-100 pb-2 mb-2">
-                      <span className="font-extrabold text-gray-800 capitalize">
+                    <div className="flex justify-between border-b border-line pb-2 mb-2">
+                      <span className="font-extrabold text-studio-text capitalize">
                         {format(day, "EEE, dd", { locale: ptBR })}
                       </span>
-                      <span className="text-xs font-extrabold bg-green-100 text-studio-green px-2 rounded-full">
+                      <span className="text-xs font-extrabold bg-studio-green/10 text-studio-green px-2 rounded-full">
                         {dayAppointments.length} atendimentos
                       </span>
                     </div>
                     <div className="space-y-2">
                       {dayAppointments.slice(0, 3).map((appt) => (
                         <div key={appt.id} className="flex justify-between text-sm">
-                          <span className="text-gray-500">
+                          <span className="text-muted">
                             {format(new Date(appt.start_time), "HH:mm")}
                           </span>
                           <span className="font-bold">
@@ -637,26 +690,26 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
               if (hasBlocks) {
                 return (
-                  <div key={day.toISOString()} className="bg-white p-4 rounded-2xl border-l-4 border-red-400 shadow-sm opacity-90">
+                  <div key={day.toISOString()} className="bg-white p-4 rounded-3xl border-l-4 border-red-400 shadow-soft opacity-90">
                     <div className="flex justify-between items-center">
-                      <span className="font-extrabold text-gray-800 capitalize">
+                      <span className="font-extrabold text-studio-text capitalize">
                         {format(day, "EEE, dd", { locale: ptBR })}
                       </span>
-                      <span className="text-xs font-extrabold bg-red-100 text-red-500 px-2 py-1 rounded-full flex items-center gap-1">
+                      <span className="text-xs font-extrabold bg-red-100 text-danger px-2 py-1 rounded-full flex items-center gap-1">
                         <Hospital className="w-3 h-3" /> PLANTÃO
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">Bloqueado para agendamento online.</p>
+                    <p className="text-xs text-muted mt-2">Bloqueado para agendamento online.</p>
                   </div>
                 );
               }
 
               return (
-                <div key={day.toISOString()} className="bg-gray-50 p-4 rounded-2xl border border-dashed border-gray-300 text-center">
-                  <span className="font-extrabold text-gray-500 capitalize">
+                <div key={day.toISOString()} className="bg-studio-light p-4 rounded-3xl border border-dashed border-line text-center">
+                  <span className="font-extrabold text-muted capitalize">
                     {format(day, "EEE, dd", { locale: ptBR })}
                   </span>
-                  <p className="text-xs text-gray-400">Agenda livre</p>
+                  <p className="text-xs text-muted">Agenda livre</p>
                 </div>
               );
             })}
@@ -666,23 +719,23 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         <section
           className={`${view === "month" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-28 animate-in fade-in`}
         >
-          <div className="bg-white rounded-3xl shadow-sm p-4">
+          <div className="bg-white rounded-3xl shadow-soft p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-extrabold text-gray-800 capitalize">
+              <div className="text-sm font-extrabold text-studio-text capitalize">
                 {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}
-                  className="w-9 h-9 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                  className="w-9 h-9 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -691,7 +744,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
             <div className="grid grid-cols-7 gap-1 text-center mb-2">
               {weekdayLabels.map((label, index) => (
-                <div key={`${label}-${index}`} className="text-[10px] font-extrabold text-gray-400 uppercase">
+                <div key={`${label}-${index}`} className="text-[10px] font-extrabold text-muted uppercase">
                   {label}
                 </div>
               ))}
@@ -719,10 +772,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     <span
                       className={`w-8 h-8 flex items-center justify-center rounded-full font-extrabold transition ${
                         isDayToday
-                          ? "bg-studio-green text-white shadow-lg shadow-green-200"
+                          ? "bg-studio-green text-white shadow-soft"
                           : isCurrent
-                            ? "text-gray-800"
-                            : "text-gray-300"
+                            ? "text-studio-text"
+                            : "text-muted/60"
                       }`}
                     >
                       {format(day, "dd")}
@@ -741,7 +794,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               })}
             </div>
 
-            <div className="mt-4 p-3 rounded-2xl bg-stone-50 text-studio-green text-xs">
+            <div className="mt-4 p-3 rounded-2xl bg-studio-light text-studio-green text-xs">
               <span className="font-extrabold">Legenda:</span>
               <span className="ml-2 inline-flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-studio-green inline-block"></span> atendimentos
@@ -768,10 +821,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               setFabOpen(false);
               router.push("/bloqueios");
             }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-lg border border-gray-50 hover:bg-red-50 transition"
+            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-red-50 transition"
             type="button"
           >
-            <span className="text-sm font-extrabold text-gray-700">Bloquear Plantão</span>
+            <span className="text-sm font-extrabold text-studio-text">Bloquear Plantão</span>
             <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition">
               <Hospital className="w-5 h-5" />
             </div>
@@ -782,10 +835,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               setFabOpen(false);
               router.push("/novo");
             }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-lg border border-gray-50 hover:bg-studio-green/10 transition"
+            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition"
             type="button"
           >
-            <span className="text-sm font-extrabold text-gray-700">Novo Agendamento</span>
+            <span className="text-sm font-extrabold text-studio-text">Novo Agendamento</span>
             <div className="w-10 h-10 bg-studio-bg text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
               <CalendarPlus className="w-5 h-5" />
             </div>

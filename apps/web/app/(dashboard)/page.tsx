@@ -1,7 +1,11 @@
 import { MobileAgenda } from "../../components/mobile-agenda";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
-import { listAppointmentsInRange, listAvailabilityBlocksInRange } from "../../src/modules/appointments/repository";
+import {
+  listAppointmentsInRange,
+  listAvailabilityBlocksInRange,
+  searchAppointments,
+} from "../../src/modules/appointments/repository";
 
 // Interface dos dados
 interface Appointment {
@@ -30,7 +34,7 @@ type RawAppointment = Omit<Appointment, "clients"> & {
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ created?: string }>;
+  searchParams?: Promise<{ created?: string; q?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const today = new Date();
@@ -39,12 +43,12 @@ export default async function Home({
   const queryStartDate = startOfMonth(subMonths(today, 1)).toISOString();
   const queryEndDate = endOfMonth(addMonths(today, 2)).toISOString();
 
+  const query = resolvedSearchParams?.q?.trim();
+
   // 1. Buscar Agendamentos
-  const { data: appointmentsData } = await listAppointmentsInRange(
-    FIXED_TENANT_ID,
-    queryStartDate,
-    queryEndDate
-  );
+  const { data: appointmentsData } = query
+    ? await searchAppointments(FIXED_TENANT_ID, query, queryStartDate, queryEndDate)
+    : await listAppointmentsInRange(FIXED_TENANT_ID, queryStartDate, queryEndDate);
 
   const rawAppointments = (appointmentsData ?? []) as unknown as RawAppointment[];
   const appointments: Appointment[] = rawAppointments.map((appt) => ({

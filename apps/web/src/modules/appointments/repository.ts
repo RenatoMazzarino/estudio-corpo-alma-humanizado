@@ -19,6 +19,31 @@ export async function listAppointmentsInRange(tenantId: string, start: string, e
     .lte("start_time", end);
 }
 
+export async function searchAppointments(tenantId: string, query: string, start: string, end: string) {
+  const supabase = createServiceClient();
+  const safeQuery = query.replace(/[%_,]/g, "").trim();
+  if (!safeQuery) {
+    return listAppointmentsInRange(tenantId, start, end);
+  }
+
+  return supabase
+    .from("appointments")
+    .select(
+      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes,
+       clients ( id, name, initials, phone, health_tags, endereco_completo )`
+    )
+    .eq("tenant_id", tenantId)
+    .gte("start_time", start)
+    .lte("start_time", end)
+    .or(
+      [
+        `service_name.ilike.%${safeQuery}%`,
+        `clients.name.ilike.%${safeQuery}%`,
+        `clients.phone.ilike.%${safeQuery}%`,
+      ].join(",")
+    );
+}
+
 export async function listCompletedAppointmentsInRange(tenantId: string, start: string, end: string) {
   const supabase = createServiceClient();
   return supabase
