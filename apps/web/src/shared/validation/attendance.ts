@@ -8,6 +8,17 @@ export const confirmPreSchema = appointmentIdSchema.extend({
   channel: z.string().min(1).optional(),
 });
 
+export const sendMessageSchema = appointmentIdSchema.extend({
+  type: z.enum(["created_confirmation", "reminder_24h", "post_survey"]),
+  channel: z.string().optional().nullable(),
+  payload: z.record(z.string(), z.unknown()).optional().nullable(),
+});
+
+export const recordMessageStatusSchema = appointmentIdSchema.extend({
+  messageId: z.string().uuid(),
+  status: z.enum(["drafted", "sent_manual", "sent_auto", "delivered", "failed"]),
+});
+
 export const internalNotesSchema = appointmentIdSchema.extend({
   internalNotes: z.string().optional().nullable(),
 });

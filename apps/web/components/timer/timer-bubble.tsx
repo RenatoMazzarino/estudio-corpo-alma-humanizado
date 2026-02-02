@@ -100,8 +100,10 @@ export function TimerBubble() {
   return (
     <div
       ref={bubbleRef}
-      className={`absolute z-40 h-[92px] w-[92px] rounded-full shadow-2xl ${
-        session && !isPaused ? "after:content-[''] after:absolute after:inset-[-6px] after:rounded-full after:border-2 after:border-studio-green/50 after:animate-ping" : ""
+      className={`absolute z-40 h-[92px] w-[92px] rounded-full shadow-float backdrop-blur-md ${
+        session && !isPaused
+          ? "after:content-[''] after:absolute after:inset-[-6px] after:rounded-full after:border-2 after:border-studio-green/40 after:animate-ping"
+          : ""
       }`}
       style={bubblePosition ? { left: bubblePosition.x, top: bubblePosition.y } : undefined}
       onPointerDown={(event) => {
@@ -124,7 +126,7 @@ export function TimerBubble() {
           cy="50"
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.3)"
+          stroke="rgba(106,128,108,0.2)"
           strokeWidth="8"
         />
         <circle
@@ -132,7 +134,7 @@ export function TimerBubble() {
           cy="50"
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.95)"
+          stroke="rgba(106,128,108,0.95)"
           strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={circumference}

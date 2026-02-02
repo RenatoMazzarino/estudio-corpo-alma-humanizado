@@ -10,6 +10,7 @@ import type {
   PaymentRow,
   PostRow,
   AppointmentDetails,
+  AppointmentMessage,
 } from "./attendance-types";
 import { deriveStageFromStatus } from "./attendance-domain";
 
@@ -247,6 +248,14 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     post = insertedPost as PostRow | null;
   }
 
+  const { data: messageData } = await supabase
+    .from("appointment_messages")
+    .select("*")
+    .eq("appointment_id", appointmentId)
+    .order("created_at", { ascending: false });
+
+  const messages = (messageData ?? []) as AppointmentMessage[];
+
   return {
     appointment,
     attendance,
@@ -256,6 +265,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     checkoutItems,
     payments,
     post,
+    messages,
   };
 }
 

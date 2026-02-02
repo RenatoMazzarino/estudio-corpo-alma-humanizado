@@ -102,6 +102,20 @@ export interface PostRow {
   updated_at: string;
 }
 
+export type MessageType = "created_confirmation" | "reminder_24h" | "post_survey";
+export type MessageStatus = "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
+
+export interface AppointmentMessage {
+  id: string;
+  appointment_id: string;
+  tenant_id?: string;
+  type: MessageType;
+  status: MessageStatus;
+  payload: Record<string, unknown> | null;
+  sent_at: string | null;
+  created_at: string;
+}
+
 export interface AppointmentDetails {
   id: string;
   service_name: string;
@@ -147,6 +161,7 @@ export interface AttendanceOverview {
   checkoutItems: CheckoutItem[];
   payments: PaymentRow[];
   post: PostRow | null;
+  messages: AppointmentMessage[];
 }
 
 export interface AttendanceTotals {

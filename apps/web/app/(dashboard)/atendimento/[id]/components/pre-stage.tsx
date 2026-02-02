@@ -3,7 +3,14 @@
 import { MapPin, CalendarClock, MessageCircle, Phone, FileText, ListTodo, Play, Pause } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { AttendanceRow, AppointmentDetails, ChecklistItem } from "../../../../../lib/attendance/attendance-types";
+import type {
+  AttendanceRow,
+  AppointmentDetails,
+  ChecklistItem,
+  AppointmentMessage,
+  MessageStatus,
+  MessageType,
+} from "../../../../../lib/attendance/attendance-types";
 import { StageHeader } from "./stage-header";
 import { StageStatusBadge } from "./stage-status";
 
@@ -15,12 +22,14 @@ interface PreStageProps {
   onMinimize: () => void;
   onConfirm: () => void;
   onSendReminder: () => void;
+  onSendMessage: (type: MessageType) => void;
   onToggleChecklist: (itemId: string, completed: boolean) => void;
   onSaveNotes: (notes: string) => void;
   internalNotes: string;
   onInternalNotesChange: (notes: string) => void;
   isTimerRunning: boolean;
   onToggleTimer: () => void;
+  messages: AppointmentMessage[];
 }
 
 export function PreStage({
@@ -31,14 +40,35 @@ export function PreStage({
   onMinimize,
   onConfirm,
   onSendReminder,
+  onSendMessage,
   onToggleChecklist,
   onSaveNotes,
   internalNotes,
   onInternalNotesChange,
   isTimerRunning,
   onToggleTimer,
+  messages,
 }: PreStageProps) {
   const dateLabel = format(new Date(appointment.start_time), "dd 'de' MMMM • HH:mm", { locale: ptBR });
+
+  const messageByType = (type: MessageType) => messages.find((message) => message.type === type) ?? null;
+  const reminderMessage = messageByType("reminder_24h");
+  const confirmationMessage = messageByType("created_confirmation");
+
+  const messageStatusLabel = (status: MessageStatus | null) => {
+    if (!status) return "Não enviado";
+    switch (status) {
+      case "sent_manual":
+      case "sent_auto":
+        return "Enviado";
+      case "delivered":
+        return "Entregue";
+      case "failed":
+        return "Falhou";
+      default:
+        return "Rascunho";
+    }
+  };
 
   const addressLine = [
     appointment.address_logradouro ?? appointment.clients?.address_logradouro,
@@ -62,12 +92,12 @@ export function PreStage({
       />
 
       <main className="px-6 pt-6 pb-32">
-        <div className="bg-white border border-stone-100 rounded-[28px] shadow-sm overflow-hidden">
+        <div className="bg-white border border-line rounded-[28px] shadow-soft overflow-hidden">
           <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
             <div>
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Status e logística</div>
-              <div className="mt-2 text-lg font-black text-gray-800">Tudo pronto antes de iniciar</div>
-              <div className="text-xs text-gray-400 font-semibold mt-1">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Status e logística</div>
+              <div className="mt-2 text-lg font-black text-studio-text">Tudo pronto antes de iniciar</div>
+              <div className="text-xs text-muted font-semibold mt-1">
                 Confirmação 24h, contato, endereço, observações e checklist.
               </div>
             </div>
@@ -75,14 +105,16 @@ export function PreStage({
           </div>
 
           <div className="px-5 pb-5">
-            <div className="flex gap-4 py-4 border-t border-stone-100">
-              <div className="w-10 h-10 rounded-2xl bg-studio-bg text-studio-green flex items-center justify-center">
+            <div className="flex gap-4 py-4 border-t border-line">
+              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
                 <CalendarClock className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Data e hora</div>
-                <div className="mt-2 text-sm font-bold text-gray-800">{dateLabel}</div>
-                <div className="text-xs text-gray-400 mt-1">Lembrete automático 24h.</div>
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Data e hora</div>
+                <div className="mt-2 text-sm font-bold text-studio-text">{dateLabel}</div>
+                <div className="text-xs text-muted mt-1">
+                  Lembrete 24h • {messageStatusLabel(reminderMessage?.status ?? null)}
+                </div>
               </div>
               <button
                 onClick={onSendReminder}
@@ -92,34 +124,44 @@ export function PreStage({
               </button>
             </div>
 
-            <div className="flex gap-4 py-4 border-t border-stone-100">
-              <div className="w-10 h-10 rounded-2xl bg-studio-bg text-studio-green flex items-center justify-center">
+            <div className="flex gap-4 py-4 border-t border-line">
+              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
                 <MessageCircle className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Confirmação</div>
-                <div className="mt-2 text-sm font-bold text-gray-800">
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Confirmação</div>
+                <div className="mt-2 text-sm font-bold text-studio-text">
                   {attendance.confirmed_at ? "Confirmada" : "Não confirmada"}
                 </div>
-                <div className="text-xs text-gray-400 mt-1">Registrar canal e horário da confirmação.</div>
+                <div className="text-xs text-muted mt-1">
+                  Mensagem: {messageStatusLabel(confirmationMessage?.status ?? null)}
+                </div>
               </div>
-              <button
-                onClick={onConfirm}
-                className="text-xs font-extrabold text-studio-green hover:underline mt-1"
-              >
-                Confirmar
-              </button>
+              <div className="flex flex-col items-end gap-2 mt-1">
+                <button
+                  onClick={() => onSendMessage("created_confirmation")}
+                  className="text-xs font-extrabold text-studio-green hover:underline"
+                >
+                  Enviar Msg
+                </button>
+                <button
+                  onClick={onConfirm}
+                  className="text-xs font-extrabold text-studio-green hover:underline"
+                >
+                  Confirmar
+                </button>
+              </div>
             </div>
 
             {appointment.clients?.phone && (
-              <div className="flex gap-4 py-4 border-t border-stone-100">
-                <div className="w-10 h-10 rounded-2xl bg-studio-bg text-studio-green flex items-center justify-center">
+              <div className="flex gap-4 py-4 border-t border-line">
+                <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
                   <Phone className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Contato</div>
-                  <div className="mt-2 text-sm font-bold text-gray-800">{appointment.clients.phone}</div>
-                  <div className="text-xs text-gray-400 mt-1">Atalhos rápidos sem poluir a tela.</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Contato</div>
+                  <div className="mt-2 text-sm font-bold text-studio-text">{appointment.clients.phone}</div>
+                  <div className="text-xs text-muted mt-1">Atalhos rápidos sem poluir a tela.</div>
                 </div>
                 <div className="flex flex-col gap-2 mt-1">
                   <a
@@ -132,7 +174,7 @@ export function PreStage({
                   </a>
                   <button
                     onClick={() => navigator.clipboard?.writeText(appointment.clients?.phone ?? "")}
-                    className="text-xs font-extrabold text-gray-400 hover:text-studio-green transition"
+                    className="text-xs font-extrabold text-muted hover:text-studio-green transition"
                   >
                     Copiar
                   </button>
@@ -141,14 +183,14 @@ export function PreStage({
             )}
 
             {appointment.is_home_visit && (
-              <div className="flex gap-4 py-4 border-t border-stone-100">
+              <div className="flex gap-4 py-4 border-t border-line">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Endereço</div>
-                  <div className="mt-2 text-sm font-bold text-gray-800">{addressLine || "Endereço não cadastrado"}</div>
-                  <div className="text-xs text-gray-400 mt-1">Abrir no Maps quando necessário.</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Endereço</div>
+                  <div className="mt-2 text-sm font-bold text-studio-text">{addressLine || "Endereço não cadastrado"}</div>
+                  <div className="text-xs text-muted mt-1">Abrir no Maps quando necessário.</div>
                 </div>
                 {addressLine && (
                   <a
@@ -163,14 +205,14 @@ export function PreStage({
               </div>
             )}
 
-            <div className="flex gap-4 py-4 border-t border-stone-100">
-              <div className="w-10 h-10 rounded-2xl bg-studio-bg text-studio-green flex items-center justify-center">
+            <div className="flex gap-4 py-4 border-t border-line">
+              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
                 <FileText className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Observações internas</div>
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Observações internas</div>
                 <textarea
-                  className="mt-2 w-full bg-studio-bg rounded-2xl p-4 text-sm text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+                  className="mt-2 w-full bg-studio-light rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
                   rows={3}
                   placeholder="Ex.: cliente prefere óleo X, alergia Y, aviso de portaria..."
                   value={internalNotes}
@@ -180,12 +222,12 @@ export function PreStage({
               </div>
             </div>
 
-            <div className="flex gap-4 py-4 border-t border-stone-100">
-              <div className="w-10 h-10 rounded-2xl bg-studio-bg text-studio-green flex items-center justify-center">
+            <div className="flex gap-4 py-4 border-t border-line">
+              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
                 <ListTodo className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-gray-400">Checklist</div>
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Checklist</div>
                 <div className="mt-3 space-y-2 text-sm">
                   {checklist.map((item) => (
                     <label key={item.id} className="flex items-center gap-3">
@@ -195,7 +237,7 @@ export function PreStage({
                         checked={Boolean(item.completed_at)}
                         onChange={(event) => onToggleChecklist(item.id, event.target.checked)}
                       />
-                      <span className="text-gray-700 font-semibold">{item.label}</span>
+                      <span className="text-studio-text font-semibold">{item.label}</span>
                     </label>
                   ))}
                 </div>
@@ -206,17 +248,17 @@ export function PreStage({
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 flex justify-center">
-        <div className="w-full max-w-[414px] bg-white border-t border-stone-100 px-6 py-4 pb-6 rounded-t-[28px] shadow-[0_-10px_40px_rgba(0,0,0,0.06)]">
+        <div className="w-full max-w-[414px] bg-white border-t border-line px-6 py-4 pb-6 rounded-t-[28px] shadow-float safe-bottom safe-bottom-6">
           <div className="flex items-center gap-3">
             <button
               onClick={onToggleTimer}
-              className="w-14 h-14 rounded-2xl bg-studio-bg border border-gray-200 text-gray-700 flex items-center justify-center hover:bg-gray-50 transition"
+              className="w-14 h-14 rounded-2xl bg-studio-light border border-line text-studio-text flex items-center justify-center hover:bg-studio-light transition"
             >
               {isTimerRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase"
+              className="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-soft active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase"
             >
               Liberar Sessão
             </button>

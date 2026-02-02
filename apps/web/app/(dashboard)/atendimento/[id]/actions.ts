@@ -15,6 +15,8 @@ import {
   finishAttendanceSchema,
   internalNotesSchema,
   recordPaymentSchema,
+  recordMessageStatusSchema,
+  sendMessageSchema,
   saveEvolutionSchema,
   savePostSchema,
   setCheckoutItemsSchema,
@@ -28,6 +30,24 @@ import { computeElapsedSeconds, computeTotals } from "../../../../lib/attendance
 import { getAttendanceOverview, insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
 import { updateAppointment, updateAppointmentReturning } from "../../../../src/modules/appointments/repository";
 import { insertTransaction } from "../../../../src/modules/finance/repository";
+
+async function insertMessageLog(params: {
+  appointmentId: string;
+  type: "created_confirmation" | "reminder_24h" | "post_survey";
+  status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
+  payload?: Json | null;
+  sentAt?: string | null;
+}) {
+  const supabase = createServiceClient();
+  return supabase.from("appointment_messages").insert({
+    appointment_id: params.appointmentId,
+    tenant_id: FIXED_TENANT_ID,
+    type: params.type,
+    status: params.status,
+    payload: params.payload ?? null,
+    sent_at: params.sentAt ?? null,
+  });
+}
 
 async function recalcCheckoutTotals(appointmentId: string) {
   const supabase = createServiceClient();
@@ -139,6 +159,13 @@ export async function sendReminder24h(payload: { appointmentId: string }): Promi
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
+  await insertMessageLog({
+    appointmentId: parsed.data.appointmentId,
+    type: "reminder_24h",
+    status: "sent_manual",
+    sentAt: new Date().toISOString(),
+  });
+
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
     appointmentId: parsed.data.appointmentId,
@@ -147,6 +174,74 @@ export async function sendReminder24h(payload: { appointmentId: string }): Promi
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
   return ok({ appointmentId: parsed.data.appointmentId });
+}
+
+export async function sendMessage(payload: {
+  appointmentId: string;
+  type: "created_confirmation" | "reminder_24h" | "post_survey";
+  channel?: string | null;
+  payload?: Json | null;
+}): Promise<ActionResult<{ appointmentId: string }>> {
+  const parsed = sendMessageSchema.safeParse(payload);
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  await insertMessageLog({
+    appointmentId: parsed.data.appointmentId,
+    type: parsed.data.type,
+    status: "sent_manual",
+    sentAt: new Date().toISOString(),
+    payload: parsed.data.payload ?? (parsed.data.channel ? { channel: parsed.data.channel } : null),
+  });
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "message_sent",
+    payload: { type: parsed.data.type, channel: parsed.data.channel ?? "manual" },
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  return ok({ appointmentId: parsed.data.appointmentId });
+}
+
+export async function recordMessageStatus(payload: {
+  appointmentId: string;
+  messageId: string;
+  status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
+}): Promise<ActionResult<{ messageId: string }>> {
+  const parsed = recordMessageStatusSchema.safeParse(payload);
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const supabase = createServiceClient();
+  const updatePayload: { status: string; sent_at?: string | null } = {
+    status: parsed.data.status,
+  };
+  if (parsed.data.status === "sent_manual" || parsed.data.status === "sent_auto") {
+    updatePayload.sent_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from("appointment_messages")
+    .update(updatePayload)
+    .eq("id", parsed.data.messageId)
+    .eq("appointment_id", parsed.data.appointmentId);
+
+  const mapped = mapSupabaseError(error);
+  if (mapped) return fail(mapped);
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "message_status_updated",
+    payload: { status: parsed.data.status, messageId: parsed.data.messageId },
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  return ok({ messageId: parsed.data.messageId });
 }
 
 export async function saveInternalNotes(payload: { appointmentId: string; internalNotes?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
@@ -736,6 +831,12 @@ export async function sendSurvey(payload: { appointmentId: string }): Promise<Ac
     .eq("appointment_id", parsed.data.appointmentId);
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
+  await insertMessageLog({
+    appointmentId: parsed.data.appointmentId,
+    type: "post_survey",
+    status: "sent_manual",
+    sentAt: new Date().toISOString(),
+  });
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
     appointmentId: parsed.data.appointmentId,

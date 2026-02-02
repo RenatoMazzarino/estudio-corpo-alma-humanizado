@@ -1,11 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useRouter } from "next/navigation";
-import type { AttendanceOverview, StageKey, StageStatus } from "../../../../lib/attendance/attendance-types";
+import type {
+  AttendanceOverview,
+  StageKey,
+  StageStatus,
+  MessageType,
+} from "../../../../lib/attendance/attendance-types";
 import {
   confirmPre,
   sendReminder24h,
+  sendMessage,
   saveInternalNotes,
   toggleChecklistItem,
   saveEvolution,
@@ -50,6 +58,8 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
 
   const appointment = data.appointment;
   const attendance = data.attendance;
+  const contactPhone = appointment.clients?.phone?.replace(/\D/g, "") ?? null;
+  const appointmentLabel = format(new Date(appointment.start_time), "dd/MM 'às' HH:mm", { locale: ptBR });
 
   const stageStatusMap: Record<StageKey, StageStatus> = {
     hub: "available",
@@ -119,6 +129,61 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
       return;
     }
     await togglePause();
+    router.refresh();
+  };
+
+  const handleSendReminder = async () => {
+    if (!contactPhone) {
+      showToast("Sem telefone de WhatsApp cadastrado.");
+      return;
+    }
+    const message = buildMessage("reminder_24h");
+    openWhatsapp(message);
+    const result = await sendReminder24h({ appointmentId: appointment.id });
+    if (!result.ok) {
+      showToast(result.error.message);
+      return;
+    }
+    showToast("Lembrete 24h registrado.");
+    router.refresh();
+  };
+
+  const buildMessage = (type: MessageType) => {
+    const name = appointment.clients?.name ?? "Cliente";
+    if (type === "created_confirmation") {
+      return `Olá ${name}! Confirmamos seu atendimento em ${appointmentLabel}. Qualquer dúvida, responda por aqui.`;
+    }
+    if (type === "reminder_24h") {
+      return `Oi ${name}! Lembrete do seu atendimento em ${appointmentLabel}. Responda para confirmar, por favor.`;
+    }
+    return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
+  };
+
+  const openWhatsapp = (message: string) => {
+    if (!contactPhone) return false;
+    const url = `https://wa.me/${contactPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    return true;
+  };
+
+  const handleSendMessage = async (type: MessageType) => {
+    if (!contactPhone) {
+      showToast("Sem telefone de WhatsApp cadastrado.");
+      return;
+    }
+    const message = buildMessage(type);
+    openWhatsapp(message);
+    const result = await sendMessage({
+      appointmentId: appointment.id,
+      type,
+      channel: "whatsapp",
+      payload: { message },
+    });
+    if (!result?.ok) {
+      showToast(result.error?.message ?? "Não foi possível registrar a mensagem.");
+      return;
+    }
+    showToast("Mensagem registrada.");
     router.refresh();
   };
 
@@ -214,6 +279,12 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
   };
 
   const handleSendSurvey = async () => {
+    if (!contactPhone) {
+      showToast("Sem telefone de WhatsApp cadastrado.");
+      return;
+    }
+    const message = buildMessage("post_survey");
+    openWhatsapp(message);
     const result = await sendSurvey({ appointmentId: appointment.id });
     if (!result.ok) showToast(result.error.message);
     router.refresh();
@@ -274,17 +345,15 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
           onBack={() => setActiveStage("hub")}
           onMinimize={() => setBubbleVisible(true)}
           onConfirm={handleConfirmPre}
-          onSendReminder={async () => {
-            const result = await sendReminder24h({ appointmentId: appointment.id });
-            if (!result.ok) showToast(result.error.message);
-            else showToast("Lembrete 24h registrado.");
-          }}
+          onSendReminder={handleSendReminder}
+          onSendMessage={handleSendMessage}
           onToggleChecklist={handleToggleChecklist}
           onSaveNotes={handleSaveNotes}
           internalNotes={internalNotes}
           onInternalNotesChange={setInternalNotes}
           isTimerRunning={isTimerRunning}
           onToggleTimer={handleToggleTimer}
+          messages={data.messages}
         />
       )}
 
@@ -331,6 +400,7 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
         <PostStage
           attendance={attendance}
           post={data.post}
+          messages={data.messages}
           kpiLabel={kpiLabel}
           onBack={() => setActiveStage("hub")}
           onMinimize={() => setBubbleVisible(true)}

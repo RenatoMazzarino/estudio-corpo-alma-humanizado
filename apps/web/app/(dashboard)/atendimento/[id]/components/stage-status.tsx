@@ -7,27 +7,27 @@ import type { StageStatus } from "../../../../../lib/attendance/attendance-types
 const statusMap: Record<StageStatus, { label: string; className: string; icon: ReactNode }> = {
   done: {
     label: "Ok",
-    className: "bg-green-50 text-green-700 border-green-200",
+    className: "bg-ok/10 text-ok border-ok/20",
     icon: <Check className="w-3 h-3" />,
   },
   available: {
     label: "Liberada",
-    className: "bg-studio-bg text-studio-green border-studio-green/20",
+    className: "bg-studio-light text-studio-green border-studio-green/20",
     icon: <Unlock className="w-3 h-3" />,
   },
   in_progress: {
     label: "Em andamento",
-    className: "bg-orange-50 text-orange-600 border-orange-200",
+    className: "bg-warn/10 text-warn border-warn/20",
     icon: <Clock3 className="w-3 h-3" />,
   },
   locked: {
     label: "Bloqueada",
-    className: "bg-slate-50 text-slate-400 border-slate-200",
+    className: "bg-studio-light text-muted border-line",
     icon: <Lock className="w-3 h-3" />,
   },
   skipped: {
     label: "Pulada",
-    className: "bg-slate-50 text-slate-400 border-slate-200",
+    className: "bg-studio-light text-muted border-line",
     icon: <Lock className="w-3 h-3" />,
   },
 };
