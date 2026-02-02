@@ -6,28 +6,72 @@
   
   /* Verde Sálvia */
   --color-studio-green: #6A806C;
-  --color-studio-green-dark: #556656;
+  --color-studio-green-dark: #4E5F50;
+  --color-studio-light: #F3F6F4;
+  --color-studio-accent: #D4A373;
   
   /* Rosa Antigo (Lotus) */
   --color-studio-pink: #CEAEB9;
   
   /* Texto Principal */
-  --color-studio-text: #2D2D2D;
+  --color-studio-text: #2C3333;
+  --color-text-muted: #868E96;
+  --color-main: #2C3333;
+  --color-muted: #868E96;
+  --color-line: rgba(44, 51, 51, 0.06);
+
+  /* Estados */
+  --color-ok: #16A34A;
+  --color-warn: #F59E0B;
+  --color-danger: #DC2626;
+  --color-dom: #A855F7;
+
+  /* Tipografia */
+  --font-sans: var(--font-lato);
+  --font-serif: var(--font-playfair);
+
+  /* Sombras */
+  --shadow-soft: 0 4px 20px -2px rgba(106, 128, 108, 0.15);
+  --shadow-float: 0 18px 35px -15px rgba(0, 0, 0, 0.25);
 }
 
 /* Configurações Globais */
 body {
   background-color: var(--color-studio-bg);
   color: var(--color-studio-text);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.safe-top {
+  padding-top: calc(env(safe-area-inset-top) + var(--safe-top-offset, 0px));
+}
+
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--safe-bottom-offset, 0px));
+}
+
+.safe-top-8 {
+  --safe-top-offset: 2rem;
+}
+
+.safe-top-6 {
+  --safe-top-offset: 1.5rem;
+}
+
+.safe-bottom-24 {
+  --safe-bottom-offset: 6rem;
+}
+
+.safe-bottom-6 {
+  --safe-bottom-offset: 1.5rem;
 }
 
 /* --- ESTILO CALENDÁRIO DESKTOP --- */
 
 /* Remove a barra de título padrão feia */
 .rbc-toolbar-label {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-weight: 700;
   font-size: 1.2rem;
   color: var(--color-studio-text);
