@@ -189,12 +189,15 @@ export async function sendMessage(payload: {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
+  const messagePayload = (parsed.data.payload ??
+    (parsed.data.channel ? { channel: parsed.data.channel } : null)) as Json | null;
+
   await insertMessageLog({
     appointmentId: parsed.data.appointmentId,
     type: parsed.data.type,
     status: "sent_manual",
     sentAt: new Date().toISOString(),
-    payload: parsed.data.payload ?? (parsed.data.channel ? { channel: parsed.data.channel } : null),
+    payload: messagePayload,
   });
 
   await insertAttendanceEvent({
