@@ -44,6 +44,8 @@
 - Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
 
 ## 4) Commits (hash + objetivo)
+- `129522f` — fix(types): tornar clientes null-safe
+  - Objetivo: corrigir erros de typecheck em telas de clientes.
 - `1119201` — fix(lint): clean imports and hooks
   - Objetivo: corrigir warnings de lint (import não usado e deps de hook).
 - `08a2b1e` — fix(build): proteger iniciais do cliente
