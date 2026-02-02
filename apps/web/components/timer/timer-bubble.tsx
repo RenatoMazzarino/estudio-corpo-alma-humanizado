@@ -86,7 +86,7 @@ export function TimerBubble() {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
     };
-  }, [setBubblePosition]);
+  }, [setBubblePosition, pathname]);
 
   if (!mounted || !session) return null;
 
