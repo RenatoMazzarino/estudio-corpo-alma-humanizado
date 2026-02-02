@@ -139,7 +139,7 @@ export default async function ClientesPage({
             </div>
 
             <SurfaceCard className="p-0 overflow-hidden">
-              {grouped[letter].map((client, index) => {
+              {(grouped[letter] ?? []).map((client, index) => {
                 const lastVisit = lastVisitMap.get(client.id);
                 const lastVisitLabel = lastVisit
                   ? format(new Date(lastVisit), "dd MMM", { locale: ptBR })
