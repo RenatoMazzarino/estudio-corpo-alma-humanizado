@@ -416,6 +416,54 @@ export type Database = {
           },
         ]
       }
+      appointment_messages: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          payload: Json | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          type: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_messages_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_evolution_entries: {
         Row: {
           appointment_id: string
@@ -678,16 +726,24 @@ export type Database = {
           address_numero: string | null
           como_conheceu: string | null
           cpf: string | null
+          contraindications: string | null
           created_at: string
           data_nascimento: string | null
           email: string | null
           endereco_completo: string | null
+          guardian_cpf: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
           health_tags: string[] | null
           id: string
           initials: string | null
+          is_minor: boolean
+          is_vip: boolean
           name: string
+          needs_attention: boolean
           observacoes_gerais: string | null
           phone: string | null
+          preferences_notes: string | null
           profissao: string | null
           tenant_id: string
         }
@@ -701,16 +757,24 @@ export type Database = {
           address_numero?: string | null
           como_conheceu?: string | null
           cpf?: string | null
+          contraindications?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
           endereco_completo?: string | null
+          guardian_cpf?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           health_tags?: string[] | null
           id?: string
           initials?: string | null
+          is_minor?: boolean
+          is_vip?: boolean
           name: string
+          needs_attention?: boolean
           observacoes_gerais?: string | null
           phone?: string | null
+          preferences_notes?: string | null
           profissao?: string | null
           tenant_id: string
         }
@@ -724,16 +788,24 @@ export type Database = {
           address_numero?: string | null
           como_conheceu?: string | null
           cpf?: string | null
+          contraindications?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
           endereco_completo?: string | null
+          guardian_cpf?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           health_tags?: string[] | null
           id?: string
           initials?: string | null
+          is_minor?: boolean
+          is_vip?: boolean
           name?: string
+          needs_attention?: boolean
           observacoes_gerais?: string | null
           phone?: string | null
+          preferences_notes?: string | null
           profissao?: string | null
           tenant_id?: string
         }
