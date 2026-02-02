@@ -44,6 +44,8 @@
 - Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
 
 ## 4) Commits (hash + objetivo)
+- `3e98d65` — fix(types): tipar listAppointmentsForClients
+  - Objetivo: corrigir erro de typecheck apontado pelo tsc.
 - `129522f` — fix(types): tornar clientes null-safe
   - Objetivo: corrigir erros de typecheck em telas de clientes.
 - `1119201` — fix(lint): clean imports and hooks
