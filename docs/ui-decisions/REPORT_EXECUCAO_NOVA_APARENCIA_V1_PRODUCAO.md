@@ -44,6 +44,8 @@
 - Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
 
 ## 4) Commits (hash + objetivo)
+- `72d1596` — docs(report): atualizar lista de commits
+  - Objetivo: manter o relatório sincronizado com os commits recentes.
 - `2ac687c` — docs(report): atualizar auditoria db ui
   - Objetivo: incluir auditoria DB↔UI e ajustes de relatório.
 - `e68170b` — atendimento(v1): db audit e mensagens
@@ -99,7 +101,9 @@ Resultado: **falharam** devido a erro do Turbo no ambiente Linux usando `node_mo
 Erro principal (resumo):
 ```
 Turborepo did not find the correct binary for your platform.
-Detected linux 64, found turbo-windows-64/bin/turbo.exe
+Detected linux 64.
+We were not able to find the binary at: turbo-linux-64/bin/turbo
+We found these unnecessary binaries: turbo-windows-64/bin/turbo.exe
 ```
 
 ## 10) Pendências / próximos passos
