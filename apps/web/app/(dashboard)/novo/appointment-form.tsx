@@ -228,43 +228,43 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
 
   return (
     <form action={createAppointment} className="space-y-6">
-      <section className="bg-white rounded-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.12)] p-5 border border-white">
+      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
             1
           </div>
-          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Cliente</h2>
+          <h2 className="text-xs font-extrabold text-muted uppercase tracking-widest">Cliente</h2>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Nome Completo</label>
             <div className="relative">
-              <Search className="w-4 h-4 text-gray-300 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 name="clientName"
                 type="text"
                 placeholder="Buscar ou digitar nome..."
                 value={clientName}
                 onChange={(event) => setClientName(event.target.value)}
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700 transition-all"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text transition-all"
                 required
               />
             </div>
-            <p className="text-[11px] text-gray-400 mt-2 ml-1 flex items-center gap-1">
+            <p className="text-[11px] text-muted mt-2 ml-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> Se já existir, vinculamos automaticamente.
             </p>
             {filteredClients.length > 0 && (
-              <div className="mt-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-2 space-y-1">
+              <div className="mt-3 bg-white border border-line rounded-2xl shadow-soft p-2 space-y-1">
                 {filteredClients.map((client) => (
                   <button
                     type="button"
                     key={client.id}
                     onClick={() => handleSelectClient(client.name, client.phone)}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between"
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-studio-light text-sm text-studio-text flex items-center justify-between"
                   >
                     <span className="font-medium">{client.name}</span>
-                    {client.phone && <span className="text-xs text-gray-400">{client.phone}</span>}
+                    {client.phone && <span className="text-xs text-muted">{client.phone}</span>}
                   </button>
                 ))}
               </div>
@@ -272,9 +272,9 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase">WhatsApp (Opcional)</label>
+            <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">WhatsApp (Opcional)</label>
             <div className="relative">
-              <Phone className="w-4 h-4 text-gray-300 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Phone className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 name="clientPhone"
                 type="tel"
@@ -282,20 +282,20 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                 value={clientPhone}
                 onChange={(event) => setClientPhone(formatPhone(event.target.value))}
                 inputMode="numeric"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm transition-all"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm transition-all"
               />
             </div>
-            <p className="text-[11px] text-gray-400 mt-2 ml-1">Ajuda a localizar cadastros antigos 💚</p>
+            <p className="text-[11px] text-muted mt-2 ml-1">Ajuda a localizar cadastros antigos 💚</p>
           </div>
         </div>
       </section>
 
-      <section className="bg-white rounded-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.12)] p-5 border border-white">
+      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
             2
           </div>
-          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">O que e Onde?</h2>
+          <h2 className="text-xs font-extrabold text-muted uppercase tracking-widest">O que e Onde?</h2>
         </div>
 
         <div className="mb-6">
@@ -305,7 +305,7 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               name="serviceId"
               value={selectedServiceId}
               onChange={handleServiceChange}
-              className="w-full pl-4 pr-10 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700 appearance-none transition-all"
+              className="w-full pl-4 pr-10 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text appearance-none transition-all"
               required
             >
               <option value="" disabled>
@@ -317,22 +317,22 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-muted absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {selectedService && (
             <div className="mt-3 p-3 bg-studio-green/10 rounded-2xl flex items-center justify-between border border-studio-green/10">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-soft">
                   <Clock className="w-3 h-3" />
                 </div>
-                <span className="text-xs font-bold text-gray-600">{selectedService.duration_minutes} min</span>
+                <span className="text-xs font-bold text-muted">{selectedService.duration_minutes} min</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-soft">
                   <Tag className="w-3 h-3" />
                 </div>
-                <span className="text-xs font-bold text-gray-600">R$ {displayedPrice || "0,00"}</span>
+                <span className="text-xs font-bold text-muted">R$ {displayedPrice || "0,00"}</span>
               </div>
             </div>
           )}
@@ -340,14 +340,14 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
 
         <div>
           <label className="block text-xs font-extrabold text-studio-green mb-2 uppercase">Local</label>
-          <div className="bg-studio-bg p-1 rounded-2xl border border-gray-200 grid grid-cols-2 gap-2">
+          <div className="bg-studio-bg p-1 rounded-2xl border border-line grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setIsHomeVisit(false)}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border-2 ${
                 !isHomeVisit
-                  ? "bg-white border-studio-green text-studio-green shadow-[0_4px_10px_rgba(106,128,108,0.1)]"
-                  : "bg-gray-100 text-gray-400 border-transparent"
+                  ? "bg-white border-studio-green text-studio-green shadow-soft"
+                  : "bg-studio-light text-muted border-transparent"
               }`}
             >
               <Building2 className="w-5 h-5" />
@@ -360,8 +360,8 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               disabled={!canHomeVisit}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border-2 ${
                 isHomeVisit
-                  ? "bg-white border-purple-500 text-purple-600 shadow-[0_4px_10px_rgba(168,85,247,0.15)]"
-                  : "bg-gray-100 text-gray-400 border-transparent"
+                  ? "bg-white border-purple-500 text-purple-600 shadow-soft"
+                  : "bg-studio-light text-muted border-transparent"
               } ${!canHomeVisit ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Car className="w-5 h-5" />
@@ -370,7 +370,7 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
           </div>
           <input type="hidden" name="is_home_visit" value={isHomeVisit ? "on" : ""} />
           {!canHomeVisit && selectedServiceId && (
-            <p className="text-[11px] text-gray-400 ml-1 mt-2">Serviço sem opção domiciliar.</p>
+            <p className="text-[11px] text-muted ml-1 mt-2">Serviço sem opção domiciliar.</p>
           )}
 
           <div
@@ -487,28 +487,28 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
         </div>
       </section>
 
-      <section className="bg-white rounded-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.12)] p-5 border border-white">
+      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
             3
           </div>
-          <h2 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Finalização</h2>
+          <h2 className="text-xs font-extrabold text-muted uppercase tracking-widest">Finalização</h2>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Valor Final</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-serif text-sm">R$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
               <input
                 type="tel"
                 value={displayedPrice}
                 readOnly
                 placeholder="0,00"
-                className="w-full pl-9 pr-3 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-lg font-bold text-gray-800"
+                className="w-full pl-9 pr-3 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-lg font-bold text-studio-text"
               />
             </div>
-            <p className="text-[10px] text-gray-400 mt-1 ml-1">Valor calculado automaticamente.</p>
+            <p className="text-[10px] text-muted mt-1 ml-1">Valor calculado automaticamente.</p>
           </div>
 
           <div>
@@ -518,14 +518,14 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="w-full px-3 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700"
+              className="w-full px-3 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text"
               required
             />
             {blockStatus === "loading" && (
-              <p className="text-[11px] text-gray-400 mt-2 ml-1">Verificando bloqueios...</p>
+              <p className="text-[11px] text-muted mt-2 ml-1">Verificando bloqueios...</p>
             )}
             {blockStatus === "idle" && hasBlocks && (
-              <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 px-3 py-2 rounded-xl mt-2">
+              <div className="text-[11px] text-warn bg-warn/10 border border-warn/20 px-3 py-2 rounded-xl mt-2">
                 Há bloqueios registrados para esta data. Verifique antes de confirmar o horário.
               </div>
             )}
@@ -536,11 +536,11 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
           <label className="block text-xs font-extrabold text-studio-green mb-2 uppercase">Horário</label>
           <div className="grid grid-cols-4 gap-2">
             {!selectedServiceId || !selectedDate ? (
-              <div className="col-span-4 text-xs text-gray-400">Selecione data e serviço para ver horários.</div>
+              <div className="col-span-4 text-xs text-muted">Selecione data e serviço para ver horários.</div>
             ) : isLoadingSlots ? (
-              <div className="col-span-4 text-xs text-gray-400">Carregando horários...</div>
+              <div className="col-span-4 text-xs text-muted">Carregando horários...</div>
             ) : availableSlots.length === 0 ? (
-              <div className="col-span-4 text-xs text-gray-400">Sem horários disponíveis.</div>
+              <div className="col-span-4 text-xs text-muted">Sem horários disponíveis.</div>
             ) : (
               availableSlots.map((slot) => (
                 <button
@@ -549,8 +549,8 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                   onClick={() => setSelectedTime(slot)}
                   className={`py-2 rounded-xl text-xs font-bold transition ${
                     selectedTime === slot
-                      ? "bg-studio-green text-white shadow-md transform scale-105"
-                      : "border border-gray-200 text-gray-600 hover:border-studio-green hover:text-studio-green"
+                      ? "bg-studio-green text-white shadow-soft transform scale-105"
+                      : "border border-line text-muted hover:border-studio-green hover:text-studio-green"
                   }`}
                 >
                   {slot}
@@ -582,12 +582,12 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
           </select>
         </div>
 
-        <div className="mt-5 pt-4 border-t border-gray-100">
-          <label className="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase">Observações Internas</label>
+        <div className="mt-5 pt-4 border-t border-line">
+          <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">Observações Internas</label>
           <textarea
             name="internalNotes"
             rows={2}
-            className="w-full px-4 py-3 rounded-2xl bg-studio-bg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm"
+            className="w-full px-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm"
             placeholder="Ex: Cliente prefere pressão leve..."
           />
         </div>
@@ -595,7 +595,7 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
 
       <button
         type="submit"
-        className="w-full py-4 rounded-2xl bg-studio-green text-white font-extrabold shadow-[0_4px_20px_-2px_rgba(106,128,108,0.2)] hover:bg-studio-green-dark transition flex items-center justify-center gap-2 group mb-4"
+        className="w-full py-4 rounded-2xl bg-studio-green text-white font-extrabold shadow-soft hover:bg-studio-green-dark transition flex items-center justify-center gap-2 group mb-4"
       >
         <Check className="w-5 h-5 group-hover:scale-110 transition-transform" />
         Confirmar Agendamento

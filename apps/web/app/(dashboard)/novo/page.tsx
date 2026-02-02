@@ -34,26 +34,27 @@ export default async function NewAppointment(props: PageProps) {
 
   return (
     <div className="-mx-4 -mt-4">
-      <header className="px-6 pt-10 pb-4 bg-white rounded-b-3xl shadow-[0_4px_20px_-2px_rgba(106,128,108,0.15)] sticky top-0 z-20">
+      <header className="px-6 pb-4 bg-white rounded-b-3xl shadow-soft sticky top-0 z-20 safe-top safe-top-8">
         <div className="flex items-center justify-between mb-2">
           <Link
             href={`/?date=${safeDate}`}
-            className="w-10 h-10 rounded-full bg-studio-bg text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+            className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
           >
             <ChevronLeft size={20} />
           </Link>
 
           <div className="text-right">
-            <p className="text-xs font-extrabold text-studio-green uppercase tracking-widest">Corpo & Alma</p>
-            <p className="text-[11px] text-gray-400 flex items-center justify-end gap-1">
-              <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full"></span> Online
+            <p className="text-[11px] font-extrabold text-studio-green uppercase tracking-widest">Corpo & Alma</p>
+            <p className="text-[11px] text-muted flex items-center justify-end gap-1">
+              <span className="inline-block w-1.5 h-1.5 bg-ok rounded-full"></span> Online
             </p>
           </div>
         </div>
 
         <div>
-          <h1 className="text-2xl font-serif text-gray-800">Novo Agendamento</h1>
-          <p className="text-xs text-gray-400 mt-1">Preencha os detalhes do atendimento.</p>
+          <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Agendamento Interno</p>
+          <h1 className="text-2xl font-serif text-studio-text">Novo Agendamento</h1>
+          <p className="text-xs text-muted mt-1">Preencha os detalhes do atendimento.</p>
         </div>
       </header>
 
