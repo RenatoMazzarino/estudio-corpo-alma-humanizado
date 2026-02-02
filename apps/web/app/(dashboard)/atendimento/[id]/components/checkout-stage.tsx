@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, Tag, Receipt, Plus, Banknote, QrCode } from "lucide-react";
+import { Banknote, CreditCard, Plus, QrCode } from "lucide-react";
 import type { AttendanceRow, CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
-import { StageHeader } from "./stage-header";
 import { StageStatusBadge } from "./stage-status";
 
 interface CheckoutStageProps {
@@ -12,8 +11,6 @@ interface CheckoutStageProps {
   checkout: CheckoutRow | null;
   items: CheckoutItem[];
   payments: PaymentRow[];
-  onBack: () => void;
-  onMinimize: () => void;
   onSaveItems: (items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>) => void;
   onSetDiscount: (type: "value" | "pct" | null, value: number | null, reason?: string) => void;
   onRecordPayment: (method: PaymentRow["method"], amount: number) => void;
@@ -32,30 +29,34 @@ export function CheckoutStage({
   checkout,
   items,
   payments,
-  onBack,
-  onMinimize,
   onSaveItems,
   onSetDiscount,
   onRecordPayment,
   onConfirmCheckout,
 }: CheckoutStageProps) {
   const router = useRouter();
-  const [draftItems, setDraftItems] = useState(items.map((item) => ({
-    type: item.type,
-    label: item.label,
-    qty: item.qty,
-    amount: item.amount,
-  })));
+  const [draftItems, setDraftItems] = useState(
+    items.map((item) => ({
+      type: item.type,
+      label: item.label,
+      qty: item.qty,
+      amount: item.amount,
+    }))
+  );
   const [newItem, setNewItem] = useState({ type: "addon" as CheckoutItem["type"], label: "", qty: 1, amount: 0 });
   const [discountType, setDiscountType] = useState<"value" | "pct" | null>(checkout?.discount_type ?? "value");
   const [discountValue, setDiscountValue] = useState<number>(checkout?.discount_value ?? 0);
+  const [discountReason, setDiscountReason] = useState<string>(checkout?.discount_reason ?? "");
   const [paymentMethod, setPaymentMethod] = useState<PaymentRow["method"]>("pix");
   const [paymentAmount, setPaymentAmount] = useState<number>(checkout?.total ?? 0);
+
   const isPaid = checkout?.payment_status === "paid";
-  const isLocked = isPaid;
+  const isLocked = isPaid || attendance.checkout_status === "locked";
 
   const subtotal = checkout?.subtotal ?? 0;
   const total = checkout?.total ?? 0;
+
+  const appliedDiscountValue = useMemo(() => Math.max(0, subtotal - total), [subtotal, total]);
 
   useEffect(() => {
     setDraftItems(
@@ -72,246 +73,251 @@ export function CheckoutStage({
     setPaymentAmount(total);
   }, [total]);
 
+  useEffect(() => {
+    setDiscountType(checkout?.discount_type ?? "value");
+    setDiscountValue(checkout?.discount_value ?? 0);
+    setDiscountReason(checkout?.discount_reason ?? "");
+  }, [checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
+
   return (
-    <div className="relative -mx-4 -mt-4">
-      <StageHeader
-        kicker="Etapa"
-        title="Checkout"
-        subtitle="Taxas, desconto e pagamento"
-        onBack={onBack}
-        onMinimize={onMinimize}
-      />
-
-      <main className="px-6 pt-6 pb-32">
-        <div className="bg-white border border-line rounded-[28px] shadow-soft overflow-hidden">
-          <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Financeiro</div>
-              <div className="mt-2 text-lg font-black text-studio-text">Fechamento do atendimento</div>
-              <div className="text-xs text-muted font-semibold mt-1">Itens, deslocamento, desconto e pagamento.</div>
-            </div>
-            <StageStatusBadge status={attendance.checkout_status} />
+    <div className="space-y-5">
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-serif font-bold text-studio-text">Checkout</h2>
+            <p className="text-xs text-muted mt-1">Itens, desconto e confirmação de pagamento.</p>
           </div>
+          <StageStatusBadge status={attendance.checkout_status} variant="compact" />
+        </div>
 
-          <div className="px-5 pb-5">
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <Receipt className="w-4 h-4" />
+        <div className="mt-4 bg-paper border border-line rounded-3xl p-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3">Itens</p>
+          <div className="space-y-2 text-sm">
+            {draftItems.map((item, index) => (
+              <div key={`${item.label}-${index}`} className="flex justify-between font-bold text-studio-text">
+                <span className={item.type === "fee" ? "text-dom" : ""}>{item.label}</span>
+                <span className="tabular-nums">R$ {Number(item.amount).toFixed(2)}</span>
               </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Itens</div>
-                <div className="mt-3 space-y-2">
-                  {draftItems.map((item, index) => (
-                    <div key={`${item.label}-${index}`} className="flex items-center justify-between gap-3 text-sm font-semibold text-studio-text">
-                      <span>{item.label}</span>
-                      <span className="tabular-nums">R$ {item.amount.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  <select
-                    value={newItem.type}
-                    onChange={(event) => setNewItem({ ...newItem, type: event.target.value as CheckoutItem["type"] })}
-                    disabled={isLocked}
-                    className={`col-span-1 rounded-xl border border-line px-2 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
-                    <option value="service">Serviço</option>
-                    <option value="fee">Taxa</option>
-                    <option value="addon">Addon</option>
-                    <option value="adjustment">Ajuste</option>
-                  </select>
-                  <input
-                    value={newItem.label}
-                    onChange={(event) => setNewItem({ ...newItem, label: event.target.value })}
-                    placeholder="Descrição"
-                    disabled={isLocked}
-                    className={`col-span-2 rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                  />
-                  <input
-                    type="number"
-                    value={newItem.amount}
-                    onChange={(event) => setNewItem({ ...newItem, amount: Number(event.target.value) })}
-                    placeholder="0"
-                    disabled={isLocked}
-                    className={`col-span-1 rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (!newItem.label.trim()) return;
-                      setDraftItems([...draftItems, newItem]);
-                      setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
-                    }}
-                    disabled={isLocked}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
-                      isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-light text-studio-green"
-                    }`}
-                  >
-                    <Plus className="w-3 h-3" /> Adicionar item
-                  </button>
-                  <button
-                    onClick={() => onSaveItems(draftItems)}
-                    disabled={isLocked}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold ${
-                      isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
-                    }`}
-                  >
-                    Salvar itens
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-yellow-50 text-yellow-600 flex items-center justify-center">
-                <Tag className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Desconto</div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setDiscountType("value")}
-                      disabled={isLocked}
-                      className={`px-3 py-1 rounded-full text-[10px] font-extrabold border ${
-                        discountType === "value" ? "bg-white text-studio-green border-studio-green/20" : "bg-white text-muted border-line"
-                      } ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >
-                      R$
-                    </button>
-                    <button
-                      onClick={() => setDiscountType("pct")}
-                      disabled={isLocked}
-                      className={`px-3 py-1 rounded-full text-[10px] font-extrabold border ${
-                        discountType === "pct" ? "bg-white text-studio-green border-studio-green/20" : "bg-white text-muted border-line"
-                      } ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >
-                      %
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={discountValue}
-                    onChange={(event) => setDiscountValue(Number(event.target.value))}
-                    className="w-full px-4 py-3 rounded-2xl bg-white border border-line focus:ring-2 focus:ring-studio-green/20 text-sm font-black text-studio-text transition-all"
-                    disabled={isLocked}
-                  />
-                  <button
-                    onClick={() => onSetDiscount(discountType, discountValue)}
-                    disabled={isLocked}
-                    className={`px-4 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
-                      isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
-                    }`}
-                  >
-                    Aplicar
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Pagamentos</div>
-
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {(["pix", "card", "cash", "other"] as PaymentRow["method"][]).map((method) => (
-                    <button
-                      key={method}
-                      onClick={() => setPaymentMethod(method)}
-                      disabled={isLocked}
-                      className={`py-3 px-4 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition ${
-                        paymentMethod === method
-                          ? "border-studio-green bg-studio-light text-studio-green"
-                          : "border-line text-muted hover:bg-studio-light"
-                      } ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                    >
-                      {method === "pix" ? <QrCode className="w-4 h-4" /> : method === "cash" ? <Banknote className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
-                      {paymentLabels[method]}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-4 flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={paymentAmount}
-                    onChange={(event) => setPaymentAmount(Number(event.target.value))}
-                    className="w-full px-4 py-3 rounded-2xl bg-white border border-line text-sm font-bold"
-                    disabled={isLocked}
-                  />
-                  <button
-                    onClick={() => onRecordPayment(paymentMethod, paymentAmount)}
-                    disabled={isLocked}
-                    className={`px-4 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
-                      isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
-                    }`}
-                  >
-                    Registrar
-                  </button>
-                </div>
-
-                {payments.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {payments.map((payment) => (
-                      <div key={payment.id} className="flex items-center justify-between text-xs text-muted">
-                        <span>{paymentLabels[payment.method]}</span>
-                        <span className="font-bold">R$ {Number(payment.amount).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-4 bg-studio-light border border-line rounded-2xl p-4 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Total a pagar</p>
-                    <p className="text-2xl font-serif font-bold text-studio-green tabular-nums">R$ {total.toFixed(2)}</p>
-                  </div>
-                  <button
-                    onClick={onConfirmCheckout}
-                    disabled={isLocked}
-                    className={`px-4 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
-                      isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
-                    }`}
-                  >
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between border-t border-line pt-4 text-xs text-muted">
-              <span>Subtotal: R$ {subtotal.toFixed(2)}</span>
-              <span>Status: {checkout?.payment_status ?? "pending"}</span>
+            ))}
+            <div className="h-px bg-gray-100 my-2"></div>
+            <div className="flex justify-between text-muted font-bold">
+              <span>Subtotal</span>
+              <span className="tabular-nums">R$ {subtotal.toFixed(2)}</span>
             </div>
           </div>
         </div>
-      </main>
 
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center">
-        <div className="w-full max-w-[414px] bg-white border-t border-line px-6 py-4 pb-6 rounded-t-[28px] shadow-float safe-bottom safe-bottom-6">
-          {isPaid ? (
-            <button
-              onClick={() => router.push("/caixa")}
-              className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-soft"
+        <div className="mt-4 bg-white border border-gray-100 rounded-3xl p-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Adicionar item</p>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            <select
+              value={newItem.type}
+              onChange={(event) => setNewItem({ ...newItem, type: event.target.value as CheckoutItem["type"] })}
+              disabled={isLocked}
+              className={`col-span-1 rounded-xl border border-line px-2 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             >
-              Ver no Caixa
-            </button>
-          ) : (
+              <option value="service">Serviço</option>
+              <option value="fee">Taxa</option>
+              <option value="addon">Addon</option>
+              <option value="adjustment">Ajuste</option>
+            </select>
+            <input
+              value={newItem.label}
+              onChange={(event) => setNewItem({ ...newItem, label: event.target.value })}
+              placeholder="Descrição"
+              disabled={isLocked}
+              className={`col-span-2 rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+            />
+            <input
+              type="number"
+              value={newItem.amount}
+              onChange={(event) => setNewItem({ ...newItem, amount: Number(event.target.value) })}
+              placeholder="0"
+              disabled={isLocked}
+              className={`col-span-1 rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+            />
+          </div>
+
+          <div className="mt-3 flex gap-2">
             <button
-              onClick={onConfirmCheckout}
-              className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-soft"
+              onClick={() => {
+                if (!newItem.label.trim()) return;
+                setDraftItems([...draftItems, newItem]);
+                setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
+              }}
+              disabled={isLocked}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
+                isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-light text-studio-green"
+              }`}
             >
-              Confirmar Checkout
+              <Plus className="w-3 h-3" /> Adicionar
             </button>
+            <button
+              onClick={() => onSaveItems(draftItems)}
+              disabled={isLocked}
+              className={`px-3 py-2 rounded-xl text-xs font-bold ${
+                isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
+              }`}
+            >
+              Salvar itens
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 bg-white border border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Desconto</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDiscountType("value")}
+                disabled={isLocked}
+                className={`px-3 py-1.5 rounded-2xl text-[11px] font-extrabold border ${
+                  discountType === "value"
+                    ? "bg-studio-light text-studio-green border-studio-green/10"
+                    : "bg-paper text-muted border-gray-200"
+                } ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                R$
+              </button>
+              <button
+                onClick={() => setDiscountType("pct")}
+                disabled={isLocked}
+                className={`px-3 py-1.5 rounded-2xl text-[11px] font-extrabold border ${
+                  discountType === "pct"
+                    ? "bg-studio-light text-studio-green border-studio-green/10"
+                    : "bg-paper text-muted border-gray-200"
+                } ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                %
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex-1 bg-paper border border-gray-100 rounded-2xl px-4 py-3">
+              <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Valor</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                value={discountValue}
+                onChange={(event) => setDiscountValue(Number(event.target.value))}
+                className="w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums mt-1"
+                disabled={isLocked}
+              />
+            </div>
+            <div className="bg-paper border border-gray-100 rounded-2xl px-4 py-3">
+              <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Aplicado</label>
+              <p className="text-lg font-black text-studio-text tabular-nums mt-1">R$ {appliedDiscountValue.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 bg-paper border border-gray-100 rounded-2xl px-4 py-3">
+            <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Motivo</label>
+            <input
+              value={discountReason}
+              onChange={(event) => setDiscountReason(event.target.value)}
+              type="text"
+              placeholder="Ex.: fidelidade / ajuste"
+              className="w-full bg-transparent outline-none text-sm font-bold text-studio-text mt-1"
+              disabled={isLocked}
+            />
+          </div>
+
+          <button
+            onClick={() => onSetDiscount(discountType, discountValue, discountReason)}
+            disabled={isLocked}
+            className={`mt-3 w-full h-11 rounded-2xl font-extrabold text-xs uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
+              isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
+            }`}
+          >
+            Aplicar desconto
+          </button>
+        </div>
+
+        <div className="mt-4 bg-white border border-gray-100 rounded-3xl p-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Pagamento</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {([
+              { method: "pix", label: "Pix", icon: <QrCode className="w-4 h-4" /> },
+              { method: "card", label: "Cartão", icon: <CreditCard className="w-4 h-4" /> },
+              { method: "cash", label: "Dinheiro", icon: <Banknote className="w-4 h-4" /> },
+              { method: "other", label: "Outro", icon: <Plus className="w-4 h-4" /> },
+            ] as const).map((item) => (
+              <button
+                key={item.method}
+                type="button"
+                onClick={() => setPaymentMethod(item.method)}
+                disabled={isLocked}
+                className={`py-3 px-4 rounded-2xl border text-xs font-extrabold flex items-center justify-center gap-2 transition ${
+                  paymentMethod === item.method
+                    ? "border-studio-green bg-studio-light text-studio-green"
+                    : "border-gray-200 text-muted hover:bg-gray-50"
+                } ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <input
+              type="number"
+              value={paymentAmount}
+              onChange={(event) => setPaymentAmount(Number(event.target.value))}
+              className="w-full px-4 py-3 rounded-2xl bg-paper border border-gray-100 text-sm font-bold"
+              disabled={isLocked}
+            />
+            <button
+              onClick={() => onRecordPayment(paymentMethod, paymentAmount)}
+              disabled={isLocked}
+              className={`px-4 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
+                isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
+              }`}
+            >
+              Registrar
+            </button>
+          </div>
+
+          {payments.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {payments.map((payment) => (
+                <div key={payment.id} className="flex items-center justify-between text-xs text-muted">
+                  <span>{paymentLabels[payment.method]}</span>
+                  <span className="font-bold">R$ {Number(payment.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
           )}
+
+          <button
+            onClick={onConfirmCheckout}
+            disabled={isLocked}
+            className={`mt-4 w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-95 transition flex items-center justify-center gap-2 text-xs tracking-wide uppercase ${
+              isLocked ? "opacity-60 cursor-not-allowed" : ""
+            }`}
+          >
+            Confirmar pagamento
+          </button>
+
+          {isPaid && (
+            <div className="mt-4 bg-white border border-dashed border-gray-200 rounded-3xl p-4">
+              <p className="text-sm font-bold text-studio-text">Checkout confirmado</p>
+              <p className="text-xs text-muted mt-1">Somente leitura. Ajustes via Caixa.</p>
+              <button
+                onClick={() => router.push("/caixa")}
+                className="mt-3 w-full h-12 rounded-2xl bg-paper border border-gray-200 text-gray-700 font-extrabold text-xs hover:bg-gray-50 transition"
+              >
+                Ver no Caixa
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between text-xs text-muted">
+          <span>Subtotal: R$ {subtotal.toFixed(2)}</span>
+          <span>Status: {checkout?.payment_status ?? "pending"}</span>
         </div>
       </div>
     </div>

@@ -1,16 +1,11 @@
 "use client";
 
-import { Sparkles, Layers3, History, Play, Pause } from "lucide-react";
 import type { AttendanceRow, EvolutionEntry } from "../../../../../lib/attendance/attendance-types";
-import { StageHeader } from "./stage-header";
 import { StageStatusBadge } from "./stage-status";
 
 interface SessionStageProps {
   attendance: AttendanceRow;
   evolution: EvolutionEntry[];
-  onBack: () => void;
-  onMinimize: () => void;
-  onNext: () => void;
   summary: string;
   complaint: string;
   techniques: string;
@@ -18,16 +13,11 @@ interface SessionStageProps {
   onChange: (field: "summary" | "complaint" | "techniques" | "recommendations", value: string) => void;
   onSaveDraft: () => void;
   onPublish: () => void;
-  isTimerRunning: boolean;
-  onToggleTimer: () => void;
 }
 
 export function SessionStage({
   attendance,
   evolution,
-  onBack,
-  onMinimize,
-  onNext,
   summary,
   complaint,
   techniques,
@@ -35,158 +25,109 @@ export function SessionStage({
   onChange,
   onSaveDraft,
   onPublish,
-  isTimerRunning,
-  onToggleTimer,
 }: SessionStageProps) {
-  const publishedHistory = evolution.filter((entry) => entry.status === "published");
+  const publishedHistory = evolution
+    .filter((entry) => entry.status === "published")
+    .sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
+  const lastPublished = publishedHistory[0] ?? null;
 
   return (
-    <div className="relative -mx-4 -mt-4">
-      <StageHeader
-        kicker="Etapa"
-        title="Sessão"
-        subtitle="Evolução estruturada e histórico"
-        onBack={onBack}
-        onMinimize={onMinimize}
-      />
+    <div className="space-y-5">
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-serif font-bold text-studio-text">Sessão</h2>
+            <p className="text-xs text-muted mt-1">Evolução estruturada + histórico.</p>
+          </div>
+          <StageStatusBadge status={attendance.session_status} variant="compact" />
+        </div>
 
-      <main className="px-6 pt-6 pb-32">
-        <div className="bg-white border border-line rounded-[28px] shadow-soft overflow-hidden">
-          <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Evolução</div>
-              <div className="mt-2 text-lg font-black text-studio-text">Registro do atendimento</div>
-              <div className="text-xs text-muted font-semibold mt-1">Estruturado por seções + histórico.</div>
-            </div>
-            <StageStatusBadge status={attendance.session_status} />
+        <div className="mt-4 bg-paper border border-line rounded-3xl p-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Presets rápidos</p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {["Relaxamento", "Lombar", "Ombros"].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className="px-3 py-1.5 rounded-2xl bg-white border border-line text-xs font-extrabold text-studio-green"
+              >
+                {preset}
+              </button>
+            ))}
           </div>
 
-          <div className="px-5 pb-5">
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Resumo rápido</div>
-                <div className="mt-2 text-sm font-bold text-studio-text">Pressão, foco e sensações</div>
-                <div className="text-xs text-muted mt-1">Presets configuráveis por serviço.</div>
-              </div>
-              <button className="text-xs font-extrabold text-studio-green hover:underline mt-1">Presets</button>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <Layers3 className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Evolução estruturada</div>
-                <div className="mt-3 space-y-3">
-                  <div className="bg-studio-light border border-line rounded-2xl p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Resumo</p>
-                    <textarea
-                      className="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-                      rows={2}
-                      placeholder="Ex.: Pressão média, foco em cervical e lombar..."
-                      value={summary}
-                      onChange={(event) => onChange("summary", event.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-studio-light border border-line rounded-2xl p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Queixa / objetivo</p>
-                    <textarea
-                      className="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-                      rows={3}
-                      placeholder="Ex.: tensão cervical e dor lombar após treino..."
-                      value={complaint}
-                      onChange={(event) => onChange("complaint", event.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-studio-light border border-line rounded-2xl p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Técnicas aplicadas</p>
-                    <textarea
-                      className="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-                      rows={3}
-                      placeholder="Ex.: deslizamento, liberação miofascial leve..."
-                      value={techniques}
-                      onChange={(event) => onChange("techniques", event.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-studio-light border border-line rounded-2xl p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Resposta / recomendações</p>
-                    <textarea
-                      className="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-                      rows={3}
-                      placeholder="Ex.: relatou alívio, orientar hidratação..."
-                      value={recommendations}
-                      onChange={(event) => onChange("recommendations", event.target.value)}
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={onSaveDraft}
-                      className="flex-1 py-3 rounded-2xl bg-studio-light border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide hover:bg-studio-light transition"
-                    >
-                      Rascunho
-                    </button>
-                    <button
-                      onClick={onPublish}
-                      className="flex-1 py-3 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-soft active:scale-[0.99] transition"
-                    >
-                      Salvar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <History className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Histórico</div>
-                {publishedHistory.length === 0 ? (
-                  <p className="mt-2 text-xs text-muted">Nenhuma evolução publicada ainda.</p>
-                ) : (
-                  <div className="mt-3 space-y-3">
-                    {publishedHistory.map((entry) => (
-                      <div key={entry.id} className="bg-studio-light border border-line rounded-2xl p-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-extrabold text-studio-text">Versão {entry.version}</p>
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-studio-green">Evolução</span>
-                        </div>
-                        <p className="text-xs text-muted mt-2 italic">{entry.summary || entry.complaint || "Registro publicado"}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="mt-4">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Resumo rápido</p>
+            <textarea
+              className="mt-2 w-full bg-white rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+              rows={2}
+              placeholder="Ex.: pressão média, foco em cervical..."
+              value={summary}
+              onChange={(event) => onChange("summary", event.target.value)}
+            />
           </div>
         </div>
-      </main>
+      </div>
 
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center">
-        <div className="w-full max-w-[414px] bg-white border-t border-line px-6 py-4 pb-6 rounded-t-[28px] shadow-float safe-bottom safe-bottom-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onToggleTimer}
-              className="w-14 h-14 rounded-2xl bg-studio-light border border-line text-studio-text flex items-center justify-center hover:bg-studio-light transition"
-            >
-              {isTimerRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-            </button>
-            <button
-              onClick={onNext}
-              className="flex-1 h-14 rounded-2xl bg-studio-green text-white font-extrabold shadow-soft active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase"
-            >
-              Ir para Checkout
-            </button>
-          </div>
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white space-y-4">
+        <div>
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Queixa / Objetivo</p>
+          <textarea
+            className="w-full h-24 bg-paper rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+            placeholder="Ex.: tensão cervical, relaxamento geral..."
+            value={complaint}
+            onChange={(event) => onChange("complaint", event.target.value)}
+          />
         </div>
+        <div>
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Técnicas aplicadas</p>
+          <textarea
+            className="w-full h-24 bg-paper rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+            placeholder="Ex.: deslizamento, liberação..."
+            value={techniques}
+            onChange={(event) => onChange("techniques", event.target.value)}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Resposta / Recomendações</p>
+          <textarea
+            className="w-full h-24 bg-paper rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+            placeholder="Ex.: hidratação, alongamento, retorno..."
+            value={recommendations}
+            onChange={(event) => onChange("recommendations", event.target.value)}
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onSaveDraft}
+            type="button"
+            className="flex-1 h-12 rounded-2xl bg-paper border border-gray-200 text-gray-700 font-extrabold text-xs hover:bg-gray-50 transition"
+          >
+            Salvar rascunho
+          </button>
+          <button
+            onClick={onPublish}
+            type="button"
+            className="flex-1 h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs shadow-lg shadow-green-200 active:scale-95 transition"
+          >
+            Publicar evolução
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white/60 rounded-3xl p-5 border border-dashed border-gray-200">
+        <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Histórico</p>
+        {lastPublished ? (
+          <>
+            <p className="text-sm font-bold text-studio-text mt-2">Versão {lastPublished.version}</p>
+            <p className="text-xs text-muted mt-1 italic">
+              “{lastPublished.summary || lastPublished.complaint || "Registro publicado"}”
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-muted mt-2">Nenhuma evolução publicada ainda.</p>
+        )}
       </div>
     </div>
   );

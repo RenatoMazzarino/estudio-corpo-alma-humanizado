@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Timer, ClipboardCheck, ListChecks, FileText } from "lucide-react";
+import { addDays } from "date-fns";
 import type {
   AttendanceRow,
   PostRow,
   AppointmentMessage,
   MessageStatus,
-  MessageType,
 } from "../../../../../lib/attendance/attendance-types";
-import { StageHeader } from "./stage-header";
 import { StageStatusBadge } from "./stage-status";
 
 interface PostStageProps {
@@ -17,12 +15,9 @@ interface PostStageProps {
   post: PostRow | null;
   messages: AppointmentMessage[];
   kpiLabel: string;
-  onBack: () => void;
-  onMinimize: () => void;
   onSavePost: (payload: { postNotes?: string | null; followUpDueAt?: string | null; followUpNote?: string | null }) => void;
   onSendSurvey: () => void;
   onRecordSurvey: (score: number) => void;
-  onFinish: () => void;
 }
 
 export function PostStage({
@@ -30,12 +25,9 @@ export function PostStage({
   post,
   messages,
   kpiLabel,
-  onBack,
-  onMinimize,
   onSavePost,
   onSendSurvey,
   onRecordSurvey,
-  onFinish,
 }: PostStageProps) {
   const [postNotes, setPostNotes] = useState(post?.post_notes ?? "");
   const [followUpNote, setFollowUpNote] = useState(post?.follow_up_note ?? "");
@@ -44,153 +36,152 @@ export function PostStage({
   const surveyMessage = messages.find((message) => message.type === "post_survey") ?? null;
 
   const messageStatusLabel = (status: MessageStatus | null) => {
-    if (!status) return "Não enviado";
+    if (!status) return "não enviada";
     switch (status) {
       case "sent_manual":
       case "sent_auto":
-        return "Enviado";
+        return "enviada";
       case "delivered":
-        return "Entregue";
+        return "entregue";
       case "failed":
-        return "Falhou";
+        return "falhou";
       default:
-        return "Rascunho";
+        return "rascunho";
     }
   };
 
+  const setQuickFollowUp = (days: number) => {
+    const date = addDays(new Date(), days);
+    setFollowUpDate(date.toISOString().slice(0, 10));
+  };
+
   return (
-    <div className="relative -mx-4 -mt-4">
-      <StageHeader
-        kicker="Etapa"
-        title="Pós"
-        subtitle="KPI, pesquisa e follow-up"
-        onBack={onBack}
-        onMinimize={onMinimize}
-      />
-
-      <main className="px-6 pt-6 pb-32">
-        <div className="bg-white border border-line rounded-[28px] shadow-soft overflow-hidden">
-          <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Encerramento</div>
-              <div className="mt-2 text-lg font-black text-studio-text">Pós-atendimento</div>
-              <div className="text-xs text-muted font-semibold mt-1">Guardar KPI, enviar pesquisa e registrar notas.</div>
-            </div>
-            <StageStatusBadge status={attendance.post_status} />
+    <div className="space-y-5">
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-serif font-bold text-studio-text">Pós-atendimento</h2>
+            <p className="text-xs text-muted mt-1">KPI, pesquisa e follow-up.</p>
           </div>
+          <StageStatusBadge status={attendance.post_status} variant="compact" />
+        </div>
 
-          <div className="px-5 pb-5">
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <Timer className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">KPI — tempo total</div>
-                <div className="mt-2 text-sm font-bold text-studio-text tabular-nums">{kpiLabel}</div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <ClipboardCheck className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Pesquisa de satisfação</div>
-                <div className="mt-2 text-sm font-bold text-studio-text">
-                  {post?.survey_status ?? "not_sent"}
-                </div>
-                <div className="text-xs text-muted mt-1">
-                  Mensagem: {messageStatusLabel(surveyMessage?.status ?? null)}
-                </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <input
-                    type="number"
-                    min={0}
-                    max={10}
-                    value={surveyScore}
-                    onChange={(event) => setSurveyScore(Number(event.target.value))}
-                    className="w-20 px-3 py-2 rounded-xl border border-line text-sm"
-                  />
-                  <button
-                    onClick={() => onRecordSurvey(surveyScore)}
-                    className="px-3 py-2 rounded-xl bg-studio-green text-white text-xs font-bold"
-                  >
-                    Registrar
-                  </button>
-                  <button
-                    onClick={onSendSurvey}
-                    className="px-3 py-2 rounded-xl bg-studio-light text-studio-green text-xs font-bold"
-                  >
-                    Enviar
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <ListChecks className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Follow-up</div>
-                <input
-                  type="date"
-                  value={followUpDate}
-                  onChange={(event) => setFollowUpDate(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-sm"
-                />
-                <textarea
-                  className="mt-3 w-full rounded-xl border border-line px-3 py-2 text-sm"
-                  rows={3}
-                  value={followUpNote}
-                  onChange={(event) => setFollowUpNote(event.target.value)}
-                  placeholder="Ex.: retorno em 7 dias"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 py-4 border-t border-line">
-              <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-                <FileText className="w-4 h-4" />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted">Notas pós</div>
-                <textarea
-                  className="mt-2 w-full bg-studio-light rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-                  rows={4}
-                  value={postNotes}
-                  onChange={(event) => setPostNotes(event.target.value)}
-                  placeholder="Ex.: reagendar, preferências, cuidados, observações finais..."
-                />
-              </div>
-            </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="bg-paper rounded-2xl p-3 border border-line">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Tempo total</p>
+            <p className="text-sm font-black text-studio-text tabular-nums">{kpiLabel}</p>
+          </div>
+          <div className="bg-paper rounded-2xl p-3 border border-line">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Status</p>
+            <p className="text-sm font-bold text-studio-text">Finalizável</p>
           </div>
         </div>
-      </main>
+      </div>
 
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center">
-        <div className="w-full max-w-[414px] bg-white border-t border-line px-6 py-4 pb-6 rounded-t-[28px] shadow-float safe-bottom safe-bottom-6">
-          <div className="flex items-center gap-3">
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
+        <h3 className="text-xs font-extrabold text-muted uppercase tracking-widest mb-4">Pesquisa de satisfação (WhatsApp)</h3>
+
+        <div className="bg-paper border border-line rounded-3xl p-4">
+          <p className="text-sm font-bold text-studio-text">Mensagem padrão</p>
+          <p className="text-xs text-muted mt-1">
+            “Oi! Como foi sua sessão hoje? De 0 a 10, qual sua nota? Se quiser, deixe um comentário 😊”
+          </p>
+
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-bold text-muted">Status: {messageStatusLabel(surveyMessage?.status ?? null)}</p>
             <button
-              onClick={() =>
-                onSavePost({
-                  postNotes,
-                  followUpNote,
-                  followUpDueAt: followUpDate ? new Date(followUpDate).toISOString() : null,
-                })
-              }
-              className="flex-1 h-12 rounded-2xl bg-studio-light border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+              onClick={onSendSurvey}
+              className="px-3 py-2 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs border border-studio-green/10 hover:bg-white transition"
             >
-              Salvar
-            </button>
-            <button
-              onClick={onFinish}
-              className="flex-1 h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-soft"
-            >
-              Finalizar
+              Enviar
             </button>
           </div>
         </div>
+
+        <div className="mt-4 bg-white border border-dashed border-line rounded-3xl p-4">
+          <p className="text-sm font-bold text-studio-text">Resposta</p>
+          <p className="text-xs text-muted mt-1">Ainda sem resposta.</p>
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={surveyScore}
+              onChange={(event) => setSurveyScore(Number(event.target.value))}
+              className="w-20 px-3 py-2 rounded-xl border border-line text-sm"
+            />
+            <button
+              onClick={() => onRecordSurvey(surveyScore)}
+              className="px-3 py-2 rounded-xl bg-studio-green text-white text-xs font-bold"
+            >
+              Registrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
+        <h3 className="text-xs font-extrabold text-muted uppercase tracking-widest mb-4">Follow-up</h3>
+
+        <div className="bg-paper border border-line rounded-3xl p-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Criar tarefa</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setQuickFollowUp(7)}
+              className="flex-1 h-11 rounded-2xl bg-white border border-line text-sm font-extrabold text-studio-green hover:bg-gray-50 transition"
+            >
+              +7 dias
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickFollowUp(30)}
+              className="flex-1 h-11 rounded-2xl bg-white border border-line text-sm font-extrabold text-studio-green hover:bg-gray-50 transition"
+            >
+              +30 dias
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Notas pós-atendimento</p>
+          <textarea
+            className="w-full h-28 bg-paper rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
+            placeholder="Anotações finais e pontos para próximas sessões..."
+            value={postNotes}
+            onChange={(event) => setPostNotes(event.target.value)}
+          />
+        </div>
+
+        <div className="mt-4">
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Follow-up</p>
+          <input
+            type="date"
+            value={followUpDate}
+            onChange={(event) => setFollowUpDate(event.target.value)}
+            className="w-full rounded-xl border border-line px-3 py-2 text-sm"
+          />
+          <textarea
+            className="mt-3 w-full rounded-xl border border-line px-3 py-2 text-sm"
+            rows={3}
+            value={followUpNote}
+            onChange={(event) => setFollowUpNote(event.target.value)}
+            placeholder="Ex.: retorno em 7 dias"
+          />
+        </div>
+
+        <button
+          onClick={() =>
+            onSavePost({
+              postNotes,
+              followUpNote,
+              followUpDueAt: followUpDate ? new Date(followUpDate).toISOString() : null,
+            })
+          }
+          className="mt-4 w-full h-12 rounded-2xl bg-studio-light border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+        >
+          Salvar informações
+        </button>
       </div>
     </div>
   );

@@ -62,7 +62,7 @@ export function TimerBubble() {
       if (!parent) return;
       const parentRect = parent.getBoundingClientRect();
       const rect = bubbleRef.current.getBoundingClientRect();
-      const bottomNavOffset = 96;
+      const bottomNavOffset = pathname.startsWith("/atendimento") ? 140 : 96;
       const nextX = clamp(
         event.clientX - parentRect.left - dragState.current.offsetX,
         8,
@@ -93,16 +93,16 @@ export function TimerBubble() {
   const showBubble = bubbleVisible || !pathname.startsWith("/atendimento");
   if (!showBubble) return null;
 
-  const radius = 44;
+  const radius = 46;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - progress);
 
   return (
     <div
       ref={bubbleRef}
-      className={`absolute z-40 h-[92px] w-[92px] rounded-full shadow-float backdrop-blur-md ${
+      className={`absolute z-40 h-[112px] w-[112px] rounded-full shadow-float backdrop-blur-md border border-studio-green/20 bg-white/80 ${
         session && !isPaused
-          ? "after:content-[''] after:absolute after:inset-[-6px] after:rounded-full after:border-2 after:border-studio-green/40 after:animate-ping"
+          ? "after:content-[''] after:absolute after:inset-[-6px] after:rounded-full after:border-2 after:border-studio-green/30 after:animate-pulse"
           : ""
       }`}
       style={bubblePosition ? { left: bubblePosition.x, top: bubblePosition.y } : undefined}
@@ -115,23 +115,19 @@ export function TimerBubble() {
         dragState.current.offsetX = event.clientX - rect.left;
         dragState.current.offsetY = event.clientY - rect.top;
       }}
-      onClick={() => {
-        if (!session) return;
-        router.push(`/atendimento/${session.appointmentId}?stage=session`);
-      }}
     >
-      <svg className="absolute inset-0" viewBox="0 0 100 100">
+      <svg className="absolute inset-0" viewBox="0 0 120 120">
         <circle
-          cx="50"
-          cy="50"
+          cx="60"
+          cy="60"
           r={radius}
           fill="none"
-          stroke="rgba(106,128,108,0.2)"
+          stroke="rgba(106,128,108,0.16)"
           strokeWidth="8"
         />
         <circle
-          cx="50"
-          cy="50"
+          cx="60"
+          cy="60"
           r={radius}
           fill="none"
           stroke="rgba(106,128,108,0.95)"
@@ -139,24 +135,29 @@ export function TimerBubble() {
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          transform="rotate(-90 50 50)"
+          transform="rotate(-90 60 60)"
         />
       </svg>
 
-      <div className="absolute inset-[9px] rounded-full bg-studio-green text-white flex flex-col items-center justify-center">
-        <div className="text-[9px] font-extrabold uppercase tracking-widest opacity-80 -mb-0.5">Tempo</div>
-        <div className="text-lg font-black tabular-nums tracking-tighter leading-none">
-          {formatTime(elapsedSeconds)}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              togglePause();
+            }}
+            className="w-9 h-9 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center border border-studio-green/10 hover:bg-white transition"
+            aria-label={isPaused ? "Retomar" : "Pausar"}
+          >
+            {isPaused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
+          <span className="text-lg font-black text-studio-text tabular-nums">{formatTime(elapsedSeconds)}</span>
         </div>
         <button
-          onClick={(event) => {
-            event.stopPropagation();
-            togglePause();
-          }}
-          className="mt-1 w-8 h-8 rounded-full bg-white/15 hover:bg-white/20 transition flex items-center justify-center"
-          aria-label={isPaused ? "Retomar" : "Pausar"}
+          onClick={() => router.push(`/atendimento/${session.appointmentId}?stage=session`)}
+          className="text-[10px] font-extrabold text-muted uppercase tracking-widest hover:text-studio-green transition"
         >
-          {isPaused ? <Play size={14} /> : <Pause size={14} />}
+          Voltar
         </button>
       </div>
     </div>

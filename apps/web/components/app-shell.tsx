@@ -24,7 +24,7 @@ export function AppShell({ children }: AppShellProps) {
           w-full max-w-[414px] min-h-[100dvh] rounded-2xl
         `}
         >
-          <main className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 scroll-smooth">
+          <main data-shell-scroll className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 scroll-smooth">
             {children}
           </main>
 

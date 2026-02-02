@@ -27,7 +27,7 @@ export default async function AtendimentoPage(props: PageProps) {
     const initialStage =
       stageParam === "pre" || stageParam === "session" || stageParam === "checkout" || stageParam === "post"
         ? stageParam
-        : "hub";
+        : "pre";
 
     return <AttendanceV4Page data={attendance} initialStage={initialStage} />;
   }
