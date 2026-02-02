@@ -44,6 +44,12 @@
 - Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
 
 ## 4) Commits (hash + objetivo)
+- `2ac687c` — docs(report): atualizar auditoria db ui
+  - Objetivo: incluir auditoria DB↔UI e ajustes de relatório.
+- `e68170b` — atendimento(v1): db audit e mensagens
+  - Objetivo: remover placeholders, registrar payload de mensagens e expor dados técnicos (DB) por etapa.
+- `22c5f57` — clientes(v1): ui alinhada e auditoria db
+  - Objetivo: reescrita das telas de clientes + preview/painel DB e ajuste de tipagens.
 - `6e9cde3` — feat(attendance): alinhar layout ao HTML final
   - Objetivo: reescrever tela de atendimento para o HTML v2 (header compacto/expandido, pager horizontal e stage bar).
 - `eed8428` — docs(ui): plano v1 produção e revisão
