@@ -153,8 +153,8 @@ export async function confirmPre(payload: { appointmentId: string; channel?: str
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function sendReminder24h(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  const parsed = appointmentIdSchema.safeParse(payload);
+export async function sendReminder24h(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
+  const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
@@ -164,6 +164,7 @@ export async function sendReminder24h(payload: { appointmentId: string }): Promi
     type: "reminder_24h",
     status: "sent_manual",
     sentAt: new Date().toISOString(),
+    payload: parsed.data.message ? { message: parsed.data.message } : null,
   });
 
   await insertAttendanceEvent({
@@ -819,8 +820,8 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function sendSurvey(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  const parsed = appointmentIdSchema.safeParse(payload);
+export async function sendSurvey(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
+  const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
@@ -836,6 +837,7 @@ export async function sendSurvey(payload: { appointmentId: string }): Promise<Ac
     type: "post_survey",
     status: "sent_manual",
     sentAt: new Date().toISOString(),
+    payload: parsed.data.message ? { message: parsed.data.message } : null,
   });
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,

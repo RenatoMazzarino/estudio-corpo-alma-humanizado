@@ -30,6 +30,11 @@ export function SessionStage({
     .filter((entry) => entry.status === "published")
     .sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
   const lastPublished = publishedHistory[0] ?? null;
+  const presets = Array.isArray((lastPublished?.sections_json as { presets?: unknown } | null)?.presets)
+    ? ((lastPublished?.sections_json as { presets?: unknown[] }).presets ?? []).filter(
+        (preset) => typeof preset === "string"
+      )
+    : [];
 
   return (
     <div className="space-y-5">
@@ -43,18 +48,21 @@ export function SessionStage({
         </div>
 
         <div className="mt-4 bg-paper border border-line rounded-3xl p-4">
-          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Presets rápidos</p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {["Relaxamento", "Lombar", "Ombros"].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className="px-3 py-1.5 rounded-2xl bg-white border border-line text-xs font-extrabold text-studio-green"
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
+          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Presets</p>
+          {presets.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {presets.map((preset) => (
+                <span
+                  key={preset}
+                  className="px-3 py-1.5 rounded-2xl bg-white border border-line text-xs font-extrabold text-studio-green"
+                >
+                  {preset}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted mt-2">Nenhum preset registrado.</p>
+          )}
 
           <div className="mt-4">
             <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Resumo rápido</p>

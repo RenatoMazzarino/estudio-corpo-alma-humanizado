@@ -34,6 +34,19 @@ export function PostStage({
   const [followUpDate, setFollowUpDate] = useState(post?.follow_up_due_at ? post.follow_up_due_at.slice(0, 10) : "");
   const [surveyScore, setSurveyScore] = useState(post?.survey_score ?? 0);
   const surveyMessage = messages.find((message) => message.type === "post_survey") ?? null;
+  const surveyMessageText =
+    typeof (surveyMessage?.payload as { message?: unknown } | null)?.message === "string"
+      ? ((surveyMessage?.payload as { message: string }).message ?? null)
+      : null;
+  const statusLabel =
+    attendance.post_status === "done"
+      ? "Concluído"
+      : attendance.post_status === "in_progress"
+        ? "Em andamento"
+        : attendance.post_status === "locked"
+          ? "Bloqueado"
+          : "Disponível";
+  const hasSurveyAnswer = post?.survey_score !== null && post?.survey_score !== undefined;
 
   const messageStatusLabel = (status: MessageStatus | null) => {
     if (!status) return "não enviada";
@@ -73,7 +86,7 @@ export function PostStage({
           </div>
           <div className="bg-paper rounded-2xl p-3 border border-line">
             <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Status</p>
-            <p className="text-sm font-bold text-studio-text">Finalizável</p>
+            <p className="text-sm font-bold text-studio-text">{statusLabel}</p>
           </div>
         </div>
       </div>
@@ -82,9 +95,9 @@ export function PostStage({
         <h3 className="text-xs font-extrabold text-muted uppercase tracking-widest mb-4">Pesquisa de satisfação (WhatsApp)</h3>
 
         <div className="bg-paper border border-line rounded-3xl p-4">
-          <p className="text-sm font-bold text-studio-text">Mensagem padrão</p>
+          <p className="text-sm font-bold text-studio-text">Mensagem da pesquisa</p>
           <p className="text-xs text-muted mt-1">
-            “Oi! Como foi sua sessão hoje? De 0 a 10, qual sua nota? Se quiser, deixe um comentário 😊”
+            {surveyMessageText ?? "Nenhuma mensagem registrada ainda."}
           </p>
 
           <div className="mt-3 flex items-center justify-between gap-3">
@@ -100,7 +113,9 @@ export function PostStage({
 
         <div className="mt-4 bg-white border border-dashed border-line rounded-3xl p-4">
           <p className="text-sm font-bold text-studio-text">Resposta</p>
-          <p className="text-xs text-muted mt-1">Ainda sem resposta.</p>
+          <p className="text-xs text-muted mt-1">
+            {hasSurveyAnswer ? `Nota registrada: ${post?.survey_score}` : "Sem resposta registrada."}
+          </p>
           <div className="mt-3 flex items-center gap-3">
             <input
               type="number"

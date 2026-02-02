@@ -116,6 +116,16 @@ export interface AppointmentMessage {
   created_at: string;
 }
 
+export interface AppointmentEvent {
+  id: string;
+  appointment_id: string;
+  tenant_id?: string;
+  event_type: string;
+  payload: Record<string, unknown> | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface AppointmentDetails {
   id: string;
   service_name: string;
@@ -162,6 +172,7 @@ export interface AttendanceOverview {
   payments: PaymentRow[];
   post: PostRow | null;
   messages: AppointmentMessage[];
+  events: AppointmentEvent[];
 }
 
 export interface AttendanceTotals {

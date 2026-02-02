@@ -74,6 +74,14 @@ export function PreStage({
     .filter((value) => value && value.trim().length > 0)
     .join(", ");
 
+  const checklistSourceLabel = (source: string | null) => {
+    if (!source) return "manual";
+    const normalized = source.replace(/_/g, " ").trim().toLowerCase();
+    if (normalized === "service preset") return "serviço";
+    if (normalized === "default") return "padrão";
+    return normalized;
+  };
+
   return (
     <div className="space-y-5">
       <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
@@ -182,7 +190,9 @@ export function PreStage({
                   />
                   <span className="text-sm font-bold text-studio-text">{item.label}</span>
                 </div>
-                <span className="text-[10px] font-extrabold text-muted uppercase">prep</span>
+                <span className="text-[10px] font-extrabold text-muted uppercase">
+                  {checklistSourceLabel(item.source)}
+                </span>
               </label>
             ))}
           </div>
