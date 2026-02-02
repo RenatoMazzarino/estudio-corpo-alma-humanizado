@@ -4,7 +4,7 @@
 - Design System v1 aplicado (tokens, fontes Playfair/Lato, componentes canônicos e documentação UI).
 - Agenda mobile alinhada ao HTML/PDF com busca real (nome/telefone/serviço) e refinamentos de navegação.
 - Agendamento interno (/novo) ajustado ao HTML final com layout consistente e preço somente leitura.
-- Atendimento (UI v1-prod): etapas revisadas, mensageria com logs, checkout com travas pós-pagamento.
+- Atendimento (UI v1-prod): layout refeito conforme HTML final (header colapsável, pager horizontal, stage bar) + timer bubble refinada.
 - Clientes: lista/detalhe/novo cliente alinhados ao HTML/PDF com novos campos e validações.
 - Migrations adicionadas para `appointment_messages` e campos de clientes (VIP/atenção/guardian/etc).
 
@@ -17,6 +17,8 @@
 - [x] Rollback documentado via feature flag.
 
 ## 3) Commits (hash + objetivo)
+- `6e9cde3` — feat(attendance): alinhar layout ao HTML final
+  - Objetivo: reescrever tela de atendimento para o HTML v2 (header compacto/expandido, pager horizontal e stage bar).
 - `eed8428` — docs(ui): plano v1 produção e revisão
   - Objetivo: consolidar plano oficial + revisão de gaps.
 - `7bd409f` — clientes(v1): lista, detalhe e cadastro alinhados
@@ -78,4 +80,3 @@ Detected linux 64, found turbo-windows-64/bin/turbo.exe
   - Agendamento interno (estúdio x domicílio, envio completo)
   - Atendimento (mensageria + checkout travado pós-pago)
   - Clientes (VIP/atenção/menor + formulário completo)
-
