@@ -4,9 +4,10 @@
 - Design System v1 aplicado (tokens, fontes Playfair/Lato, componentes canônicos e documentação UI).
 - Agenda mobile alinhada ao HTML/PDF com busca real (nome/telefone/serviço) e refinamentos de navegação.
 - Agendamento interno (/novo) ajustado ao HTML final com layout consistente e preço somente leitura.
-- Atendimento (UI v1-prod): layout refeito conforme HTML final (header colapsável, pager horizontal, stage bar) + timer bubble refinada.
-- Clientes: lista/detalhe/novo cliente alinhados ao HTML/PDF com novos campos e validações.
+- Atendimento (UI v1-prod): layout refeito conforme HTML final (header colapsável, pager horizontal, stage bar) + timer bubble refinada + mensagens persistidas com payload.
+- Clientes: lista/detalhe/novo cliente alinhados ao HTML/PDF com novos campos e validações + auditoria DB↔UI aplicada.
 - Migrations adicionadas para `appointment_messages` e campos de clientes (VIP/atenção/guardian/etc).
+- Inclusão de painel “Dados técnicos (DB)” para garantir visibilidade completa dos dados persistidos.
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
 - [x] Visual seguindo HTML + Auditoria Visual (fontes, tokens, layout e hierarquia).
@@ -16,7 +17,33 @@
 - [ ] Qualidade (pnpm lint/check-types/build) — **falhou por binário do Turbo (linux vs windows)**.
 - [x] Rollback documentado via feature flag.
 
-## 3) Commits (hash + objetivo)
+## 3) Auditoria DB ↔ UI (Clientes + Atendimento)
+### Clientes — Lista
+- UI: nome, iniciais, telefone, chips VIP/Atenção.
+- DB: `clients.name`, `clients.initials`, `clients.phone`, `clients.is_vip`, `clients.needs_attention`.
+- Derivação: “Última visita” obtida de `appointments.start_time`; “Sem visitas” quando não há registros.
+- Garantia DB↔UI: painel “Dados técnicos (DB)” com JSON completo da listagem.
+
+### Clientes — Detalhe
+- UI: identificação, contato, endereço, tags de saúde, contraindicações, preferências, dados pessoais, flags e responsável.
+- DB: `clients.*` (inclui `health_tags`, `contraindications`, `preferences_notes`, `observacoes_gerais`, `data_nascimento`, `cpf`, `profissao`, `como_conheceu`, `marketing_opt_in`, `guardian_*`, `address_*`).
+- Histórico: `appointments.start_time`, `appointments.service_name`, `appointments.price`, `appointments.status`, `appointments.is_home_visit`.
+- Garantia DB↔UI: painel “Dados técnicos (DB)” com JSON completo do cliente.
+
+### Clientes — Novo
+- UI: formulário completo refletindo colunas de `clients` (nome, telefone, email, data_nascimento, cpf, endereço, tags, contraindicações, preferências, flags VIP/atenção, marketing_opt_in, menor/guardião, observações).
+- DB: `clients.*` com `endereco_completo` derivado dos campos de endereço.
+- Campos do HTML **sem coluna** (ex.: consentimento, contato preferencial) **não foram exibidos** para manter 1:1.
+- Garantia DB↔UI: “Prévia do payload (DB)” com o objeto completo a ser persistido.
+
+### Atendimento — Etapas
+- Pré: `appointments` (data, serviço, local, endereço), `appointment_attendances` (status, confirmação), `appointment_checklist_items` (label, source, completed), `appointment_messages` (status).
+- Sessão: `appointment_evolution_entries` (summary/complaint/techniques/recommendations + sections_json). Presets exibidos **apenas** se vierem de `sections_json.presets`.
+- Checkout: `appointment_checkout`, `appointment_checkout_items`, `appointment_payments`.
+- Pós: `appointment_post` (kpi, survey, follow-up) + `appointment_messages` (texto da pesquisa via payload).
+- Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
+
+## 4) Commits (hash + objetivo)
 - `6e9cde3` — feat(attendance): alinhar layout ao HTML final
   - Objetivo: reescrever tela de atendimento para o HTML v2 (header compacto/expandido, pager horizontal e stage bar).
 - `eed8428` — docs(ui): plano v1 produção e revisão
@@ -34,28 +61,28 @@
 - `6542a34` — ui-system(v1): tokens, fonts, componentes canônicos e docs
   - Objetivo: base visual unificada (tokens, fontes, componentes, docs).
 
-## 4) Arquivos/pastas criados
+## 5) Arquivos/pastas criados
 - `apps/web/components/ui/*` (AppHeader, SurfaceCard, Buttons, Chips, Inputs, States, BottomNav)
 - `docs/ui-system/*` (tokens, typography, components, patterns)
 - `docs/ui-decisions/PLANO_NOVA_APARENCIA_V1_PRODUCAO.md`
 - `docs/ui-decisions/REPORT_REVISAO_PLANO_V1_PRODUCAO.md`
 
-## 5) Migrations adicionadas
+## 6) Migrations adicionadas
 - `20260202120000_add_appointment_messages.sql`
 - `20260202123000_add_client_flags.sql`
 
-## 6) Como rodar migrations localmente
+## 7) Como rodar migrations localmente
 ```bash
 supabase db push --local
 ```
 
-## 7) Como habilitar a UI do Atendimento v1-prod
+## 8) Como habilitar a UI do Atendimento v1-prod
 Adicionar no `.env.local`:
 ```
 NEXT_PUBLIC_ATTENDANCE_UIV4=1
 ```
 
-## 8) Testes e validações (execução)
+## 9) Testes e validações (execução)
 Comandos executados na raiz:
 - `pnpm lint`
 - `pnpm check-types`
@@ -69,7 +96,7 @@ Turborepo did not find the correct binary for your platform.
 Detected linux 64, found turbo-windows-64/bin/turbo.exe
 ```
 
-## 9) Pendências / próximos passos
+## 10) Pendências / próximos passos
 - Ajustar ambiente do Turbo (instalar binário Linux ou reinstalar `node_modules` no WSL) e reexecutar:
   - `pnpm install`
   - `pnpm lint`
