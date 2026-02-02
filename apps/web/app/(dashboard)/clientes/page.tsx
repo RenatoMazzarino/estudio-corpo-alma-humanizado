@@ -4,6 +4,7 @@ import { format, subDays, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { listClients } from "../../../src/modules/clients/repository";
+import { listAppointmentsForClients } from "../../../src/modules/appointments/repository";
 import { AppHeader } from "../../../components/ui/app-header";
 import { SurfaceCard } from "../../../components/ui/surface-card";
 import { Chip } from "../../../components/ui/chip";
@@ -40,6 +41,16 @@ export default async function ClientesPage({
     clients = clients.filter((client) => isAfter(new Date(client.created_at), threshold));
   }
 
+  const clientIds = clients.map((client) => client.id);
+  const { data: appointmentsData } = await listAppointmentsForClients(FIXED_TENANT_ID, clientIds);
+  const lastVisitMap = new Map<string, string>();
+
+  (appointmentsData ?? []).forEach((appointment) => {
+    if (!appointment.client_id) return;
+    if (lastVisitMap.has(appointment.client_id)) return;
+    lastVisitMap.set(appointment.client_id, appointment.start_time);
+  });
+
   const grouped = clients.reduce<Record<string, ClientListItem[]>>((acc, client) => {
     const letter = (client.name?.[0] || "#").toUpperCase();
     if (!acc[letter]) acc[letter] = [];
@@ -48,6 +59,7 @@ export default async function ClientesPage({
   }, {});
 
   const letters = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const dbSnapshot = JSON.stringify(clients, null, 2);
 
   const buildFilterHref = (nextFilter: string) => {
     const params = new URLSearchParams();
@@ -75,8 +87,8 @@ export default async function ClientesPage({
               <input
                 name="q"
                 defaultValue={query}
-                placeholder="Buscar por nome ou telefone..."
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-transparent focus:border-studio-green/30 focus:ring-2 focus:ring-studio-green/15 text-sm font-semibold text-studio-text transition"
+                placeholder="Buscar por nome..."
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-paper border border-transparent focus:border-studio-green/30 focus:ring-2 focus:ring-studio-green/15 text-sm font-semibold text-studio-text transition"
               />
               {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
             </form>
@@ -93,7 +105,7 @@ export default async function ClientesPage({
                   className={`px-3 py-2 rounded-xl text-[11px] font-extrabold tracking-wide whitespace-nowrap ${
                     filter === item.id
                       ? "bg-studio-green text-white shadow-soft"
-                      : "bg-white text-studio-text border border-line"
+                      : "bg-paper text-studio-text border border-line"
                   }`}
                 >
                   {item.label}
@@ -128,7 +140,10 @@ export default async function ClientesPage({
 
             <SurfaceCard className="p-0 overflow-hidden">
               {grouped[letter].map((client, index) => {
-                const sinceLabel = format(new Date(client.created_at), "MMM yyyy", { locale: ptBR });
+                const lastVisit = lastVisitMap.get(client.id);
+                const lastVisitLabel = lastVisit
+                  ? format(new Date(lastVisit), "dd MMM", { locale: ptBR })
+                  : "Sem visitas";
                 return (
                   <Link
                     key={client.id}
@@ -146,7 +161,7 @@ export default async function ClientesPage({
                         {client.is_vip && <Chip tone="success">VIP</Chip>}
                         {client.needs_attention && <Chip tone="danger">Atenção</Chip>}
                       </div>
-                      <p className="text-[11px] text-muted font-semibold">Cliente desde {sinceLabel}</p>
+                      <p className="text-[11px] text-muted font-semibold">Última visita: {lastVisitLabel}</p>
                       {client.phone && (
                         <span className="mt-1 inline-flex text-[11px] text-muted bg-studio-light px-2 py-0.5 rounded-full">
                           {client.phone}
@@ -167,6 +182,13 @@ export default async function ClientesPage({
             <p className="text-muted text-sm">Nenhum cliente encontrado.</p>
           </div>
         )}
+
+        <details className="mx-6 mt-6 mb-10 bg-white rounded-3xl border border-line p-4 shadow-soft">
+          <summary className="text-xs font-extrabold text-muted uppercase tracking-widest cursor-pointer">
+            Dados técnicos (DB)
+          </summary>
+          <pre className="mt-3 text-[10px] text-muted whitespace-pre-wrap">{dbSnapshot}</pre>
+        </details>
       </div>
     </div>
   );

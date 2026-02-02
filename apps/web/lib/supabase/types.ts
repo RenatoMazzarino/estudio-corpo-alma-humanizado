@@ -739,6 +739,7 @@ export type Database = {
           initials: string | null
           is_minor: boolean
           is_vip: boolean
+          marketing_opt_in: boolean
           name: string
           needs_attention: boolean
           observacoes_gerais: string | null
@@ -770,6 +771,7 @@ export type Database = {
           initials?: string | null
           is_minor?: boolean
           is_vip?: boolean
+          marketing_opt_in?: boolean
           name: string
           needs_attention?: boolean
           observacoes_gerais?: string | null
@@ -801,6 +803,7 @@ export type Database = {
           initials?: string | null
           is_minor?: boolean
           is_vip?: boolean
+          marketing_opt_in?: boolean
           name?: string
           needs_attention?: boolean
           observacoes_gerais?: string | null

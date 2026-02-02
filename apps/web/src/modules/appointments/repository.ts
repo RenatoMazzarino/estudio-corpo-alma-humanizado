@@ -66,9 +66,22 @@ export async function listAppointmentsForClient(tenantId: string, clientId: stri
   const supabase = createServiceClient();
   return supabase
     .from("appointments")
-    .select("id, start_time, service_name, price, status")
+    .select("id, start_time, service_name, price, status, is_home_visit")
     .eq("client_id", clientId)
     .eq("tenant_id", tenantId)
+    .order("start_time", { ascending: false });
+}
+
+export async function listAppointmentsForClients(tenantId: string, clientIds: string[]) {
+  const supabase = createServiceClient();
+  if (clientIds.length === 0) {
+    return { data: [], error: null };
+  }
+  return supabase
+    .from("appointments")
+    .select("id, client_id, start_time, status")
+    .eq("tenant_id", tenantId)
+    .in("client_id", clientIds)
     .order("start_time", { ascending: false });
 }
 

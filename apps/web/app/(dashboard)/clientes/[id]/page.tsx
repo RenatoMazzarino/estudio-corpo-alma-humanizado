@@ -1,4 +1,4 @@
-import { ChevronLeft, CalendarClock } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { NotesSection } from "./notes-section";
@@ -7,7 +7,6 @@ import { ptBR } from "date-fns/locale";
 import { getClientById } from "../../../../src/modules/clients/repository";
 import { listAppointmentsForClient } from "../../../../src/modules/appointments/repository";
 import { ClientProfile } from "./client-profile";
-import { AppHeader } from "../../../../components/ui/app-header";
 import { SurfaceCard } from "../../../../components/ui/surface-card";
 
 interface PageProps {
@@ -20,6 +19,7 @@ interface AppointmentHistoryItem {
   service_name: string;
   price: number | null;
   status: string;
+  is_home_visit: boolean | null;
 }
 
 export default async function ClientProfilePage(props: PageProps) {
@@ -36,70 +36,99 @@ export default async function ClientProfilePage(props: PageProps) {
   const { data: historyData } = await listAppointmentsForClient(FIXED_TENANT_ID, params.id);
   const history = (historyData as AppointmentHistoryItem[] | null) ?? [];
 
+  const visitsCount = history.length;
+  const absencesCount = history.filter((apt) => apt.status === "no_show").length;
+  const lastVisit = history[0]?.start_time ?? null;
+  const lastVisitLabel = lastVisit ? format(new Date(lastVisit), "dd MMM", { locale: ptBR }) : "Sem visitas";
+
   return (
     <div className="-mx-4 -mt-4">
-      <AppHeader
-        label="Clientes"
-        title={client.name}
-        subtitle={client.phone ?? "Cadastro completo do cliente"}
-        leftSlot={
+      <div className="relative bg-paper min-h-[100dvh]">
+        <div className="safe-top absolute top-0 left-0 w-full px-6 pt-8 flex justify-between items-center z-40 pointer-events-none">
           <Link
             href="/clientes"
-            className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+            className="pointer-events-auto w-10 h-10 rounded-full bg-white/85 backdrop-blur text-gray-700 flex items-center justify-center shadow-sm hover:bg-white transition"
             aria-label="Voltar"
           >
             <ChevronLeft size={20} />
           </Link>
-        }
-      />
+          <div className="pointer-events-none text-xs font-extrabold text-muted uppercase tracking-widest">
+            Detalhes
+          </div>
+        </div>
 
-      <main className="px-6 pt-6 pb-28 space-y-6">
-        <ClientProfile client={client} />
+        <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
+          <ClientProfile
+            client={client}
+            metrics={{
+              visits: visitsCount,
+              absences: absencesCount,
+              lastVisitLabel,
+            }}
+          />
 
-        <NotesSection clientId={client.id} initialNotes={client.observacoes_gerais} />
+          <section className="px-6 pt-5 pb-4 space-y-5">
+            <NotesSection clientId={client.id} initialNotes={client.observacoes_gerais} />
 
-        <section className="space-y-3">
-          <h2 className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
-            Histórico de visitas
-          </h2>
-          {history.length > 0 ? (
-            <div className="space-y-3">
-              {history.map((apt) => {
-                const isCompleted = apt.status === "completed";
-                return (
-                  <SurfaceCard key={apt.id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-extrabold text-studio-text text-sm">{apt.service_name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted mt-1">
-                        <CalendarClock size={12} />
-                        <span className="capitalize">
-                          {format(new Date(apt.start_time), "dd 'de' MMM, yyyy", { locale: ptBR })}
-                        </span>
+            <div>
+              <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">
+                Histórico recente
+              </h3>
+              {history.length > 0 ? (
+                <div className="space-y-3">
+                  {history.map((apt) => {
+                    const startDate = new Date(apt.start_time);
+                    const isCompleted = apt.status === "completed";
+                    return (
+                      <div key={apt.id} className="bg-white rounded-2xl p-4 shadow-sm border border-white flex gap-4">
+                        <div className="min-w-[54px] text-center">
+                          <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">
+                            {format(startDate, "MMM", { locale: ptBR })}
+                          </p>
+                          <p className="text-lg font-black text-studio-text">
+                            {format(startDate, "dd")}
+                          </p>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-extrabold text-studio-text text-sm">{apt.service_name}</h4>
+                          <p className="text-xs text-muted font-semibold mt-0.5">
+                            {apt.is_home_visit ? "Domicílio" : "No estúdio"} •{" "}
+                            {apt.price ? `R$ ${apt.price.toFixed(2)}` : "Sem valor"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span
+                            className={`px-2 py-1 rounded-xl text-[10px] font-extrabold border ${
+                              isCompleted
+                                ? "bg-studio-light text-studio-green border-studio-green/10"
+                                : "bg-purple-50 text-purple-600 border-purple-100"
+                            }`}
+                          >
+                            {isCompleted ? "Concluído" : apt.is_home_visit ? "Domicílio" : "Agendado"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className="font-extrabold text-studio-green text-sm">
-                        R$ {apt.price}
-                      </span>
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold mt-1 ${
-                          isCompleted ? "bg-emerald-50 text-ok" : "bg-studio-light text-muted"
-                        }`}
-                      >
-                        {isCompleted ? "Concluído" : "Agendado"}
-                      </span>
-                    </div>
-                  </SurfaceCard>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              ) : (
+                <SurfaceCard className="text-center py-10 text-muted border border-dashed border-line bg-studio-light/40">
+                  <p>Nenhuma visita registrada.</p>
+                </SurfaceCard>
+              )}
             </div>
-          ) : (
-            <SurfaceCard className="text-center py-10 text-muted border border-dashed border-line bg-studio-light/40">
-              <p>Nenhuma visita registrada.</p>
-            </SurfaceCard>
-          )}
-        </section>
-      </main>
+
+            <details className="bg-white rounded-3xl border border-line p-4 shadow-soft">
+              <summary className="text-xs font-extrabold text-muted uppercase tracking-widest cursor-pointer">
+                Dados técnicos (DB)
+              </summary>
+              <pre className="mt-3 text-[10px] text-muted whitespace-pre-wrap">
+                {JSON.stringify(client, null, 2)}
+              </pre>
+            </details>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
