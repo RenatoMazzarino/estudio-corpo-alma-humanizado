@@ -5,11 +5,24 @@ export type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 export type ClientInsert = Database["public"]["Tables"]["clients"]["Insert"];
 export type ClientUpdate = Database["public"]["Tables"]["clients"]["Update"];
 
-export async function listClients(tenantId: string, query?: string) {
+export async function listClients(
+  tenantId: string,
+  query?: string,
+  filter?: "vip" | "alert"
+) {
   const supabase = createServiceClient();
   let dbQuery = supabase.from("clients").select("*").eq("tenant_id", tenantId).order("name");
-  if (query) {
-    dbQuery = dbQuery.ilike("name", `%${query}%`);
+  const safeQuery = query?.replace(/[%_,]/g, "").trim();
+  if (safeQuery) {
+    dbQuery = dbQuery.or(
+      [`name.ilike.%${safeQuery}%`, `phone.ilike.%${safeQuery}%`].join(",")
+    );
+  }
+  if (filter === "vip") {
+    dbQuery = dbQuery.eq("is_vip", true);
+  }
+  if (filter === "alert") {
+    dbQuery = dbQuery.eq("needs_attention", true);
   }
   return dbQuery;
 }

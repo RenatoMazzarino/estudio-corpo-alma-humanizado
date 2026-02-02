@@ -35,7 +35,18 @@ function buildAddressLine(payload: {
 export async function createClientAction(formData: FormData): Promise<void> {
   const name = formData.get("name") as string | null;
   const phone = (formData.get("phone") as string | null) || null;
-  const observacoes_gerais = (formData.get("observacoes_gerais") as string | null) || null;
+  const is_vip = formData.get("is_vip") === "on";
+  const needs_attention = formData.get("needs_attention") === "on";
+  const preferences_notes = (formData.get("preferences_notes") as string | null) || null;
+  const contraindications = (formData.get("contraindications") as string | null) || null;
+  const marketing_opt_in = formData.get("marketing_opt_in") === "on";
+  const is_minor = formData.get("is_minor") === "on";
+  const guardian_name = (formData.get("guardian_name") as string | null) || null;
+  const guardian_phone = (formData.get("guardian_phone") as string | null) || null;
+  const guardian_cpf = (formData.get("guardian_cpf") as string | null) || null;
+  const observacoes_gerais = formData.has("observacoes_gerais")
+    ? ((formData.get("observacoes_gerais") as string | null) || null)
+    : undefined;
   const email = (formData.get("email") as string | null) || null;
   const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
   const cpf = (formData.get("cpf") as string | null) || null;
@@ -61,6 +72,15 @@ export async function createClientAction(formData: FormData): Promise<void> {
   const parsed = createClientSchema.safeParse({
     name,
     phone,
+    is_vip,
+    needs_attention,
+    preferences_notes,
+    contraindications,
+    marketing_opt_in,
+    is_minor,
+    guardian_name,
+    guardian_phone,
+    guardian_cpf,
     observacoes_gerais,
     email,
     data_nascimento,
@@ -84,6 +104,15 @@ export async function createClientAction(formData: FormData): Promise<void> {
   const { data, error } = await createClient({
     name: parsed.data.name,
     phone: parsed.data.phone,
+    is_vip: parsed.data.is_vip ?? false,
+    needs_attention: parsed.data.needs_attention ?? false,
+    preferences_notes: parsed.data.preferences_notes,
+    contraindications: parsed.data.contraindications,
+    marketing_opt_in: parsed.data.marketing_opt_in ?? false,
+    is_minor: parsed.data.is_minor ?? false,
+    guardian_name: parsed.data.guardian_name,
+    guardian_phone: parsed.data.guardian_phone,
+    guardian_cpf: parsed.data.guardian_cpf,
     observacoes_gerais: parsed.data.observacoes_gerais,
     email: parsed.data.email,
     data_nascimento: parsed.data.data_nascimento,
@@ -140,6 +169,15 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
   const clientId = formData.get("clientId") as string | null;
   const name = formData.get("name") as string | null;
   const phone = (formData.get("phone") as string | null) || null;
+  const is_vip = formData.get("is_vip") === "on";
+  const needs_attention = formData.get("needs_attention") === "on";
+  const preferences_notes = (formData.get("preferences_notes") as string | null) || null;
+  const contraindications = (formData.get("contraindications") as string | null) || null;
+  const marketing_opt_in = formData.get("marketing_opt_in") === "on";
+  const is_minor = formData.get("is_minor") === "on";
+  const guardian_name = (formData.get("guardian_name") as string | null) || null;
+  const guardian_phone = (formData.get("guardian_phone") as string | null) || null;
+  const guardian_cpf = (formData.get("guardian_cpf") as string | null) || null;
   const observacoes_gerais = (formData.get("observacoes_gerais") as string | null) || null;
   const email = (formData.get("email") as string | null) || null;
   const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
@@ -167,6 +205,15 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     clientId,
     name,
     phone,
+    is_vip,
+    needs_attention,
+    preferences_notes,
+    contraindications,
+    marketing_opt_in,
+    is_minor,
+    guardian_name,
+    guardian_phone,
+    guardian_cpf,
     observacoes_gerais,
     email,
     data_nascimento,
@@ -188,10 +235,18 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     return fail(new AppError("Dados inválidos para cliente", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const { error } = await updateClient(FIXED_TENANT_ID, parsed.data.clientId, {
+  const updatePayload: Parameters<typeof updateClient>[2] = {
     name: parsed.data.name,
     phone: parsed.data.phone,
-    observacoes_gerais: parsed.data.observacoes_gerais,
+    is_vip: parsed.data.is_vip ?? false,
+    needs_attention: parsed.data.needs_attention ?? false,
+    preferences_notes: parsed.data.preferences_notes,
+    contraindications: parsed.data.contraindications,
+    marketing_opt_in: parsed.data.marketing_opt_in ?? false,
+    is_minor: parsed.data.is_minor ?? false,
+    guardian_name: parsed.data.guardian_name,
+    guardian_phone: parsed.data.guardian_phone,
+    guardian_cpf: parsed.data.guardian_cpf,
     email: parsed.data.email,
     data_nascimento: parsed.data.data_nascimento,
     cpf: parsed.data.cpf,
@@ -216,7 +271,13 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     como_conheceu: parsed.data.como_conheceu,
     health_tags: parsed.data.health_tags,
     initials: parsed.data.name.slice(0, 2).toUpperCase(),
-  });
+  };
+
+  if (parsed.data.observacoes_gerais !== undefined) {
+    updatePayload.observacoes_gerais = parsed.data.observacoes_gerais;
+  }
+
+  const { error } = await updateClient(FIXED_TENANT_ID, parsed.data.clientId, updatePayload);
 
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
