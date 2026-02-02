@@ -72,17 +72,23 @@ export async function listAppointmentsForClient(tenantId: string, clientId: stri
     .order("start_time", { ascending: false });
 }
 
-export async function listAppointmentsForClients(tenantId: string, clientIds: string[]) {
+export type AppointmentForClientRow = Pick<AppointmentRow, "id" | "client_id" | "start_time" | "status">;
+
+export async function listAppointmentsForClients(
+  tenantId: string,
+  clientIds: string[]
+): Promise<{ data: AppointmentForClientRow[]; error: PostgrestError | null }> {
   const supabase = createServiceClient();
   if (clientIds.length === 0) {
     return { data: [], error: null };
   }
-  return supabase
+  const { data, error } = await supabase
     .from("appointments")
     .select("id, client_id, start_time, status")
     .eq("tenant_id", tenantId)
     .in("client_id", clientIds)
     .order("start_time", { ascending: false });
+  return { data: (data as AppointmentForClientRow[] | null) ?? [], error };
 }
 
 export async function updateAppointment(tenantId: string, id: string, update: AppointmentUpdate) {
