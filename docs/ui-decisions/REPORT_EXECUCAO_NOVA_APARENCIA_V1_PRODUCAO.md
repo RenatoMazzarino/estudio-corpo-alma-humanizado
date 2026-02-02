@@ -44,6 +44,8 @@
 - Garantia DB↔UI: painel “Dados técnicos (DB)” por etapa com `appointment_events` e todos os dados agregados.
 
 ## 4) Commits (hash + objetivo)
+- `08a2b1e` — fix(build): proteger iniciais do cliente
+  - Objetivo: corrigir erro de build (null safety) em `getInitials`.
 - `2f83cad` — fix(build): ajustar payload da mensageria
   - Objetivo: corrigir tipagem do payload Json para build na Vercel.
 - `9cae13c` — fix(build): importar zod no atendimento
