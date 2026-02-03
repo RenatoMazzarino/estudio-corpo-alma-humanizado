@@ -2,7 +2,9 @@
 
 ## 1) Resumo executivo
 - Agenda: linha de “horário atual” posicionada corretamente e atualização em tempo real; sync de data via querystring.
+- Agenda: tabs DIA/SEMANA/MÊS com sync de URL (sem reset para “DIA”).
 - Shell: BottomNav fixa e regras de visibilidade por rota aplicadas (inclui /clientes/novo, exclui /clientes/[id], /novo e /atendimento).
+- Shell: moldura fixa do “celular” com scroll apenas interno.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
@@ -25,6 +27,7 @@
 
 ## 4) Commits (hash + objetivo)
 - `0f93f8b` — docs: atualiza notas de sql e report
+- `f187f2c` — fix(ui): ajustes de navegação e moldura
 - `dce4907` — fix(agenda): tipagem e sync de data
 - `b56e0dd` — refactor(atendimento): ajustes e limpeza
 - `6a0bf8a` — feat(clientes): telas e dados estruturados
