@@ -35,6 +35,12 @@ import {
   Building2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  getDurationHeight,
+  getOffsetForTime,
+  getTimeRangeMinutes,
+  type TimeGridConfig,
+} from "../src/modules/agenda/time-grid";
 
 interface AppointmentClient {
   id: string;
@@ -103,7 +109,27 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  const timeGridConfig = useMemo<TimeGridConfig>(
+    () => ({
+      startHour: 6,
+      endHour: 22,
+      hourHeight: 72,
+    }),
+    []
+  );
+  const timelineHeight = useMemo(
+    () => getTimeRangeMinutes(timeGridConfig) * (timeGridConfig.hourHeight / 60),
+    [timeGridConfig]
+  );
+  const hours = useMemo(
+    () =>
+      Array.from(
+        { length: timeGridConfig.endHour - timeGridConfig.startHour + 1 },
+        (_, idx) => timeGridConfig.startHour + idx
+      ),
+    [timeGridConfig]
+  );
 
   const monthDays = useMemo(
     () =>
@@ -227,6 +253,20 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     if (isUserScrolling.current) return;
     scrollToDate(selectedDate);
   }, [selectedDate, view, scrollToDate]);
+
+  useEffect(() => {
+    if (view !== "day") return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const delay = 60000 - (Date.now() % 60000);
+    const timeout = setTimeout(() => {
+      setNow(new Date());
+      interval = setInterval(() => setNow(new Date()), 60000);
+    }, delay);
+    return () => {
+      clearTimeout(timeout);
+      if (interval) clearInterval(interval);
+    };
+  }, [view]);
 
   const handleDayScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const container = event.currentTarget;
@@ -438,7 +478,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               const appointmentCount = dayAppointments.length;
               const homeCount = dayAppointments.filter((appt) => appt.is_home_visit).length;
               const blockCount = dayBlocks.length;
-              const showFreeLine = items.length > 0 && appointmentCount > 0;
+              const nowOffset = isToday(day) ? getOffsetForTime(now, timeGridConfig) : null;
 
               return (
                 <div
@@ -481,126 +521,156 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     </div>
                   </div>
 
-                  {isToday(day) && (
-                    <div className="flex items-center gap-2 mb-4 mt-2">
-                      <span className="text-xs font-extrabold text-danger w-12 text-right">
-                        {format(now, "HH:mm")}
-                      </span>
-                      <div className="flex-1 h-px bg-danger/70 relative">
-                        <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-danger"></div>
-                      </div>
-                    </div>
-                  )}
-
                   {items.length > 0 ? (
-                    <div>
-                      {items.map((item) => {
-                        const startTimeDate = new Date(item.start_time);
-                        const start = format(startTimeDate, "HH:mm");
-                        let end = "";
-                        if (item.finished_at) {
-                          end = format(new Date(item.finished_at), "HH:mm");
-                        } else if (item.total_duration_minutes) {
-                          end = format(addMinutes(startTimeDate, item.total_duration_minutes), "HH:mm");
-                        }
+                    <div className="grid grid-cols-[56px_1fr] gap-4">
+                      <div className="flex flex-col items-end text-xs text-muted font-semibold">
+                        {hours.map((hour) => (
+                          <div
+                            key={hour}
+                            style={{ height: timeGridConfig.hourHeight }}
+                            className="flex items-start justify-end w-full"
+                          >
+                            {String(hour).padStart(2, "0")}:00
+                          </div>
+                        ))}
+                      </div>
+                      <div className="relative" style={{ height: timelineHeight }}>
+                        {hours.map((hour, index) => (
+                          <div
+                            key={hour}
+                            className="absolute left-0 right-0 border-t border-line/60"
+                            style={{ top: index * timeGridConfig.hourHeight }}
+                          />
+                        ))}
 
-                        const isBlock = item.type === "block";
-                        const isHomeVisit = item.is_home_visit;
-                        const isCompleted = item.status === "completed";
-
-                        return (
-                          <div key={item.id} className="flex gap-4 group mb-4">
-                            <span className="text-sm font-extrabold text-studio-text pt-3 w-12 text-right">
-                              {start}
+                        {nowOffset !== null && (
+                          <div
+                            className="absolute left-0 right-0 flex items-center gap-2 z-20"
+                            style={{ top: nowOffset }}
+                          >
+                            <span className="text-[11px] font-extrabold text-danger w-12 text-right">
+                              {format(now, "HH:mm")}
                             </span>
-                            {isBlock ? (
-                              <div className="flex-1 bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400">
-                                <div className="flex justify-between items-start mb-1">
-                                  <h3 className="font-extrabold text-studio-text text-lg leading-tight">
-                                    {item.clientName}
-                                  </h3>
-                                  <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
-                                    <Hospital className="w-3.5 h-3.5" />
-                                  </div>
-                                </div>
-                                <p className="text-sm text-muted">{item.serviceName}</p>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
-                                    Bloqueado
-                                  </span>
-                                  {end && <span className="text-[11px] text-muted">Até {end}</span>}
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => router.push(`/atendimento/${item.id}`)}
-                                className={`flex-1 text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
-                                  isHomeVisit ? "border-purple-500" : "border-studio-green"
-                                }`}
-                              >
-                                <div className="flex justify-between items-start mb-1">
-                                  <h3 className="font-extrabold text-studio-text text-lg leading-tight">
-                                    {item.clientName}
-                                  </h3>
-                                  <div
-                                    className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                                      isHomeVisit
-                                        ? "bg-purple-50 text-purple-600"
-                                        : "bg-green-50 text-studio-green"
-                                    }`}
-                                  >
-                                    {isHomeVisit ? <Car className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-                                  </div>
-                                </div>
-                                <p className="text-sm text-muted">{item.serviceName}</p>
-                                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                  <span
-                                    className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 ${
-                                      isCompleted
-                                        ? "bg-green-100 text-green-700"
-                                        : isHomeVisit
-                                          ? "bg-purple-100 text-purple-700"
-                                          : "bg-studio-green/10 text-studio-green"
-                                    }`}
-                                  >
-                                    {isCompleted ? (
-                                      <>
-                                        <CheckCircle2 className="w-3 h-3" /> Finalizado
-                                      </>
-                                    ) : isHomeVisit ? (
-                                      <>
-                                        <Home className="w-3 h-3" /> Domicílio
-                                      </>
-                                    ) : (
-                                      "Confirmado"
-                                    )}
-                                  </span>
-                                  {item.phone && (
-                                    <span className="text-[11px] text-muted flex items-center gap-1">
-                                      <Phone className="w-3 h-3" /> {item.phone}
-                                    </span>
-                                  )}
-                                  {item.address && isHomeVisit && (
-                                    <span className="text-[11px] text-muted flex items-center gap-1">
-                                      <MapPin className="w-3 h-3" /> {item.address}
-                                    </span>
-                                  )}
-                                </div>
-                              </button>
-                            )}
+                            <div className="flex-1 h-px bg-danger/70 relative">
+                              <div className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-danger"></div>
+                            </div>
                           </div>
-                        );
-                      })}
+                        )}
 
-                      {showFreeLine && (
-                        <div className="flex gap-4 opacity-60">
-                          <span className="text-sm font-extrabold text-muted pt-3 w-12 text-right">--:--</span>
-                          <div className="flex-1 border-t-2 border-dashed border-line mt-5 flex items-center gap-2">
-                            <span className="text-xs bg-studio-light px-2 rounded text-muted mt-[-1rem] ml-2">Livre</span>
-                          </div>
-                        </div>
-                      )}
+                        {items.map((item) => {
+                          const startTimeDate = new Date(item.start_time);
+                          const startLabel = format(startTimeDate, "HH:mm");
+                          let endLabel = "";
+                          let durationMinutes = item.total_duration_minutes ?? 60;
+                          if (item.finished_at) {
+                            endLabel = format(new Date(item.finished_at), "HH:mm");
+                            durationMinutes = Math.max(
+                              15,
+                              Math.round(
+                                (new Date(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
+                              )
+                            );
+                          } else if (item.total_duration_minutes) {
+                            endLabel = format(addMinutes(startTimeDate, item.total_duration_minutes), "HH:mm");
+                          }
+
+                          const top = getOffsetForTime(startTimeDate, timeGridConfig);
+                          if (top === null) return null;
+                          const height = getDurationHeight(durationMinutes, timeGridConfig);
+                          const isBlock = item.type === "block";
+                          const isHomeVisit = item.is_home_visit;
+                          const isCompleted = item.status === "completed";
+
+                          return (
+                            <div key={item.id} className="absolute left-0 right-0 pr-2" style={{ top, height }}>
+                              {isBlock ? (
+                                <div className="h-full bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <h3 className="font-extrabold text-studio-text text-sm leading-tight">
+                                      {item.clientName}
+                                    </h3>
+                                    <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                      <Hospital className="w-3.5 h-3.5" />
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted">{item.serviceName}</p>
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
+                                      Bloqueado
+                                    </span>
+                                    {endLabel && <span className="text-[11px] text-muted">Até {endLabel}</span>}
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => router.push(`/atendimento/${item.id}`)}
+                                  className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
+                                    isHomeVisit ? "border-purple-500" : "border-studio-green"
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start mb-1">
+                                    <h3 className="font-extrabold text-studio-text text-sm leading-tight">
+                                      {item.clientName}
+                                    </h3>
+                                    <div
+                                      className={`w-7 h-7 rounded-full flex items-center justify-center ${
+                                        isHomeVisit
+                                          ? "bg-purple-50 text-purple-600"
+                                          : "bg-green-50 text-studio-green"
+                                      }`}
+                                    >
+                                      {isHomeVisit ? (
+                                        <Car className="w-3.5 h-3.5" />
+                                      ) : (
+                                        <Building2 className="w-3.5 h-3.5" />
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-muted">{item.serviceName}</p>
+                                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 ${
+                                        isCompleted
+                                          ? "bg-green-100 text-green-700"
+                                          : isHomeVisit
+                                            ? "bg-purple-100 text-purple-700"
+                                            : "bg-studio-green/10 text-studio-green"
+                                      }`}
+                                    >
+                                      {isCompleted ? (
+                                        <>
+                                          <CheckCircle2 className="w-3 h-3" /> Finalizado
+                                        </>
+                                      ) : isHomeVisit ? (
+                                        <>
+                                          <Home className="w-3 h-3" /> Domicílio
+                                        </>
+                                      ) : (
+                                        "Confirmado"
+                                      )}
+                                    </span>
+                                    <span className="text-[11px] text-muted">
+                                      {startLabel}
+                                      {endLabel ? ` – ${endLabel}` : ""}
+                                    </span>
+                                    {item.phone && (
+                                      <span className="text-[11px] text-muted flex items-center gap-1">
+                                        <Phone className="w-3 h-3" /> {item.phone}
+                                      </span>
+                                    )}
+                                    {item.address && isHomeVisit && (
+                                      <span className="text-[11px] text-muted flex items-center gap-1">
+                                        <MapPin className="w-3 h-3" /> {item.address}
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
