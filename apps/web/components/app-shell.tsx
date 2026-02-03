@@ -24,11 +24,11 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <TimerProvider>
       {/* Fundo geral usando var(--color-studio-bg) */}
-      <div className="min-h-screen bg-neutral-900 py-6 flex justify-center">
+      <div className="h-[100dvh] bg-neutral-900 p-6 flex justify-center items-center overflow-hidden">
         <div
           className={`
           bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden
-          w-full max-w-[414px] min-h-[100dvh] rounded-2xl
+          w-full max-w-[414px] h-full rounded-2xl
         `}
         >
           <main

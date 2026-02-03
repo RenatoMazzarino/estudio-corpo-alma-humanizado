@@ -167,6 +167,25 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     return map;
   }, [appointments]);
 
+  const syncViewToUrl = useCallback(
+    (nextView: AgendaView, nextDate?: Date) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("view", nextView);
+      const dateToUse = nextDate ?? selectedDate;
+      params.set("date", format(dateToUse, "yyyy-MM-dd"));
+      router.replace(`/?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams, selectedDate]
+  );
+
+  const setViewAndSync = useCallback(
+    (nextView: AgendaView, nextDate?: Date) => {
+      setView(nextView);
+      syncViewToUrl(nextView, nextDate);
+    },
+    [syncViewToUrl]
+  );
+
   const blocksByDay = useMemo(() => {
     const map = new Map<string, AvailabilityBlock[]>();
     blocks.forEach((block) => {
@@ -330,7 +349,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     const today = new Date();
     setSelectedDate(today);
     setCurrentMonth(startOfMonth(today));
-    setView("day");
+    setViewAndSync("day", today);
   };
 
   const monthLabels = useMemo(
@@ -401,7 +420,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
           <button
             type="button"
-            onClick={() => setView("day")}
+            onClick={() => setViewAndSync("day")}
             className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
               view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
             }`}
@@ -410,7 +429,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           </button>
           <button
             type="button"
-            onClick={() => setView("week")}
+            onClick={() => setViewAndSync("week")}
             className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
               view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
             }`}
@@ -419,7 +438,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           </button>
           <button
             type="button"
-            onClick={() => setView("month")}
+            onClick={() => setViewAndSync("month")}
             className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
               view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
             }`}
@@ -759,7 +778,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     type="button"
                     onClick={() => {
                       setSelectedDate(day);
-                      setView("day");
+                      setViewAndSync("day", day);
                       setIsMonthPickerOpen(false);
                     }}
                     className="bg-white p-4 rounded-3xl border-l-4 border-studio-green shadow-soft text-left active:scale-[0.99] transition"
@@ -866,7 +885,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     type="button"
                     onClick={() => {
                       setSelectedDate(day);
-                      setView("day");
+                      setViewAndSync("day", day);
                     }}
                     className="relative flex justify-center"
                   >

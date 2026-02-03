@@ -1,5 +1,7 @@
 import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { NotesSection } from "./notes-section";
+import { ChevronLeft } from "lucide-react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -56,6 +58,16 @@ export default async function ClientProfilePage(props: PageProps) {
   return (
     <div className="-mx-4 -mt-4">
       <div className="relative bg-paper min-h-[100dvh]">
+        <div className="safe-top absolute top-0 left-0 w-full px-6 pt-6 flex justify-between items-center z-40 pointer-events-none">
+          <Link
+            href="/clientes"
+            className="pointer-events-auto w-10 h-10 rounded-full bg-white/85 backdrop-blur text-gray-700 flex items-center justify-center shadow-sm hover:bg-white transition"
+            aria-label="Voltar"
+          >
+            <ChevronLeft size={20} />
+          </Link>
+        </div>
+
         <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
           <ClientProfile
             client={client}

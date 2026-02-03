@@ -5,7 +5,6 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Search, User, UserPlus, ChevronRight } from "lucide-react";
-import { SurfaceCard } from "../../../components/ui/surface-card";
 import { Chip } from "../../../components/ui/chip";
 import { IconButton } from "../../../components/ui/buttons";
 
@@ -155,8 +154,8 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
               </h3>
             </div>
 
-            <SurfaceCard className="p-0 overflow-hidden">
-              {(grouped[letter] ?? []).map((client, index) => {
+            <div className="bg-white rounded-3xl border border-white shadow-soft overflow-hidden divide-y divide-line">
+              {(grouped[letter] ?? []).map((client) => {
                 const lastVisit = lastVisits[client.id];
                 const lastVisitLabel = lastVisit
                   ? format(new Date(lastVisit), "dd MMM", { locale: ptBR })
@@ -165,9 +164,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
                   <Link
                     key={client.id}
                     href={`/clientes/${client.id}`}
-                    className={`flex items-center gap-4 px-4 py-4 transition active:scale-[0.99] hover:bg-studio-light/60 ${
-                      index > 0 ? "border-t border-line" : ""
-                    }`}
+                    className="flex items-center gap-4 px-4 py-4 transition active:scale-[0.99] hover:bg-studio-light/60"
                   >
                     <div className="w-11 h-11 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold text-sm">
                       {client.initials || <User className="w-4 h-4" />}
@@ -189,7 +186,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
                   </Link>
                 );
               })}
-            </SurfaceCard>
+            </div>
           </section>
         ))}
 
