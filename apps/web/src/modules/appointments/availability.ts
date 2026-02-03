@@ -18,6 +18,16 @@ interface AppointmentSlotRow {
   finished_at: string | null;
   total_duration_minutes: number | null;
   status: string;
+  is_home_visit: boolean | null;
+  services:
+    | {
+        duration_minutes: number;
+        buffer_before_minutes: number | null;
+        buffer_after_minutes: number | null;
+        custom_buffer_minutes: number | null;
+      }
+    | { duration_minutes: number; buffer_before_minutes: number | null; buffer_after_minutes: number | null; custom_buffer_minutes: number | null }[]
+    | null;
 }
 
 interface AvailabilityBlockRow {
@@ -33,8 +43,16 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   }
 
   const [serviceRes, settingsRes, businessHourRes] = await Promise.all([
-    supabase.from("services").select("duration_minutes, custom_buffer_minutes").eq("id", parsed.data.serviceId).single(),
-    supabase.from("settings").select("default_studio_buffer, default_home_buffer").eq("tenant_id", parsed.data.tenantId).single(),
+    supabase
+      .from("services")
+      .select("duration_minutes, custom_buffer_minutes, buffer_before_minutes, buffer_after_minutes")
+      .eq("id", parsed.data.serviceId)
+      .single(),
+    supabase
+      .from("settings")
+      .select("default_studio_buffer, default_home_buffer, buffer_before_minutes, buffer_after_minutes")
+      .eq("tenant_id", parsed.data.tenantId)
+      .single(),
     supabase
       .from("business_hours")
       .select("open_time, close_time, is_closed")
@@ -60,14 +78,32 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   if (!businessHour || businessHour.is_closed) return [];
 
   const serviceDuration = service.duration_minutes || 30;
-  let buffer = 0;
-  if (isHomeVisit) {
-    buffer = settings?.default_home_buffer || 60;
-  } else {
-    buffer = service.custom_buffer_minutes ?? (settings?.default_studio_buffer || 30);
-  }
+  const bufferBefore = isHomeVisit
+    ? service.buffer_before_minutes ??
+      settings?.buffer_before_minutes ??
+      settings?.default_home_buffer ??
+      service.custom_buffer_minutes ??
+      settings?.default_studio_buffer ??
+      30
+    : service.buffer_before_minutes ??
+      settings?.buffer_before_minutes ??
+      service.custom_buffer_minutes ??
+      settings?.default_studio_buffer ??
+      30;
+  const bufferAfter = isHomeVisit
+    ? service.buffer_after_minutes ??
+      settings?.buffer_after_minutes ??
+      settings?.default_home_buffer ??
+      service.custom_buffer_minutes ??
+      settings?.default_studio_buffer ??
+      30
+    : service.buffer_after_minutes ??
+      settings?.buffer_after_minutes ??
+      service.custom_buffer_minutes ??
+      settings?.default_studio_buffer ??
+      30;
 
-  const totalSlotDuration = serviceDuration + buffer;
+  const totalSlotDuration = serviceDuration + bufferBefore + bufferAfter;
 
   const startOfDayStr = `${parsed.data.date}T00:00:00`;
   const endOfDayStr = `${parsed.data.date}T23:59:59`;
@@ -75,7 +111,9 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   const [appointmentsRes, blocksRes] = await Promise.all([
     supabase
       .from("appointments")
-      .select("start_time, finished_at, total_duration_minutes, status")
+      .select(
+        "start_time, finished_at, total_duration_minutes, status, is_home_visit, services(duration_minutes, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes)"
+      )
       .eq("tenant_id", parsed.data.tenantId)
       .not("status", "in", "(canceled_by_client,canceled_by_studio,no_show)")
       .gte("start_time", startOfDayStr)
@@ -103,30 +141,52 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   let currentSlot = openTime;
 
   while (isBefore(currentSlot, closeTime)) {
-    const slotEndTime = addMinutes(currentSlot, totalSlotDuration);
-    if (isAfter(slotEndTime, closeTime)) {
+    const slotBlockStart = addMinutes(currentSlot, -bufferBefore);
+    const slotBlockEnd = addMinutes(currentSlot, serviceDuration + bufferAfter);
+    if (isBefore(slotBlockStart, openTime) || isAfter(slotBlockEnd, closeTime)) {
       break;
     }
 
     const collidesWithAppt = appointments.some((appt) => {
       const apptStart = parseISO(appt.start_time);
-      let apptEnd: Date;
-      if (appt.total_duration_minutes) {
-        apptEnd = addMinutes(apptStart, appt.total_duration_minutes);
-      } else if (appt.finished_at) {
-        apptEnd = parseISO(appt.finished_at);
-      } else {
-        apptEnd = addMinutes(apptStart, 30);
-      }
+      const serviceData = Array.isArray(appt.services) ? appt.services[0] ?? null : appt.services;
+      const apptDuration = serviceData?.duration_minutes ?? appt.total_duration_minutes ?? 30;
+      const apptBufferBefore = appt.is_home_visit
+        ? serviceData?.buffer_before_minutes ??
+          settings?.buffer_before_minutes ??
+          settings?.default_home_buffer ??
+          serviceData?.custom_buffer_minutes ??
+          settings?.default_studio_buffer ??
+          30
+        : serviceData?.buffer_before_minutes ??
+          settings?.buffer_before_minutes ??
+          serviceData?.custom_buffer_minutes ??
+          settings?.default_studio_buffer ??
+          30;
+      const apptBufferAfter = appt.is_home_visit
+        ? serviceData?.buffer_after_minutes ??
+          settings?.buffer_after_minutes ??
+          settings?.default_home_buffer ??
+          serviceData?.custom_buffer_minutes ??
+          settings?.default_studio_buffer ??
+          30
+        : serviceData?.buffer_after_minutes ??
+          settings?.buffer_after_minutes ??
+          serviceData?.custom_buffer_minutes ??
+          settings?.default_studio_buffer ??
+          30;
 
-      return isBefore(currentSlot, apptEnd) && isAfter(slotEndTime, apptStart);
+      const apptBlockStart = addMinutes(apptStart, -apptBufferBefore);
+      const apptBlockEnd = addMinutes(apptStart, apptDuration + apptBufferAfter);
+
+      return isBefore(slotBlockStart, apptBlockEnd) && isAfter(slotBlockEnd, apptBlockStart);
     });
 
     const collidesWithBlock = blocks.some((block) => {
       const blockStart = parseISO(block.start_time);
       const blockEnd = parseISO(block.end_time);
 
-      return isBefore(currentSlot, blockEnd) && isAfter(slotEndTime, blockStart);
+      return isBefore(slotBlockStart, blockEnd) && isAfter(slotBlockEnd, blockStart);
     });
 
     if (!collidesWithAppt && !collidesWithBlock) {

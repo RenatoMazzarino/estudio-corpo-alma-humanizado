@@ -37,16 +37,19 @@ export async function saveBusinessHours(formData: FormData): Promise<ActionResul
 }
 
 export async function saveSettings(formData: FormData): Promise<ActionResult<{ ok: true }>> {
-  const default_studio_buffer = Number(formData.get("default_studio_buffer"));
-  const default_home_buffer = Number(formData.get("default_home_buffer"));
+  const buffer_before_minutes = Number(formData.get("buffer_before_minutes"));
+  const buffer_after_minutes = Number(formData.get("buffer_after_minutes"));
 
-  if (Number.isNaN(default_studio_buffer) || Number.isNaN(default_home_buffer)) {
+  if (Number.isNaN(buffer_before_minutes) || Number.isNaN(buffer_after_minutes)) {
     return fail(new AppError("Buffers inválidos", "VALIDATION_ERROR", 400));
   }
 
+  const legacyTotal = buffer_before_minutes + buffer_after_minutes;
   const { error } = await updateSettings(FIXED_TENANT_ID, {
-    default_studio_buffer,
-    default_home_buffer,
+    buffer_before_minutes,
+    buffer_after_minutes,
+    default_studio_buffer: legacyTotal,
+    default_home_buffer: legacyTotal,
   });
 
   const mapped = mapSupabaseError(error);

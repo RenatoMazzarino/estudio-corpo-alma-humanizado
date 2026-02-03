@@ -13,6 +13,7 @@ export const cancelAppointmentSchema = z.object({
 });
 
 export const createInternalAppointmentSchema = z.object({
+  clientId: z.string().uuid().optional().nullable(),
   clientName: z.string().min(1, "Nome é obrigatório"),
   clientPhone: z
     .string()
@@ -38,8 +39,11 @@ export const createInternalAppointmentSchema = z.object({
   addressBairro: z.string().optional().nullable(),
   addressCidade: z.string().optional().nullable(),
   addressEstado: z.string().optional().nullable(),
+  addressLabel: z.string().optional().nullable(),
+  clientAddressId: z.string().uuid().optional().nullable(),
   isHomeVisit: z.boolean().optional(),
   internalNotes: z.string().optional().nullable(),
+  priceOverride: z.number().optional().nullable(),
   serviceId: z.string().uuid(),
   date: z.string().min(10),
   time: z.string().min(4),

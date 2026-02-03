@@ -66,7 +66,7 @@ export async function listAppointmentsForClient(tenantId: string, clientId: stri
   const supabase = createServiceClient();
   return supabase
     .from("appointments")
-    .select("id, start_time, service_name, price, status, is_home_visit")
+    .select("id, start_time, service_name, price, price_override, status, is_home_visit")
     .eq("client_id", clientId)
     .eq("tenant_id", tenantId)
     .order("start_time", { ascending: false });

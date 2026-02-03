@@ -2,6 +2,7 @@ import { format } from "date-fns";
 
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { AppHeader } from "../../../components/ui/app-header";
 
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppointmentForm } from "./appointment-form";
@@ -27,6 +28,10 @@ function getSafeDate(dateParam: string | string[] | undefined): string {
 export default async function NewAppointment(props: PageProps) {
   const params = await props.searchParams;
   const safeDate = getSafeDate(params.date);
+  const returnTo =
+    typeof params.returnTo === "string"
+      ? decodeURIComponent(params.returnTo)
+      : `/?view=day&date=${safeDate}`;
 
   // Buscar serviços ativos do Tenant
   const { data: services } = await listServices(FIXED_TENANT_ID);
@@ -34,29 +39,20 @@ export default async function NewAppointment(props: PageProps) {
 
   return (
     <div className="-mx-4 -mt-4">
-      <header className="px-6 pb-4 bg-white rounded-b-3xl shadow-soft sticky top-0 z-20 safe-top safe-top-8">
-        <div className="flex items-center justify-between mb-2">
+      <AppHeader
+        label="Agendamento Interno"
+        title="Novo Agendamento"
+        subtitle="Preencha os detalhes do atendimento."
+        leftSlot={
           <Link
-            href={`/?date=${safeDate}`}
+            href={returnTo}
             className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+            aria-label="Voltar"
           >
             <ChevronLeft size={20} />
           </Link>
-
-          <div className="text-right">
-            <p className="text-[11px] font-extrabold text-studio-green uppercase tracking-widest">Corpo & Alma</p>
-            <p className="text-[11px] text-muted flex items-center justify-end gap-1">
-              <span className="inline-block w-1.5 h-1.5 bg-ok rounded-full"></span> Online
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Agendamento Interno</p>
-          <h1 className="text-2xl font-serif text-studio-text">Novo Agendamento</h1>
-          <p className="text-xs text-muted mt-1">Preencha os detalhes do atendimento.</p>
-        </div>
-      </header>
+        }
+      />
 
       <main className="p-6 pb-28">
         <AppointmentForm services={services || []} clients={clients || []} safeDate={safeDate} />

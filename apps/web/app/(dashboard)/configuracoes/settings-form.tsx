@@ -12,13 +12,13 @@ interface BusinessHourItem {
 
 interface SettingsFormProps {
   businessHours: BusinessHourItem[];
-  defaultStudioBuffer: number;
-  defaultHomeBuffer: number;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
 }
 
 const dayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-export function SettingsForm({ businessHours, defaultStudioBuffer, defaultHomeBuffer }: SettingsFormProps) {
+export function SettingsForm({ businessHours, bufferBeforeMinutes, bufferAfterMinutes }: SettingsFormProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -71,20 +71,20 @@ export function SettingsForm({ businessHours, defaultStudioBuffer, defaultHomeBu
         <h2 className="text-sm font-bold text-gray-700">Buffers de Atendimento</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Estúdio (min)</label>
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Antes (min)</label>
             <input
               type="number"
-              name="default_studio_buffer"
-              defaultValue={defaultStudioBuffer}
+              name="buffer_before_minutes"
+              defaultValue={bufferBeforeMinutes}
               className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Domicílio (min)</label>
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Depois (min)</label>
             <input
               type="number"
-              name="default_home_buffer"
-              defaultValue={defaultHomeBuffer}
+              name="buffer_after_minutes"
+              defaultValue={bufferAfterMinutes}
               className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
             />
           </div>

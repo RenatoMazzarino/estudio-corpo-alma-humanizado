@@ -11,9 +11,10 @@ import {
   Car,
   Tag,
   Check,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { createAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
+import { createAppointment, getClientAddresses } from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
@@ -33,6 +34,19 @@ interface AppointmentFormProps {
   services: Service[];
   clients: { id: string; name: string; phone: string | null }[];
   safeDate: string;
+}
+
+interface ClientAddress {
+  id: string;
+  label: string;
+  is_primary: boolean;
+  address_cep: string | null;
+  address_logradouro: string | null;
+  address_numero: string | null;
+  address_complemento: string | null;
+  address_bairro: string | null;
+  address_cidade: string | null;
+  address_estado: string | null;
 }
 
 function formatPhone(value: string) {
@@ -73,18 +87,40 @@ function buildAddressQuery(payload: {
   return parts.join(", ");
 }
 
+function formatClientAddress(address: ClientAddress) {
+  const parts = [
+    address.address_logradouro,
+    address.address_numero,
+    address.address_complemento,
+    address.address_bairro,
+    address.address_cidade,
+    address.address_estado,
+    address.address_cep,
+  ].filter((value) => value && value.trim().length > 0);
+  return parts.join(", ");
+}
+
 export function AppointmentForm({ services, clients, safeDate }: AppointmentFormProps) {
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
+  const [priceOverride, setPriceOverride] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(safeDate);
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [isHomeVisit, setIsHomeVisit] = useState(false);
   const [hasBlocks, setHasBlocks] = useState(false);
   const [blockStatus, setBlockStatus] = useState<"idle" | "loading">("idle");
+  const [clientAddresses, setClientAddresses] = useState<ClientAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressMode, setAddressMode] = useState<"none" | "existing" | "new">("none");
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [modalAddressId, setModalAddressId] = useState<string | null>(null);
+  const [addressConfirmed, setAddressConfirmed] = useState(false);
+  const [addressLabel, setAddressLabel] = useState("Casa");
   const [cep, setCep] = useState("");
   const [logradouro, setLogradouro] = useState("");
   const [numero, setNumero] = useState("");
@@ -106,14 +142,16 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
       .slice(0, 6);
   }, [clientName, clients]);
 
-  const handleSelectClient = (name: string, phone: string | null) => {
-    setClientName(name);
-    setClientPhone(phone ? formatPhone(phone) : "");
+  const handleSelectClient = (client: { id: string; name: string; phone: string | null }) => {
+    setClientName(client.name);
+    setClientPhone(client.phone ? formatPhone(client.phone) : "");
+    setSelectedClientId(client.id);
   };
 
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const serviceId = e.target.value;
     setSelectedServiceId(serviceId);
+    setPriceOverride("");
 
     const service = services.find((s) => s.id === serviceId);
     if (service) {
@@ -194,7 +232,71 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
     setCidade("");
     setEstado("");
     setCepStatus("idle");
+    setAddressMode("none");
+    setSelectedAddressId(null);
+    setAddressConfirmed(false);
   }, [isHomeVisit]);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedClientId) {
+      setClientAddresses([]);
+      setSelectedAddressId(null);
+      setAddressConfirmed(false);
+      return;
+    }
+
+    (async () => {
+      const result = await getClientAddresses(selectedClientId);
+      if (!active) return;
+      const addresses = (result.data as ClientAddress[]) ?? [];
+      setClientAddresses(addresses);
+      const primary = addresses.find((address) => address.is_primary) ?? addresses[0] ?? null;
+      if (primary) {
+        setSelectedAddressId(primary.id);
+        if (addressMode !== "new") {
+          setAddressMode("existing");
+        }
+      } else {
+        setSelectedAddressId(null);
+      }
+      setAddressConfirmed(false);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedClientId, addressMode]);
+
+  useEffect(() => {
+    if (!isHomeVisit) return;
+    if (addressMode === "new") return;
+    if (clientAddresses.length > 0 && !addressConfirmed) {
+      setIsAddressModalOpen(true);
+    } else {
+      if (clientAddresses.length === 0) {
+        setAddressMode("new");
+      }
+    }
+  }, [isHomeVisit, clientAddresses, addressMode, addressConfirmed]);
+
+  useEffect(() => {
+    if (!isAddressModalOpen) return;
+    const fallback = clientAddresses.find((address) => address.is_primary)?.id ?? clientAddresses[0]?.id ?? null;
+    setModalAddressId(selectedAddressId ?? fallback);
+  }, [isAddressModalOpen, clientAddresses, selectedAddressId]);
+
+  useEffect(() => {
+    if (addressMode !== "existing") return;
+    setCep("");
+    setLogradouro("");
+    setNumero("");
+    setComplemento("");
+    setBairro("");
+    setCidade("");
+    setEstado("");
+    setCepStatus("idle");
+  }, [addressMode]);
 
   const handleCepLookup = async () => {
     const normalized = normalizeCep(cep);
@@ -225,9 +327,17 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
     cep,
   });
   const canHomeVisit = selectedService?.accepts_home_visit ?? false;
+  const selectedAddress = useMemo(
+    () => clientAddresses.find((address) => address.id === selectedAddressId) ?? null,
+    [clientAddresses, selectedAddressId]
+  );
+  const finalPrice = priceOverride ? priceOverride : displayedPrice;
 
   return (
     <form action={createAppointment} className="space-y-6">
+      <input type="hidden" name="clientId" value={selectedClientId ?? ""} />
+      <input type="hidden" name="client_address_id" value={selectedAddressId ?? ""} />
+      <input type="hidden" name="address_label" value={addressLabel} />
       <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
@@ -246,7 +356,10 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                 type="text"
                 placeholder="Buscar ou digitar nome..."
                 value={clientName}
-                onChange={(event) => setClientName(event.target.value)}
+                onChange={(event) => {
+                  setClientName(event.target.value);
+                  setSelectedClientId(null);
+                }}
                 className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text transition-all"
                 required
               />
@@ -260,7 +373,7 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
                   <button
                     type="button"
                     key={client.id}
-                    onClick={() => handleSelectClient(client.name, client.phone)}
+                    onClick={() => handleSelectClient(client)}
                     className="w-full text-left px-3 py-2 rounded-xl hover:bg-studio-light text-sm text-studio-text flex items-center justify-between"
                   >
                     <span className="font-medium">{client.name}</span>
@@ -378,109 +491,159 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               isHomeVisit ? "max-h-[800px] opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
             }`}
           >
-            <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4 relative">
-              <div className="absolute -top-2 left-3/4 w-4 h-4 bg-purple-50 border-t border-l border-purple-100 transform rotate-45"></div>
-
-              <div className="flex items-center gap-2 mb-3 text-purple-700">
-                <MapPin className="w-4 h-4" />
-                <span className="text-xs font-extrabold uppercase tracking-wide">Endereço da Cliente</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <div className="col-span-2">
-                  <input
-                    name="address_cep"
-                    type="text"
-                    placeholder="CEP"
-                    value={cep}
-                    onChange={(e) => {
-                      setCep(formatCep(e.target.value));
-                      setCepStatus("idle");
-                    }}
-                    inputMode="numeric"
-                    aria-invalid={cepStatus === "error" ? "true" : "false"}
-                    className={`w-full px-4 py-3 rounded-xl bg-white border text-sm font-medium focus:outline-none focus:ring-2 ${
-                      cepStatus === "error"
-                        ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                        : "border-purple-200 focus:ring-purple-300/40 focus:border-purple-400"
-                    }`}
-                  />
+            <div className="space-y-4">
+              {clientAddresses.length > 0 && addressMode === "existing" && selectedAddress && (
+                <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4">
+                  <div className="flex items-center gap-2 mb-2 text-purple-700">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-xs font-extrabold uppercase tracking-wide">
+                      {selectedAddress.label}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-studio-text">
+                    {formatClientAddress(selectedAddress) || "Endereço cadastrado"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddressModalOpen(true)}
+                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-purple-100 text-purple-700 hover:bg-purple-100 transition"
+                    >
+                      Trocar endereço
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddressMode("new");
+                        setSelectedAddressId(null);
+                        setAddressConfirmed(true);
+                      }}
+                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-purple-100 text-purple-700 hover:bg-purple-100 transition"
+                    >
+                      Cadastrar novo
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCepLookup}
-                  className="bg-purple-200 text-purple-800 rounded-xl font-bold text-xs hover:bg-purple-300 transition"
-                >
-                  {cepStatus === "loading" ? "Buscando..." : "Buscar"}
-                </button>
-              </div>
-              <p className="text-[10px] text-purple-400/80 mb-3 ml-1">Preenchemos o restante automaticamente 😉</p>
+              )}
 
-              <input
-                name="address_logradouro"
-                type="text"
-                placeholder="Rua / Avenida"
-                value={logradouro}
-                onChange={(e) => setLogradouro(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium mb-2"
-              />
+              {addressMode === "new" && (
+                <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4">
+                  <div className="flex items-center gap-2 mb-3 text-purple-700">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-xs font-extrabold uppercase tracking-wide">Novo endereço</span>
+                  </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <input
-                  name="address_numero"
-                  type="text"
-                  placeholder="Nº"
-                  value={numero}
-                  onChange={(e) => setNumero(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
-                />
-                <input
-                  name="address_complemento"
-                  type="text"
-                  placeholder="Complemento"
-                  value={complemento}
-                  onChange={(e) => setComplemento(e.target.value)}
-                  className="col-span-2 w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
-                />
-              </div>
+                  <div className="mb-3">
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-purple-500 mb-2">
+                      Identificação
+                    </label>
+                    <input
+                      name="address_label"
+                      type="text"
+                      placeholder="Casa, Trabalho, etc."
+                      value={addressLabel}
+                      onChange={(event) => setAddressLabel(event.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <input
-                  name="address_bairro"
-                  type="text"
-                  placeholder="Bairro"
-                  value={bairro}
-                  onChange={(e) => setBairro(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
-                />
-                <input
-                  name="address_cidade"
-                  type="text"
-                  placeholder="Cidade"
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
-                />
-              </div>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <div className="col-span-2">
+                      <input
+                        name="address_cep"
+                        type="text"
+                        placeholder="CEP"
+                        value={cep}
+                        onChange={(e) => {
+                          setCep(formatCep(e.target.value));
+                          setCepStatus("idle");
+                        }}
+                        inputMode="numeric"
+                        aria-invalid={cepStatus === "error" ? "true" : "false"}
+                        className={`w-full px-4 py-3 rounded-xl bg-white border text-sm font-medium focus:outline-none focus:ring-2 ${
+                          cepStatus === "error"
+                            ? "border-red-200 focus:ring-red-200 focus:border-red-400"
+                            : "border-purple-200 focus:ring-purple-300/40 focus:border-purple-400"
+                        }`}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCepLookup}
+                      className="bg-purple-200 text-purple-800 rounded-xl font-bold text-xs hover:bg-purple-300 transition"
+                    >
+                      {cepStatus === "loading" ? "Buscando..." : "Buscar"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-purple-400/80 mb-3 ml-1">Preenchemos o restante automaticamente 😉</p>
 
-              <input
-                name="address_estado"
-                type="text"
-                placeholder="Estado (UF)"
-                value={estado}
-                onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                maxLength={2}
-                className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium uppercase mt-2"
-              />
-              {mapsQuery && (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-semibold text-purple-700 hover:underline mt-2 inline-flex"
-                >
-                  Ver endereço no Maps
-                </a>
+                  <input
+                    name="address_logradouro"
+                    type="text"
+                    placeholder="Rua / Avenida"
+                    value={logradouro}
+                    onChange={(e) => setLogradouro(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium mb-2"
+                  />
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      name="address_numero"
+                      type="text"
+                      placeholder="Nº"
+                      value={numero}
+                      onChange={(e) => setNumero(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                    />
+                    <input
+                      name="address_complemento"
+                      type="text"
+                      placeholder="Complemento"
+                      value={complemento}
+                      onChange={(e) => setComplemento(e.target.value)}
+                      className="col-span-2 w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <input
+                      name="address_bairro"
+                      type="text"
+                      placeholder="Bairro"
+                      value={bairro}
+                      onChange={(e) => setBairro(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                    />
+                    <input
+                      name="address_cidade"
+                      type="text"
+                      placeholder="Cidade"
+                      value={cidade}
+                      onChange={(e) => setCidade(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                    />
+                  </div>
+
+                  <input
+                    name="address_estado"
+                    type="text"
+                    placeholder="Estado (UF)"
+                    value={estado}
+                    onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                    maxLength={2}
+                    className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium uppercase mt-2"
+                  />
+                  {mapsQuery && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-semibold text-purple-700 hover:underline mt-2 inline-flex"
+                    >
+                      Ver endereço no Maps
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -502,13 +665,15 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
               <input
                 type="tel"
-                value={displayedPrice}
+                value={finalPrice}
                 readOnly
                 placeholder="0,00"
                 className="w-full pl-9 pr-3 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-lg font-bold text-studio-text"
               />
             </div>
-            <p className="text-[10px] text-muted mt-1 ml-1">Valor calculado automaticamente.</p>
+            <p className="text-[10px] text-muted mt-1 ml-1">
+              {priceOverride ? "Valor ajustado manualmente." : "Valor calculado automaticamente."}
+            </p>
           </div>
 
           <div>
@@ -530,6 +695,23 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">Ajustar valor (opcional)</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
+            <input
+              name="price_override"
+              type="text"
+              inputMode="decimal"
+              value={priceOverride}
+              onChange={(event) => setPriceOverride(event.target.value)}
+              placeholder={displayedPrice || "0,00"}
+              className="w-full pl-9 pr-3 py-3 rounded-2xl bg-white border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-semibold text-studio-text"
+            />
+          </div>
+          <p className="text-[10px] text-muted mt-1 ml-1">Se deixar vazio, usamos o valor do serviço.</p>
         </div>
 
         <div>
@@ -580,25 +762,101 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
               ))
             )}
           </select>
+          <p className="text-[11px] text-muted mt-2 ml-1">
+            Horários já consideram o tempo de preparo antes/depois.
+          </p>
         </div>
 
         <div className="mt-5 pt-4 border-t border-line">
-          <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">Observações Internas</label>
+          <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">
+            Observações internas do agendamento
+          </label>
           <textarea
             name="internalNotes"
             rows={2}
             className="w-full px-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm"
             placeholder="Ex: Cliente prefere pressão leve..."
           />
+          <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
         </div>
       </section>
+
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Endereço</p>
+                <h3 className="text-lg font-serif text-studio-text">Usar endereço</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {clientAddresses.map((address) => {
+                const isSelected = modalAddressId === address.id;
+                return (
+                  <button
+                    key={address.id}
+                    type="button"
+                    onClick={() => setModalAddressId(address.id)}
+                    className={`w-full text-left px-4 py-3 rounded-2xl border transition ${
+                      isSelected ? "border-studio-green bg-studio-light" : "border-line bg-white"
+                    }`}
+                  >
+                    <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
+                      {address.label}
+                    </p>
+                    <p className="text-sm font-semibold text-studio-text">
+                      {formatClientAddress(address) || "Endereço cadastrado"}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAddressId(modalAddressId);
+                  setAddressMode("existing");
+                  setAddressConfirmed(true);
+                  setIsAddressModalOpen(false);
+                }}
+                className="w-full py-3 rounded-2xl bg-studio-green text-white font-extrabold"
+              >
+                Usar endereço selecionado
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddressMode("new");
+                  setSelectedAddressId(null);
+                  setAddressConfirmed(true);
+                  setIsAddressModalOpen(false);
+                }}
+                className="w-full py-3 rounded-2xl bg-white border border-line text-studio-text font-extrabold"
+              >
+                Cadastrar novo endereço
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <button
         type="submit"
         className="w-full py-4 rounded-2xl bg-studio-green text-white font-extrabold shadow-soft hover:bg-studio-green-dark transition flex items-center justify-center gap-2 group mb-4"
       >
         <Check className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        Confirmar Agendamento
+        Agendar
       </button>
     </form>
   );

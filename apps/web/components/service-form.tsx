@@ -59,7 +59,7 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
           </div>
         </div>
 
-        {/* Descrição (Atenção: Este campo NÃO existe no banco, mas mantive visualmente conforme pedido, no submit será ignorado) */}
+        {/* Descrição */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-stone-400 uppercase ml-1">Descrição</label>
           <div className="relative">
@@ -102,6 +102,29 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
                 required
               />
             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-stone-400 uppercase ml-1">Buffer antes (min)</label>
+            <input
+              name="buffer_before_minutes"
+              type="number"
+              defaultValue={service?.buffer_before_minutes ?? ""}
+              className="w-full bg-stone-50 border-stone-200 border rounded-xl py-3 px-4 text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              placeholder="Ex: 30"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-stone-400 uppercase ml-1">Buffer depois (min)</label>
+            <input
+              name="buffer_after_minutes"
+              type="number"
+              defaultValue={service?.buffer_after_minutes ?? ""}
+              className="w-full bg-stone-50 border-stone-200 border rounded-xl py-3 px-4 text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              placeholder="Ex: 30"
+            />
           </div>
         </div>
 

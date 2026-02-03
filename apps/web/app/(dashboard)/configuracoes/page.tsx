@@ -42,8 +42,16 @@ export default async function ConfiguracoesPage() {
 
       <SettingsForm
         businessHours={businessHours}
-        defaultStudioBuffer={settingsData?.default_studio_buffer ?? 30}
-        defaultHomeBuffer={settingsData?.default_home_buffer ?? 60}
+        bufferBeforeMinutes={
+          settingsData?.buffer_before_minutes ??
+          settingsData?.default_studio_buffer ??
+          30
+        }
+        bufferAfterMinutes={
+          settingsData?.buffer_after_minutes ??
+          settingsData?.default_studio_buffer ??
+          30
+        }
       />
     </div>
   );

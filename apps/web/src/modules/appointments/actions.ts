@@ -179,12 +179,14 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
 }
 
 export async function createAppointment(formData: FormData): Promise<void> {
+  const clientId = (formData.get("clientId") as string | null) || null;
   const clientName = formData.get("clientName") as string | null;
   const clientPhone = (formData.get("clientPhone") as string | null) || null;
   const serviceId = formData.get("serviceId") as string | null;
   const date = formData.get("date") as string | null;
   const time = formData.get("time") as string | null;
   const isHomeVisit = formData.get("is_home_visit") === "on";
+  const clientAddressId = (formData.get("client_address_id") as string | null) || null;
   const addressCep = (formData.get("address_cep") as string | null) || null;
   const addressLogradouro = (formData.get("address_logradouro") as string | null) || null;
   const addressNumero = (formData.get("address_numero") as string | null) || null;
@@ -192,9 +194,16 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const addressBairro = (formData.get("address_bairro") as string | null) || null;
   const addressCidade = (formData.get("address_cidade") as string | null) || null;
   const addressEstado = (formData.get("address_estado") as string | null) || null;
+  const addressLabel = (formData.get("address_label") as string | null) || null;
   const internalNotes = (formData.get("internalNotes") as string | null) || null;
+  const rawPriceOverride = (formData.get("price_override") as string | null) || null;
+
+  const priceOverride = rawPriceOverride
+    ? Number(rawPriceOverride.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""))
+    : null;
 
   const parsed = createInternalAppointmentSchema.safeParse({
+    clientId,
     clientName,
     clientPhone,
     addressCep,
@@ -204,8 +213,11 @@ export async function createAppointment(formData: FormData): Promise<void> {
     addressBairro,
     addressCidade,
     addressEstado,
+    addressLabel,
+    clientAddressId,
     isHomeVisit,
     internalNotes,
+    priceOverride: Number.isNaN(priceOverride ?? NaN) ? null : priceOverride,
     serviceId,
     date,
     time,
@@ -230,8 +242,12 @@ export async function createAppointment(formData: FormData): Promise<void> {
     p_address_bairro: parsed.data.addressBairro ?? undefined,
     p_address_cidade: parsed.data.addressCidade ?? undefined,
     p_address_estado: parsed.data.addressEstado ?? undefined,
+    p_address_label: parsed.data.addressLabel ?? undefined,
     is_home_visit: parsed.data.isHomeVisit ?? false,
     p_internal_notes: parsed.data.internalNotes ?? undefined,
+    p_client_id: parsed.data.clientId ?? undefined,
+    p_client_address_id: parsed.data.clientAddressId ?? undefined,
+    p_price_override: parsed.data.priceOverride ?? undefined,
   });
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
@@ -267,8 +283,8 @@ export async function createAppointment(formData: FormData): Promise<void> {
     });
   }
 
-  revalidatePath(`/?date=${parsed.data.date}`);
-  redirect(`/?date=${parsed.data.date}&created=1`);
+  revalidatePath(`/?view=day&date=${parsed.data.date}`);
+  redirect(`/?view=day&date=${parsed.data.date}&created=1`);
 }
 
 export async function submitPublicAppointment(data: {
