@@ -31,7 +31,7 @@ export function NotesSection({ clientId, initialNotes }: NotesSectionProps) {
     <SurfaceCard className="relative">
       <div className="flex justify-between items-center mb-3">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Prontuário</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Cliente</p>
           <h2 className="text-lg font-serif text-studio-text">Observações internas</h2>
         </div>
         {!isEditing && (
@@ -51,7 +51,7 @@ export function NotesSection({ clientId, initialNotes }: NotesSectionProps) {
             rows={6}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Escreva aqui observações sobre a cliente..."
+            placeholder="Escreva aqui observações internas do cliente..."
             autoFocus
           />
           <div className="flex justify-end gap-2">

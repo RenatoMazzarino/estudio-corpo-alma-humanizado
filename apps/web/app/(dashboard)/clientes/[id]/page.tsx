@@ -1,10 +1,14 @@
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { NotesSection } from "./notes-section";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getClientById } from "../../../../src/modules/clients/repository";
+import {
+  getClientById,
+  listClientAddresses,
+  listClientEmails,
+  listClientHealthItems,
+  listClientPhones,
+} from "../../../../src/modules/clients/repository";
 import { listAppointmentsForClient } from "../../../../src/modules/appointments/repository";
 import { ClientProfile } from "./client-profile";
 import { SurfaceCard } from "../../../../components/ui/surface-card";
@@ -18,6 +22,7 @@ interface AppointmentHistoryItem {
   start_time: string;
   service_name: string;
   price: number | null;
+  price_override: number | null;
   status: string;
   is_home_visit: boolean | null;
 }
@@ -34,6 +39,13 @@ export default async function ClientProfilePage(props: PageProps) {
 
   // 2. Busca histórico de agendamentos
   const { data: historyData } = await listAppointmentsForClient(FIXED_TENANT_ID, params.id);
+  const [{ data: addresses }, { data: phones }, { data: emails }, { data: healthItems }] =
+    await Promise.all([
+      listClientAddresses(FIXED_TENANT_ID, params.id),
+      listClientPhones(FIXED_TENANT_ID, params.id),
+      listClientEmails(FIXED_TENANT_ID, params.id),
+      listClientHealthItems(FIXED_TENANT_ID, params.id),
+    ]);
   const history = (historyData as AppointmentHistoryItem[] | null) ?? [];
 
   const visitsCount = history.length;
@@ -44,19 +56,6 @@ export default async function ClientProfilePage(props: PageProps) {
   return (
     <div className="-mx-4 -mt-4">
       <div className="relative bg-paper min-h-[100dvh]">
-        <div className="safe-top absolute top-0 left-0 w-full px-6 pt-8 flex justify-between items-center z-40 pointer-events-none">
-          <Link
-            href="/clientes"
-            className="pointer-events-auto w-10 h-10 rounded-full bg-white/85 backdrop-blur text-gray-700 flex items-center justify-center shadow-sm hover:bg-white transition"
-            aria-label="Voltar"
-          >
-            <ChevronLeft size={20} />
-          </Link>
-          <div className="pointer-events-none text-xs font-extrabold text-muted uppercase tracking-widest">
-            Detalhes
-          </div>
-        </div>
-
         <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
           <ClientProfile
             client={client}
@@ -65,6 +64,10 @@ export default async function ClientProfilePage(props: PageProps) {
               absences: absencesCount,
               lastVisitLabel,
             }}
+            addresses={addresses ?? []}
+            phones={phones ?? []}
+            emails={emails ?? []}
+            healthItems={healthItems ?? []}
           />
 
           <section className="px-6 pt-5 pb-4 space-y-5">
@@ -93,7 +96,10 @@ export default async function ClientProfilePage(props: PageProps) {
                           <h4 className="font-extrabold text-studio-text text-sm">{apt.service_name}</h4>
                           <p className="text-xs text-muted font-semibold mt-0.5">
                             {apt.is_home_visit ? "Domicílio" : "No estúdio"} •{" "}
-                            {apt.price ? `R$ ${apt.price.toFixed(2)}` : "Sem valor"}
+                            {(() => {
+                              const finalPrice = apt.price_override ?? apt.price;
+                              return finalPrice ? `R$ ${finalPrice.toFixed(2)}` : "Sem valor";
+                            })()}
                           </p>
                         </div>
                         <div className="text-right">
@@ -118,14 +124,6 @@ export default async function ClientProfilePage(props: PageProps) {
               )}
             </div>
 
-            <details className="bg-white rounded-3xl border border-line p-4 shadow-soft">
-              <summary className="text-xs font-extrabold text-muted uppercase tracking-widest cursor-pointer">
-                Dados técnicos (DB)
-              </summary>
-              <pre className="mt-3 text-[10px] text-muted whitespace-pre-wrap">
-                {JSON.stringify(client, null, 2)}
-              </pre>
-            </details>
           </section>
         </main>
       </div>
