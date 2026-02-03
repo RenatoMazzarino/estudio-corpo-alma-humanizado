@@ -9,9 +9,11 @@ import {
   endOfMonth,
   endOfWeek,
   format,
+  isValid,
   isSameDay,
   isSameMonth,
   isToday,
+  parseISO,
   startOfMonth,
   startOfWeek,
 } from "date-fns";
@@ -94,9 +96,25 @@ type DayItem = {
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
-  const [view, setView] = useState<AgendaView>("day");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialView = useMemo<AgendaView>(() => {
+    const viewParam = searchParams.get("view");
+    if (viewParam === "week" || viewParam === "month" || viewParam === "day") {
+      return viewParam;
+    }
+    return "day";
+  }, [searchParams]);
+  const initialDate = useMemo(() => {
+    const dateParam = searchParams.get("date");
+    if (!dateParam) return new Date();
+    const parsed = parseISO(dateParam);
+    return isValid(parsed) ? parsed : new Date();
+  }, [searchParams]);
+
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(initialDate));
+  const [view, setView] = useState<AgendaView>(initialView);
   const [fabOpen, setFabOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -107,8 +125,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const isUserScrolling = useRef(false);
   const skipAutoScrollSync = useRef(false);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [now, setNow] = useState(() => new Date());
   const timeGridConfig = useMemo<TimeGridConfig>(
     () => ({
@@ -131,7 +147,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     [timeGridConfig]
   );
 
-  const monthDays = useMemo(
+  const monthDays = useMemo<Date[]>(
     () =>
       eachDayOfInterval({
         start: startOfMonth(currentMonth),
@@ -177,6 +193,21 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     const query = searchParams.get("q") ?? "";
     setSearchTerm(query);
   }, [searchParams]);
+
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      const parsed = parseISO(dateParam);
+      if (isValid(parsed) && !isSameDay(parsed, selectedDate)) {
+        setSelectedDate(parsed);
+        setCurrentMonth(startOfMonth(parsed));
+      }
+    }
+    const viewParam = searchParams.get("view");
+    if ((viewParam === "day" || viewParam === "week" || viewParam === "month") && viewParam !== view) {
+      setView(viewParam);
+    }
+  }, [searchParams, selectedDate, view]);
 
   useEffect(() => {
     if (!isSearchOpen) return;
@@ -903,7 +934,9 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           <button
             onClick={() => {
               setFabOpen(false);
-              router.push("/novo");
+              const dateParam = format(selectedDate, "yyyy-MM-dd");
+              const returnTo = `/?view=${view}&date=${dateParam}`;
+              router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
             }}
             className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition"
             type="button"
