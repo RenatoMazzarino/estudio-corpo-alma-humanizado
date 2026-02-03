@@ -200,11 +200,11 @@ export function PreStage({
 
         <div className="mt-4">
           <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">
-            Observações internas
+            Observações internas do agendamento
           </p>
           <textarea
             className="w-full h-28 bg-paper rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-            placeholder="Detalhes importantes antes da sessão..."
+            placeholder="Detalhes importantes antes da sessão (visível apenas internamente)..."
             value={internalNotes}
             onChange={(event) => onInternalNotesChange(event.target.value)}
             onBlur={() => onSaveNotes(internalNotes)}

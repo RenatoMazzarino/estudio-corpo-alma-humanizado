@@ -34,7 +34,7 @@ import { CheckoutStage } from "./components/checkout-stage";
 import { PostStage } from "./components/post-stage";
 import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
 
-interface AttendanceV4PageProps {
+interface AttendancePageProps {
   data: AttendanceOverview;
   initialStage?: StageKey;
 }
@@ -58,7 +58,7 @@ function getInitials(name: string) {
 
 const stageOrder: StageKey[] = ["pre", "session", "checkout", "post"];
 
-export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) {
+export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const router = useRouter();
   const [activeStage, setActiveStage] = useState<StageKey>(
     initialStage && initialStage !== "hub" ? initialStage : "pre"
@@ -102,26 +102,6 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
     const published = data.evolution.find((entry) => entry.status === "published");
     return draft ?? published ?? null;
   }, [data.evolution]);
-  const dbSnapshot = useMemo(
-    () =>
-      JSON.stringify(
-        {
-          appointment: data.appointment,
-          attendance: data.attendance,
-          checklist: data.checklist,
-          evolution: data.evolution,
-          checkout: data.checkout,
-          checkoutItems: data.checkoutItems,
-          payments: data.payments,
-          post: data.post,
-          messages: data.messages,
-          events: data.events,
-        },
-        null,
-        2
-      ),
-    [data]
-  );
 
   const [summary, setSummary] = useState(initialEvolution?.summary ?? "");
   const [complaint, setComplaint] = useState(initialEvolution?.complaint ?? "");
@@ -461,15 +441,6 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
     return `${base} bg-white text-muted border-gray-100 ${isActive ? "ring-1 ring-gray-200" : ""}`;
   };
 
-  const DbDetails = () => (
-    <details className="mt-6 bg-white rounded-3xl border border-line p-4 shadow-soft">
-      <summary className="text-xs font-extrabold text-muted uppercase tracking-widest cursor-pointer">
-        Dados técnicos (DB)
-      </summary>
-      <pre className="mt-3 text-[10px] text-muted whitespace-pre-wrap">{dbSnapshot}</pre>
-    </details>
-  );
-
   return (
     <div className="-mx-4 -mt-4">
       <div className="bg-paper min-h-[100dvh] flex flex-col">
@@ -614,7 +585,6 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
                 onInternalNotesChange={setInternalNotes}
                 messages={data.messages}
               />
-              <DbDetails />
             </section>
 
             <section className="min-w-full snap-start px-5 pt-5 pb-32">
@@ -641,7 +611,6 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
                   onPublish={() => handleSaveEvolution("published")}
                 />
               )}
-              <DbDetails />
             </section>
 
             <section className="min-w-full snap-start px-5 pt-5 pb-32">
@@ -662,7 +631,6 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
                   onConfirmCheckout={handleConfirmCheckout}
                 />
               )}
-              <DbDetails />
             </section>
 
             <section className="min-w-full snap-start px-5 pt-5 pb-32">
@@ -682,7 +650,6 @@ export function AttendanceV4Page({ data, initialStage }: AttendanceV4PageProps) 
                   onRecordSurvey={handleRecordSurvey}
                 />
               )}
-              <DbDetails />
             </section>
           </div>
         </div>

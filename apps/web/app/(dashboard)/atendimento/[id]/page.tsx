@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
-import { AttendanceV4Page } from "./attendance-v4-page";
+import { AttendancePage } from "./attendance-page";
 import { getAttendanceOverview } from "../../../../lib/attendance/attendance-repository";
 
 interface PageProps {
@@ -22,5 +22,5 @@ export default async function AtendimentoPage(props: PageProps) {
       ? stageParam
       : "pre";
 
-  return <AttendanceV4Page data={attendance} initialStage={initialStage} />;
+  return <AttendancePage data={attendance} initialStage={initialStage} />;
 }
