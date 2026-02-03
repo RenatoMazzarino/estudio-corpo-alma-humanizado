@@ -12,7 +12,7 @@
 - **Dados:** tudo exibido na UI vem do DB ou de derivações determinísticas; novas colunas existem apenas para UI/auditoria/tenant.
 - **Arquitetura:** mutações apenas via Server Actions (service role no server); componentes reutilizáveis padronizados em um lugar central.
 - **Qualidade:** `pnpm lint`, `pnpm check-types`, `pnpm build`.
-- **Rollback:** feature flag (`NEXT_PUBLIC_ATTENDANCE_UIV4`) documentada com fallback pronto.
+- **Rollback:** não haverá fallback de UI antiga (nova UI passa a ser padrão).
 
 ## 1. Objetivo e escopo (Produção v1.0)
 - **Objetivo:** Consolidar a nova aparência/UX dos módulos críticos (Agenda, Atendimento, Clientes) com qualidade de produção, preservando regras de negócio e consistência DB↔UI.
@@ -158,8 +158,7 @@ Cada documento referencia o PDF/HTML correspondente, descreve classes utilitári
   - Form: `apps/web/app/(dashboard)/novo/appointment-form.tsx`
 - **Bloqueios:** `apps/web/app/(dashboard)/bloqueios` + actions em `apps/web/app/(dashboard)/bloqueios/actions.ts`
 - **Atendimento:** `apps/web/app/(dashboard)/atendimento/[id]/page.tsx`
-  - **UI nova (feature flag):** `attendance-v4-page.tsx` + `components/*`
-  - **UI antiga fallback:** `appointment-details-page.tsx` + `apps/web/components/appointment-details-modal.tsx`
+  - **UI nova padrão:** `attendance-v4-page.tsx` + `components/*`
 - **Clientes:**
   - Lista: `apps/web/app/(dashboard)/clientes/page.tsx`
   - Detalhe: `apps/web/app/(dashboard)/clientes/[id]/page.tsx`
@@ -174,7 +173,7 @@ Cada documento referencia o PDF/HTML correspondente, descreve classes utilitári
 - **SurfaceCard / FormSection / StageCarousel / AppointmentCard / ClientListItem:** classes compartilhadas para padding, radius, shadow (`shadow-soft`), evitando “salada visual” por tela.
 - **StageNav (Atendimento):** navegação para etapas com dots verdes, status visual e comportamento horizontal (pager).
 - **Timer global:** `apps/web/components/timer/*` (provider + nova `TimerBubble`) garante single ticker, persistência e drag.
-- **ActiveSessionBar:** componente legado mantido enquanto o timer bubble novo estiver em rollout (feature flag).
+- **ActiveSessionBar:** componente legado removido (timer bubble novo é padrão).
 - **States reutilizáveis:** skeletons, empty states e mensagens de erro com CTA devem usar componentes/estilos canônicos para manter consistência de feedback.
 
 ### 4.3 Padrão de composição
@@ -303,7 +302,7 @@ Cada documento referencia o PDF/HTML correspondente, descreve classes utilitári
 
 ---
 
-## 7. Segurança (RLS, service_role, env vars, feature flag produção)
+## 7. Segurança (RLS, service_role, env vars)
 ### 7.1 RLS atual (AS-IS)
 - Policies em `supabase/migrations/20260130050000_rls_policies_core.sql`.
 - Padrão: **writes via `service_role`**, `authenticated` não escreve.
@@ -312,7 +311,7 @@ Cada documento referencia o PDF/HTML correspondente, descreve classes utilitári
 ### 7.2 Estratégia recomendada
 - **Todas as ações mutáveis** via Server Actions (`createServiceClient`).
 - UI client-side só lê dados via Server Components.
-- **Feature flag:** `NEXT_PUBLIC_ATTENDANCE_UIV4` já existe (manter estratégia para rollout/rollback).
+- **UI padrão:** Atendimento usa a nova UI sem flags de fallback.
 
 ---
 
