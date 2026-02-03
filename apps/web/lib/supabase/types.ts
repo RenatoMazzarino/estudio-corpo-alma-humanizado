@@ -44,6 +44,7 @@ export type Database = {
           address_logradouro: string | null
           address_numero: string | null
           actual_duration_minutes: number | null
+          client_address_id: string | null
           client_id: string | null
           created_at: string
           finished_at: string | null
@@ -51,6 +52,7 @@ export type Database = {
           is_home_visit: boolean | null
           internal_notes: string | null
           payment_status: string | null
+          price_override: number | null
           price: number | null
           service_id: string | null
           service_name: string
@@ -69,6 +71,7 @@ export type Database = {
           address_logradouro?: string | null
           address_numero?: string | null
           actual_duration_minutes?: number | null
+          client_address_id?: string | null
           client_id?: string | null
           created_at?: string
           finished_at?: string | null
@@ -76,6 +79,7 @@ export type Database = {
           is_home_visit?: boolean | null
           internal_notes?: string | null
           payment_status?: string | null
+          price_override?: number | null
           price?: number | null
           service_id?: string | null
           service_name: string
@@ -94,6 +98,7 @@ export type Database = {
           address_logradouro?: string | null
           address_numero?: string | null
           actual_duration_minutes?: number | null
+          client_address_id?: string | null
           client_id?: string | null
           created_at?: string
           finished_at?: string | null
@@ -101,6 +106,7 @@ export type Database = {
           is_home_visit?: boolean | null
           internal_notes?: string | null
           payment_status?: string | null
+          price_override?: number | null
           price?: number | null
           service_id?: string | null
           service_name?: string
@@ -111,6 +117,13 @@ export type Database = {
           total_duration_minutes?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_client_address_id_fkey"
+            columns: ["client_address_id"]
+            isOneToOne: false
+            referencedRelation: "client_addresses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_client_id_fkey"
             columns: ["client_id"]
@@ -724,13 +737,17 @@ export type Database = {
           address_estado: string | null
           address_logradouro: string | null
           address_numero: string | null
+          anamnese_url: string | null
+          avatar_url: string | null
           como_conheceu: string | null
           cpf: string | null
           contraindications: string | null
           created_at: string
+          clinical_history: string | null
           data_nascimento: string | null
           email: string | null
           endereco_completo: string | null
+          extra_data: Json
           guardian_cpf: string | null
           guardian_name: string | null
           guardian_phone: string | null
@@ -756,13 +773,17 @@ export type Database = {
           address_estado?: string | null
           address_logradouro?: string | null
           address_numero?: string | null
+          anamnese_url?: string | null
+          avatar_url?: string | null
           como_conheceu?: string | null
           cpf?: string | null
           contraindications?: string | null
           created_at?: string
+          clinical_history?: string | null
           data_nascimento?: string | null
           email?: string | null
           endereco_completo?: string | null
+          extra_data?: Json
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -788,13 +809,17 @@ export type Database = {
           address_estado?: string | null
           address_logradouro?: string | null
           address_numero?: string | null
+          anamnese_url?: string | null
+          avatar_url?: string | null
           como_conheceu?: string | null
           cpf?: string | null
           contraindications?: string | null
           created_at?: string
+          clinical_history?: string | null
           data_nascimento?: string | null
           email?: string | null
           endereco_completo?: string | null
+          extra_data?: Json
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -815,6 +840,222 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_addresses: {
+        Row: {
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
+          client_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          label: string
+          referencia: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string
+          referencia?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          label?: string
+          referencia?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_addresses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_addresses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_emails: {
+        Row: {
+          client_id: string
+          created_at: string
+          email: string
+          id: string
+          is_primary: boolean
+          label: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          email: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_primary?: boolean
+          label?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_emails_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_emails_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_health_items: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          label: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          label: string
+          tenant_id?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_health_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_health_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_phones: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          is_whatsapp: boolean
+          label: string | null
+          number_e164: string | null
+          number_raw: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          is_whatsapp?: boolean
+          label?: string | null
+          number_e164?: string | null
+          number_raw: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          is_whatsapp?: boolean
+          label?: string | null
+          number_e164?: string | null
+          number_raw?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_phones_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_phones_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -927,6 +1168,8 @@ export type Database = {
       services: {
         Row: {
           accepts_home_visit: boolean | null
+          buffer_after_minutes: number | null
+          buffer_before_minutes: number | null
           created_at: string
           custom_buffer_minutes: number | null
           description: string | null
@@ -939,6 +1182,8 @@ export type Database = {
         }
         Insert: {
           accepts_home_visit?: boolean | null
+          buffer_after_minutes?: number | null
+          buffer_before_minutes?: number | null
           created_at?: string
           custom_buffer_minutes?: number | null
           description?: string | null
@@ -951,6 +1196,8 @@ export type Database = {
         }
         Update: {
           accepts_home_visit?: boolean | null
+          buffer_after_minutes?: number | null
+          buffer_before_minutes?: number | null
           created_at?: string
           custom_buffer_minutes?: number | null
           description?: string | null
@@ -973,6 +1220,8 @@ export type Database = {
       }
       settings: {
         Row: {
+          buffer_after_minutes: number | null
+          buffer_before_minutes: number | null
           created_at: string | null
           default_home_buffer: number | null
           default_studio_buffer: number | null
@@ -982,6 +1231,8 @@ export type Database = {
           whatsapp_notification_number: string | null
         }
         Insert: {
+          buffer_after_minutes?: number | null
+          buffer_before_minutes?: number | null
           created_at?: string | null
           default_home_buffer?: number | null
           default_studio_buffer?: number | null
@@ -991,6 +1242,8 @@ export type Database = {
           whatsapp_notification_number?: string | null
         }
         Update: {
+          buffer_after_minutes?: number | null
+          buffer_before_minutes?: number | null
           created_at?: string | null
           default_home_buffer?: number | null
           default_studio_buffer?: number | null
