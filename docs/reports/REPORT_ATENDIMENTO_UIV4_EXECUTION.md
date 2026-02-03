@@ -7,7 +7,7 @@
 - SESSÃO com evolução estruturada (rascunho/publicar) + histórico.
 - CHECKOUT com itens editáveis, desconto R$/%, múltiplos pagamentos e confirmação.
 - PÓS com KPI, pesquisa de satisfação, follow-up, notas e finalização do fluxo.
-- Feature flag `NEXT_PUBLIC_ATTENDANCE_UIV4=1` mantém UI antiga como fallback.
+- UI de atendimento segue como padrão (sem fallback via feature flag).
 - Cronômetro global com TimerProvider + bolha flutuante (ring progress, play/pause, drag, persistência local).
 - DB novo de attendance com tabelas, índices, RLS e backfill.
 - Actions server-side para etapas, timer, checkout e pós, com auditoria em `appointment_events`.
@@ -59,12 +59,8 @@ Se quiser resetar ambiente local (cuidado: apaga dados locais):
 supabase db reset --local
 ```
 
-## 5) Como habilitar feature flag e testar
-No `.env.local` do app web:
-```
-NEXT_PUBLIC_ATTENDANCE_UIV4=1
-```
-Depois rode `pnpm dev` e abra `/atendimento/[id]`.
+## 5) Como habilitar e testar
+Rode `pnpm dev` e abra `/atendimento/[id]`.
 
 ## 6) Como validar timer global + bolha
 1. Abrir um atendimento.
