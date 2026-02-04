@@ -62,7 +62,7 @@ export function TimerBubble() {
       if (!parent) return;
       const parentRect = parent.getBoundingClientRect();
       const rect = bubbleRef.current.getBoundingClientRect();
-      const bottomNavOffset = pathname.startsWith("/atendimento") ? 120 : 56;
+      const bottomNavOffset = pathname.startsWith("/atendimento") ? 120 : 8;
       const nextX = clamp(
         event.clientX - parentRect.left - dragState.current.offsetX,
         8,
