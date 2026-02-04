@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Phone, Mail, Plus, Trash2 } from "lucide-react";
 import { AppHeader } from "../../../../components/ui/app-header";
@@ -13,6 +14,29 @@ interface ClientSuggestion {
   id: string;
   name: string;
   phone: string | null;
+}
+
+interface ContactRecord {
+  name?: string[];
+  tel?: string[];
+  email?: string[];
+  address?: Array<{
+    street?: string;
+    addressLine?: string;
+    city?: string;
+    region?: string;
+    postalCode?: string;
+    country?: string;
+  }>;
+  birthday?: string;
+  honorificPrefix?: string;
+  honorificSuffix?: string;
+}
+
+interface NavigatorWithContacts extends Navigator {
+  contacts?: {
+    select: (properties: string[], options: { multiple: boolean }) => Promise<ContactRecord[]>;
+  };
 }
 
 interface PhoneEntry {
@@ -167,7 +191,7 @@ export default function NewClientPage() {
 
   const handleImportContact = async () => {
     setImportError(null);
-    const navContacts = (navigator as any).contacts;
+    const navContacts = (navigator as NavigatorWithContacts).contacts;
     if (!navContacts?.select) {
       setImportError("Importação disponível apenas em dispositivos compatíveis.");
       return;
@@ -375,7 +399,7 @@ export default function NewClientPage() {
             <div className="flex items-center gap-4">
               <label className="relative w-20 h-20 rounded-full bg-studio-light flex items-center justify-center text-studio-green font-serif text-xl cursor-pointer overflow-hidden">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <Image src={avatarPreview} alt="Preview" fill sizes="80px" className="object-cover" />
                 ) : (
                   initials
                 )}

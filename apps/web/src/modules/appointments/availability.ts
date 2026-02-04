@@ -103,8 +103,6 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
       settings?.default_studio_buffer ??
       30;
 
-  const totalSlotDuration = serviceDuration + bufferBefore + bufferAfter;
-
   const startOfDayStr = `${parsed.data.date}T00:00:00`;
   const endOfDayStr = `${parsed.data.date}T23:59:59`;
 

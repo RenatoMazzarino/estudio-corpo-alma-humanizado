@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarPlus, ChevronLeft, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import type { Database } from "../../../../lib/supabase/types";
 import { Chip } from "../../../../components/ui/chip";
@@ -136,9 +137,16 @@ export function ClientProfile({ client, metrics, phones, emails, addresses, heal
         </div>
 
         <div className="relative safe-top pt-20 px-6 pb-6 flex flex-col items-center text-center">
-          <div className="w-24 h-24 rounded-full bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.08)] mb-3 overflow-hidden">
+          <div className="relative w-24 h-24 rounded-full bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.08)] mb-3 overflow-hidden">
             {client.avatar_url ? (
-              <img src={client.avatar_url} alt={client.name} className="w-full h-full object-cover rounded-full" />
+              <Image
+                src={client.avatar_url}
+                alt={client.name}
+                fill
+                sizes="96px"
+                className="object-cover rounded-full"
+                unoptimized
+              />
             ) : (
               <div className="w-full h-full rounded-full bg-studio-green text-white flex items-center justify-center text-3xl font-serif font-bold">
                 {initials}

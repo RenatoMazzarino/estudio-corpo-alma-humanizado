@@ -19,10 +19,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  CalendarCheck,
   CalendarPlus,
-  Car,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -32,7 +29,6 @@ import {
   Sparkles,
   UserPlus,
   X,
-  Building2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ModuleHeader } from "./ui/module-header";
@@ -868,7 +864,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                     startLabel={startLabel}
                                     endLabel={endLabel}
                                     phone={item.phone}
-                                    isHomeVisit={isHomeVisit}
+                                    isHomeVisit={!!isHomeVisit}
                                     onOpen={() =>
                                       router.push(
                                         `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
