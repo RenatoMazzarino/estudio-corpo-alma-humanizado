@@ -1157,7 +1157,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      <div className="absolute bottom-14 right-6 z-40 flex flex-col items-end gap-3">
+      <div
+        className="absolute right-6 z-40 flex flex-col items-end gap-3"
+        style={{ bottom: "calc(48px + env(safe-area-inset-bottom) + 10px)" }}
+      >
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
@@ -1210,10 +1213,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         <button
           onClick={() => setFabOpen((prev) => !prev)}
-          className="w-12 h-12 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95"
+          className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95"
           type="button"
         >
-          {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-6 h-6" />}
+          {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
         </button>
       </div>
     </div>

@@ -24,7 +24,7 @@ export function ModuleHeader({
   const paddingClasses = compact ? "pb-2.5" : "pb-3";
   return (
     <header
-      className={`sticky top-0 z-30 bg-white rounded-b-3xl shadow-soft safe-top safe-top-6 px-6 transition-all ${paddingClasses} ${className}`}
+      className={`sticky top-0 z-30 bg-white rounded-b-3xl shadow-soft safe-top safe-top-8 px-6 transition-all ${paddingClasses} ${className}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
