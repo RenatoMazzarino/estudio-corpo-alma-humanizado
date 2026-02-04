@@ -28,6 +28,7 @@ import {
   Home,
   Hospital,
   MapPin,
+  MessageCircle,
   Phone,
   Plus,
   Search,
@@ -62,6 +63,7 @@ interface Appointment {
   finished_at: string | null;
   clients: AppointmentClient | null;
   status: string;
+  payment_status?: string | null;
   is_home_visit?: boolean | null;
   total_duration_minutes?: number | null;
   price?: number | null;
@@ -107,6 +109,7 @@ type DayItem = {
   clientName: string;
   serviceName: string;
   status: string;
+  payment_status?: string | null;
   is_home_visit: boolean | null;
   total_duration_minutes: number | null;
   phone?: string | null;
@@ -341,6 +344,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         clientName: appt.clients?.name ?? "Cliente",
         serviceName: appt.service_name,
         status: appt.status,
+        payment_status: appt.payment_status ?? null,
         is_home_visit: appt.is_home_visit ?? false,
         total_duration_minutes: appt.total_duration_minutes ?? null,
         phone: appt.clients?.phone ?? null,
@@ -354,6 +358,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         clientName: block.title,
         serviceName: "Plantão",
         status: "blocked",
+        payment_status: null,
         is_home_visit: false,
         total_duration_minutes: null,
       })),
@@ -451,6 +456,41 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
+
+  const formatDuration = (minutes: number | null) => {
+    if (!minutes) return "";
+    if (minutes < 60) return `${minutes}min`;
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    if (!remainder) return `${hours}h`;
+    return `${hours}h ${remainder}m`;
+  };
+
+  const getStatusLabel = (item: DayItem) => {
+    if (item.status === "completed") {
+      return item.payment_status === "paid" ? "Concluído e pago" : "Concluído pendente";
+    }
+    if (item.status === "confirmed" || item.status === "in_progress") {
+      return "Confirmado";
+    }
+    if (item.status === "pending") return "Agendado";
+    return "Agendado";
+  };
+
+  const getStatusTone = (label: string) => {
+    if (label === "Concluído e pago") return "bg-green-100 text-green-700";
+    if (label === "Concluído pendente") return "bg-orange-100 text-orange-700";
+    if (label === "Confirmado") return "bg-studio-green/10 text-studio-green";
+    return "bg-studio-light text-studio-text";
+  };
+
+  const toWhatsappLink = (phone?: string | null) => {
+    if (!phone) return null;
+    const digits = phone.replace(/\D/g, "");
+    if (!digits) return null;
+    const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
+    return `https://wa.me/${withCountry}`;
+  };
 
   return (
     <div className="bg-studio-bg min-h-full flex flex-col relative -mx-4">
@@ -643,7 +683,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           Hoje
                         </span>
                       )}
-                    <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
                       {appointmentCount > 0 && (
                         <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-studio-green/10 text-studio-green">
                           <Sparkles className="w-3 h-3" /> {appointmentCount} atendimentos
@@ -764,7 +803,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                             lastBottom = top + height;
                             const isBlock = item.type === "block";
                             const isHomeVisit = item.is_home_visit;
-                            const isCompleted = item.status === "completed";
 
                             return (
                               <div
@@ -798,50 +836,82 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                       isHomeVisit ? "border-purple-500" : "border-studio-green"
                                     }`}
                                   >
-                                    <div className="flex justify-between items-start mb-1 gap-2">
-                                      <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
-                                        {item.clientName}
-                                      </h3>
-                                      <div
-                                        className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
+                                          {item.clientName}
+                                        </h3>
+                                        <p className="text-xs text-muted line-clamp-1">
+                                          {item.serviceName}
+                                          {item.total_duration_minutes
+                                            ? ` (${formatDuration(item.total_duration_minutes)})`
+                                            : ""}
+                                        </p>
+                                      </div>
+                                      <span
+                                        className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${
                                           isHomeVisit
-                                            ? "bg-purple-50 text-purple-600"
-                                            : "bg-green-50 text-studio-green"
+                                            ? "bg-purple-100 text-purple-700"
+                                            : "bg-green-100 text-green-700"
                                         }`}
                                       >
-                                        {isHomeVisit ? (
-                                          <Car className="w-3.5 h-3.5" />
-                                        ) : (
-                                          <Building2 className="w-3.5 h-3.5" />
+                                        {isHomeVisit ? "Domicílio" : "Estúdio"}
+                                      </span>
+                                    </div>
+
+                                    <div className="mt-3 border-t border-line pt-2 flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 text-[11px] text-muted flex-wrap">
+                                        <span
+                                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full ${getStatusTone(
+                                            getStatusLabel(item)
+                                          )}`}
+                                        >
+                                          <span className="w-1.5 h-1.5 rounded-full bg-current inline-block"></span>
+                                          {getStatusLabel(item)}
+                                        </span>
+                                        <span className="font-semibold">
+                                          {startLabel}
+                                          {endLabel ? ` – ${endLabel}` : ""}
+                                        </span>
+                                        {item.phone && (
+                                          <span className="inline-flex items-center gap-1">
+                                            <Phone className="w-3 h-3" /> {item.phone}
+                                          </span>
                                         )}
                                       </div>
-                                    </div>
-                                    <p className="text-xs text-muted line-clamp-1">{item.serviceName}</p>
-                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted">
-                                      <span className="font-semibold">
-                                        {startLabel}
-                                        {endLabel ? ` – ${endLabel}` : ""}
-                                      </span>
-                                      {item.phone && (
-                                        <span className="inline-flex items-center gap-1">
-                                          <Phone className="w-3 h-3" /> {item.phone}
-                                        </span>
-                                      )}
-                                      {item.address && isHomeVisit && (
-                                        <span className="inline-flex items-center gap-1 line-clamp-1">
-                                          <MapPin className="w-3 h-3" /> {item.address}
-                                        </span>
-                                      )}
-                                      {isHomeVisit && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                                          <Home className="w-3 h-3" /> Domicílio
-                                        </span>
-                                      )}
-                                      {isCompleted && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full bg-green-100 text-green-700">
-                                          <CheckCircle2 className="w-3 h-3" /> Finalizado
-                                        </span>
-                                      )}
+
+                                      <div className="flex items-center gap-2">
+                                        {toWhatsappLink(item.phone) && (
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              window.open(toWhatsappLink(item.phone) ?? "", "_blank");
+                                            }}
+                                            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                                            aria-label="Abrir WhatsApp"
+                                          >
+                                          <MessageCircle className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                        {isHomeVisit && item.address && (
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              const mapsQuery = encodeURIComponent(item.address ?? "");
+                                              window.open(
+                                                `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
+                                                "_blank"
+                                              );
+                                            }}
+                                            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                                            aria-label="Abrir GPS"
+                                          >
+                                            <MapPin className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   </button>
                                 )}

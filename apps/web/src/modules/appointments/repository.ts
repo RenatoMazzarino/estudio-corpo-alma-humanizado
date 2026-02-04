@@ -11,7 +11,7 @@ export async function listAppointmentsInRange(tenantId: string, start: string, e
   return supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes,
+      `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
        clients ( id, name, initials, phone, health_tags, endereco_completo )`
     )
     .eq("tenant_id", tenantId)
@@ -29,7 +29,7 @@ export async function searchAppointments(tenantId: string, query: string, start:
   return supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes,
+      `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
        clients ( id, name, initials, phone, health_tags, endereco_completo )`
     )
     .eq("tenant_id", tenantId)
