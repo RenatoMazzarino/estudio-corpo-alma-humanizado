@@ -3,6 +3,7 @@ export type AppErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "SUPABASE_ERROR"
+  | "STORAGE_ERROR"
   | "CONFIG_ERROR"
   | "UNAUTHORIZED"
   | "UNKNOWN";
