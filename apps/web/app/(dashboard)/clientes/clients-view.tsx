@@ -70,7 +70,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-studio-bg -mx-4 -mt-4">
+    <div className="flex flex-col min-h-full bg-studio-bg -mx-4">
       <ModuleHeader
         title="Meus Clientes"
         bottomSlot={

@@ -148,8 +148,22 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const isUserScrolling = useRef(false);
   const skipAutoScrollSync = useRef(false);
   const pendingViewRef = useRef<AgendaView | null>(null);
+  const selectedDateRef = useRef<Date>(selectedDate);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const dragState = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    mode: "x" | "y" | null;
+  }>({
+    active: false,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    mode: null,
+  });
   const timeGridConfig = useMemo<TimeGridConfig>(
     () => ({
       startHour: 6,
@@ -237,7 +251,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     const dateParam = searchParams.get("date");
     if (dateParam) {
       const parsed = parseISO(dateParam);
-      if (isValid(parsed) && !isSameDay(parsed, selectedDate)) {
+      if (isValid(parsed) && !isSameDay(parsed, selectedDateRef.current)) {
         setSelectedDate(parsed);
         setCurrentMonth(startOfMonth(parsed));
       }
@@ -254,7 +268,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         pendingViewRef.current = null;
       }
     }
-  }, [searchParams, selectedDate, view]);
+  }, [searchParams, view]);
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!isSearchOpen) {
@@ -425,7 +443,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   }, [currentMonth]);
 
   return (
-    <div className="bg-studio-bg min-h-full flex flex-col relative -mx-4 -mt-4">
+    <div className="bg-studio-bg min-h-full flex flex-col relative -mx-4">
       <div className="relative z-30">
         <ModuleHeader
           kicker="Olá, Janaina"
@@ -496,7 +514,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         />
 
         {isMonthPickerOpen && (
-          <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-2xl shadow-float border border-line p-4 z-30">
+          <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-2xl shadow-float border border-line p-4 z-50 pointer-events-auto">
             <div className="flex items-center justify-between mb-3">
               <button
                 type="button"
@@ -544,12 +562,49 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         )}
       </div>
 
-      <main className="flex-1 overflow-hidden relative bg-studio-bg">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-studio-bg">
         <section className={`${view === "day" ? "block" : "hidden"} h-full`}>
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
+            onPointerDown={(event) => {
+              if (!daySliderRef.current) return;
+              dragState.current = {
+                active: true,
+                startX: event.clientX,
+                startY: event.clientY,
+                scrollLeft: daySliderRef.current.scrollLeft,
+                mode: null,
+              };
+              daySliderRef.current.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!dragState.current.active || !daySliderRef.current) return;
+              const dx = event.clientX - dragState.current.startX;
+              const dy = event.clientY - dragState.current.startY;
+              if (!dragState.current.mode) {
+                if (Math.abs(dx) > Math.abs(dy) + 4) {
+                  dragState.current.mode = "x";
+                } else if (Math.abs(dy) > Math.abs(dx) + 4) {
+                  dragState.current.mode = "y";
+                }
+              }
+              if (dragState.current.mode === "x") {
+                event.preventDefault();
+                daySliderRef.current.scrollLeft = dragState.current.scrollLeft - dx;
+              }
+            }}
+            onPointerUp={(event) => {
+              dragState.current.active = false;
+              dragState.current.mode = null;
+              daySliderRef.current?.releasePointerCapture(event.pointerId);
+            }}
+            onPointerCancel={() => {
+              dragState.current.active = false;
+              dragState.current.mode = null;
+            }}
             className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
+            style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
           >
             {monthDays.map((day) => {
               const { dayAppointments, dayBlocks, items } = getDayData(day);
@@ -562,9 +617,9 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-28"
+                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-28 pt-4"
                 >
-                  <div className="text-center mb-4">
+                  <div className="text-center mb-5">
                     <h2
                       className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 capitalize ${
                         isToday(day) ? "text-studio-green" : "text-muted"
@@ -575,6 +630,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     <p className="text-3xl font-serif text-studio-text capitalize">
                       {format(day, "dd MMM", { locale: ptBR })}
                     </p>
+                    {isToday(day) && (
+                      <div className="mt-2 flex justify-center">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-green/10 text-studio-green">
+                          Hoje
+                        </span>
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
                       {appointmentCount > 0 && (
                         <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-studio-green/10 text-studio-green">
@@ -654,13 +716,17 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                           const top = getOffsetForTime(startTimeDate, timeGridConfig);
                           if (top === null) return null;
-                          const height = getDurationHeight(durationMinutes, timeGridConfig);
+                          const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 96);
                           const isBlock = item.type === "block";
                           const isHomeVisit = item.is_home_visit;
                           const isCompleted = item.status === "completed";
 
                           return (
-                            <div key={item.id} className="absolute left-0 right-0 pr-2" style={{ top, height }}>
+                            <div
+                              key={item.id}
+                              className="absolute left-0 right-0 pr-2"
+                              style={{ top, height, minHeight: 96 }}
+                            >
                               {isBlock ? (
                                 <div className="h-full bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between">
                                   <div className="flex justify-between items-start mb-1">
@@ -683,7 +749,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                 <button
                                   type="button"
                                   onClick={() => router.push(`/atendimento/${item.id}`)}
-                                  className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
+                                  className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative ${
                                     isHomeVisit ? "border-purple-500" : "border-studio-green"
                                   }`}
                                 >
@@ -915,7 +981,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       setSelectedDate(day);
                       setViewAndSync("day", day);
                     }}
-                    className="relative flex justify-center"
+                    className="relative flex flex-col items-center"
                   >
                     <span
                       className={`w-8 h-8 flex items-center justify-center rounded-full font-extrabold transition ${
@@ -928,15 +994,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     >
                       {format(day, "dd")}
                     </span>
-                    {dayAppointments.length > 0 && (
-                      <span className="absolute -bottom-2 w-1 h-1 bg-studio-green rounded-full"></span>
-                    )}
-                    {dayBlocks.length > 0 && (
-                      <span className="absolute -bottom-2 text-[8px] text-red-400 font-extrabold">PLANT</span>
-                    )}
-                    {hasHome && (
-                      <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                    )}
+                    <div className="absolute -bottom-2 flex items-center gap-1">
+                      {dayAppointments.length > 0 && <span className="w-1.5 h-1.5 bg-studio-green rounded-full" />}
+                      {dayBlocks.length > 0 && <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />}
+                      {hasHome && <span className="w-1.5 h-1.5 bg-purple-400 rounded-full" />}
+                    </div>
                   </button>
                 );
               })}
@@ -959,10 +1021,19 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       </main>
 
       {isSearchOpen && (
-        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white h-full w-full flex flex-col">
-            <div className="sticky top-0 bg-white px-6 pt-6 pb-4 shadow-soft">
-              <div className="flex items-center gap-2">
+        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-6">
+          <div className="bg-white w-full max-h-[80vh] rounded-3xl shadow-float overflow-hidden flex flex-col">
+            <div className="sticky top-0 bg-white px-6 pt-5 pb-4 shadow-soft z-10">
+              <div className="flex items-center gap-3">
+                <IconButton
+                  size="sm"
+                  icon={<ChevronLeft className="w-4 h-4" />}
+                  aria-label="Voltar"
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setSearchTerm("");
+                  }}
+                />
                 <Search className="w-4 h-4 text-muted" />
                 <input
                   autoFocus
@@ -978,21 +1049,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 >
                   Buscar
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSearchOpen(false);
-                    setSearchTerm("");
-                  }}
-                  className="w-8 h-8 rounded-full bg-studio-light text-muted flex items-center justify-center"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
               <p className="text-[11px] text-muted mt-2">Digite ao menos 3 letras para ver resultados.</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-24">
+            <div className="flex-1 overflow-y-auto px-6 pb-8">
               {isSearching && (
                 <div className="py-6 text-xs text-muted">Buscando...</div>
               )}
@@ -1065,7 +1126,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      <div className="absolute bottom-24 right-6 z-40 flex flex-col items-end gap-3">
+      <div className="absolute bottom-[72px] right-6 z-40 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
