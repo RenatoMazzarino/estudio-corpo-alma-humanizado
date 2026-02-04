@@ -93,11 +93,16 @@ export async function listClientPhones(tenantId: string, clientId: string) {
     .order("created_at", { ascending: true });
 }
 
-export async function replaceClientPhones(tenantId: string, clientId: string, phones: ClientPhoneInsert[]) {
+export async function replaceClientPhones(
+  tenantId: string,
+  clientId: string,
+  phones: ClientPhoneInsert[]
+): Promise<{ data: ClientPhoneRow[] | null; error: unknown }> {
   const supabase = createServiceClient();
   await supabase.from("client_phones").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
   if (phones.length === 0) return { data: [], error: null };
-  return supabase.from("client_phones").insert(phones);
+  const { data, error } = await supabase.from("client_phones").insert(phones).select("*");
+  return { data, error };
 }
 
 export async function listClientEmails(tenantId: string, clientId: string) {
@@ -111,11 +116,16 @@ export async function listClientEmails(tenantId: string, clientId: string) {
     .order("created_at", { ascending: true });
 }
 
-export async function replaceClientEmails(tenantId: string, clientId: string, emails: ClientEmailInsert[]) {
+export async function replaceClientEmails(
+  tenantId: string,
+  clientId: string,
+  emails: ClientEmailInsert[]
+): Promise<{ data: ClientEmailRow[] | null; error: unknown }> {
   const supabase = createServiceClient();
   await supabase.from("client_emails").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
   if (emails.length === 0) return { data: [], error: null };
-  return supabase.from("client_emails").insert(emails);
+  const { data, error } = await supabase.from("client_emails").insert(emails).select("*");
+  return { data, error };
 }
 
 export async function listClientHealthItems(tenantId: string, clientId: string) {
@@ -133,9 +143,10 @@ export async function replaceClientHealthItems(
   tenantId: string,
   clientId: string,
   items: ClientHealthItemInsert[]
-) {
+): Promise<{ data: ClientHealthItemRow[] | null; error: unknown }> {
   const supabase = createServiceClient();
   await supabase.from("client_health_items").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
   if (items.length === 0) return { data: [], error: null };
-  return supabase.from("client_health_items").insert(items);
+  const { data, error } = await supabase.from("client_health_items").insert(items).select("*");
+  return { data, error };
 }
