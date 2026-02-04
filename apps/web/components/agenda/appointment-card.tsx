@@ -12,6 +12,7 @@ interface AppointmentCardProps {
   endLabel?: string;
   phone?: string | null;
   isHomeVisit: boolean;
+  loading?: boolean;
   onOpen: () => void;
   onWhatsapp?: () => void;
   onMaps?: () => void;
@@ -28,6 +29,7 @@ export function AppointmentCard({
   endLabel,
   phone,
   isHomeVisit,
+  loading = false,
   onOpen,
   onWhatsapp,
   onMaps,
@@ -48,10 +50,16 @@ export function AppointmentCard({
           onOpen();
         }
       }}
+      aria-busy={loading}
       className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${
         isHomeVisit ? "border-purple-500" : "border-studio-green"
-      }`}
+      } ${loading ? "opacity-80 cursor-wait" : ""}`}
     >
+      {loading && (
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10">
+          <div className="w-6 h-6 border-2 border-studio-green/40 border-t-studio-green rounded-full animate-spin" />
+        </div>
+      )}
       <div className="flex flex-col h-full gap-2">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -100,7 +108,7 @@ export function AppointmentCard({
                   event.stopPropagation();
                   onWhatsapp();
                 }}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center transition active:scale-95 active:bg-studio-green/10"
                 aria-label="Abrir WhatsApp"
               >
                 <MessageCircle className="w-4 h-4" />
@@ -116,7 +124,7 @@ export function AppointmentCard({
                   event.stopPropagation();
                   onMaps();
                 }}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center transition active:scale-95 active:bg-studio-green/10"
                 aria-label="Abrir GPS"
               >
                 <MapPin className="w-4 h-4" />

@@ -141,6 +141,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [searchMode, setSearchMode] = useState<"preview" | "full">("preview");
   const [searchResults, setSearchResults] = useState<SearchResults>({ appointments: [], clients: [] });
   const [isSearching, setIsSearching] = useState(false);
+  const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
@@ -667,7 +668,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               dragState.current.active = false;
               dragState.current.mode = null;
             }}
-            className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
+            className="flex min-h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
@@ -681,7 +682,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-0 pt-5"
+                  className="min-w-full min-h-full snap-center px-6 pb-0 pt-5"
                 >
                   <div className="text-center mb-5">
                     <div className="flex items-center justify-between mb-0.5">
@@ -865,10 +866,15 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                     endLabel={endLabel}
                                     phone={item.phone}
                                     isHomeVisit={!!isHomeVisit}
+                                    loading={loadingAppointmentId === item.id}
                                     onOpen={() =>
-                                      router.push(
-                                        `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
-                                      )
+                                      (() => {
+                                        setLoadingAppointmentId(item.id);
+                                        setTimeout(() => setLoadingAppointmentId(null), 2000);
+                                        router.push(
+                                          `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
+                                        );
+                                      })()
                                     }
                                     onWhatsapp={
                                       toWhatsappLink(item.phone)
@@ -1153,6 +1159,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       {searchResults.appointments.map((item) => {
                         const when = format(new Date(item.start_time), "dd MMM • HH:mm", { locale: ptBR });
                         const clientName = item.clients?.name ?? "Cliente";
+                        const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
                         return (
                           <button
                             key={item.id}
@@ -1160,7 +1167,9 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                             onClick={() => {
                               setIsSearchOpen(false);
                               setSearchTerm("");
-                              router.push(`/atendimento/${item.id}`);
+                              router.push(
+                                `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
+                              );
                             }}
                             className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
                           >
