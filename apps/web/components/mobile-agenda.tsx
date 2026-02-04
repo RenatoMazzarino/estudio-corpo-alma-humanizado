@@ -122,6 +122,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [headerCompact, setHeaderCompact] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   const initialView = useMemo<AgendaView>(() => {
     const viewParam = searchParams.get("view");
     if (viewParam === "week" || viewParam === "month" || viewParam === "day") {
@@ -285,6 +286,18 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     handle();
     container.addEventListener("scroll", handle, { passive: true });
     return () => container.removeEventListener("scroll", handle);
+  }, []);
+
+  useEffect(() => {
+    setIsOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -510,15 +523,22 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             </div>
           }
           rightSlot={
-            <IconButton
-              size="sm"
-              icon={<Search className="w-4 h-4" />}
-              aria-label="Buscar"
-              onClick={() => {
-                setSearchMode("preview");
-                setIsSearchOpen(true);
-              }}
-            />
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`}
+                aria-label={isOnline ? "Conectado" : "Sem conexão"}
+                title={isOnline ? "Conectado" : "Sem conexão"}
+              />
+              <IconButton
+                size="sm"
+                icon={<Search className="w-4 h-4" />}
+                aria-label="Buscar"
+                onClick={() => {
+                  setSearchMode("preview");
+                  setIsSearchOpen(true);
+                }}
+              />
+            </div>
           }
           bottomSlot={
             <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
@@ -664,6 +684,15 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                   data-date={format(day, "yyyy-MM-dd")}
                   className="min-w-full h-full snap-center overflow-y-auto px-6 pb-0 pt-5"
                 >
+                  <div className="flex justify-end mb-2">
+                    <button
+                      type="button"
+                      onClick={handleGoToToday}
+                      className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
+                    >
+                      Hoje
+                    </button>
+                  </div>
                   <div className="text-center mb-5">
                     <h2
                       className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 capitalize ${
@@ -704,16 +733,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         </span>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex justify-end mb-2">
-                    <button
-                      type="button"
-                      onClick={handleGoToToday}
-                      className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
-                    >
-                      Hoje
-                    </button>
                   </div>
 
                   {items.length > 0 ? (
@@ -798,7 +817,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                             const topRaw = getOffsetForTime(startTimeDate, timeGridConfig);
                             if (topRaw === null) return null;
-                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 96);
+                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 120);
                             const top = topRaw < lastBottom + 12 ? lastBottom + 12 : topRaw;
                             lastBottom = top + height;
                             const isBlock = item.type === "block";
@@ -808,7 +827,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                               <div
                                 key={item.id}
                                 className="absolute left-0 right-0 pr-2"
-                                style={{ top, height, minHeight: 96 }}
+                                style={{ top, height, minHeight: 120 }}
                               >
                                 {isBlock ? (
                                   <div className="h-full bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
@@ -829,10 +848,17 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                     </div>
                                   </div>
                                 ) : (
-                                  <button
-                                    type="button"
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => router.push(`/atendimento/${item.id}`)}
-                                    className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter" || event.key === " ") {
+                                        event.preventDefault();
+                                        router.push(`/atendimento/${item.id}`);
+                                      }
+                                    }}
+                                    className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${
                                       isHomeVisit ? "border-purple-500" : "border-studio-green"
                                     }`}
                                   >
@@ -913,7 +939,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                         )}
                                       </div>
                                     </div>
-                                  </button>
+                                  </div>
                                 )}
                               </div>
                             );
