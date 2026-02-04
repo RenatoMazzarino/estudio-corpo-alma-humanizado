@@ -118,6 +118,7 @@ const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [headerCompact, setHeaderCompact] = useState(false);
   const initialView = useMemo<AgendaView>(() => {
     const viewParam = searchParams.get("view");
     if (viewParam === "week" || viewParam === "month" || viewParam === "day") {
@@ -273,6 +274,15 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   useEffect(() => {
     selectedDateRef.current = selectedDate;
   }, [selectedDate]);
+
+  useEffect(() => {
+    const container = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
+    if (!container) return;
+    const handle = () => setHeaderCompact(container.scrollTop > 32);
+    handle();
+    container.addEventListener("scroll", handle, { passive: true });
+    return () => container.removeEventListener("scroll", handle);
+  }, []);
 
   useEffect(() => {
     if (!isSearchOpen) {
@@ -510,7 +520,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               </button>
             </div>
           }
-          className="min-h-[168px]"
+          compact={headerCompact}
+          className={`${headerCompact ? "min-h-[120px]" : "min-h-[150px]"}`}
         />
 
         {isMonthPickerOpen && (
@@ -617,7 +628,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-28 pt-4"
+                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-20 pt-4"
                 >
                   <div className="text-center mb-5">
                     <h2
@@ -674,7 +685,32 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           </div>
                         ))}
                       </div>
-                      <div className="relative" style={{ height: timelineHeight }}>
+                      <div
+                        className="relative"
+                        style={{
+                          height: (() => {
+                            let lastBottom = 0;
+                            items.forEach((item) => {
+                              const startTimeDate = new Date(item.start_time);
+                              const top = getOffsetForTime(startTimeDate, timeGridConfig);
+                              if (top === null) return;
+                              let durationMinutes = item.total_duration_minutes ?? 60;
+                              if (item.finished_at) {
+                                durationMinutes = Math.max(
+                                  15,
+                                  Math.round(
+                                    (new Date(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
+                                  )
+                                );
+                              }
+                              const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 96);
+                              const nextTop = top < lastBottom + 12 ? lastBottom + 12 : top;
+                              lastBottom = nextTop + height;
+                            });
+                            return Math.max(timelineHeight, lastBottom + 16);
+                          })(),
+                        }}
+                      >
                         {hours.map((hour, index) => (
                           <div
                             key={hour}
@@ -697,123 +733,107 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           </div>
                         )}
 
-                        {items.map((item) => {
-                          const startTimeDate = new Date(item.start_time);
-                          const startLabel = format(startTimeDate, "HH:mm");
-                          let endLabel = "";
-                          let durationMinutes = item.total_duration_minutes ?? 60;
-                          if (item.finished_at) {
-                            endLabel = format(new Date(item.finished_at), "HH:mm");
-                            durationMinutes = Math.max(
-                              15,
-                              Math.round(
-                                (new Date(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
-                              )
-                            );
-                          } else if (item.total_duration_minutes) {
-                            endLabel = format(addMinutes(startTimeDate, item.total_duration_minutes), "HH:mm");
-                          }
+                        {(() => {
+                          let lastBottom = 0;
+                          return items.map((item) => {
+                            const startTimeDate = new Date(item.start_time);
+                            const startLabel = format(startTimeDate, "HH:mm");
+                            let endLabel = "";
+                            let durationMinutes = item.total_duration_minutes ?? 60;
+                            if (item.finished_at) {
+                              endLabel = format(new Date(item.finished_at), "HH:mm");
+                              durationMinutes = Math.max(
+                                15,
+                                Math.round(
+                                  (new Date(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
+                                )
+                              );
+                            } else if (item.total_duration_minutes) {
+                              endLabel = format(addMinutes(startTimeDate, item.total_duration_minutes), "HH:mm");
+                            }
 
-                          const top = getOffsetForTime(startTimeDate, timeGridConfig);
-                          if (top === null) return null;
-                          const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 96);
-                          const isBlock = item.type === "block";
-                          const isHomeVisit = item.is_home_visit;
-                          const isCompleted = item.status === "completed";
+                            const topRaw = getOffsetForTime(startTimeDate, timeGridConfig);
+                            if (topRaw === null) return null;
+                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 96);
+                            const top = topRaw < lastBottom + 12 ? lastBottom + 12 : topRaw;
+                            lastBottom = top + height;
+                            const isBlock = item.type === "block";
+                            const isHomeVisit = item.is_home_visit;
+                            const isCompleted = item.status === "completed";
 
-                          return (
-                            <div
-                              key={item.id}
-                              className="absolute left-0 right-0 pr-2"
-                              style={{ top, height, minHeight: 96 }}
-                            >
-                              {isBlock ? (
-                                <div className="h-full bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between">
-                                  <div className="flex justify-between items-start mb-1">
-                                    <h3 className="font-extrabold text-studio-text text-sm leading-tight">
-                                      {item.clientName}
-                                    </h3>
-                                    <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
-                                      <Hospital className="w-3.5 h-3.5" />
+                            return (
+                              <div
+                                key={item.id}
+                                className="absolute left-0 right-0 pr-2"
+                                style={{ top, height, minHeight: 96 }}
+                              >
+                                {isBlock ? (
+                                  <div className="h-full bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
+                                    <div className="flex justify-between items-start mb-1">
+                                      <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
+                                        {item.clientName}
+                                      </h3>
+                                      <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                        <Hospital className="w-3.5 h-3.5" />
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-muted line-clamp-1">{item.serviceName}</p>
+                                    <div className="mt-2 flex items-center gap-2">
+                                      <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
+                                        Bloqueado
+                                      </span>
+                                      {endLabel && <span className="text-[11px] text-muted">Até {endLabel}</span>}
                                     </div>
                                   </div>
-                                  <p className="text-xs text-muted">{item.serviceName}</p>
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
-                                      Bloqueado
-                                    </span>
-                                    {endLabel && <span className="text-[11px] text-muted">Até {endLabel}</span>}
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => router.push(`/atendimento/${item.id}`)}
-                                  className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative ${
-                                    isHomeVisit ? "border-purple-500" : "border-studio-green"
-                                  }`}
-                                >
-                                  <div className="flex justify-between items-start mb-1">
-                                    <h3 className="font-extrabold text-studio-text text-sm leading-tight">
-                                      {item.clientName}
-                                    </h3>
-                                    <div
-                                      className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                                        isHomeVisit
-                                          ? "bg-purple-50 text-purple-600"
-                                          : "bg-green-50 text-studio-green"
-                                      }`}
-                                    >
-                                      {isHomeVisit ? (
-                                        <Car className="w-3.5 h-3.5" />
-                                      ) : (
-                                        <Building2 className="w-3.5 h-3.5" />
-                                      )}
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => router.push(`/atendimento/${item.id}`)}
+                                    className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden ${
+                                      isHomeVisit ? "border-purple-500" : "border-studio-green"
+                                    }`}
+                                  >
+                                    <div className="flex justify-between items-start mb-1 gap-2">
+                                      <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
+                                        {item.clientName}
+                                      </h3>
+                                      <div
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                          isHomeVisit
+                                            ? "bg-purple-50 text-purple-600"
+                                            : "bg-green-50 text-studio-green"
+                                        }`}
+                                      >
+                                        {isHomeVisit ? (
+                                          <Car className="w-3.5 h-3.5" />
+                                        ) : (
+                                          <Building2 className="w-3.5 h-3.5" />
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                  <p className="text-sm text-muted">{item.serviceName}</p>
-                                  <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                    <span
-                                      className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 ${
-                                        isCompleted
-                                          ? "bg-green-100 text-green-700"
-                                          : isHomeVisit
-                                            ? "bg-purple-100 text-purple-700"
-                                            : "bg-studio-green/10 text-studio-green"
-                                      }`}
-                                    >
-                                      {isCompleted ? (
-                                        <>
-                                          <CheckCircle2 className="w-3 h-3" /> Finalizado
-                                        </>
-                                      ) : isHomeVisit ? (
-                                        <>
+                                    <p className="text-xs text-muted line-clamp-1">{item.serviceName}</p>
+                                    <div className="mt-2 flex items-center gap-2 flex-wrap text-[11px] text-muted">
+                                      <span className="font-semibold">
+                                        {startLabel}
+                                        {endLabel ? ` – ${endLabel}` : ""}
+                                      </span>
+                                      {isHomeVisit && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full bg-purple-100 text-purple-700">
                                           <Home className="w-3 h-3" /> Domicílio
-                                        </>
-                                      ) : (
-                                        "Confirmado"
+                                        </span>
                                       )}
-                                    </span>
-                                    <span className="text-[11px] text-muted">
-                                      {startLabel}
-                                      {endLabel ? ` – ${endLabel}` : ""}
-                                    </span>
-                                    {item.phone && (
-                                      <span className="text-[11px] text-muted flex items-center gap-1">
-                                        <Phone className="w-3 h-3" /> {item.phone}
-                                      </span>
-                                    )}
-                                    {item.address && isHomeVisit && (
-                                      <span className="text-[11px] text-muted flex items-center gap-1">
-                                        <MapPin className="w-3 h-3" /> {item.address}
-                                      </span>
-                                    )}
-                                  </div>
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
+                                      {isCompleted && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                          <CheckCircle2 className="w-3 h-3" /> Finalizado
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
                   ) : (
@@ -1126,7 +1146,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      <div className="absolute bottom-[72px] right-6 z-40 flex flex-col items-end gap-3">
+      <div className="absolute bottom-16 right-6 z-40 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"

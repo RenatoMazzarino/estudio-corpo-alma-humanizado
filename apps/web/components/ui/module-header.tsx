@@ -8,6 +8,7 @@ interface ModuleHeaderProps {
   subtitle?: ReactNode;
   rightSlot?: ReactNode;
   bottomSlot?: ReactNode;
+  compact?: boolean;
   className?: string;
 }
 
@@ -17,10 +18,14 @@ export function ModuleHeader({
   subtitle,
   rightSlot,
   bottomSlot,
+  compact = false,
   className = "",
 }: ModuleHeaderProps) {
+  const paddingClasses = compact ? "pt-3 pb-3" : "pt-4 pb-4";
   return (
-    <header className={`sticky top-0 z-30 bg-white shadow-soft safe-top px-6 pt-4 pb-4 ${className}`}>
+    <header
+      className={`sticky top-0 z-30 bg-white shadow-soft safe-top safe-top-6 px-6 transition-all ${paddingClasses} ${className}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           {kicker && (
@@ -33,7 +38,7 @@ export function ModuleHeader({
         </div>
         {rightSlot && <div className="flex items-start gap-2">{rightSlot}</div>}
       </div>
-      {bottomSlot && <div className="mt-3">{bottomSlot}</div>}
+      {bottomSlot && <div className={`${compact ? "mt-2" : "mt-3"}`}>{bottomSlot}</div>}
     </header>
   );
 }

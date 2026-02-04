@@ -22,22 +22,22 @@ export function BottomNav({ className = "" }: BottomNavProps) {
 
   return (
     <nav
-      className={`bg-white border-t border-line h-14 px-2 flex justify-around items-center z-40 absolute bottom-0 w-full safe-bottom ${className}`}
+      className={`bg-white border-t border-line h-12 px-2 flex justify-around items-center z-40 absolute bottom-0 w-full safe-bottom ${className}`}
     >
       <Link href="/" className={itemClass("/")}>
-        <Calendar size={20} />
+        <Calendar size={18} />
         <span className={labelClass("/")}>Agenda</span>
       </Link>
       <Link href="/clientes" className={itemClass("/clientes")}>
-        <Users size={20} />
+        <Users size={18} />
         <span className={labelClass("/clientes")}>Clientes</span>
       </Link>
       <Link href="/caixa" className={itemClass("/caixa")}>
-        <Wallet size={20} />
+        <Wallet size={18} />
         <span className={labelClass("/caixa")}>Caixa</span>
       </Link>
       <Link href="/menu" className={itemClass("/menu")}>
-        <Menu size={20} />
+        <Menu size={18} />
         <span className={labelClass("/menu")}>Menu</span>
       </Link>
     </nav>
