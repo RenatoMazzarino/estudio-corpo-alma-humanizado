@@ -6,7 +6,8 @@
 - Agenda: FAB inclui opção “Novo Cliente”.
 - Shell: BottomNav fixa e regras de visibilidade por rota aplicadas (inclui /clientes/novo, exclui /clientes/[id], /novo e /atendimento).
 - Shell: moldura mobile agora ocupa toda a altura do viewport, sem cantos arredondados.
- - Agenda: rolagem horizontal com drag em toda a área útil; cards com altura mínima e marcação de “Hoje”.
+- Agenda: rolagem horizontal com drag em toda a área útil; cards com altura mínima e marcação de “Hoje”.
+- Agenda: header colapsável, modal de busca com overlay, cards sem sobreposição e BottomNav mais compacta.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
@@ -29,6 +30,7 @@
 
 ## 4) Commits (hash + objetivo)
 - `f8ea4af` — feat(ui): header modulo e busca na agenda
+- `e0358ba` — fix(agenda): header e cards
 - `74dc683` — fix(agenda): header, busca e scroll
 - `9a465a4` — docs(report): atualiza header e busca
 - `e9d3d71` — docs(ui-system): documenta frame mobile
