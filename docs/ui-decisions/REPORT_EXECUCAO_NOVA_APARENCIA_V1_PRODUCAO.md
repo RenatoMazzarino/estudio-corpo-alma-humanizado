@@ -28,6 +28,8 @@
 
 ## 4) Commits (hash + objetivo)
 - `f8ea4af` — feat(ui): header modulo e busca na agenda
+- `9a465a4` — docs(report): atualiza header e busca
+- `e9d3d71` — docs(ui-system): documenta frame mobile
 - `7989456` — fix(shell): frame ocupa altura total do viewport
 - `706a9b7` — fix(shell): frame sem arredondamento e proporcao s25
 - `8fe6319` — fix(shell): altura do frame galaxy s25
