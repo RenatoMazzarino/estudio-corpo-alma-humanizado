@@ -27,16 +27,18 @@ import {
   ChevronRight,
   Home,
   Hospital,
-  Leaf,
   MapPin,
   Phone,
   Plus,
   Search,
   Sparkles,
+  UserPlus,
   X,
   Building2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ModuleHeader } from "./ui/module-header";
+import { IconButton } from "./ui/buttons";
 import {
   getDurationHeight,
   getOffsetForTime,
@@ -70,6 +72,24 @@ interface AvailabilityBlock {
   title: string;
   start_time: string;
   end_time: string;
+}
+
+interface SearchAppointmentResult {
+  id: string;
+  service_name: string;
+  start_time: string;
+  clients: { id: string; name: string; phone: string | null } | null;
+}
+
+interface SearchClientResult {
+  id: string;
+  name: string;
+  phone: string | null;
+}
+
+interface SearchResults {
+  appointments: SearchAppointmentResult[];
+  clients: SearchClientResult[];
 }
 
 interface MobileAgendaProps {
@@ -119,11 +139,15 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchMode, setSearchMode] = useState<"preview" | "full">("preview");
+  const [searchResults, setSearchResults] = useState<SearchResults>({ appointments: [], clients: [] });
+  const [isSearching, setIsSearching] = useState(false);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
   const isUserScrolling = useRef(false);
   const skipAutoScrollSync = useRef(false);
+  const pendingViewRef = useRef<AgendaView | null>(null);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState(() => new Date());
   const timeGridConfig = useMemo<TimeGridConfig>(
@@ -180,6 +204,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
   const setViewAndSync = useCallback(
     (nextView: AgendaView, nextDate?: Date) => {
+      pendingViewRef.current = nextView;
       setView(nextView);
       syncViewToUrl(nextView, nextDate);
     },
@@ -209,11 +234,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   }, [currentMonth]);
 
   useEffect(() => {
-    const query = searchParams.get("q") ?? "";
-    setSearchTerm(query);
-  }, [searchParams]);
-
-  useEffect(() => {
     const dateParam = searchParams.get("date");
     if (dateParam) {
       const parsed = parseISO(dateParam);
@@ -223,25 +243,57 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       }
     }
     const viewParam = searchParams.get("view");
-    if ((viewParam === "day" || viewParam === "week" || viewParam === "month") && viewParam !== view) {
-      setView(viewParam);
+    if (viewParam === "day" || viewParam === "week" || viewParam === "month") {
+      if (pendingViewRef.current && viewParam !== pendingViewRef.current) {
+        return;
+      }
+      if (viewParam !== view) {
+        setView(viewParam);
+      }
+      if (pendingViewRef.current === viewParam) {
+        pendingViewRef.current = null;
+      }
     }
   }, [searchParams, selectedDate, view]);
 
   useEffect(() => {
-    if (!isSearchOpen) return;
-    const handle = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      const nextQuery = searchTerm.trim();
-      if (nextQuery) {
-        params.set("q", nextQuery);
-      } else {
-        params.delete("q");
+    if (!isSearchOpen) {
+      setSearchMode("preview");
+      setSearchResults({ appointments: [], clients: [] });
+      return;
+    }
+    const query = searchTerm.trim();
+    if (query.length < 3) {
+      setSearchResults({ appointments: [], clients: [] });
+      return;
+    }
+    const controller = new AbortController();
+    const handle = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const limit = searchMode === "full" ? 20 : 5;
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as SearchResults;
+        setSearchResults({
+          appointments: data.appointments ?? [],
+          clients: data.clients ?? [],
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setSearchResults({ appointments: [], clients: [] });
+        }
+      } finally {
+        setIsSearching(false);
       }
-      router.replace(`/?${params.toString()}`, { scroll: false });
-    }, 400);
-    return () => clearTimeout(handle);
-  }, [searchTerm, isSearchOpen, router, searchParams]);
+    }, 250);
+    return () => {
+      clearTimeout(handle);
+      controller.abort();
+    };
+  }, [searchTerm, isSearchOpen, searchMode]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -373,21 +425,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   }, [currentMonth]);
 
   return (
-    <div className="bg-studio-bg min-h-full flex flex-col">
-      <header className="px-6 pb-4 bg-white rounded-b-3xl shadow-soft z-20 sticky top-0 relative safe-top safe-top-6">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-[11px] font-extrabold text-studio-green uppercase tracking-widest">
-                Olá, Corpo & Alma
-              </p>
-              <span className="text-[10px] text-muted flex items-center gap-1 uppercase tracking-wide">
-                <Leaf className="w-3 h-3 text-studio-accent" /> Online
-              </span>
-            </div>
-
-            <h1 className="text-2xl font-serif text-studio-text flex items-center gap-2 leading-tight">
-              Sua Agenda de
+    <div className="bg-studio-bg min-h-full flex flex-col relative -mx-4 -mt-4">
+      <div className="relative z-30">
+        <ModuleHeader
+          kicker="Olá, Janaina"
+          title={
+            <div className="flex items-center gap-2">
+              <span>Sua Agenda de</span>
               <button
                 type="button"
                 onClick={() => setIsMonthPickerOpen((prev) => !prev)}
@@ -395,78 +439,61 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               >
                 {format(currentMonth, "MMMM", { locale: ptBR })}
               </button>
-            </h1>
-          </div>
-
-          <div className="flex flex-col gap-2 items-end">
-            <button
-              onClick={handleGoToToday}
-              className="bg-studio-light text-studio-green px-3 py-1.5 rounded-full text-xs font-extrabold shadow-soft hover:bg-studio-green hover:text-white transition flex items-center gap-1"
-              type="button"
-            >
-              <CalendarCheck className="w-3 h-3" /> Hoje
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsSearchOpen((prev) => !prev)}
-              className="text-xs font-bold text-muted hover:text-studio-green transition flex items-center gap-1"
-            >
-              <Search className="w-3 h-3" /> Buscar
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
-          <button
-            type="button"
-            onClick={() => setViewAndSync("day")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-              view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
-            }`}
-          >
-            DIA
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewAndSync("week")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-              view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
-            }`}
-          >
-            SEMANA
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewAndSync("month")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-              view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
-            }`}
-          >
-            MÊS
-          </button>
-        </div>
-
-        {isSearchOpen && (
-          <div className="mt-3 flex items-center gap-2 bg-studio-light rounded-2xl px-3 py-2">
-            <Search className="w-4 h-4 text-muted" />
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar cliente, serviço ou telefone"
-              className="flex-1 bg-transparent text-sm text-studio-text placeholder:text-muted focus:outline-none"
-            />
-            {searchTerm && (
+            </div>
+          }
+          rightSlot={
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={handleGoToToday}
+                className="bg-studio-light text-studio-green px-3 py-1.5 rounded-full text-xs font-extrabold shadow-soft hover:bg-studio-green hover:text-white transition flex items-center gap-1"
+                type="button"
+              >
+                <CalendarCheck className="w-3 h-3" /> Hoje
+              </button>
+              <IconButton
+                size="sm"
+                icon={<Search className="w-4 h-4" />}
+                aria-label="Buscar"
+                onClick={() => {
+                  setSearchMode("preview");
+                  setIsSearchOpen(true);
+                }}
+              />
+            </div>
+          }
+          bottomSlot={
+            <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
               <button
                 type="button"
-                onClick={() => setSearchTerm("")}
-                className="w-7 h-7 rounded-full bg-white text-muted flex items-center justify-center"
+                onClick={() => setViewAndSync("day")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
+                  view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
+                }`}
               >
-                <X className="w-4 h-4" />
+                DIA
               </button>
-            )}
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() => setViewAndSync("week")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
+                  view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
+                }`}
+              >
+                SEMANA
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewAndSync("month")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
+                  view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
+                }`}
+              >
+                MÊS
+              </button>
+            </div>
+          }
+          className="min-h-[168px]"
+        />
 
         {isMonthPickerOpen && (
           <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-2xl shadow-float border border-line p-4 z-30">
@@ -499,6 +526,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       const next = new Date(monthPickerYear, index, 1);
                       setCurrentMonth(startOfMonth(next));
                       setSelectedDate(next);
+                      setViewAndSync(view, next);
                       setIsMonthPickerOpen(false);
                     }}
                     className={`py-2 rounded-xl text-xs font-extrabold transition ${
@@ -514,7 +542,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             </div>
           </div>
         )}
-      </header>
+      </div>
 
       <main className="flex-1 overflow-hidden relative bg-studio-bg">
         <section className={`${view === "day" ? "block" : "hidden"} h-full`}>
@@ -930,12 +958,133 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </section>
       </main>
 
+      {isSearchOpen && (
+        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white h-full w-full flex flex-col">
+            <div className="sticky top-0 bg-white px-6 pt-6 pb-4 shadow-soft">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-muted" />
+                <input
+                  autoFocus
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar em tudo..."
+                  className="flex-1 bg-transparent text-sm text-studio-text placeholder:text-muted focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSearchMode("full")}
+                  className="text-xs font-extrabold text-studio-green px-3 py-1.5 rounded-full bg-studio-light"
+                >
+                  Buscar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setSearchTerm("");
+                  }}
+                  className="w-8 h-8 rounded-full bg-studio-light text-muted flex items-center justify-center"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[11px] text-muted mt-2">Digite ao menos 3 letras para ver resultados.</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 pb-24">
+              {isSearching && (
+                <div className="py-6 text-xs text-muted">Buscando...</div>
+              )}
+
+              {!isSearching && searchTerm.trim().length < 3 && (
+                <div className="py-10 text-center text-xs text-muted">Digite para começar a buscar.</div>
+              )}
+
+              {!isSearching && searchTerm.trim().length >= 3 && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">
+                      Agenda
+                    </h3>
+                    <div className="mt-2 space-y-2">
+                      {searchResults.appointments.length === 0 && (
+                        <p className="text-xs text-muted">Nenhum atendimento encontrado.</p>
+                      )}
+                      {searchResults.appointments.map((item) => {
+                        const when = format(new Date(item.start_time), "dd MMM • HH:mm", { locale: ptBR });
+                        const clientName = item.clients?.name ?? "Cliente";
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setIsSearchOpen(false);
+                              setSearchTerm("");
+                              router.push(`/atendimento/${item.id}`);
+                            }}
+                            className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
+                          >
+                            <div className="text-sm font-extrabold text-studio-text">{clientName}</div>
+                            <div className="text-xs text-muted">{item.service_name} • {when}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">
+                      Clientes
+                    </h3>
+                    <div className="mt-2 space-y-2">
+                      {searchResults.clients.length === 0 && (
+                        <p className="text-xs text-muted">Nenhum cliente encontrado.</p>
+                      )}
+                      {searchResults.clients.map((client) => (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onClick={() => {
+                            setIsSearchOpen(false);
+                            setSearchTerm("");
+                            router.push(`/clientes/${client.id}`);
+                          }}
+                          className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
+                        >
+                          <div className="text-sm font-extrabold text-studio-text">{client.name}</div>
+                          {client.phone && <div className="text-xs text-muted">{client.phone}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="absolute bottom-24 right-6 z-40 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
           }`}
         >
+          <button
+            onClick={() => {
+              setFabOpen(false);
+              router.push("/clientes/novo");
+            }}
+            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition"
+            type="button"
+          >
+            <span className="text-sm font-extrabold text-studio-text">Novo Cliente</span>
+            <div className="w-10 h-10 bg-studio-light text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
+              <UserPlus className="w-5 h-5" />
+            </div>
+          </button>
+
           <button
             onClick={() => {
               setFabOpen(false);

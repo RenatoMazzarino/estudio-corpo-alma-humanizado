@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, User, UserPlus, ChevronRight } from "lucide-react";
+import { Search, User, ChevronRight, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Chip } from "../../../components/ui/chip";
-import { IconButton } from "../../../components/ui/buttons";
+import { ModuleHeader } from "../../../components/ui/module-header";
 
 interface ClientListItem {
   id: string;
@@ -28,17 +28,8 @@ interface ClientsViewProps {
 const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
 
 export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-
-  useEffect(() => {
-    const container = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
-    if (!container) return;
-    const handle = () => setCollapsed(container.scrollTop > 32);
-    handle();
-    container.addEventListener("scroll", handle, { passive: true });
-    return () => container.removeEventListener("scroll", handle);
-  }, []);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -80,57 +71,63 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
 
   return (
     <div className="flex flex-col min-h-full bg-studio-bg -mx-4 -mt-4">
-      <header
-        className={`sticky top-0 z-30 bg-white rounded-b-3xl shadow-soft safe-top safe-top-8 px-6 pb-4 transition-all ${
-          collapsed ? "pt-4" : "pt-6"
-        }`}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">Gestão</p>
-            <h1 className="text-2xl font-serif text-studio-text leading-tight">Meus Clientes</h1>
-            {!collapsed && (
-              <p className="text-xs text-muted mt-1">Organize, acompanhe e consulte o histórico.</p>
-            )}
-          </div>
-          <Link href="/clientes/novo" aria-label="Novo cliente" className="pt-1">
-            <IconButton icon={<UserPlus className="w-5 h-5" />} />
-          </Link>
-        </div>
-
-        <div className={`transition-all ${collapsed ? "mt-3" : "mt-4"}`}>
-          <form method="GET" className="relative">
-            <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              name="q"
-              defaultValue={query}
-              placeholder="Buscar por nome..."
-              className="w-full pl-11 pr-4 py-3 rounded-2xl bg-paper border border-transparent focus:border-studio-green/30 focus:ring-2 focus:ring-studio-green/15 text-sm font-semibold text-studio-text transition"
-            />
-            {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
-          </form>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mt-3">
-            {[
-              { id: "all", label: "Todos" },
-              { id: "vip", label: "VIP" },
-              { id: "alert", label: "Atenção" },
-              { id: "new", label: "Novos" },
-            ].map((item) => (
-              <Link
-                key={item.id}
-                href={buildFilterHref(item.id)}
-                className={`px-3 py-2 rounded-xl text-[11px] font-extrabold tracking-wide whitespace-nowrap ${
-                  filter === item.id
-                    ? "bg-studio-green text-white shadow-soft"
-                    : "bg-paper text-studio-text border border-line"
-                }`}
+      <ModuleHeader
+        title="Meus Clientes"
+        bottomSlot={
+          <div className="space-y-3">
+            <form method="GET" className="relative">
+              <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Buscar por nome..."
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-paper border border-transparent focus:border-studio-green/30 focus:ring-2 focus:ring-studio-green/15 text-sm font-semibold text-studio-text transition"
+              />
+              {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
+            </form>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-studio-light text-studio-green text-xs font-extrabold"
               >
-                {item.label}
-              </Link>
-            ))}
+                <SlidersHorizontal className="w-4 h-4" />
+                Filtros
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {filter !== "all" && (
+                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full bg-studio-green/10 text-[10px] font-extrabold text-studio-green uppercase">
+                  {filter === "vip" ? "VIP" : filter === "alert" ? "Atenção" : "Novos"}
+                </span>
+              )}
+              {filtersOpen && (
+                <div className="absolute mt-2 w-44 rounded-2xl bg-white shadow-float border border-line p-2 z-40">
+                  {[
+                    { id: "all", label: "Todos" },
+                    { id: "vip", label: "VIP" },
+                    { id: "alert", label: "Atenção" },
+                    { id: "new", label: "Novos" },
+                  ].map((item) => (
+                    <Link
+                      key={item.id}
+                      href={buildFilterHref(item.id)}
+                      onClick={() => setFiltersOpen(false)}
+                      className={`block px-3 py-2 rounded-xl text-xs font-extrabold ${
+                        filter === item.id
+                          ? "bg-studio-green text-white"
+                          : "text-studio-text hover:bg-studio-light"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        }
+        className="min-h-[168px]"
+      />
 
       <div className="relative flex-1 pb-24">
         <div className="pointer-events-none absolute right-2 top-36 z-20 flex flex-col gap-1">
