@@ -21,10 +21,10 @@ export function ModuleHeader({
   compact = false,
   className = "",
 }: ModuleHeaderProps) {
-  const paddingClasses = compact ? "pt-3 pb-3" : "pt-4 pb-4";
+  const paddingClasses = compact ? "pb-3" : "pb-4";
   return (
     <header
-      className={`sticky top-0 z-30 bg-white shadow-soft safe-top safe-top-6 px-6 transition-all ${paddingClasses} ${className}`}
+      className={`sticky top-0 z-30 bg-white rounded-b-3xl shadow-soft safe-top safe-top-6 px-6 transition-all ${paddingClasses} ${className}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
@@ -38,7 +38,7 @@ export function ModuleHeader({
         </div>
         {rightSlot && <div className="flex items-start gap-2">{rightSlot}</div>}
       </div>
-      {bottomSlot && <div className={`${compact ? "mt-2" : "mt-3"}`}>{bottomSlot}</div>}
+      {bottomSlot && <div className={`${compact ? "mt-1.5" : "mt-2.5"}`}>{bottomSlot}</div>}
     </header>
   );
 }

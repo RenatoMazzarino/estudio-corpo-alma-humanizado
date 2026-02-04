@@ -579,6 +579,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             ref={daySliderRef}
             onScroll={handleDayScroll}
             onPointerDown={(event) => {
+              if (event.pointerType !== "mouse") return;
               if (!daySliderRef.current) return;
               dragState.current = {
                 active: true,
@@ -590,6 +591,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               daySliderRef.current.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
+              if (event.pointerType !== "mouse") return;
               if (!dragState.current.active || !daySliderRef.current) return;
               const dx = event.clientX - dragState.current.startX;
               const dy = event.clientY - dragState.current.startY;
@@ -606,6 +608,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               }
             }}
             onPointerUp={(event) => {
+              if (event.pointerType !== "mouse") return;
               dragState.current.active = false;
               dragState.current.mode = null;
               daySliderRef.current?.releasePointerCapture(event.pointerId);
@@ -615,7 +618,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               dragState.current.mode = null;
             }}
             className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
-            style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+            style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
               const { dayAppointments, dayBlocks, items } = getDayData(day);
@@ -628,7 +631,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-20 pt-4"
+                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-8 pt-4"
                 >
                   <div className="text-center mb-5">
                     <h2
@@ -812,11 +815,21 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                       </div>
                                     </div>
                                     <p className="text-xs text-muted line-clamp-1">{item.serviceName}</p>
-                                    <div className="mt-2 flex items-center gap-2 flex-wrap text-[11px] text-muted">
+                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted">
                                       <span className="font-semibold">
                                         {startLabel}
                                         {endLabel ? ` – ${endLabel}` : ""}
                                       </span>
+                                      {item.phone && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <Phone className="w-3 h-3" /> {item.phone}
+                                        </span>
+                                      )}
+                                      {item.address && isHomeVisit && (
+                                        <span className="inline-flex items-center gap-1 line-clamp-1">
+                                          <MapPin className="w-3 h-3" /> {item.address}
+                                        </span>
+                                      )}
                                       {isHomeVisit && (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full bg-purple-100 text-purple-700">
                                           <Home className="w-3 h-3" /> Domicílio
@@ -1146,7 +1159,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      <div className="absolute bottom-16 right-6 z-40 flex flex-col items-end gap-3">
+      <div className="absolute bottom-[60px] right-6 z-40 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
