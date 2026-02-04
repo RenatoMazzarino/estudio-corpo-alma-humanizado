@@ -13,6 +13,9 @@
 - Agenda: botão Hoje separado da tag e posicionado abaixo do cabeçalho.
 - Agenda: cards com layout final (status, chips, botões de WhatsApp/GPS).
 - Agenda: cards com altura mínima maior e indicador de conexão no header.
+- Agenda: botão Hoje na linha do dia da semana; cards padronizados via componente único.
+- Agenda: retorno do atendimento mantém dia/visão de origem.
+- TimerBubble: botão “X” para fechar contador flutuante.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
@@ -22,7 +25,7 @@
 - [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
 - [x] UI ↔ DB 1:1 (campos exibidos com backing no DB, dados novos persistidos).
 - [x] Mutação via Server Actions (sem writes client-side).
-- [ ] Qualidade (pnpm lint/check-types/build) — **não concluído por problemas de ambiente**.
+- [x] Qualidade (pnpm lint/check-types/build).
 - [x] Atendimento padrão sem fallback (UI antiga não usada).
 
 ## 3) Migrations adicionadas
@@ -36,6 +39,14 @@
 ## 4) Commits (hash + objetivo)
 - `f8ea4af` — feat(ui): header modulo e busca na agenda
 - `e0358ba` — fix(agenda): header e cards
+- `18d7b3e` — fix(agenda): hoje confiavel e cards clicaveis
+- `153063f` — fix(agenda): header hoje e card padrao
+- `421430f` — fix(agenda): botoes no card e voltar correto
+- `7b34813` — fix(lint): imagens e tipos de contatos
+- `307e066` — fix(build): add STORAGE_ERROR code
+- `2e00e41` — fix(build): annotate client repo return types
+- `0f5e5c6` — fix(build): type supabase errors in client repo
+- `24c1975` — fix(deps): atualizar versão do turbo para 2.8.3
 - `7d0642d` — fix(agenda): header e fab
 - `1057116` — fix(agenda): remove gap e ajustar fab
 - `c9d6c5f` — fix(agenda): separa botao hoje
@@ -70,7 +81,12 @@
 supabase db push --local
 ```
 
-## 7) Como testar manualmente (roteiro rápido)
+## 7) Como aplicar migrations no remoto (sem apagar dados)
+```bash
+supabase db push
+```
+
+## 8) Como testar manualmente (roteiro rápido)
 - Agenda DIA: linha vermelha move e posiciona; trocar tabs; clicar em “Hoje”.
 - Agenda: abrir modal de busca (ícone) e validar resultados em tempo real.
 - /novo: header, voltar para o dia de origem, domicílio (modal), override de preço e buffers.
@@ -78,17 +94,13 @@ supabase db push --local
 - /clientes/novo: importar contato, múltiplos telefones, saúde estruturada, salvar.
 - /clientes/[id]: header colapsa, avatar, telefones/endereço, tags e histórico.
 
-## 8) Testes e validações (execução)
-Comandos tentados na raiz:
-- `pnpm exec turbo run lint`
-- `pnpm exec turbo run check-types`
-- `pnpm exec turbo run build`
+## 9) Testes e validações (execução)
+Comandos executados na raiz:
+- `pnpm lint` ✅
+- `pnpm check-types` ✅
+- `pnpm build` ✅
+- `pnpm test` — **não existe script** no repo.
 
-Resultado: **falharam por ambiente**.
-- Turbo não encontrou binário Linux (node_modules com binário Windows).
-- `pnpm install` falhou por permissão no WSL (`EACCES` ao renomear node_modules).
-
-## 9) Pendências / próximos passos
-- Reinstalar `node_modules` no WSL (ou rodar comandos no Windows nativo) para executar lint/check-types/build.
+## 10) Pendências / próximos passos
 - Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
 - Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste adicional).
