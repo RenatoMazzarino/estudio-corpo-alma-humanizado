@@ -445,9 +445,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
   const handleGoToToday = () => {
     const today = new Date();
+    isUserScrolling.current = false;
+    skipAutoScrollSync.current = false;
     setSelectedDate(today);
     setCurrentMonth(startOfMonth(today));
     setViewAndSync("day", today);
+    setIsMonthPickerOpen(false);
   };
 
   const monthLabels = useMemo(
@@ -625,12 +628,25 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       </div>
 
       <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-studio-bg">
+        {view === "day" && (
+          <div className="px-6 pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={handleGoToToday}
+              className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
+            >
+              Hoje
+            </button>
+          </div>
+        )}
         <section className={`${view === "day" ? "block" : "hidden"} h-full`}>
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
             onPointerDown={(event) => {
               if (event.pointerType !== "mouse") return;
+              const target = event.target as HTMLElement;
+              if (target.closest("[data-card]") || target.closest("button")) return;
               if (!daySliderRef.current) return;
               dragState.current = {
                 active: true,
@@ -684,15 +700,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                   data-date={format(day, "yyyy-MM-dd")}
                   className="min-w-full h-full snap-center overflow-y-auto px-6 pb-0 pt-5"
                 >
-                  <div className="flex justify-end mb-2">
-                    <button
-                      type="button"
-                      onClick={handleGoToToday}
-                      className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
-                    >
-                      Hoje
-                    </button>
-                  </div>
                   <div className="text-center mb-5">
                     <h2
                       className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 capitalize ${
@@ -777,7 +784,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         {hours.map((hour, index) => (
                           <div
                             key={hour}
-                            className="absolute left-0 right-0 border-t border-line/60"
+                            className="absolute left-0 right-0 border-t border-line/60 pointer-events-none"
                             style={{ top: index * timeGridConfig.hourHeight }}
                           />
                         ))}
@@ -817,7 +824,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                             const topRaw = getOffsetForTime(startTimeDate, timeGridConfig);
                             if (topRaw === null) return null;
-                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 120);
+                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 140);
                             const top = topRaw < lastBottom + 12 ? lastBottom + 12 : topRaw;
                             lastBottom = top + height;
                             const isBlock = item.type === "block";
@@ -826,11 +833,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                             return (
                               <div
                                 key={item.id}
-                                className="absolute left-0 right-0 pr-2"
-                                style={{ top, height, minHeight: 120 }}
+                                className="absolute left-0 right-0 pr-2 pointer-events-auto"
+                                style={{ top, height, minHeight: 140 }}
                               >
                                 {isBlock ? (
-                                  <div className="h-full bg-white p-4 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
+                                  <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
                                     <div className="flex justify-between items-start mb-1">
                                       <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
                                         {item.clientName}
@@ -850,6 +857,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                 ) : (
                                   <div
                                     role="button"
+                                    data-card
                                     tabIndex={0}
                                     onClick={() => router.push(`/atendimento/${item.id}`)}
                                     onKeyDown={(event) => {
@@ -858,7 +866,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                         router.push(`/atendimento/${item.id}`);
                                       }
                                     }}
-                                    className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${
+                                    className={`h-full w-full text-left bg-white p-3.5 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${
                                       isHomeVisit ? "border-purple-500" : "border-studio-green"
                                     }`}
                                   >
@@ -885,7 +893,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                       </span>
                                     </div>
 
-                                    <div className="mt-3 border-t border-line pt-2 flex items-center justify-between gap-2">
+                                    <div className="mt-2 border-t border-line pt-2 flex items-center justify-between gap-2">
                                       <div className="flex items-center gap-2 text-[11px] text-muted flex-wrap">
                                         <span
                                           className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full ${getStatusTone(
