@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, X } from "lucide-react";
 import { useTimer } from "./use-timer";
 
 function formatTime(totalSeconds: number) {
@@ -27,6 +27,7 @@ export function TimerBubble() {
     bubblePosition,
     setBubblePosition,
     bubbleVisible,
+    setBubbleVisible,
   } = useTimer();
   const pathname = usePathname();
   const router = useRouter();
@@ -140,6 +141,17 @@ export function TimerBubble() {
       </svg>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setBubbleVisible(false);
+          }}
+          className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white shadow-soft border border-line text-muted flex items-center justify-center"
+          aria-label="Fechar contador"
+        >
+          <X size={12} />
+        </button>
         <div className="flex items-center gap-2">
           <button
             onClick={(event) => {

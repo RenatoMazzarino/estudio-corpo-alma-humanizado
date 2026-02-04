@@ -34,7 +34,7 @@ import {
   X,
   Building2,
 } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ModuleHeader } from "./ui/module-header";
 import { IconButton } from "./ui/buttons";
 import { AppointmentCard } from "./agenda/appointment-card";
@@ -118,7 +118,6 @@ const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [headerCompact, setHeaderCompact] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -828,9 +827,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                             const isBlock = item.type === "block";
                             const isHomeVisit = item.is_home_visit;
 
-                            const returnTo = searchParams.toString()
-                              ? `${pathname}?${searchParams.toString()}`
-                              : pathname;
+                            const returnTo = `/?view=day&date=${format(day, "yyyy-MM-dd")}`;
 
                             return (
                               <div
