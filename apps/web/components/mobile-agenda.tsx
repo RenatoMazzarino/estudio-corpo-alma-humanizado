@@ -636,21 +636,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       <p className="text-3xl font-serif text-studio-text capitalize">
                         {format(day, "dd MMM", { locale: ptBR })}
                       </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
                       {isToday(day) && (
                         <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-green/10 text-studio-green">
                           Hoje
                         </span>
                       )}
-                    </div>
-                    {!isToday(day) && (
-                      <button
-                        type="button"
-                        onClick={handleGoToToday}
-                        className="mt-2 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
-                      >
-                        Hoje
-                      </button>
-                    )}
                     <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
                       {appointmentCount > 0 && (
                         <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-studio-green/10 text-studio-green">
@@ -673,6 +665,16 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         </span>
                       )}
                     </div>
+                  </div>
+
+                  <div className="flex justify-end mb-2">
+                    <button
+                      type="button"
+                      onClick={handleGoToToday}
+                      className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
+                    >
+                      Hoje
+                    </button>
                   </div>
 
                   {items.length > 0 ? (
