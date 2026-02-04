@@ -10,6 +10,11 @@ Regra-mãe:
 - UI só usa dados persistidos ou derivados determinísticos.
 - Tokens, tipografia, spacing, radius e sombras devem ser consistentes com o PDF.
 
+Frame mobile:
+- O app sempre renderiza dentro de um frame centralizado (mobile-only).
+- O frame ocupa 100% da altura do viewport (sem bordas arredondadas).
+- Toda rolagem é interna ao frame.
+
 Arquivos principais:
 - `tokens.md`: mapeamento de tokens e variáveis reais no código.
 - `typography.md`: escala tipográfica e usos.
