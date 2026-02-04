@@ -1,10 +1,11 @@
 # REPORT — Execução do Plano Nova Aparência/UX v1.0 (Produção)
 
 ## 1) Resumo executivo
-- Agenda: linha de “horário atual” posicionada corretamente e atualização em tempo real; sync de data via querystring.
-- Agenda: tabs DIA/SEMANA/MÊS com sync de URL (sem reset para “DIA”).
+- Agenda: header padronizado (saudação + mês clicável + tabs), correção de mês selecionado e troca de visão sem “pisca-pisca”.
+- Agenda: busca em modal com resultados em tempo real (Agenda + Clientes) e CTA “Buscar”.
+- Agenda: FAB inclui opção “Novo Cliente”.
 - Shell: BottomNav fixa e regras de visibilidade por rota aplicadas (inclui /clientes/novo, exclui /clientes/[id], /novo e /atendimento).
-- Shell: moldura fixa do “celular” com scroll apenas interno.
+- Shell: moldura mobile agora ocupa toda a altura do viewport, sem cantos arredondados.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
@@ -26,15 +27,16 @@
 6. `20260203105000_add_client_avatars_bucket.sql` — bucket `client-avatars` + policies.
 
 ## 4) Commits (hash + objetivo)
-- `0f93f8b` — docs: atualiza notas de sql e report
+- `f8ea4af` — feat(ui): header modulo e busca na agenda
+- `7989456` — fix(shell): frame ocupa altura total do viewport
+- `706a9b7` — fix(shell): frame sem arredondamento e proporcao s25
+- `8fe6319` — fix(shell): altura do frame galaxy s25
+- `201b833` — fix(shell): moldura mobile com altura fixa
+- `ca2547a` — docs(report): atualiza correcoes recentes
 - `f187f2c` — fix(ui): ajustes de navegação e moldura
+- `0cbad8c` — docs(report): atualiza execucao v1
+- `0f93f8b` — docs: atualiza notas de sql e report
 - `dce4907` — fix(agenda): tipagem e sync de data
-- `b56e0dd` — refactor(atendimento): ajustes e limpeza
-- `6a0bf8a` — feat(clientes): telas e dados estruturados
-- `27a1775` — feat(agendamento): retorno, buffers e override
-- `4518348` — feat(db): enderecos, contatos e buffers
-- `2b5e5a3` — fix(agenda): linha de horario atual dinamica
-- `712d116` — fix(shell): bottom-nav fixa e regras por rota
 
 ## 5) Arquivos/pastas principais alterados
 - `apps/web/app/(dashboard)/clientes/*` (lista, novo, detalhe)
@@ -43,7 +45,8 @@
 - `apps/web/src/modules/clients/*`
 - `apps/web/src/modules/appointments/*`
 - `apps/web/app/(dashboard)/configuracoes/*`
-- `apps/web/components/ui/*` (mantido como base visual)
+- `apps/web/components/ui/*` (inclui ModuleHeader)
+- `apps/web/app/api/search/route.ts` (busca global para o modal da Agenda)
 - `supabase/migrations/*` (novas migrations acima)
 
 ## 6) Como rodar migrations localmente
@@ -53,6 +56,7 @@ supabase db push --local
 
 ## 7) Como testar manualmente (roteiro rápido)
 - Agenda DIA: linha vermelha move e posiciona; trocar tabs; clicar em “Hoje”.
+- Agenda: abrir modal de busca (ícone) e validar resultados em tempo real.
 - /novo: header, voltar para o dia de origem, domicílio (modal), override de preço e buffers.
 - /clientes: header colapsa, índice A–Z, filtros VIP/Atenção/Novos.
 - /clientes/novo: importar contato, múltiplos telefones, saúde estruturada, salvar.
