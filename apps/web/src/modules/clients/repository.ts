@@ -1,4 +1,5 @@
 import { createServiceClient } from "../../../lib/supabase/service";
+import type { PostgrestError } from "@supabase/supabase-js";
 import type { Database } from "../../../lib/supabase/types";
 
 export type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
@@ -97,7 +98,7 @@ export async function replaceClientPhones(
   tenantId: string,
   clientId: string,
   phones: ClientPhoneInsert[]
-): Promise<{ data: ClientPhoneRow[] | null; error: unknown }> {
+): Promise<{ data: ClientPhoneRow[] | null; error: PostgrestError | null }> {
   const supabase = createServiceClient();
   await supabase.from("client_phones").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
   if (phones.length === 0) return { data: [], error: null };
@@ -120,7 +121,7 @@ export async function replaceClientEmails(
   tenantId: string,
   clientId: string,
   emails: ClientEmailInsert[]
-): Promise<{ data: ClientEmailRow[] | null; error: unknown }> {
+): Promise<{ data: ClientEmailRow[] | null; error: PostgrestError | null }> {
   const supabase = createServiceClient();
   await supabase.from("client_emails").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
   if (emails.length === 0) return { data: [], error: null };
@@ -143,7 +144,7 @@ export async function replaceClientHealthItems(
   tenantId: string,
   clientId: string,
   items: ClientHealthItemInsert[]
-): Promise<{ data: ClientHealthItemRow[] | null; error: unknown }> {
+): Promise<{ data: ClientHealthItemRow[] | null; error: PostgrestError | null }> {
   const supabase = createServiceClient();
   await supabase.from("client_health_items").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
   if (items.length === 0) return { data: [], error: null };
