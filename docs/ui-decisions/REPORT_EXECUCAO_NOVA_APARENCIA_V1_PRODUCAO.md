@@ -10,6 +10,7 @@
 - Agenda: header colapsável, modal de busca com overlay, cards sem sobreposição e BottomNav mais compacta.
 - Agenda: botão Hoje movido para o cabeçalho do dia, FAB menor/alinhada e menos padding inferior.
 - Agenda: remoção do gap acima da BottomNav e ajuste de posição do FAB.
+- Agenda: botão Hoje separado da tag e posicionado abaixo do cabeçalho.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
@@ -35,6 +36,7 @@
 - `e0358ba` — fix(agenda): header e cards
 - `7d0642d` — fix(agenda): header e fab
 - `1057116` — fix(agenda): remove gap e ajustar fab
+- `c9d6c5f` — fix(agenda): separa botao hoje
 - `74dc683` — fix(agenda): header, busca e scroll
 - `9a465a4` — docs(report): atualiza header e busca
 - `e9d3d71` — docs(ui-system): documenta frame mobile
