@@ -470,24 +470,15 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             </div>
           }
           rightSlot={
-            <div className="flex flex-col items-end gap-2">
-              <button
-                onClick={handleGoToToday}
-                className="bg-studio-light text-studio-green px-3 py-1.5 rounded-full text-xs font-extrabold shadow-soft hover:bg-studio-green hover:text-white transition flex items-center gap-1"
-                type="button"
-              >
-                <CalendarCheck className="w-3 h-3" /> Hoje
-              </button>
-              <IconButton
-                size="sm"
-                icon={<Search className="w-4 h-4" />}
-                aria-label="Buscar"
-                onClick={() => {
-                  setSearchMode("preview");
-                  setIsSearchOpen(true);
-                }}
-              />
-            </div>
+            <IconButton
+              size="sm"
+              icon={<Search className="w-4 h-4" />}
+              aria-label="Buscar"
+              onClick={() => {
+                setSearchMode("preview");
+                setIsSearchOpen(true);
+              }}
+            />
           }
           bottomSlot={
             <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
@@ -631,7 +622,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-8 pt-4"
+                  className="min-w-full h-full snap-center overflow-y-auto px-6 pb-0 pt-5"
                 >
                   <div className="text-center mb-5">
                     <h2
@@ -641,16 +632,23 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     >
                       {format(day, "EEEE", { locale: ptBR })}
                     </h2>
-                    <p className="text-3xl font-serif text-studio-text capitalize">
-                      {format(day, "dd MMM", { locale: ptBR })}
-                    </p>
-                    {isToday(day) && (
-                      <div className="mt-2 flex justify-center">
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-green/10 text-studio-green">
-                          Hoje
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-center gap-3">
+                      <p className="text-3xl font-serif text-studio-text capitalize">
+                        {format(day, "dd MMM", { locale: ptBR })}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleGoToToday}
+                        disabled={isToday(day)}
+                        className={`text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full transition ${
+                          isToday(day)
+                            ? "bg-studio-green/10 text-studio-green"
+                            : "bg-studio-light text-studio-green hover:bg-studio-green hover:text-white"
+                        }`}
+                      >
+                        Hoje
+                      </button>
+                    </div>
                     <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
                       {appointmentCount > 0 && (
                         <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-studio-green/10 text-studio-green">
@@ -865,7 +863,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </section>
 
         <section
-          className={`${view === "week" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-28 animate-in fade-in`}
+          className={`${view === "week" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-0 animate-in fade-in`}
         >
           <div className="flex items-center justify-between mb-4">
             <button
@@ -964,7 +962,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </section>
 
         <section
-          className={`${view === "month" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-28 animate-in fade-in`}
+          className={`${view === "month" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-0 animate-in fade-in`}
         >
           <div className="bg-white rounded-3xl shadow-soft p-4">
             <div className="flex items-center justify-between mb-3">
@@ -1159,7 +1157,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      <div className="absolute bottom-[60px] right-6 z-40 flex flex-col items-end gap-3">
+      <div className="absolute bottom-14 right-6 z-40 flex flex-col items-end gap-3">
         <div
           className={`flex flex-col items-end gap-3 transition-all duration-200 ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
@@ -1212,10 +1210,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         <button
           onClick={() => setFabOpen((prev) => !prev)}
-          className="w-14 h-14 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95"
+          className="w-12 h-12 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95"
           type="button"
         >
-          {fabOpen ? <X className="w-6 h-6" /> : <Plus className="w-7 h-7" />}
+          {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-6 h-6" />}
         </button>
       </div>
     </div>
