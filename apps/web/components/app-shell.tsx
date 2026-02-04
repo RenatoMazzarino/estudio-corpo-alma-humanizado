@@ -28,7 +28,7 @@ export function AppShell({ children }: AppShellProps) {
         <div
           className={`
           bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden
-          w-full max-w-[414px] h-full rounded-2xl
+          w-[min(414px,92vw)] h-[min(812px,92vh)] rounded-3xl
         `}
         >
           <main
