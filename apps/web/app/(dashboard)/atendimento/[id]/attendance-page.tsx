@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { format, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, Minimize2, MapPin } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type {
   AttendanceOverview,
   StageKey,
@@ -60,6 +60,8 @@ const stageOrder: StageKey[] = ["pre", "session", "checkout", "post"];
 
 export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("return");
   const [activeStage, setActiveStage] = useState<StageKey>(
     initialStage && initialStage !== "hub" ? initialStage : "pre"
   );
@@ -450,7 +452,13 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
           <div className="relative px-5 pt-8 pb-4">
             <div className="flex items-center justify-between">
               <button
-                onClick={() => router.back()}
+                onClick={() => {
+                  if (returnTo) {
+                    router.push(decodeURIComponent(returnTo));
+                  } else {
+                    router.back();
+                  }
+                }}
                 className="w-10 h-10 rounded-full bg-white/80 backdrop-blur text-gray-600 flex items-center justify-center shadow-sm hover:bg-white transition"
                 title="Voltar"
               >

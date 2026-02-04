@@ -27,9 +27,6 @@ import {
   ChevronRight,
   Home,
   Hospital,
-  MapPin,
-  MessageCircle,
-  Phone,
   Plus,
   Search,
   Sparkles,
@@ -37,9 +34,10 @@ import {
   X,
   Building2,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ModuleHeader } from "./ui/module-header";
 import { IconButton } from "./ui/buttons";
+import { AppointmentCard } from "./agenda/appointment-card";
 import {
   getDurationHeight,
   getOffsetForTime,
@@ -120,6 +118,7 @@ const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [headerCompact, setHeaderCompact] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -628,17 +627,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       </div>
 
       <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-studio-bg">
-        {view === "day" && (
-          <div className="px-6 pt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={handleGoToToday}
-              className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
-            >
-              Hoje
-            </button>
-          </div>
-        )}
         <section className={`${view === "day" ? "block" : "hidden"} h-full`}>
           <div
             ref={daySliderRef}
@@ -701,13 +689,23 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                   className="min-w-full h-full snap-center overflow-y-auto px-6 pb-0 pt-5"
                 >
                   <div className="text-center mb-5">
-                    <h2
-                      className={`text-[10px] font-extrabold uppercase tracking-widest mb-0.5 capitalize ${
-                        isToday(day) ? "text-studio-green" : "text-muted"
-                      }`}
-                    >
-                      {format(day, "EEEE", { locale: ptBR })}
-                    </h2>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="w-10" aria-hidden="true"></div>
+                      <h2
+                        className={`text-[10px] font-extrabold uppercase tracking-widest capitalize ${
+                          isToday(day) ? "text-studio-green" : "text-muted"
+                        }`}
+                      >
+                        {format(day, "EEEE", { locale: ptBR })}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={handleGoToToday}
+                        className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full bg-studio-light text-studio-green hover:bg-studio-green hover:text-white transition"
+                      >
+                        Hoje
+                      </button>
+                    </div>
                     <div className="flex items-center justify-center gap-2">
                       <p className="text-3xl font-serif text-studio-text capitalize">
                         {format(day, "dd MMM", { locale: ptBR })}
@@ -824,17 +822,21 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                             const topRaw = getOffsetForTime(startTimeDate, timeGridConfig);
                             if (topRaw === null) return null;
-                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 140);
+                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 150);
                             const top = topRaw < lastBottom + 12 ? lastBottom + 12 : topRaw;
                             lastBottom = top + height;
                             const isBlock = item.type === "block";
                             const isHomeVisit = item.is_home_visit;
 
+                            const returnTo = searchParams.toString()
+                              ? `${pathname}?${searchParams.toString()}`
+                              : pathname;
+
                             return (
                               <div
                                 key={item.id}
                                 className="absolute left-0 right-0 pr-2 pointer-events-auto"
-                                style={{ top, height, minHeight: 140 }}
+                                style={{ top, height, minHeight: 150 }}
                               >
                                 {isBlock ? (
                                   <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
@@ -855,99 +857,43 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                     </div>
                                   </div>
                                 ) : (
-                                  <div
-                                    role="button"
+                                  <AppointmentCard
                                     data-card
-                                    tabIndex={0}
-                                    onClick={() => router.push(`/atendimento/${item.id}`)}
-                                    onKeyDown={(event) => {
-                                      if (event.key === "Enter" || event.key === " ") {
-                                        event.preventDefault();
-                                        router.push(`/atendimento/${item.id}`);
-                                      }
-                                    }}
-                                    className={`h-full w-full text-left bg-white p-3.5 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${
-                                      isHomeVisit ? "border-purple-500" : "border-studio-green"
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="min-w-0">
-                                        <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
-                                          {item.clientName}
-                                        </h3>
-                                        <p className="text-xs text-muted line-clamp-1">
-                                          {item.serviceName}
-                                          {item.total_duration_minutes
-                                            ? ` (${formatDuration(item.total_duration_minutes)})`
-                                            : ""}
-                                        </p>
-                                      </div>
-                                      <span
-                                        className={`text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${
-                                          isHomeVisit
-                                            ? "bg-purple-100 text-purple-700"
-                                            : "bg-green-100 text-green-700"
-                                        }`}
-                                      >
-                                        {isHomeVisit ? "Domicílio" : "Estúdio"}
-                                      </span>
-                                    </div>
-
-                                    <div className="mt-2 border-t border-line pt-2 flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2 text-[11px] text-muted flex-wrap">
-                                        <span
-                                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.08em] px-2 py-1 rounded-full ${getStatusTone(
-                                            getStatusLabel(item)
-                                          )}`}
-                                        >
-                                          <span className="w-1.5 h-1.5 rounded-full bg-current inline-block"></span>
-                                          {getStatusLabel(item)}
-                                        </span>
-                                        <span className="font-semibold">
-                                          {startLabel}
-                                          {endLabel ? ` – ${endLabel}` : ""}
-                                        </span>
-                                        {item.phone && (
-                                          <span className="inline-flex items-center gap-1">
-                                            <Phone className="w-3 h-3" /> {item.phone}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <div className="flex items-center gap-2">
-                                        {toWhatsappLink(item.phone) && (
-                                          <button
-                                            type="button"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              window.open(toWhatsappLink(item.phone) ?? "", "_blank");
-                                            }}
-                                            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-                                            aria-label="Abrir WhatsApp"
-                                          >
-                                          <MessageCircle className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                        {isHomeVisit && item.address && (
-                                          <button
-                                            type="button"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              const mapsQuery = encodeURIComponent(item.address ?? "");
-                                              window.open(
-                                                `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
-                                                "_blank"
-                                              );
-                                            }}
-                                            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-                                            aria-label="Abrir GPS"
-                                          >
-                                            <MapPin className="w-4 h-4" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
+                                    name={item.clientName}
+                                    service={item.serviceName}
+                                    durationLabel={
+                                      item.total_duration_minutes
+                                        ? formatDuration(item.total_duration_minutes)
+                                        : null
+                                    }
+                                    statusLabel={getStatusLabel(item)}
+                                    statusTone={getStatusTone(getStatusLabel(item))}
+                                    startLabel={startLabel}
+                                    endLabel={endLabel}
+                                    phone={item.phone}
+                                    isHomeVisit={isHomeVisit}
+                                    onOpen={() =>
+                                      router.push(
+                                        `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
+                                      )
+                                    }
+                                    onWhatsapp={
+                                      toWhatsappLink(item.phone)
+                                        ? () => window.open(toWhatsappLink(item.phone) ?? "", "_blank")
+                                        : undefined
+                                    }
+                                    onMaps={
+                                      isHomeVisit && item.address
+                                        ? () => {
+                                            const mapsQuery = encodeURIComponent(item.address ?? "");
+                                            window.open(
+                                              `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
+                                              "_blank"
+                                            );
+                                          }
+                                        : undefined
+                                    }
+                                  />
                                 )}
                               </div>
                             );
