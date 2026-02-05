@@ -27,12 +27,12 @@ export function AppShell({ children }: AppShellProps) {
       <div className="app-viewport bg-neutral-900 flex justify-center items-stretch overflow-hidden">
         <div
           className={`
-          app-frame bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden
+          app-frame bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden min-h-0
         `}
         >
           <div
             data-shell-scroll
-            className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-0 space-y-4 scroll-smooth"
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-0 space-y-4 scroll-smooth"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {children}
