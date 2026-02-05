@@ -628,7 +628,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             ref={daySliderRef}
             onScroll={handleDayScroll}
             onPointerDown={(event) => {
-              if (event.pointerType !== "mouse") return;
               const target = event.target as HTMLElement;
               if (target.closest("[data-card]") || target.closest("button")) return;
               if (!daySliderRef.current) return;
@@ -639,10 +638,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 scrollLeft: daySliderRef.current.scrollLeft,
                 mode: null,
               };
-              daySliderRef.current.setPointerCapture(event.pointerId);
+              if (event.pointerType === "mouse") {
+                daySliderRef.current.setPointerCapture(event.pointerId);
+              }
             }}
             onPointerMove={(event) => {
-              if (event.pointerType !== "mouse") return;
               if (!dragState.current.active || !daySliderRef.current) return;
               const dx = event.clientX - dragState.current.startX;
               const dy = event.clientY - dragState.current.startY;
@@ -655,11 +655,15 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               }
               if (dragState.current.mode === "x") {
                 event.preventDefault();
+                if (event.pointerType !== "mouse") {
+                  daySliderRef.current.setPointerCapture(event.pointerId);
+                }
                 daySliderRef.current.scrollLeft = dragState.current.scrollLeft - dx;
+              } else if (dragState.current.mode === "y") {
+                dragState.current.active = false;
               }
             }}
             onPointerUp={(event) => {
-              if (event.pointerType !== "mouse") return;
               dragState.current.active = false;
               dragState.current.mode = null;
               daySliderRef.current?.releasePointerCapture(event.pointerId);
@@ -669,7 +673,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               dragState.current.mode = null;
             }}
             className="flex min-h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            style={{
+              WebkitOverflowScrolling: "touch",
+              touchAction: "pan-y",
+              overscrollBehavior: "contain",
+            }}
           >
             {monthDays.map((day) => {
               const { dayAppointments, dayBlocks, items } = getDayData(day);
