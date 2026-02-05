@@ -41,6 +41,13 @@ body {
   color: var(--color-studio-text);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
 }
 
 .app-viewport {
