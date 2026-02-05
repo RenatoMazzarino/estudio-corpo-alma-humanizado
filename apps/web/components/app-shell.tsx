@@ -1,10 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { TimerBubble } from "./timer/timer-bubble";
 import { TimerProvider } from "./timer/timer-provider";
 import { BottomNav } from "./ui/bottom-nav";
+import { DebugPointerOverlay } from "./debug/debug-pointer-overlay";
 
 interface AppShellProps {
   children: ReactNode;
@@ -12,6 +13,8 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const debugTouch = searchParams.get("debug") === "1";
   const canShowBottomNav = () => {
     if (pathname === "/" || pathname === "/clientes" || pathname === "/caixa" || pathname === "/menu") {
       return true;
@@ -27,7 +30,9 @@ export function AppShell({ children }: AppShellProps) {
       <div className="app-viewport bg-neutral-900 flex justify-center items-stretch overflow-hidden">
         <div
           className={`
-          app-frame bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden min-h-0
+          app-frame bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden min-h-0 ${
+            debugTouch ? "debug-hitbox" : ""
+          }
         `}
         >
           <div
@@ -45,6 +50,7 @@ export function AppShell({ children }: AppShellProps) {
 
           {showBottomNav && <BottomNav />}
         </div>
+        {debugTouch && <DebugPointerOverlay />}
       </div>
     </TimerProvider>
   );
