@@ -33,14 +33,17 @@ export function AppShell({ children }: AppShellProps) {
           <div
             data-shell-scroll
             className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-0 space-y-4 scroll-smooth"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            style={{
+              WebkitOverflowScrolling: "touch",
+              paddingBottom: showBottomNav ? "calc(48px + env(safe-area-inset-bottom))" : "2rem",
+            }}
           >
             {children}
           </div>
 
           <TimerBubble />
 
-          {showBottomNav && <BottomNav className="shrink-0" />}
+          {showBottomNav && <BottomNav />}
         </div>
       </div>
     </TimerProvider>

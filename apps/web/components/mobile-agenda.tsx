@@ -622,66 +622,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         )}
       </div>
 
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-studio-bg">
+      <main className="flex-1 overflow-x-hidden relative bg-studio-bg">
         <section className={`${view === "day" ? "block" : "hidden"} h-full`}>
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
-            onPointerDown={(event) => {
-              const target = event.target as HTMLElement;
-              if (target.closest("[data-card]") || target.closest("button")) return;
-              if (!daySliderRef.current) return;
-              dragState.current = {
-                active: true,
-                startX: event.clientX,
-                startY: event.clientY,
-                scrollLeft: daySliderRef.current.scrollLeft,
-                mode: event.pointerType === "mouse" ? "x" : null,
-              };
-              if (event.pointerType === "mouse") {
-                daySliderRef.current.setPointerCapture(event.pointerId);
-              }
-            }}
-            onPointerMove={(event) => {
-              if (!dragState.current.active || !daySliderRef.current) return;
-              const dx = event.clientX - dragState.current.startX;
-              const dy = event.clientY - dragState.current.startY;
-              if (!dragState.current.mode) {
-                if (Math.abs(dx) > Math.abs(dy) + 4) {
-                  dragState.current.mode = "x";
-                  try {
-                    daySliderRef.current.setPointerCapture(event.pointerId);
-                  } catch {}
-                } else if (Math.abs(dy) > Math.abs(dx) + 4) {
-                  dragState.current.mode = "y";
-                  dragState.current.active = false;
-                  return;
-                }
-              }
-              if (dragState.current.mode === "x") {
-                event.preventDefault();
-                daySliderRef.current.scrollLeft = dragState.current.scrollLeft - dx;
-              }
-            }}
-            onPointerUp={(event) => {
-              dragState.current.active = false;
-              dragState.current.mode = null;
-              try {
-                daySliderRef.current?.releasePointerCapture(event.pointerId);
-              } catch {}
-            }}
-            onPointerCancel={(event) => {
-              dragState.current.active = false;
-              dragState.current.mode = null;
-              try {
-                daySliderRef.current?.releasePointerCapture(event.pointerId);
-              } catch {}
-            }}
             className="flex min-h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
-            style={{
-              WebkitOverflowScrolling: "touch",
-              touchAction: "pan-y",
-            }}
+            style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
               const { dayAppointments, dayBlocks, items } = getDayData(day);
