@@ -1173,11 +1173,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       )}
 
       <div
-        className="absolute right-6 z-40 flex flex-col items-end gap-3"
+        className="absolute right-6 z-40 flex flex-col items-end gap-3 pointer-events-none"
         style={{ bottom: "calc(48px + env(safe-area-inset-bottom) + 10px)" }}
       >
         <div
-          className={`flex flex-col items-end gap-3 transition-all duration-200 ${
+          className={`flex flex-col items-end gap-3 transition-all duration-200 pointer-events-auto ${
             fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
           }`}
         >
@@ -1186,7 +1186,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               setFabOpen(false);
               router.push("/clientes/novo");
             }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition"
+            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
             type="button"
           >
             <span className="text-sm font-extrabold text-studio-text">Novo Cliente</span>
@@ -1200,7 +1200,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               setFabOpen(false);
               router.push("/bloqueios");
             }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-red-50 transition"
+            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-red-50 transition pointer-events-auto"
             type="button"
           >
             <span className="text-sm font-extrabold text-studio-text">Bloquear Plantão</span>
@@ -1216,7 +1216,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
               const returnTo = `/?view=${view}&date=${dateParam}`;
               router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
             }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition"
+            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
             type="button"
           >
             <span className="text-sm font-extrabold text-studio-text">Novo Agendamento</span>
@@ -1228,7 +1228,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
         <button
           onClick={() => setFabOpen((prev) => !prev)}
-          className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95"
+          className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95 pointer-events-auto"
           type="button"
         >
           {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
