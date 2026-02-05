@@ -628,6 +628,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             ref={daySliderRef}
             onScroll={handleDayScroll}
             onPointerDown={(event) => {
+              if (event.pointerType !== "mouse") return;
               const target = event.target as HTMLElement;
               if (target.closest("[data-card]") || target.closest("button")) return;
               if (!daySliderRef.current) return;
@@ -636,48 +637,33 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 startX: event.clientX,
                 startY: event.clientY,
                 scrollLeft: daySliderRef.current.scrollLeft,
-                mode: null,
+                mode: "x",
               };
-              if (event.pointerType === "mouse") {
-                daySliderRef.current.setPointerCapture(event.pointerId);
-              }
+              daySliderRef.current.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
+              if (event.pointerType !== "mouse") return;
               if (!dragState.current.active || !daySliderRef.current) return;
               const dx = event.clientX - dragState.current.startX;
-              const dy = event.clientY - dragState.current.startY;
-              if (!dragState.current.mode) {
-                if (Math.abs(dx) > Math.abs(dy) + 4) {
-                  dragState.current.mode = "x";
-                } else if (Math.abs(dy) > Math.abs(dx) + 4) {
-                  dragState.current.mode = "y";
-                }
-              }
-              if (dragState.current.mode === "x") {
-                event.preventDefault();
-                if (event.pointerType !== "mouse") {
-                  daySliderRef.current.setPointerCapture(event.pointerId);
-                }
-                daySliderRef.current.scrollLeft = dragState.current.scrollLeft - dx;
-              } else if (dragState.current.mode === "y") {
-                dragState.current.active = false;
-              }
+              event.preventDefault();
+              daySliderRef.current.scrollLeft = dragState.current.scrollLeft - dx;
             }}
             onPointerUp={(event) => {
               dragState.current.active = false;
               dragState.current.mode = null;
-              daySliderRef.current?.releasePointerCapture(event.pointerId);
+              try {
+                daySliderRef.current?.releasePointerCapture(event.pointerId);
+              } catch {}
             }}
-            onPointerCancel={() => {
+            onPointerCancel={(event) => {
               dragState.current.active = false;
               dragState.current.mode = null;
+              try {
+                daySliderRef.current?.releasePointerCapture(event.pointerId);
+              } catch {}
             }}
             className="flex min-h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
-            style={{
-              WebkitOverflowScrolling: "touch",
-              touchAction: "pan-y",
-              overscrollBehavior: "contain",
-            }}
+            style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
               const { dayAppointments, dayBlocks, items } = getDayData(day);

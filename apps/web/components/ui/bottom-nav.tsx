@@ -22,7 +22,7 @@ export function BottomNav({ className = "" }: BottomNavProps) {
 
   return (
     <nav
-      className={`bg-white border-t border-line h-12 px-2 flex justify-around items-center z-50 fixed bottom-0 left-1/2 -translate-x-1/2 w-[min(412px,100vw)] safe-bottom ${className}`}
+      className={`bg-white border-t border-line h-12 px-2 flex justify-around items-center z-40 w-full safe-bottom ${className}`}
     >
       <Link href="/" className={itemClass("/")}>
         <Calendar size={18} />
