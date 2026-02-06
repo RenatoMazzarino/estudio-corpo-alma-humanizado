@@ -1,12 +1,19 @@
 "use server";
 
 import { z } from "zod";
-import { createAppointment as createAppointmentImpl } from "../../../src/modules/appointments/actions";
+import {
+  createAppointment as createAppointmentImpl,
+  updateInternalAppointment as updateAppointmentImpl,
+} from "../../../src/modules/appointments/actions";
 import { listClientAddresses } from "../../../src/modules/clients/repository";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 
 export async function createAppointment(formData: FormData): Promise<void> {
   return createAppointmentImpl(formData);
+}
+
+export async function updateAppointment(formData: FormData): Promise<void> {
+  return updateAppointmentImpl(formData);
 }
 
 export async function getClientAddresses(clientId: string): Promise<{ data: unknown[]; error?: string | null }> {

@@ -13,8 +13,8 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { createAppointment, getClientAddresses } from "./appointment-actions"; // Ação importada do arquivo renomeado
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createAppointment, getClientAddresses, updateAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
@@ -34,6 +34,8 @@ interface AppointmentFormProps {
   services: Service[];
   clients: { id: string; name: string; phone: string | null }[];
   safeDate: string;
+  initialAppointment?: InitialAppointment | null;
+  returnTo?: string;
 }
 
 interface ClientAddress {
@@ -47,6 +49,27 @@ interface ClientAddress {
   address_bairro: string | null;
   address_cidade: string | null;
   address_estado: string | null;
+}
+
+interface InitialAppointment {
+  id: string;
+  serviceId: string | null;
+  date: string;
+  time: string;
+  clientId: string | null;
+  clientName: string;
+  clientPhone: string | null;
+  isHomeVisit: boolean;
+  clientAddressId: string | null;
+  addressCep: string | null;
+  addressLogradouro: string | null;
+  addressNumero: string | null;
+  addressComplemento: string | null;
+  addressBairro: string | null;
+  addressCidade: string | null;
+  addressEstado: string | null;
+  internalNotes: string | null;
+  priceOverride: number | null;
 }
 
 function formatPhone(value: string) {
@@ -100,35 +123,64 @@ function formatClientAddress(address: ClientAddress) {
   return parts.join(", ");
 }
 
-export function AppointmentForm({ services, clients, safeDate }: AppointmentFormProps) {
-  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
+export function AppointmentForm({ services, clients, safeDate, initialAppointment, returnTo }: AppointmentFormProps) {
+  const isEditing = Boolean(initialAppointment);
+  const initialTimeRef = useRef(initialAppointment?.time ?? "");
+  const hasInitialManualAddress =
+    !!initialAppointment?.isHomeVisit &&
+    !initialAppointment?.clientAddressId &&
+    (initialAppointment?.addressCep ||
+      initialAppointment?.addressLogradouro ||
+      initialAppointment?.addressNumero ||
+      initialAppointment?.addressComplemento ||
+      initialAppointment?.addressBairro ||
+      initialAppointment?.addressCidade ||
+      initialAppointment?.addressEstado);
+  const initialAddressMode: "none" | "existing" | "new" = initialAppointment?.clientAddressId
+    ? "existing"
+    : hasInitialManualAddress
+      ? "new"
+      : "none";
+
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(initialAppointment?.serviceId ?? "");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
-  const [priceOverride, setPriceOverride] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>(safeDate);
-  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [priceOverride, setPriceOverride] = useState<string>(
+    initialAppointment?.priceOverride != null
+      ? initialAppointment.priceOverride.toFixed(2).replace(".", ",")
+      : ""
+  );
+  const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? safeDate);
+  const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [isHomeVisit, setIsHomeVisit] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
+  const [clientName, setClientName] = useState(initialAppointment?.clientName ?? "");
+  const [clientPhone, setClientPhone] = useState(
+    initialAppointment?.clientPhone ? formatPhone(initialAppointment.clientPhone) : ""
+  );
+  const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasBlocks, setHasBlocks] = useState(false);
   const [blockStatus, setBlockStatus] = useState<"idle" | "loading">("idle");
   const [clientAddresses, setClientAddresses] = useState<ClientAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [addressMode, setAddressMode] = useState<"none" | "existing" | "new">("none");
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    initialAppointment?.clientAddressId ?? null
+  );
+  const [addressMode, setAddressMode] = useState<"none" | "existing" | "new">(initialAddressMode);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [modalAddressId, setModalAddressId] = useState<string | null>(null);
-  const [addressConfirmed, setAddressConfirmed] = useState(false);
+  const [addressConfirmed, setAddressConfirmed] = useState(
+    Boolean(initialAppointment?.clientAddressId || hasInitialManualAddress)
+  );
   const [addressLabel, setAddressLabel] = useState("Casa");
-  const [cep, setCep] = useState("");
-  const [logradouro, setLogradouro] = useState("");
-  const [numero, setNumero] = useState("");
-  const [complemento, setComplemento] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [estado, setEstado] = useState("");
+  const [cep, setCep] = useState(initialAppointment?.addressCep ?? "");
+  const [logradouro, setLogradouro] = useState(initialAppointment?.addressLogradouro ?? "");
+  const [numero, setNumero] = useState(initialAppointment?.addressNumero ?? "");
+  const [complemento, setComplemento] = useState(initialAppointment?.addressComplemento ?? "");
+  const [bairro, setBairro] = useState(initialAppointment?.addressBairro ?? "");
+  const [cidade, setCidade] = useState(initialAppointment?.addressCidade ?? "");
+  const [estado, setEstado] = useState(initialAppointment?.addressEstado ?? "");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [internalNotes, setInternalNotes] = useState(initialAppointment?.internalNotes ?? "");
   const selectedService = useMemo(
     () => services.find((service) => service.id === selectedServiceId) ?? null,
     [selectedServiceId, services]
@@ -188,8 +240,15 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
           date: selectedDate,
           isHomeVisit,
         });
-        setAvailableSlots(slots);
-        setSelectedTime(slots[0] ?? "");
+        const preferred = selectedTime || initialTimeRef.current;
+        const normalizedSlots =
+          preferred && !slots.includes(preferred) ? [preferred, ...slots] : slots;
+        setAvailableSlots(normalizedSlots);
+        if (preferred && normalizedSlots.includes(preferred)) {
+          setSelectedTime(preferred);
+        } else {
+          setSelectedTime(normalizedSlots[0] ?? "");
+        }
       } catch (error) {
         console.error(error);
         setAvailableSlots([]);
@@ -252,21 +311,22 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
       const addresses = (result.data as ClientAddress[]) ?? [];
       setClientAddresses(addresses);
       const primary = addresses.find((address) => address.is_primary) ?? addresses[0] ?? null;
-      if (primary) {
+      const hasSelected = !!selectedAddressId && addresses.some((address) => address.id === selectedAddressId);
+      if (primary && !hasSelected) {
         setSelectedAddressId(primary.id);
         if (addressMode !== "new") {
           setAddressMode("existing");
         }
-      } else {
+      } else if (!primary && !hasSelected) {
         setSelectedAddressId(null);
       }
-      setAddressConfirmed(false);
+      setAddressConfirmed(hasSelected || addressMode === "new");
     })();
 
     return () => {
       active = false;
     };
-  }, [selectedClientId, addressMode]);
+  }, [selectedClientId, addressMode, selectedAddressId]);
 
   useEffect(() => {
     if (!isHomeVisit) return;
@@ -332,9 +392,12 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
     [clientAddresses, selectedAddressId]
   );
   const finalPrice = priceOverride ? priceOverride : displayedPrice;
+  const formAction = isEditing ? updateAppointment : createAppointment;
 
   return (
-    <form action={createAppointment} className="space-y-6">
+    <form action={formAction} className="space-y-6">
+      {isEditing && <input type="hidden" name="appointmentId" value={initialAppointment?.id ?? ""} />}
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <input type="hidden" name="clientId" value={selectedClientId ?? ""} />
       <input type="hidden" name="client_address_id" value={selectedAddressId ?? ""} />
       <input type="hidden" name="address_label" value={addressLabel} />
@@ -774,6 +837,8 @@ export function AppointmentForm({ services, clients, safeDate }: AppointmentForm
           <textarea
             name="internalNotes"
             rows={2}
+            value={internalNotes}
+            onChange={(event) => setInternalNotes(event.target.value)}
             className="w-full px-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm"
             placeholder="Ex: Cliente prefere pressão leve..."
           />

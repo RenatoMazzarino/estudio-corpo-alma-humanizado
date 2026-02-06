@@ -8,9 +8,11 @@ import { Plus, ChevronRight, Clock, MapPin, ChevronLeft } from "lucide-react";
 
 interface CatalogoViewProps {
   initialServices: Service[];
+  defaultBufferBefore: number | null;
+  defaultBufferAfter: number | null;
 }
 
-export function CatalogoView({ initialServices }: CatalogoViewProps) {
+export function CatalogoView({ initialServices, defaultBufferBefore, defaultBufferAfter }: CatalogoViewProps) {
   // Estado que controla qual "tela" estamos vendo
   // null = vendo lista; 'new' = criando; Service = editando
   const [activeScreen, setActiveScreen] = useState<Service | 'new' | null>(null);
@@ -87,6 +89,8 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
         {activeScreen && (
           <ServiceForm 
             service={activeScreen === 'new' ? undefined : activeScreen}
+            defaultBufferBefore={defaultBufferBefore}
+            defaultBufferAfter={defaultBufferAfter}
             onSuccess={() => setActiveScreen(null)}
             onCancel={() => setActiveScreen(null)}
           />

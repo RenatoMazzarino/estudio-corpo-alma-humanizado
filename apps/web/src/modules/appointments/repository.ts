@@ -149,7 +149,7 @@ export async function getAppointmentById(tenantId: string, id: string) {
   return supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+      `id, client_id, service_id, client_address_id, service_name, start_time, finished_at, status, price, price_override, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
        clients ( id, name, initials, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
        services ( duration_minutes )`

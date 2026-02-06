@@ -1,6 +1,6 @@
 "use server";
 
-import { addMinutes, format, parse, isBefore, isAfter, getDay, parseISO } from "date-fns";
+import { getDay, parseISO } from "date-fns";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
@@ -41,6 +41,36 @@ const resolveBuffer = (...values: Array<number | null | undefined>) => {
   return 0;
 };
 
+const BRAZIL_TIME_ZONE = "America/Sao_Paulo";
+
+const parseTimeToMinutes = (time: string) => {
+  const [hour, minute] = time.split(":").map((value) => Number(value));
+  return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
+};
+
+const formatMinutes = (minutes: number) => {
+  const normalized = ((minutes % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalized / 60)
+    .toString()
+    .padStart(2, "0");
+  const mins = (normalized % 60).toString().padStart(2, "0");
+  return `${hours}:${mins}`;
+};
+
+const getBrazilMinutes = (isoValue: string) => {
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) return 0;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BRAZIL_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
+};
+
 export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit = false }: GetSlotsParams): Promise<string[]> {
   const supabase = createServiceClient();
   const parsed = getAvailableSlotsSchema.safeParse({ tenantId, serviceId, date, isHomeVisit });
@@ -63,7 +93,7 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
       .from("business_hours")
       .select("open_time, close_time, is_closed")
       .eq("tenant_id", parsed.data.tenantId)
-      .eq("day_of_week", getDay(parse(parsed.data.date, "yyyy-MM-dd", new Date())))
+      .eq("day_of_week", getDay(parseISO(`${parsed.data.date}T12:00:00-03:00`)))
       .single()
   ]);
 
@@ -117,8 +147,8 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
         30
       );
 
-  const startOfDayStr = `${parsed.data.date}T00:00:00`;
-  const endOfDayStr = `${parsed.data.date}T23:59:59`;
+  const startOfDayStr = `${parsed.data.date}T00:00:00-03:00`;
+  const endOfDayStr = `${parsed.data.date}T23:59:59-03:00`;
 
   const [appointmentsRes, blocksRes] = await Promise.all([
     supabase
@@ -136,8 +166,6 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
       .eq("tenant_id", parsed.data.tenantId)
       .gte("end_time", startOfDayStr)
       .lte("start_time", endOfDayStr)
-      .gte("start_time", `${parsed.data.date}T00:00:00`)
-      .lte("start_time", `${parsed.data.date}T23:59:59`)
   ]);
 
   const appointments = (appointmentsRes.data || []) as AppointmentSlotRow[];
@@ -147,19 +175,18 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   const openTimeStr = businessHour.open_time.slice(0, 5);
   const closeTimeStr = businessHour.close_time.slice(0, 5);
 
-  const openTime = parse(`${parsed.data.date}T${openTimeStr}`, "yyyy-MM-dd'T'HH:mm", new Date());
-  const closeTime = parse(`${parsed.data.date}T${closeTimeStr}`, "yyyy-MM-dd'T'HH:mm", new Date());
+  const openMinutes = parseTimeToMinutes(openTimeStr);
+  const closeMinutes = parseTimeToMinutes(closeTimeStr);
 
-  let currentSlot = openTime;
+  let currentSlot = openMinutes;
 
-  while (!isAfter(currentSlot, closeTime)) {
-    const slotBlockStart = addMinutes(currentSlot, -bufferBefore);
-    const slotBlockEnd = addMinutes(currentSlot, serviceDuration + bufferAfter);
+  while (currentSlot <= closeMinutes) {
+    const slotBlockStart = currentSlot - bufferBefore;
+    const slotBlockEnd = currentSlot + serviceDuration + bufferAfter;
 
     const collidesWithAppt = appointments.some((appt) => {
-      const apptStart = parseISO(appt.start_time);
+      const apptStartMinutes = getBrazilMinutes(appt.start_time);
       const serviceData = Array.isArray(appt.services) ? appt.services[0] ?? null : appt.services;
-      const apptDuration = serviceData?.duration_minutes ?? appt.total_duration_minutes ?? 30;
       const apptBufferBefore = appt.is_home_visit
         ? resolveBuffer(
             serviceData?.buffer_before_minutes,
@@ -192,25 +219,29 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
             settings?.default_studio_buffer,
             30
           );
+      const apptServiceDuration = serviceData?.duration_minutes ?? 30;
+      const apptTotalDuration =
+        (appt.total_duration_minutes && appt.total_duration_minutes > 0
+          ? appt.total_duration_minutes
+          : apptServiceDuration + apptBufferBefore + apptBufferAfter) || apptServiceDuration;
+      const apptBlockStart = apptStartMinutes - apptBufferBefore;
+      const apptBlockEnd = apptStartMinutes + apptTotalDuration - apptBufferBefore;
 
-      const apptBlockStart = addMinutes(apptStart, -apptBufferBefore);
-      const apptBlockEnd = addMinutes(apptStart, apptDuration + apptBufferAfter);
-
-      return isBefore(slotBlockStart, apptBlockEnd) && isAfter(slotBlockEnd, apptBlockStart);
+      return slotBlockStart < apptBlockEnd && slotBlockEnd > apptBlockStart;
     });
 
     const collidesWithBlock = blocks.some((block) => {
-      const blockStart = parseISO(block.start_time);
-      const blockEnd = parseISO(block.end_time);
+      const blockStart = getBrazilMinutes(block.start_time);
+      const blockEnd = getBrazilMinutes(block.end_time);
 
-      return isBefore(slotBlockStart, blockEnd) && isAfter(slotBlockEnd, blockStart);
+      return slotBlockStart < blockEnd && slotBlockEnd > blockStart;
     });
 
     if (!collidesWithAppt && !collidesWithBlock) {
-      slots.push(format(currentSlot, "HH:mm"));
+      slots.push(formatMinutes(currentSlot));
     }
 
-    currentSlot = addMinutes(currentSlot, 30);
+    currentSlot += 30;
   }
 
   return slots;

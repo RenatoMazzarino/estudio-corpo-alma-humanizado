@@ -8,6 +8,7 @@ import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppointmentForm } from "./appointment-form";
 import { listServices } from "../../../src/modules/services/repository";
 import { listClients } from "../../../src/modules/clients/repository";
+import { getAppointmentById } from "../../../src/modules/appointments/repository";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -25,24 +26,72 @@ function getSafeDate(dateParam: string | string[] | undefined): string {
   return format(new Date(), "yyyy-MM-dd");
 }
 
+function formatDateInBrazil(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function formatTimeInBrazil(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
+
 export default async function NewAppointment(props: PageProps) {
   const params = await props.searchParams;
-  const safeDate = getSafeDate(params.date);
+  const appointmentId = typeof params.appointmentId === "string" ? params.appointmentId : null;
+
+  // Buscar serviços ativos do Tenant
+  const [{ data: services }, { data: clients }, appointmentResult] = await Promise.all([
+    listServices(FIXED_TENANT_ID),
+    listClients(FIXED_TENANT_ID),
+    appointmentId ? getAppointmentById(FIXED_TENANT_ID, appointmentId) : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  const appointment = appointmentResult?.data ?? null;
+  const appointmentDate = appointment ? formatDateInBrazil(new Date(appointment.start_time)) : null;
+  const safeDate = appointmentDate ?? getSafeDate(params.date);
   const returnTo =
     typeof params.returnTo === "string"
       ? decodeURIComponent(params.returnTo)
       : `/?view=day&date=${safeDate}`;
 
-  // Buscar serviços ativos do Tenant
-  const { data: services } = await listServices(FIXED_TENANT_ID);
-  const { data: clients } = await listClients(FIXED_TENANT_ID);
+  const initialAppointment = appointment
+    ? {
+        id: appointment.id,
+        serviceId: appointment.service_id ?? null,
+        date: appointmentDate ?? safeDate,
+        time: formatTimeInBrazil(new Date(appointment.start_time)),
+        clientId: appointment.client_id ?? null,
+        clientName: appointment.clients?.name ?? "Cliente",
+        clientPhone: appointment.clients?.phone ?? null,
+        isHomeVisit: appointment.is_home_visit ?? false,
+        clientAddressId: appointment.client_address_id ?? null,
+        addressCep: appointment.address_cep ?? null,
+        addressLogradouro: appointment.address_logradouro ?? null,
+        addressNumero: appointment.address_numero ?? null,
+        addressComplemento: appointment.address_complemento ?? null,
+        addressBairro: appointment.address_bairro ?? null,
+        addressCidade: appointment.address_cidade ?? null,
+        addressEstado: appointment.address_estado ?? null,
+        internalNotes: appointment.internal_notes ?? null,
+        priceOverride: appointment.price_override ?? null,
+      }
+    : null;
 
   return (
     <div className="-mx-4 -mt-4">
       <AppHeader
         label="Agendamento Interno"
-        title="Novo Agendamento"
-        subtitle="Preencha os detalhes do atendimento."
+        title={appointment ? "Editar Agendamento" : "Novo Agendamento"}
+        subtitle={appointment ? "Atualize os detalhes do atendimento." : "Preencha os detalhes do atendimento."}
         leftSlot={
           <Link
             href={returnTo}
@@ -55,7 +104,13 @@ export default async function NewAppointment(props: PageProps) {
       />
 
       <main className="p-6 pb-28">
-        <AppointmentForm services={services || []} clients={clients || []} safeDate={safeDate} />
+        <AppointmentForm
+          services={services || []}
+          clients={clients || []}
+          safeDate={safeDate}
+          initialAppointment={initialAppointment}
+          returnTo={returnTo}
+        />
       </main>
     </div>
   );

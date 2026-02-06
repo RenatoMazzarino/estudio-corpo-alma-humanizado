@@ -7,11 +7,19 @@ import { Service } from "../types/service";
 
 interface ServiceFormProps {
   service?: Service;
+  defaultBufferBefore?: number | null;
+  defaultBufferAfter?: number | null;
   onSuccess?: () => void;
   onCancel?: () => void; // Novo botão cancelar
 }
 
-export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) {
+export function ServiceForm({
+  service,
+  defaultBufferBefore,
+  defaultBufferAfter,
+  onSuccess,
+  onCancel,
+}: ServiceFormProps) {
   const [acceptsHomeVisit, setAcceptsHomeVisit] = useState(service?.accepts_home_visit ?? false);
   const [loading, setLoading] = useState(false);
 
@@ -111,7 +119,7 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
             <input
               name="buffer_before_minutes"
               type="number"
-              defaultValue={service?.buffer_before_minutes ?? ""}
+              defaultValue={service ? service.buffer_before_minutes ?? "" : defaultBufferBefore ?? ""}
               className="w-full bg-stone-50 border-stone-200 border rounded-xl py-3 px-4 text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
               placeholder="Ex: 30"
             />
@@ -121,7 +129,7 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
             <input
               name="buffer_after_minutes"
               type="number"
-              defaultValue={service?.buffer_after_minutes ?? ""}
+              defaultValue={service ? service.buffer_after_minutes ?? "" : defaultBufferAfter ?? ""}
               className="w-full bg-stone-50 border-stone-200 border rounded-xl py-3 px-4 text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
               placeholder="Ex: 30"
             />
