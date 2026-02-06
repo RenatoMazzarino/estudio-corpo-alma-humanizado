@@ -418,10 +418,12 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
         settings?.default_studio_buffer,
         30
       );
+  const safeBufferBefore = bufferBefore ?? 0;
+  const safeBufferAfter = bufferAfter ?? 0;
 
   const finishedAt = addMinutes(startDateTime, durationMinutes);
-  const blockStart = addMinutes(startDateTime, -bufferBefore);
-  const blockEnd = addMinutes(startDateTime, durationMinutes + bufferAfter);
+  const blockStart = addMinutes(startDateTime, -safeBufferBefore);
+  const blockEnd = addMinutes(startDateTime, durationMinutes + safeBufferAfter);
 
   let resolvedClientId = parsed.data.clientId;
   if (!resolvedClientId && parsed.data.clientPhone) {
@@ -580,8 +582,8 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
             settings?.default_studio_buffer,
             30
           );
-      const apptBlockStart = addMinutes(apptStart, -apptBufferBefore);
-      const apptBlockEnd = addMinutes(apptStart, apptDuration + apptBufferAfter);
+      const apptBlockStart = addMinutes(apptStart, -(apptBufferBefore ?? 0));
+      const apptBlockEnd = addMinutes(apptStart, apptDuration + (apptBufferAfter ?? 0));
       return apptBlockStart < blockEnd && apptBlockEnd > blockStart;
     });
 
@@ -612,7 +614,7 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
     price: finalPrice,
     price_override: parsed.data.priceOverride ?? null,
     is_home_visit: parsed.data.isHomeVisit ?? false,
-    total_duration_minutes: durationMinutes + bufferBefore + bufferAfter,
+    total_duration_minutes: durationMinutes + safeBufferBefore + safeBufferAfter,
     address_cep: resolvedAddress.address_cep,
     address_logradouro: resolvedAddress.address_logradouro,
     address_numero: resolvedAddress.address_numero,

@@ -44,7 +44,9 @@ const resolveBuffer = (...values: Array<number | null | undefined>) => {
 const BRAZIL_TIME_ZONE = "America/Sao_Paulo";
 
 const parseTimeToMinutes = (time: string) => {
-  const [hour, minute] = time.split(":").map((value) => Number(value));
+  const [hourRaw, minuteRaw] = time.split(":");
+  const hour = Number(hourRaw ?? "0");
+  const minute = Number(minuteRaw ?? "0");
   return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
 };
 
