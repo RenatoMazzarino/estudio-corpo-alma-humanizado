@@ -19,6 +19,10 @@
 - TimerBubble: botão “X” para fechar contador flutuante.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
+- Agenda: grade com meia-hora, horários menores por padrão e buffers de atendimento (pré/pós) visíveis.
+- Agenda: horário Brasil (America/Sao_Paulo) aplicado no cálculo de disponibilidade.
+- UI: toast padrão para feedback de sucesso/erro.
+- UI: módulos Financeiro (ex-Caixa) e Mensagens adicionados; FAB com ações financeiras em “em dev”.
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
@@ -67,6 +71,17 @@
 - `0f93f8b` — docs: atualiza notas de sql e report
 - `dce4907` — fix(agenda): tipagem e sync de data
 - `5000b42` — docs(ui): layout 3-partes e debug
+- `abecd1d` — docs(report): registrar commit de layout
+- `8bf85e4` — feat(ui): financeiro, mensagens e fab
+- `5a38fd1` — fix(ui): ajusta comportamento de scroll horizontal no componente MobileAgenda
+- `9f71cca` — fix(agenda): busca cliente e horarios
+- `3d8056f` — fix(agenda): horario brasil e grade meia-hora
+- `2d61bbb` — fix(ui): buffers e toasts
+- `27ed47d` — feat(clients): importar contatos do dispositivo
+- `c678b52` — feat(appointments): buffers, edicao e conflito de horarios
+- `f9dd942` — feat(agenda): busca, buffers e interacoes
+- `bc55607` — chore(lint): ajustar dependencias e imports
+- `0301836` — fix(build): guard buffers and time parsing
 
 ## 5) Arquivos/pastas principais alterados
 - `apps/web/app/(dashboard)/clientes/*` (lista, novo, detalhe)
@@ -93,10 +108,12 @@ supabase db push
 ## 8) Como testar manualmente (roteiro rápido)
 - Agenda DIA: linha vermelha move e posiciona; trocar tabs; clicar em “Hoje”.
 - Agenda: abrir modal de busca (ícone) e validar resultados em tempo real.
+- Agenda: buffers pré/pós respeitam o tempo total e a grade de meia hora.
 - /novo: header, voltar para o dia de origem, domicílio (modal), override de preço e buffers.
 - /clientes: header colapsa, índice A–Z, filtros VIP/Atenção/Novos.
 - /clientes/novo: importar contato, múltiplos telefones, saúde estruturada, salvar.
 - /clientes/[id]: header colapsa, avatar, telefones/endereço, tags e histórico.
+- /financeiro e /mensagens: telas base em “em dev” e navegação inferior.
 
 ## 9) Decisão de arquitetura — Layout em 3 partes (Header / Content / Navigation)
 - **Padrão:** toda tela segue Header + Content + Navigation, com `AppShell` controlando o frame e `ModulePage` entregando o layout interno.
