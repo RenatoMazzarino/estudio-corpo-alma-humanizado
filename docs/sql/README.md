@@ -18,3 +18,6 @@ Por que existem arquivos aqui (ex.: `schema_dump_clients.sql`, `schema_dump_busi
 Quando **não** usar:
 - Não aplicar diretamente em produção.
 - Não substituir migrations por estes arquivos.
+
+## Referências de UI
+- Decisões de layout e padrões de tela: `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.

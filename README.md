@@ -40,6 +40,12 @@ pnpm install
 
 ---
 
+## Padrão de layout (UI)
+
+- Todas as telas seguem 3 partes: **Header / Content / Navigation**.
+- `AppShell` controla frame + scroll único; `ModulePage` organiza header e conteúdo.
+- Decisão documentada em `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md` e `docs/ui-system/README.md`.
+
 ## Scripts úteis
 
 ```sh

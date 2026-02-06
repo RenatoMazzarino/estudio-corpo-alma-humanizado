@@ -4,6 +4,7 @@
 - Agenda: header padronizado (saudação + mês clicável + tabs), correção de mês selecionado e troca de visão sem “pisca-pisca”.
 - Agenda: busca em modal com resultados em tempo real (Agenda + Clientes) e CTA “Buscar”.
 - Agenda: FAB inclui opção “Novo Cliente”.
+- Shell/UI: padronização de layout em 3 partes (Header / Content / Navigation) com `ModulePage` e BottomNav fixa fora do scroll.
 - Shell: BottomNav fixa e regras de visibilidade por rota aplicadas (inclui /clientes/novo, exclui /clientes/[id], /novo e /atendimento).
 - Shell: moldura mobile agora ocupa toda a altura do viewport, sem cantos arredondados.
 - Agenda: rolagem horizontal com drag em toda a área útil; cards com altura mínima e marcação de “Hoje”.
@@ -20,6 +21,7 @@
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
+- Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
 - [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
@@ -73,6 +75,7 @@
 - `apps/web/src/modules/appointments/*`
 - `apps/web/app/(dashboard)/configuracoes/*`
 - `apps/web/components/ui/*` (inclui ModuleHeader)
+- `apps/web/components/ui/module-page.tsx` (layout em 3 partes: Header/Content)
 - `apps/web/app/api/search/route.ts` (busca global para o modal da Agenda)
 - `supabase/migrations/*` (novas migrations acima)
 
@@ -94,13 +97,25 @@ supabase db push
 - /clientes/novo: importar contato, múltiplos telefones, saúde estruturada, salvar.
 - /clientes/[id]: header colapsa, avatar, telefones/endereço, tags e histórico.
 
-## 9) Testes e validações (execução)
+## 9) Decisão de arquitetura — Layout em 3 partes (Header / Content / Navigation)
+- **Padrão:** toda tela segue Header + Content + Navigation, com `AppShell` controlando o frame e `ModulePage` entregando o layout interno.
+- **Scroll único:** o container `data-shell-scroll` é o único scroll vertical; BottomNav fica fora dele (grid row) para permanecer fixa sem “zonas mortas”.
+- **FAB/overlays:** elementos flutuantes (ex.: FAB) ficam em overlay controlado, com posição relativa ao `--nav-height`.
+- **Objetivo:** layout previsível, modular e pronto para animações de header colapsável.
+
+## 10) Debug — investigação de scroll/touch (detalhamento)
+- **Sintomas:** metade inferior com scroll/clique ruim; “zonas mortas” em touch e atraso no gesto.
+- **Hipóteses testadas:** pointer-capture indevido em touch; overlays invisíveis; múltiplos containers de scroll competindo.
+- **Ferramentas:** `DebugPointerOverlay`, outlines de hitbox, inspeção de overlays e containers (AppShell + agenda).
+- **Resultado:** padronização do scroll em um único container + layout 3-partes + FAB isolado em overlay sem capturar toque.
+
+## 11) Testes e validações (execução)
 Comandos executados na raiz:
 - `pnpm lint` ✅
 - `pnpm check-types` ✅
 - `pnpm build` ✅
 - `pnpm test` — **não existe script** no repo.
 
-## 10) Pendências / próximos passos
+## 12) Pendências / próximos passos
 - Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
 - Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste adicional).

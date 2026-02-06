@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
 
+## UI layout padrão
+
+- Todas as telas seguem 3 partes: **Header / Content / Navigation**.
+- `AppShell` controla o frame e o scroll único; `ModulePage` organiza header + conteúdo.
+- Referência: `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.
+
 ## Getting Started
 
 First, run the development server:
