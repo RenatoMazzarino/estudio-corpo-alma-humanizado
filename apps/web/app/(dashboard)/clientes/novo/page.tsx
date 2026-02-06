@@ -16,29 +16,6 @@ interface ClientSuggestion {
   phone: string | null;
 }
 
-interface ContactRecord {
-  name?: string[];
-  tel?: string[];
-  email?: string[];
-  address?: Array<{
-    street?: string;
-    addressLine?: string;
-    city?: string;
-    region?: string;
-    postalCode?: string;
-    country?: string;
-  }>;
-  birthday?: string;
-  honorificPrefix?: string;
-  honorificSuffix?: string;
-}
-
-interface NavigatorWithContacts extends Navigator {
-  contacts?: {
-    select: (properties: string[], options: { multiple: boolean }) => Promise<ContactRecord[]>;
-  };
-}
-
 interface PhoneEntry {
   id: string;
   label: string;
@@ -148,7 +125,6 @@ export default function NewClientPage() {
   const [extraData, setExtraData] = useState<Record<string, unknown>>({});
   const [suggestions, setSuggestions] = useState<ClientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
 
   const avatarPreview = useMemo(() => {
     if (!avatarFile) return null;
@@ -189,78 +165,7 @@ export default function NewClientPage() {
     setEmails((prev) => prev.map((email) => ({ ...email, isPrimary: email.id === id })));
   };
 
-  const handleImportContact = async () => {
-    setImportError(null);
-    const navContacts = (navigator as NavigatorWithContacts).contacts;
-    if (!navContacts?.select) {
-      setImportError("Importação disponível apenas em dispositivos compatíveis.");
-      return;
-    }
-
-    try {
-      const [contact] = await navContacts.select(
-        ["name", "tel", "email", "address", "birthday", "honorificPrefix", "honorificSuffix"],
-        { multiple: false }
-      );
-      if (!contact) return;
-
-      const importedName = contact.name?.[0];
-      if (importedName) {
-        setName(importedName);
-      }
-
-      if (contact.tel?.length) {
-        const importedPhones = contact.tel.map((phone: string, index: number) => ({
-          id: createId(),
-          label: index === 0 ? "Principal" : "Outro",
-          number: formatPhone(phone),
-          isPrimary: index === 0,
-          isWhatsapp: index === 0,
-        }));
-        setPhones(importedPhones);
-      }
-
-      if (contact.email?.length) {
-        const importedEmails = contact.email.map((email: string, index: number) => ({
-          id: createId(),
-          label: index === 0 ? "Principal" : "Outro",
-          email,
-          isPrimary: index === 0,
-        }));
-        setEmails(importedEmails);
-      }
-
-      const firstAddress = contact.address?.[0];
-      if (firstAddress) {
-        setAddress((prev) => ({
-          ...prev,
-          logradouro: firstAddress.addressLine?.[0] ?? prev.logradouro,
-          cidade: firstAddress.city ?? prev.cidade,
-          estado: firstAddress.region ?? prev.estado,
-          cep: firstAddress.postalCode ?? prev.cep,
-        }));
-      }
-
-      if (contact.birthday) {
-        setBirthDate(contact.birthday);
-      }
-
-      setExtraData({
-        import_source: "contact_picker",
-        raw: {
-          name: contact.name,
-          tel: contact.tel,
-          email: contact.email,
-          address: contact.address,
-          birthday: contact.birthday ?? null,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      setImportError("Não foi possível importar agora.");
-    }
-  };
-
+  
   const handleCepLookup = async () => {
     const normalized = normalizeCep(address.cep);
     if (normalized.length !== 8) {
@@ -385,16 +290,7 @@ export default function NewClientPage() {
                 <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Cliente</p>
                 <h2 className="text-lg font-serif text-studio-text">Dados principais</h2>
               </div>
-              <button
-                type="button"
-                onClick={handleImportContact}
-                className="px-3 py-2 rounded-2xl text-xs font-extrabold uppercase tracking-wide bg-paper border border-line text-studio-text hover:bg-white transition"
-              >
-                Importar contato
-              </button>
             </div>
-
-            {importError && <p className="text-xs text-danger">{importError}</p>}
 
             <div className="flex items-center gap-4">
               <label className="relative w-20 h-20 rounded-full bg-studio-light flex items-center justify-center text-studio-green font-serif text-xl cursor-pointer overflow-hidden">

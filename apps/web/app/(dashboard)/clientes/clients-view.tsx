@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Search,
   SlidersHorizontal,
+  Upload,
   User,
   UserPlus,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { ModuleHeader } from "../../../components/ui/module-header";
 import { ModulePage } from "../../../components/ui/module-page";
 import { FloatingActionMenu } from "../../../components/ui/floating-action-menu";
 import { Toast, useToast } from "../../../components/ui/toast";
+import { importClientsFromContacts } from "../../../src/modules/clients/actions";
 
 interface ClientListItem {
   id: string;
@@ -40,9 +42,56 @@ interface ClientsViewProps {
 
 const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
 
+type ContactAddress = {
+  city?: string;
+  locality?: string;
+  region?: string;
+  postalCode?: string;
+  dependentLocality?: string;
+  streetAddress?: string;
+  addressLine?: string[];
+  type?: string;
+};
+
+type ContactResult = {
+  name?: string[];
+  tel?: string[];
+  email?: string[];
+  address?: ContactAddress[];
+  birthday?: string;
+  organization?: string[];
+  note?: string[];
+  icon?: Blob[];
+};
+
+type NavigatorWithContacts = Navigator & {
+  contacts?: {
+    select: (properties: string[], options: { multiple: boolean }) => Promise<ContactResult[]>;
+  };
+};
+
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("Erro ao ler imagem"));
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsDataURL(blob);
+  });
+
+const extractContactPhoto = async (icon?: Blob[]) => {
+  const blob = icon?.[0];
+  if (!blob) return null;
+  try {
+    return await blobToDataUrl(blob);
+  } catch {
+    return null;
+  }
+};
+
 export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewProps) {
   const { toast, showToast } = useToast();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
 
   const grouped = useMemo(() => {
@@ -75,6 +124,99 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
       return;
     }
     showToast(`Sem clientes na letra ${letter}`, "info");
+  };
+
+  const handleImportClients = async () => {
+    const navigatorWithContacts = navigator as NavigatorWithContacts;
+    if (!navigatorWithContacts.contacts?.select) {
+      showToast("Importação indisponível neste dispositivo.", "error");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const selected = await navigatorWithContacts.contacts.select(
+        ["name", "tel", "email", "address", "birthday", "organization", "note", "icon"],
+        { multiple: true }
+      );
+      if (!selected || selected.length === 0) {
+        showToast("Nenhum contato selecionado.", "info");
+        return;
+      }
+
+      const payload = (await Promise.all(
+        selected.map(async (contact) => {
+          const name = contact.name?.[0]?.trim() ?? "";
+          const phones = (contact.tel ?? []).filter(Boolean);
+          const emails = (contact.email ?? []).filter(Boolean);
+          const photo = await extractContactPhoto(contact.icon);
+          const addresses = (contact.address ?? []).map((address) => {
+            const full =
+              (address.addressLine ?? []).filter(Boolean).join(", ") ||
+              address.streetAddress ||
+              "";
+            return {
+              label: address.type ?? null,
+              cep: address.postalCode ?? null,
+              logradouro: address.streetAddress ?? (address.addressLine?.[0] ?? null),
+              numero: null,
+              complemento: null,
+              bairro: address.dependentLocality ?? null,
+              cidade: address.city ?? address.locality ?? null,
+              estado: address.region ?? null,
+              full: full || null,
+            };
+          });
+
+          return {
+            name,
+            phones,
+            emails,
+            birthday: contact.birthday ?? null,
+            addresses,
+            organization: contact.organization?.[0] ?? null,
+            note: contact.note?.[0] ?? null,
+            photo,
+            raw: {
+              name: contact.name,
+              tel: contact.tel,
+              email: contact.email,
+              address: contact.address,
+              birthday: contact.birthday,
+              organization: contact.organization,
+              note: contact.note,
+            },
+          };
+        })
+      ))
+        .filter((contact) => contact.name.length > 0);
+
+      if (payload.length === 0) {
+        showToast("Nenhum contato válido encontrado.", "error");
+        return;
+      }
+
+      const result = await importClientsFromContacts(payload);
+      if (!result.ok) {
+        showToast(result.error.message ?? "Falha ao importar contatos.", "error");
+        return;
+      }
+
+      const { created, skipped } = result.data;
+      showToast(
+        `Importados ${created} cliente(s)${skipped ? `, ${skipped} ignorado(s)` : ""}.`,
+        "success"
+      );
+      router.refresh();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        showToast("Importação cancelada.", "info");
+      } else {
+        showToast("Falha ao importar contatos.", "error");
+      }
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -134,6 +276,15 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
                     </div>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={handleImportClients}
+                  disabled={isImporting}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-paper border border-line text-xs font-extrabold uppercase tracking-wide text-studio-text hover:bg-white transition disabled:opacity-60"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isImporting ? "Importando..." : "Importar clientes"}
+                </button>
               </div>
             }
             className="min-h-[168px]"
