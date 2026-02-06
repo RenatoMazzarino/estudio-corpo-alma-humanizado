@@ -2,12 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Search, User, ChevronRight, SlidersHorizontal, ChevronDown } from "lucide-react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  SlidersHorizontal,
+  User,
+  UserPlus,
+} from "lucide-react";
 import { Chip } from "../../../components/ui/chip";
 import { ModuleHeader } from "../../../components/ui/module-header";
 import { ModulePage } from "../../../components/ui/module-page";
+import { FloatingActionMenu } from "../../../components/ui/floating-action-menu";
 
 interface ClientListItem {
   id: string;
@@ -31,6 +42,7 @@ const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65
 export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (!toast) return;
@@ -206,6 +218,29 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
           {toast}
         </div>
       )}
+
+      <FloatingActionMenu
+        actions={[
+          {
+            label: "Novo Cliente",
+            icon: <UserPlus className="w-5 h-5" />,
+            onClick: () => router.push("/clientes/novo"),
+            tone: "green",
+          },
+          {
+            label: "Conta a pagar",
+            icon: <ArrowDownCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
+          },
+          {
+            label: "Conta a receber",
+            icon: <ArrowUpCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
+          },
+        ]}
+      />
     </>
   );
 }

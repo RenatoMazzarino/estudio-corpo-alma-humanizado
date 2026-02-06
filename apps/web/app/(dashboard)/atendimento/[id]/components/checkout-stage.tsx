@@ -304,12 +304,12 @@ export function CheckoutStage({
           {isPaid && (
             <div className="mt-4 bg-white border border-dashed border-gray-200 rounded-3xl p-4">
               <p className="text-sm font-bold text-studio-text">Checkout confirmado</p>
-              <p className="text-xs text-muted mt-1">Somente leitura. Ajustes via Caixa.</p>
+              <p className="text-xs text-muted mt-1">Somente leitura. Ajustes via Financeiro.</p>
               <button
                 onClick={() => router.push("/caixa")}
                 className="mt-3 w-full h-12 rounded-2xl bg-paper border border-gray-200 text-gray-700 font-extrabold text-xs hover:bg-gray-50 transition"
               >
-                Ver no Caixa
+                Ver no Financeiro
               </button>
             </div>
           )}

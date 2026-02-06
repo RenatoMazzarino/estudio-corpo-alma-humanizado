@@ -16,7 +16,13 @@ export function AppShell({ children }: AppShellProps) {
   const searchParams = useSearchParams();
   const debugTouch = searchParams.get("debug") === "1";
   const canShowBottomNav = () => {
-    if (pathname === "/" || pathname === "/clientes" || pathname === "/caixa" || pathname === "/menu") {
+    if (
+      pathname === "/" ||
+      pathname === "/clientes" ||
+      pathname === "/caixa" ||
+      pathname === "/mensagens" ||
+      pathname === "/menu"
+    ) {
       return true;
     }
     if (pathname === "/clientes/novo") return true;

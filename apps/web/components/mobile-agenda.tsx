@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   addDays,
   addMinutes,
@@ -20,20 +19,21 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
   Home,
   Hospital,
-  Plus,
   Search,
   Sparkles,
   UserPlus,
-  X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ModuleHeader } from "./ui/module-header";
 import { ModulePage } from "./ui/module-page";
+import { FloatingActionMenu } from "./ui/floating-action-menu";
 import { IconButton } from "./ui/buttons";
 import { AppointmentCard } from "./agenda/appointment-card";
 import {
@@ -119,7 +119,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const searchParams = useSearchParams();
   const [headerCompact, setHeaderCompact] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const [overlayEl, setOverlayEl] = useState<HTMLElement | null>(null);
   const initialView = useMemo<AgendaView>(() => {
     const viewParam = searchParams.get("view");
     if (viewParam === "week" || viewParam === "month" || viewParam === "day") {
@@ -137,7 +136,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(initialDate));
   const [view, setView] = useState<AgendaView>(initialView);
-  const [fabOpen, setFabOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -154,19 +152,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const selectedDateRef = useRef<Date>(selectedDate);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState(() => new Date());
-  const dragState = useRef<{
-    active: boolean;
-    startX: number;
-    startY: number;
-    scrollLeft: number;
-    mode: "x" | "y" | null;
-  }>({
-    active: false,
-    startX: 0,
-    startY: 0,
-    scrollLeft: 0,
-    mode: null,
-  });
   const timeGridConfig = useMemo<TimeGridConfig>(
     () => ({
       startHour: 6,
@@ -299,10 +284,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   }, []);
 
   useEffect(() => {
-    setOverlayEl(document.getElementById("app-overlay"));
-  }, []);
-
-  useEffect(() => {
     if (!isSearchOpen) {
       setSearchMode("preview");
       setSearchResults({ appointments: [], clients: [] });
@@ -415,67 +396,6 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     return () => {
       clearTimeout(timeout);
       if (interval) clearInterval(interval);
-    };
-  }, [view]);
-
-  useEffect(() => {
-    if (view !== "day") return;
-    const slider = daySliderRef.current;
-    if (!slider) return;
-
-    const isInteractiveTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false;
-      return Boolean(target.closest("button, a, input, textarea, select, [data-ignore-swipe]"));
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return;
-      if (isInteractiveTarget(event.target)) return;
-      const touch = event.touches[0];
-      if (!touch) return;
-      dragState.current.active = true;
-      dragState.current.startX = touch.clientX;
-      dragState.current.startY = touch.clientY;
-      dragState.current.scrollLeft = slider.scrollLeft;
-      dragState.current.mode = null;
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (!dragState.current.active) return;
-      const touch = event.touches[0];
-      if (!touch) return;
-      const dx = touch.clientX - dragState.current.startX;
-      const dy = touch.clientY - dragState.current.startY;
-
-      if (!dragState.current.mode) {
-        if (Math.abs(dx) > Math.abs(dy) + 4) {
-          dragState.current.mode = "x";
-        } else if (Math.abs(dy) > Math.abs(dx) + 4) {
-          dragState.current.mode = "y";
-        }
-      }
-
-      if (dragState.current.mode === "x") {
-        event.preventDefault();
-        slider.scrollLeft = dragState.current.scrollLeft - dx;
-      }
-    };
-
-    const handleTouchEnd = () => {
-      dragState.current.active = false;
-      dragState.current.mode = null;
-    };
-
-    slider.addEventListener("touchstart", handleTouchStart, { passive: true });
-    slider.addEventListener("touchmove", handleTouchMove, { passive: false });
-    slider.addEventListener("touchend", handleTouchEnd);
-    slider.addEventListener("touchcancel", handleTouchEnd);
-
-    return () => {
-      slider.removeEventListener("touchstart", handleTouchStart);
-      slider.removeEventListener("touchmove", handleTouchMove);
-      slider.removeEventListener("touchend", handleTouchEnd);
-      slider.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, [view]);
 
@@ -699,7 +619,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
-            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
+            className="flex overflow-x-auto snap-x snap-proximity no-scrollbar"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
@@ -1245,70 +1165,44 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      {overlayEl &&
-        createPortal(
-          <div
-            className="absolute right-12 z-40 pointer-events-none w-fit"
-            style={{ bottom: "calc(var(--nav-height) + 28px)" }}
-          >
-            {fabOpen && (
-              <div className="absolute bottom-14 right-0 flex flex-col items-end gap-3 transition-all duration-200 pointer-events-auto">
-                <button
-                  onClick={() => {
-                    setFabOpen(false);
-                    router.push("/clientes/novo");
-                  }}
-                  className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
-                  type="button"
-                >
-                  <span className="text-sm font-extrabold text-studio-text">Novo Cliente</span>
-                  <div className="w-10 h-10 bg-studio-light text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
-                    <UserPlus className="w-5 h-5" />
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setFabOpen(false);
-                    router.push("/bloqueios");
-                  }}
-                  className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-red-50 transition pointer-events-auto"
-                  type="button"
-                >
-                  <span className="text-sm font-extrabold text-studio-text">Bloquear Plantão</span>
-                  <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition">
-                    <Hospital className="w-5 h-5" />
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setFabOpen(false);
-                    const dateParam = format(selectedDate, "yyyy-MM-dd");
-                    const returnTo = `/?view=${view}&date=${dateParam}`;
-                    router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
-                  }}
-                  className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
-                  type="button"
-                >
-                  <span className="text-sm font-extrabold text-studio-text">Novo Agendamento</span>
-                  <div className="w-10 h-10 bg-studio-bg text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
-                    <CalendarPlus className="w-5 h-5" />
-                  </div>
-                </button>
-              </div>
-            )}
-
-            <button
-              onClick={() => setFabOpen((prev) => !prev)}
-              className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95 pointer-events-auto"
-              type="button"
-            >
-              {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            </button>
-          </div>,
-          overlayEl
-        )}
+      <FloatingActionMenu
+        actions={[
+          {
+            label: "Novo Cliente",
+            icon: <UserPlus className="w-5 h-5" />,
+            onClick: () => router.push("/clientes/novo"),
+            tone: "green",
+          },
+          {
+            label: "Bloquear Plantão",
+            icon: <Hospital className="w-5 h-5" />,
+            onClick: () => router.push("/bloqueios"),
+            tone: "danger",
+          },
+          {
+            label: "Novo Agendamento",
+            icon: <CalendarPlus className="w-5 h-5" />,
+            onClick: () => {
+              const dateParam = format(selectedDate, "yyyy-MM-dd");
+              const returnTo = `/?view=${view}&date=${dateParam}`;
+              router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
+            },
+            tone: "neutral",
+          },
+          {
+            label: "Conta a pagar",
+            icon: <ArrowDownCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
+          },
+          {
+            label: "Conta a receber",
+            icon: <ArrowUpCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
+          },
+        ]}
+      />
     </>
   );
 }
