@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -19,6 +19,7 @@ import { Chip } from "../../../components/ui/chip";
 import { ModuleHeader } from "../../../components/ui/module-header";
 import { ModulePage } from "../../../components/ui/module-page";
 import { FloatingActionMenu } from "../../../components/ui/floating-action-menu";
+import { Toast, useToast } from "../../../components/ui/toast";
 
 interface ClientListItem {
   id: string;
@@ -40,15 +41,9 @@ interface ClientsViewProps {
 const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
 
 export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewProps) {
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 1800);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   const grouped = useMemo(() => {
     return clients.reduce<Record<string, ClientListItem[]>>((acc, client) => {
@@ -79,7 +74,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
       section.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    setToast(`Sem clientes na letra ${letter}`);
+    showToast(`Sem clientes na letra ${letter}`, "info");
   };
 
   return (
@@ -213,11 +208,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
         </div>
       </ModulePage>
 
-      {toast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-studio-text text-white text-xs px-4 py-2 rounded-full shadow-float z-40">
-          {toast}
-        </div>
-      )}
+      <Toast toast={toast} />
 
       <FloatingActionMenu
         actions={[

@@ -51,6 +51,12 @@ type RawAppointment = Omit<Appointment, "clients"> & {
     | null;
 };
 
+const resolveBuffer = (...values: Array<number | null | undefined>) => {
+  const positive = values.find((value) => typeof value === "number" && value > 0);
+  if (positive !== undefined) return positive;
+  return 0;
+};
+
 export default async function Home({
   searchParams,
 }: {
@@ -80,36 +86,44 @@ export default async function Home({
     const service = Array.isArray(appt.services) ? appt.services[0] ?? null : appt.services;
     const serviceDuration = service?.duration_minutes ?? null;
     const bufferBefore = appt.is_home_visit
-      ? service?.buffer_before_minutes ??
-        settings?.buffer_before_minutes ??
-        settings?.default_home_buffer ??
-        service?.custom_buffer_minutes ??
-        settings?.default_studio_buffer ??
-        30
-      : service?.buffer_before_minutes ??
-        settings?.buffer_before_minutes ??
-        service?.custom_buffer_minutes ??
-        settings?.default_studio_buffer ??
-        30;
+      ? resolveBuffer(
+          service?.buffer_before_minutes,
+          settings?.buffer_before_minutes,
+          settings?.default_home_buffer,
+          service?.custom_buffer_minutes,
+          settings?.default_studio_buffer,
+          30
+        )
+      : resolveBuffer(
+          service?.buffer_before_minutes,
+          settings?.buffer_before_minutes,
+          service?.custom_buffer_minutes,
+          settings?.default_studio_buffer,
+          30
+        );
     const bufferAfter = appt.is_home_visit
-      ? service?.buffer_after_minutes ??
-        settings?.buffer_after_minutes ??
-        settings?.default_home_buffer ??
-        service?.custom_buffer_minutes ??
-        settings?.default_studio_buffer ??
-        30
-      : service?.buffer_after_minutes ??
-        settings?.buffer_after_minutes ??
-        service?.custom_buffer_minutes ??
-        settings?.default_studio_buffer ??
-        30;
+      ? resolveBuffer(
+          service?.buffer_after_minutes,
+          settings?.buffer_after_minutes,
+          settings?.default_home_buffer,
+          service?.custom_buffer_minutes,
+          settings?.default_studio_buffer,
+          30
+        )
+      : resolveBuffer(
+          service?.buffer_after_minutes,
+          settings?.buffer_after_minutes,
+          service?.custom_buffer_minutes,
+          settings?.default_studio_buffer,
+          30
+        );
 
     return {
       ...appt,
       clients: Array.isArray(appt.clients) ? appt.clients[0] ?? null : appt.clients,
       service_duration_minutes: serviceDuration,
-      buffer_before_minutes: bufferBefore ?? 0,
-      buffer_after_minutes: bufferAfter ?? 0,
+      buffer_before_minutes: bufferBefore,
+      buffer_after_minutes: bufferAfter,
     };
   });
 
@@ -122,16 +136,7 @@ export default async function Home({
 
   const blocks = blocksData || [];
 
-  const showCreated = resolvedSearchParams?.created === "1";
-
   return (
-    <>
-      {showCreated && (
-        <div className="mx-5 mt-4 mb-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-3 rounded-xl">
-          Agendamento criado com sucesso.
-        </div>
-      )}
-      <MobileAgenda appointments={appointments} blocks={blocks} />
-    </>
+    <MobileAgenda appointments={appointments} blocks={blocks} />
   );
 }

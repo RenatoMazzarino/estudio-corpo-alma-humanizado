@@ -35,6 +35,7 @@ import { ModuleHeader } from "./ui/module-header";
 import { ModulePage } from "./ui/module-page";
 import { FloatingActionMenu } from "./ui/floating-action-menu";
 import { IconButton } from "./ui/buttons";
+import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import {
   getDurationHeight,
@@ -150,6 +151,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
+  const { toast, showToast } = useToast();
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
   const isUserScrolling = useRef(false);
@@ -162,7 +164,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     () => ({
       startHour: 6,
       endHour: 22,
-      hourHeight: 150,
+      hourHeight: 75,
     }),
     []
   );
@@ -343,6 +345,14 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       controller.abort();
     };
   }, [searchTerm, isSearchOpen, searchMode]);
+
+  useEffect(() => {
+    if (searchParams.get("created") !== "1") return;
+    showToast("Agendamento criado com sucesso.", "success");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("created");
+    router.replace(`/?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, showToast]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -537,6 +547,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
   return (
     <>
+      <Toast toast={toast} />
       <ModulePage
         header={
           <>

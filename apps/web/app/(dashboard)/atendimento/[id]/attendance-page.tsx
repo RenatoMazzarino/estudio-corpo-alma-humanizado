@@ -33,6 +33,7 @@ import { SessionStage } from "./components/session-stage";
 import { CheckoutStage } from "./components/checkout-stage";
 import { PostStage } from "./components/post-stage";
 import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
+import { Toast, useToast } from "../../../../components/ui/toast";
 
 interface AttendancePageProps {
   data: AttendanceOverview;
@@ -65,11 +66,10 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const [activeStage, setActiveStage] = useState<StageKey>(
     initialStage && initialStage !== "hub" ? initialStage : "pre"
   );
-  const [toast, setToast] = useState<string | null>(null);
   const [headerCompact, setHeaderCompact] = useState(false);
-  const toastTimer = useRef<number | null>(null);
   const pagerRef = useRef<HTMLDivElement | null>(null);
   const scrollLockRef = useRef(false);
+  const { toast, showToast } = useToast();
 
   const {
     session,
@@ -143,12 +143,6 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
     pagerRef.current.scrollTo({ left: width * index, behavior: "auto" });
     setActiveStage(targetStage);
   }, [initialStage]);
-
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 1800);
-  };
 
   const scrollToStage = (stage: StageKey) => {
     if (stageStatusMap[stage] === "locked") {
@@ -662,15 +656,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
           </div>
         </div>
 
-        {toast && (
-          <div className="fixed left-0 right-0 bottom-24 z-[120] flex justify-center">
-            <div className="w-full max-w-[414px] px-6">
-              <div className="bg-gray-900 text-white rounded-2xl px-4 py-3 text-sm shadow-float">
-                {toast}
-              </div>
-            </div>
-          </div>
-        )}
+        <Toast toast={toast} />
 
         <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
           <div className="w-full max-w-[414px] bg-white/95 backdrop-blur border-t border-line px-3 py-3 pb-4 rounded-t-2xl shadow-float">

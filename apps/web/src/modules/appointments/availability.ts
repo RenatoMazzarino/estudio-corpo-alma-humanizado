@@ -35,6 +35,12 @@ interface AvailabilityBlockRow {
   end_time: string;
 }
 
+const resolveBuffer = (...values: Array<number | null | undefined>) => {
+  const positive = values.find((value) => typeof value === "number" && value > 0);
+  if (positive !== undefined) return positive;
+  return 0;
+};
+
 export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit = false }: GetSlotsParams): Promise<string[]> {
   const supabase = createServiceClient();
   const parsed = getAvailableSlotsSchema.safeParse({ tenantId, serviceId, date, isHomeVisit });
@@ -79,29 +85,37 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
 
   const serviceDuration = service.duration_minutes || 30;
   const bufferBefore = isHomeVisit
-    ? service.buffer_before_minutes ??
-      settings?.buffer_before_minutes ??
-      settings?.default_home_buffer ??
-      service.custom_buffer_minutes ??
-      settings?.default_studio_buffer ??
-      30
-    : service.buffer_before_minutes ??
-      settings?.buffer_before_minutes ??
-      service.custom_buffer_minutes ??
-      settings?.default_studio_buffer ??
-      30;
+    ? resolveBuffer(
+        service.buffer_before_minutes,
+        settings?.buffer_before_minutes,
+        settings?.default_home_buffer,
+        service.custom_buffer_minutes,
+        settings?.default_studio_buffer,
+        30
+      )
+    : resolveBuffer(
+        service.buffer_before_minutes,
+        settings?.buffer_before_minutes,
+        service.custom_buffer_minutes,
+        settings?.default_studio_buffer,
+        30
+      );
   const bufferAfter = isHomeVisit
-    ? service.buffer_after_minutes ??
-      settings?.buffer_after_minutes ??
-      settings?.default_home_buffer ??
-      service.custom_buffer_minutes ??
-      settings?.default_studio_buffer ??
-      30
-    : service.buffer_after_minutes ??
-      settings?.buffer_after_minutes ??
-      service.custom_buffer_minutes ??
-      settings?.default_studio_buffer ??
-      30;
+    ? resolveBuffer(
+        service.buffer_after_minutes,
+        settings?.buffer_after_minutes,
+        settings?.default_home_buffer,
+        service.custom_buffer_minutes,
+        settings?.default_studio_buffer,
+        30
+      )
+    : resolveBuffer(
+        service.buffer_after_minutes,
+        settings?.buffer_after_minutes,
+        service.custom_buffer_minutes,
+        settings?.default_studio_buffer,
+        30
+      );
 
   const startOfDayStr = `${parsed.data.date}T00:00:00`;
   const endOfDayStr = `${parsed.data.date}T23:59:59`;
@@ -147,29 +161,37 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
       const serviceData = Array.isArray(appt.services) ? appt.services[0] ?? null : appt.services;
       const apptDuration = serviceData?.duration_minutes ?? appt.total_duration_minutes ?? 30;
       const apptBufferBefore = appt.is_home_visit
-        ? serviceData?.buffer_before_minutes ??
-          settings?.buffer_before_minutes ??
-          settings?.default_home_buffer ??
-          serviceData?.custom_buffer_minutes ??
-          settings?.default_studio_buffer ??
-          30
-        : serviceData?.buffer_before_minutes ??
-          settings?.buffer_before_minutes ??
-          serviceData?.custom_buffer_minutes ??
-          settings?.default_studio_buffer ??
-          30;
+        ? resolveBuffer(
+            serviceData?.buffer_before_minutes,
+            settings?.buffer_before_minutes,
+            settings?.default_home_buffer,
+            serviceData?.custom_buffer_minutes,
+            settings?.default_studio_buffer,
+            30
+          )
+        : resolveBuffer(
+            serviceData?.buffer_before_minutes,
+            settings?.buffer_before_minutes,
+            serviceData?.custom_buffer_minutes,
+            settings?.default_studio_buffer,
+            30
+          );
       const apptBufferAfter = appt.is_home_visit
-        ? serviceData?.buffer_after_minutes ??
-          settings?.buffer_after_minutes ??
-          settings?.default_home_buffer ??
-          serviceData?.custom_buffer_minutes ??
-          settings?.default_studio_buffer ??
-          30
-        : serviceData?.buffer_after_minutes ??
-          settings?.buffer_after_minutes ??
-          serviceData?.custom_buffer_minutes ??
-          settings?.default_studio_buffer ??
-          30;
+        ? resolveBuffer(
+            serviceData?.buffer_after_minutes,
+            settings?.buffer_after_minutes,
+            settings?.default_home_buffer,
+            serviceData?.custom_buffer_minutes,
+            settings?.default_studio_buffer,
+            30
+          )
+        : resolveBuffer(
+            serviceData?.buffer_after_minutes,
+            settings?.buffer_after_minutes,
+            serviceData?.custom_buffer_minutes,
+            settings?.default_studio_buffer,
+            30
+          );
 
       const apptBlockStart = addMinutes(apptStart, -apptBufferBefore);
       const apptBlockEnd = addMinutes(apptStart, apptDuration + apptBufferAfter);
