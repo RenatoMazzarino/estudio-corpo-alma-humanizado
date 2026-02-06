@@ -66,6 +66,7 @@
 - `0cbad8c` — docs(report): atualiza execucao v1
 - `0f93f8b` — docs: atualiza notas de sql e report
 - `dce4907` — fix(agenda): tipagem e sync de data
+- `5000b42` — docs(ui): layout 3-partes e debug
 
 ## 5) Arquivos/pastas principais alterados
 - `apps/web/app/(dashboard)/clientes/*` (lista, novo, detalhe)
