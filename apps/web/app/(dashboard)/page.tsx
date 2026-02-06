@@ -68,13 +68,13 @@ export default async function Home({
   const showCreated = resolvedSearchParams?.created === "1";
 
   return (
-    <div className="flex flex-col h-full -mx-4 -mt-4">
+    <>
       {showCreated && (
         <div className="mx-5 mt-4 mb-2 bg-green-50 border border-green-200 text-green-700 text-sm font-medium px-4 py-3 rounded-xl">
           Agendamento criado com sucesso.
         </div>
       )}
       <MobileAgenda appointments={appointments} blocks={blocks} />
-    </div>
+    </>
   );
 }

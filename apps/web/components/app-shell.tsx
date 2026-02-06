@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { TimerBubble } from "./timer/timer-bubble";
 import { TimerProvider } from "./timer/timer-provider";
@@ -23,24 +23,32 @@ export function AppShell({ children }: AppShellProps) {
     return false;
   };
   const showBottomNav = canShowBottomNav();
+  const navHeight = showBottomNav ? "calc(48px + env(safe-area-inset-bottom))" : "0px";
+  const isFullBleed = pathname === "/" || pathname === "/clientes";
 
   return (
     <TimerProvider>
       {/* Fundo geral usando var(--color-studio-bg) */}
-      <div className="app-viewport bg-neutral-900 flex justify-center items-stretch overflow-hidden">
+      <div
+        className={`app-viewport flex justify-center items-stretch overflow-hidden ${
+          debugTouch ? "bg-transparent debug-overflow" : "bg-neutral-900"
+        }`}
+      >
         <div
           className={`
-          app-frame bg-studio-bg flex flex-col relative shadow-2xl overflow-hidden min-h-0 ${
-            debugTouch ? "debug-hitbox" : ""
+          app-frame bg-studio-bg grid grid-rows-[1fr_auto] relative shadow-2xl min-h-0 ${
+            debugTouch ? "debug-hitbox debug-overflow" : "overflow-hidden"
           }
         `}
+          style={{ "--nav-height": navHeight } as CSSProperties}
         >
           <div
             data-shell-scroll
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-0 space-y-4 scroll-smooth"
+            className={`min-h-0 overflow-x-hidden scroll-smooth ${
+              isFullBleed ? "flex flex-col p-0 overflow-y-auto" : "px-4 pt-0 space-y-4 overflow-y-auto"
+            }`}
             style={{
               WebkitOverflowScrolling: "touch",
-              paddingBottom: showBottomNav ? "calc(48px + env(safe-area-inset-bottom))" : "2rem",
             }}
           >
             {children}
@@ -48,7 +56,9 @@ export function AppShell({ children }: AppShellProps) {
 
           <TimerBubble />
 
-          {showBottomNav && <BottomNav />}
+          <div id="app-overlay" className="absolute inset-0 pointer-events-none z-40" />
+
+          {showBottomNav && <BottomNav className="shrink-0" />}
         </div>
         {debugTouch && <DebugPointerOverlay />}
       </div>

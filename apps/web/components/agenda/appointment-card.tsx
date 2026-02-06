@@ -101,8 +101,6 @@ export function AppointmentCard({
             {onWhatsapp && (
               <button
                 type="button"
-                onTouchStart={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -117,8 +115,6 @@ export function AppointmentCard({
             {onMaps && (
               <button
                 type="button"
-                onTouchStart={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();

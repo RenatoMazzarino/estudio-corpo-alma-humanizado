@@ -56,6 +56,14 @@ html {
   overflow: hidden;
 }
 
+.bg-transparent {
+  background-color: transparent;
+}
+
+.debug-overflow {
+  overflow: visible !important;
+}
+
 .app-frame {
   width: min(412px, 100vw);
   min-height: 100svh;

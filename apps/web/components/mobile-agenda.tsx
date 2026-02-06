@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   addDays,
   addMinutes,
@@ -32,6 +33,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ModuleHeader } from "./ui/module-header";
+import { ModulePage } from "./ui/module-page";
 import { IconButton } from "./ui/buttons";
 import { AppointmentCard } from "./agenda/appointment-card";
 import {
@@ -117,6 +119,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const searchParams = useSearchParams();
   const [headerCompact, setHeaderCompact] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [overlayEl, setOverlayEl] = useState<HTMLElement | null>(null);
   const initialView = useMemo<AgendaView>(() => {
     const viewParam = searchParams.get("view");
     if (viewParam === "week" || viewParam === "month" || viewParam === "day") {
@@ -296,6 +299,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   }, []);
 
   useEffect(() => {
+    setOverlayEl(document.getElementById("app-overlay"));
+  }, []);
+
+  useEffect(() => {
     if (!isSearchOpen) {
       setSearchMode("preview");
       setSearchResults({ appointments: [], clients: [] });
@@ -411,6 +418,67 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     };
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "day") return;
+    const slider = daySliderRef.current;
+    if (!slider) return;
+
+    const isInteractiveTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      return Boolean(target.closest("button, a, input, textarea, select, [data-ignore-swipe]"));
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      if (isInteractiveTarget(event.target)) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      dragState.current.active = true;
+      dragState.current.startX = touch.clientX;
+      dragState.current.startY = touch.clientY;
+      dragState.current.scrollLeft = slider.scrollLeft;
+      dragState.current.mode = null;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!dragState.current.active) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - dragState.current.startX;
+      const dy = touch.clientY - dragState.current.startY;
+
+      if (!dragState.current.mode) {
+        if (Math.abs(dx) > Math.abs(dy) + 4) {
+          dragState.current.mode = "x";
+        } else if (Math.abs(dy) > Math.abs(dx) + 4) {
+          dragState.current.mode = "y";
+        }
+      }
+
+      if (dragState.current.mode === "x") {
+        event.preventDefault();
+        slider.scrollLeft = dragState.current.scrollLeft - dx;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      dragState.current.active = false;
+      dragState.current.mode = null;
+    };
+
+    slider.addEventListener("touchstart", handleTouchStart, { passive: true });
+    slider.addEventListener("touchmove", handleTouchMove, { passive: false });
+    slider.addEventListener("touchend", handleTouchEnd);
+    slider.addEventListener("touchcancel", handleTouchEnd);
+
+    return () => {
+      slider.removeEventListener("touchstart", handleTouchStart);
+      slider.removeEventListener("touchmove", handleTouchMove);
+      slider.removeEventListener("touchend", handleTouchEnd);
+      slider.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [view]);
+
   const handleDayScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const container = event.currentTarget;
     isUserScrolling.current = true;
@@ -504,130 +572,134 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   };
 
   return (
-    <div className="bg-studio-bg min-h-full flex flex-col relative -mx-4">
-      <div className="relative z-30">
-        <ModuleHeader
-          kicker="Olá, Janaina"
-          title={
-            <div className="flex items-center gap-2">
-              <span>Sua Agenda de</span>
-              <button
-                type="button"
-                onClick={() => setIsMonthPickerOpen((prev) => !prev)}
-                className="text-studio-green border-b-2 border-studio-green/20 hover:border-studio-green transition capitalize"
-              >
-                {format(currentMonth, "MMMM", { locale: ptBR })}
-              </button>
-            </div>
-          }
-          rightSlot={
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`}
-                aria-label={isOnline ? "Conectado" : "Sem conexão"}
-                title={isOnline ? "Conectado" : "Sem conexão"}
-              />
-              <IconButton
-                size="sm"
-                icon={<Search className="w-4 h-4" />}
-                aria-label="Buscar"
-                onClick={() => {
-                  setSearchMode("preview");
-                  setIsSearchOpen(true);
-                }}
-              />
-            </div>
-          }
-          bottomSlot={
-            <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
-              <button
-                type="button"
-                onClick={() => setViewAndSync("day")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                  view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
-                }`}
-              >
-                DIA
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewAndSync("week")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                  view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
-                }`}
-              >
-                SEMANA
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewAndSync("month")}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                  view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
-                }`}
-              >
-                MÊS
-              </button>
-            </div>
-          }
-          compact={headerCompact}
-          className={`${headerCompact ? "min-h-[120px]" : "min-h-[150px]"}`}
-        />
-
-        {isMonthPickerOpen && (
-          <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-2xl shadow-float border border-line p-4 z-50 pointer-events-auto">
-            <div className="flex items-center justify-between mb-3">
-              <button
-                type="button"
-                onClick={() => setMonthPickerYear((prev) => prev - 1)}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="text-sm font-extrabold text-studio-text">{monthPickerYear}</div>
-              <button
-                type="button"
-                onClick={() => setMonthPickerYear((prev) => prev + 1)}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {monthLabels.map((label, index) => {
-                const isActive =
-                  monthPickerYear === currentMonth.getFullYear() && index === currentMonth.getMonth();
-                return (
+    <>
+      <ModulePage
+        header={
+          <>
+            <ModuleHeader
+              kicker="Olá, Janaina"
+              title={
+                <div className="flex items-center gap-2">
+                  <span>Sua Agenda de</span>
                   <button
-                    key={`${label}-${index}`}
                     type="button"
+                    onClick={() => setIsMonthPickerOpen((prev) => !prev)}
+                    className="text-studio-green border-b-2 border-studio-green/20 hover:border-studio-green transition capitalize"
+                  >
+                    {format(currentMonth, "MMMM", { locale: ptBR })}
+                  </button>
+                </div>
+              }
+              rightSlot={
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`}
+                    aria-label={isOnline ? "Conectado" : "Sem conexão"}
+                    title={isOnline ? "Conectado" : "Sem conexão"}
+                  />
+                  <IconButton
+                    size="sm"
+                    icon={<Search className="w-4 h-4" />}
+                    aria-label="Buscar"
                     onClick={() => {
-                      const next = new Date(monthPickerYear, index, 1);
-                      setCurrentMonth(startOfMonth(next));
-                      setSelectedDate(next);
-                      setViewAndSync(view, next);
-                      setIsMonthPickerOpen(false);
+                      setSearchMode("preview");
+                      setIsSearchOpen(true);
                     }}
-                    className={`py-2 rounded-xl text-xs font-extrabold transition ${
-                      isActive
-                        ? "bg-studio-green text-white shadow-soft"
-                        : "bg-studio-light text-muted hover:text-studio-green hover:bg-studio-green/10"
+                  />
+                </div>
+              }
+              bottomSlot={
+                <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
+                  <button
+                    type="button"
+                    onClick={() => setViewAndSync("day")}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
+                      view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
                     }`}
                   >
-                    {label}
+                    DIA
                   </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewAndSync("week")}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
+                      view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
+                    }`}
+                  >
+                    SEMANA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewAndSync("month")}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
+                      view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
+                    }`}
+                  >
+                    MÊS
+                  </button>
+                </div>
+              }
+              compact={headerCompact}
+              className={`${headerCompact ? "min-h-[120px]" : "min-h-[150px]"}`}
+            />
 
-      <main className="flex-1 overflow-x-hidden relative bg-studio-bg">
-        <section className={`${view === "day" ? "block" : "hidden"} h-full`}>
+            {isMonthPickerOpen && (
+              <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-2xl shadow-float border border-line p-4 z-50 pointer-events-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setMonthPickerYear((prev) => prev - 1)}
+                    className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="text-sm font-extrabold text-studio-text">{monthPickerYear}</div>
+                  <button
+                    type="button"
+                    onClick={() => setMonthPickerYear((prev) => prev + 1)}
+                    className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {monthLabels.map((label, index) => {
+                    const isActive =
+                      monthPickerYear === currentMonth.getFullYear() && index === currentMonth.getMonth();
+                    return (
+                      <button
+                        key={`${label}-${index}`}
+                        type="button"
+                        onClick={() => {
+                          const next = new Date(monthPickerYear, index, 1);
+                          setCurrentMonth(startOfMonth(next));
+                          setSelectedDate(next);
+                          setViewAndSync(view, next);
+                          setIsMonthPickerOpen(false);
+                        }}
+                        className={`py-2 rounded-xl text-xs font-extrabold transition ${
+                          isActive
+                            ? "bg-studio-green text-white shadow-soft"
+                            : "bg-studio-light text-muted hover:text-studio-green hover:bg-studio-green/10"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        }
+        contentClassName="relative"
+      >
+        <main className="relative bg-studio-bg overflow-x-hidden">
+        <section className={`${view === "day" ? "flex" : "hidden"} flex-col`}>
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
-            className="flex min-h-full overflow-x-auto snap-x snap-mandatory no-scrollbar"
+            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
@@ -641,7 +713,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full min-h-full snap-center px-6 pb-0 pt-5"
+                  className="min-w-full snap-center px-6 pb-0 pt-5 flex flex-col"
                 >
                   <div className="text-center mb-5">
                     <div className="flex items-center justify-between mb-0.5">
@@ -875,7 +947,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </section>
 
         <section
-          className={`${view === "week" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-0 animate-in fade-in`}
+          className={`${view === "week" ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}
         >
           <div className="flex items-center justify-between mb-4">
             <button
@@ -974,7 +1046,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </section>
 
         <section
-          className={`${view === "month" ? "block" : "hidden"} h-full overflow-y-auto p-6 pb-0 animate-in fade-in`}
+          className={`${view === "month" ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}
         >
           <div className="bg-white rounded-3xl shadow-soft p-4">
             <div className="flex items-center justify-between mb-3">
@@ -1061,7 +1133,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             </div>
           </div>
         </section>
-      </main>
+        </main>
+      </ModulePage>
 
       {isSearchOpen && (
         <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-6">
@@ -1172,68 +1245,70 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </div>
       )}
 
-      <div
-        className="absolute right-6 z-40 flex flex-col items-end gap-3 pointer-events-none"
-        style={{ bottom: "calc(48px + env(safe-area-inset-bottom) + 10px)" }}
-      >
-        <div
-          className={`flex flex-col items-end gap-3 transition-all duration-200 pointer-events-auto ${
-            fabOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
-          }`}
-        >
-          <button
-            onClick={() => {
-              setFabOpen(false);
-              router.push("/clientes/novo");
-            }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
-            type="button"
+      {overlayEl &&
+        createPortal(
+          <div
+            className="absolute right-12 z-40 pointer-events-none w-fit"
+            style={{ bottom: "calc(var(--nav-height) + 28px)" }}
           >
-            <span className="text-sm font-extrabold text-studio-text">Novo Cliente</span>
-            <div className="w-10 h-10 bg-studio-light text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
-              <UserPlus className="w-5 h-5" />
-            </div>
-          </button>
+            {fabOpen && (
+              <div className="absolute bottom-14 right-0 flex flex-col items-end gap-3 transition-all duration-200 pointer-events-auto">
+                <button
+                  onClick={() => {
+                    setFabOpen(false);
+                    router.push("/clientes/novo");
+                  }}
+                  className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
+                  type="button"
+                >
+                  <span className="text-sm font-extrabold text-studio-text">Novo Cliente</span>
+                  <div className="w-10 h-10 bg-studio-light text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                </button>
 
-          <button
-            onClick={() => {
-              setFabOpen(false);
-              router.push("/bloqueios");
-            }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-red-50 transition pointer-events-auto"
-            type="button"
-          >
-            <span className="text-sm font-extrabold text-studio-text">Bloquear Plantão</span>
-            <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition">
-              <Hospital className="w-5 h-5" />
-            </div>
-          </button>
+                <button
+                  onClick={() => {
+                    setFabOpen(false);
+                    router.push("/bloqueios");
+                  }}
+                  className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-red-50 transition pointer-events-auto"
+                  type="button"
+                >
+                  <span className="text-sm font-extrabold text-studio-text">Bloquear Plantão</span>
+                  <div className="w-10 h-10 bg-red-100 text-red-500 rounded-full flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition">
+                    <Hospital className="w-5 h-5" />
+                  </div>
+                </button>
 
-          <button
-            onClick={() => {
-              setFabOpen(false);
-              const dateParam = format(selectedDate, "yyyy-MM-dd");
-              const returnTo = `/?view=${view}&date=${dateParam}`;
-              router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
-            }}
-            className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
-            type="button"
-          >
-            <span className="text-sm font-extrabold text-studio-text">Novo Agendamento</span>
-            <div className="w-10 h-10 bg-studio-bg text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
-              <CalendarPlus className="w-5 h-5" />
-            </div>
-          </button>
-        </div>
+                <button
+                  onClick={() => {
+                    setFabOpen(false);
+                    const dateParam = format(selectedDate, "yyyy-MM-dd");
+                    const returnTo = `/?view=${view}&date=${dateParam}`;
+                    router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
+                  }}
+                  className="group flex items-center gap-3 pl-4 pr-2 py-2 bg-white rounded-full shadow-float border border-line hover:bg-studio-green/10 transition pointer-events-auto"
+                  type="button"
+                >
+                  <span className="text-sm font-extrabold text-studio-text">Novo Agendamento</span>
+                  <div className="w-10 h-10 bg-studio-bg text-studio-green rounded-full flex items-center justify-center group-hover:bg-studio-green group-hover:text-white transition">
+                    <CalendarPlus className="w-5 h-5" />
+                  </div>
+                </button>
+              </div>
+            )}
 
-        <button
-          onClick={() => setFabOpen((prev) => !prev)}
-          className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95 pointer-events-auto"
-          type="button"
-        >
-          {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-        </button>
-      </div>
-    </div>
+            <button
+              onClick={() => setFabOpen((prev) => !prev)}
+              className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95 pointer-events-auto"
+              type="button"
+            >
+              {fabOpen ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+            </button>
+          </div>,
+          overlayEl
+        )}
+    </>
   );
 }
