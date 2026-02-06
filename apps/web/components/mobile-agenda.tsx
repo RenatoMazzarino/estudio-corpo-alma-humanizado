@@ -619,7 +619,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           <div
             ref={daySliderRef}
             onScroll={handleDayScroll}
-            className="flex overflow-x-auto snap-x snap-proximity no-scrollbar"
+            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {monthDays.map((day) => {
@@ -634,6 +634,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
                   className="min-w-full snap-center px-6 pb-0 pt-5 flex flex-col"
+                  style={{ scrollSnapStop: "always" }}
                 >
                   <div className="text-center mb-5">
                     <div className="flex items-center justify-between mb-0.5">
