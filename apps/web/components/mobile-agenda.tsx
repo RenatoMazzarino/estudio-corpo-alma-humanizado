@@ -62,6 +62,9 @@ interface Appointment {
   payment_status?: string | null;
   is_home_visit?: boolean | null;
   total_duration_minutes?: number | null;
+  service_duration_minutes?: number | null;
+  buffer_before_minutes?: number | null;
+  buffer_after_minutes?: number | null;
   price?: number | null;
 }
 
@@ -102,6 +105,9 @@ type DayItem = {
   type: "appointment" | "block";
   start_time: string;
   finished_at: string | null;
+  service_duration_minutes: number | null;
+  buffer_before_minutes: number | null;
+  buffer_after_minutes: number | null;
   clientName: string;
   serviceName: string;
   status: string;
@@ -156,21 +162,32 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     () => ({
       startHour: 6,
       endHour: 22,
-      hourHeight: 72,
+      hourHeight: 150,
     }),
     []
   );
+  const slotHeight = timeGridConfig.hourHeight / 2;
+  const pxPerMinute = timeGridConfig.hourHeight / 60;
+  const timeSlots = useMemo(() => {
+    const slots: { key: string; label: string; isHalf: boolean; minutes: number }[] = [];
+    for (let hour = timeGridConfig.startHour; hour <= timeGridConfig.endHour; hour += 1) {
+      const hourLabel = String(hour).padStart(2, "0");
+      const minutesFromStart = (hour - timeGridConfig.startHour) * 60;
+      slots.push({ key: `${hourLabel}:00`, label: `${hourLabel}:00`, isHalf: false, minutes: minutesFromStart });
+      if (hour < timeGridConfig.endHour) {
+        slots.push({
+          key: `${hourLabel}:30`,
+          label: "30",
+          isHalf: true,
+          minutes: minutesFromStart + 30,
+        });
+      }
+    }
+    return slots;
+  }, [timeGridConfig]);
   const timelineHeight = useMemo(
-    () => getTimeRangeMinutes(timeGridConfig) * (timeGridConfig.hourHeight / 60),
-    [timeGridConfig]
-  );
-  const hours = useMemo(
-    () =>
-      Array.from(
-        { length: timeGridConfig.endHour - timeGridConfig.startHour + 1 },
-        (_, idx) => timeGridConfig.startHour + idx
-      ),
-    [timeGridConfig]
+    () => getTimeRangeMinutes(timeGridConfig) * pxPerMinute,
+    [timeGridConfig, pxPerMinute]
   );
 
   const parseDate = useCallback((value: string) => {
@@ -342,6 +359,9 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         type: "appointment" as const,
         start_time: appt.start_time,
         finished_at: appt.finished_at,
+        service_duration_minutes: appt.service_duration_minutes ?? null,
+        buffer_before_minutes: appt.buffer_before_minutes ?? null,
+        buffer_after_minutes: appt.buffer_after_minutes ?? null,
         clientName: appt.clients?.name ?? "Cliente",
         serviceName: appt.service_name,
         status: appt.status,
@@ -356,6 +376,9 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         type: "block" as const,
         start_time: block.start_time,
         finished_at: block.end_time,
+        service_duration_minutes: null,
+        buffer_before_minutes: null,
+        buffer_after_minutes: null,
         clientName: block.title,
         serviceName: "Plantão",
         status: "blocked",
@@ -413,6 +436,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     scrollIdleTimeout.current = setTimeout(() => {
       const width = container.clientWidth || 1;
       const index = Math.round(container.scrollLeft / width);
+      const targetLeft = index * width;
+      if (Math.abs(container.scrollLeft - targetLeft) > 2) {
+        container.scrollTo({ left: targetLeft, behavior: "smooth" });
+      }
       if (index === lastSnapIndex.current) {
         isUserScrolling.current = false;
         return;
@@ -468,6 +495,18 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     const remainder = minutes % 60;
     if (!remainder) return `${hours}h`;
     return `${hours}h ${remainder}m`;
+  };
+
+  const getServiceDuration = (item: DayItem) => {
+    if (item.finished_at) {
+      const startTime = parseDate(item.start_time);
+      const endTime = parseDate(item.finished_at);
+      const diffMinutes = Math.max(15, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
+      return diffMinutes;
+    }
+    if (item.service_duration_minutes) return item.service_duration_minutes;
+    if (item.total_duration_minutes) return item.total_duration_minutes;
+    return 60;
   };
 
   const getStatusLabel = (item: DayItem) => {
@@ -694,15 +733,17 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                   </div>
 
                   {items.length > 0 ? (
-                    <div className="grid grid-cols-[56px_1fr] gap-4">
+                    <div className="grid grid-cols-[72px_1fr] gap-4">
                       <div className="flex flex-col items-end text-xs text-muted font-semibold">
-                        {hours.map((hour) => (
+                        {timeSlots.map((slot) => (
                           <div
-                            key={hour}
-                            style={{ height: timeGridConfig.hourHeight }}
-                            className="flex items-start justify-end w-full"
+                            key={slot.key}
+                            style={{ height: slotHeight }}
+                            className={`flex items-start justify-end w-full ${
+                              slot.isHalf ? "text-[10px] text-muted/60 pr-2" : "pr-1"
+                            }`}
                           >
-                            {String(hour).padStart(2, "0")}:00
+                            {slot.label}
                           </div>
                         ))}
                       </div>
@@ -710,33 +751,30 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         className="relative"
                         style={{
                           height: (() => {
-                            let lastBottom = 0;
-                            items.forEach((item) => {
+                            const maxBottom = items.reduce((max, item) => {
                               const startTimeDate = parseDate(item.start_time);
-                              const top = getOffsetForTime(startTimeDate, timeGridConfig);
-                              if (top === null) return;
-                              let durationMinutes = item.total_duration_minutes ?? 60;
-                              if (item.finished_at) {
-                                durationMinutes = Math.max(
-                                  15,
-                                  Math.round(
-                                    (parseDate(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
-                                  )
-                                );
-                              }
-                              const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 96);
-                              const nextTop = top < lastBottom + 12 ? lastBottom + 12 : top;
-                              lastBottom = nextTop + height;
-                            });
-                            return Math.max(timelineHeight, lastBottom + 16);
+                              const durationMinutes = getServiceDuration(item);
+                              const bufferAfter = item.buffer_after_minutes ?? 0;
+                              const endTimeDate = addMinutes(startTimeDate, durationMinutes + bufferAfter);
+                              const endOffset = getOffsetForTime(endTimeDate, timeGridConfig);
+                              if (endOffset === null) return max;
+                              return Math.max(max, endOffset);
+                            }, 0);
+                            return Math.max(timelineHeight, maxBottom + 16);
                           })(),
                         }}
                       >
-                        {hours.map((hour, index) => (
+                        {timeSlots.map((slot, index) => (
                           <div
-                            key={hour}
-                            className="absolute left-0 right-0 border-t border-line/60 pointer-events-none"
-                            style={{ top: index * timeGridConfig.hourHeight }}
+                            key={slot.key}
+                            className={`absolute border-t pointer-events-none ${
+                              slot.isHalf ? "border-line/30" : "border-line/60"
+                            }`}
+                            style={{
+                              top: index * slotHeight,
+                              left: slot.isHalf ? 12 : 0,
+                              right: 0,
+                            }}
                           />
                         ))}
 
@@ -754,69 +792,68 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           </div>
                         )}
 
-                        {(() => {
-                          let lastBottom = 0;
-                          return items.map((item) => {
-                            const startTimeDate = parseDate(item.start_time);
-                            const startLabel = format(startTimeDate, "HH:mm");
-                            let endLabel = "";
-                            let durationMinutes = item.total_duration_minutes ?? 60;
-                            if (item.finished_at) {
-                              endLabel = format(parseDate(item.finished_at), "HH:mm");
-                              durationMinutes = Math.max(
-                                15,
-                                Math.round(
-                                  (parseDate(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
-                                )
-                              );
-                            } else if (item.total_duration_minutes) {
-                              endLabel = format(addMinutes(startTimeDate, item.total_duration_minutes), "HH:mm");
-                            }
+                        {items.map((item) => {
+                          const startTimeDate = parseDate(item.start_time);
+                          const startLabel = format(startTimeDate, "HH:mm");
+                          const isBlock = item.type === "block";
+                          const isHomeVisit = item.is_home_visit;
+                          const durationMinutes = getServiceDuration(item);
+                          const bufferBefore = item.buffer_before_minutes ?? 0;
+                          const bufferAfter = item.buffer_after_minutes ?? 0;
+                          const apptHeight = getDurationHeight(durationMinutes, timeGridConfig);
+                          const preHeight = bufferBefore > 0 ? getDurationHeight(bufferBefore, timeGridConfig) : 0;
+                          const postHeight = bufferAfter > 0 ? getDurationHeight(bufferAfter, timeGridConfig) : 0;
 
-                            const topRaw = getOffsetForTime(startTimeDate, timeGridConfig);
-                            if (topRaw === null) return null;
-                            const height = Math.max(getDurationHeight(durationMinutes, timeGridConfig), 150);
-                            const top = topRaw < lastBottom + 12 ? lastBottom + 12 : topRaw;
-                            lastBottom = top + height;
-                            const isBlock = item.type === "block";
-                            const isHomeVisit = item.is_home_visit;
+                          let endLabel = "";
+                          if (item.finished_at) {
+                            endLabel = format(parseDate(item.finished_at), "HH:mm");
+                          } else if (durationMinutes) {
+                            endLabel = format(addMinutes(startTimeDate, durationMinutes), "HH:mm");
+                          }
 
-                            const returnTo = `/?view=day&date=${format(day, "yyyy-MM-dd")}`;
+                          const top = getOffsetForTime(startTimeDate, timeGridConfig);
+                          if (top === null) return null;
 
-                            return (
-                              <div
-                                key={item.id}
-                                className="absolute left-0 right-0 pr-2 pointer-events-auto"
-                                style={{ top, height, minHeight: 150 }}
-                              >
-                                {isBlock ? (
-                                  <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
-                                    <div className="flex justify-between items-start mb-1">
-                                      <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
-                                        {item.clientName}
-                                      </h3>
-                                      <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
-                                        <Hospital className="w-3.5 h-3.5" />
-                                      </div>
-                                    </div>
-                                    <p className="text-xs text-muted line-clamp-1">{item.serviceName}</p>
-                                    <div className="mt-2 flex items-center gap-2">
-                                      <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
-                                        Bloqueado
-                                      </span>
-                                      {endLabel && <span className="text-[11px] text-muted">Até {endLabel}</span>}
+                          const returnTo = `/?view=day&date=${format(day, "yyyy-MM-dd")}`;
+
+                          return (
+                            <div key={item.id} className="absolute left-0 right-0 pr-2 pointer-events-auto" style={{ top, height: apptHeight }}>
+                              {isBlock ? (
+                                <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
+                                      {item.clientName}
+                                    </h3>
+                                    <div className="w-7 h-7 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                      <Hospital className="w-3.5 h-3.5" />
                                     </div>
                                   </div>
-                                ) : (
+                                  <p className="text-xs text-muted line-clamp-1">{item.serviceName}</p>
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
+                                      Bloqueado
+                                    </span>
+                                    {endLabel && <span className="text-[11px] text-muted">Até {endLabel}</span>}
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {bufferBefore > 0 && (
+                                    <div
+                                      className="absolute left-0 right-0 pr-2 -translate-y-full pointer-events-none"
+                                      style={{ height: preHeight, top: 0 }}
+                                    >
+                                      <div className="h-full bg-slate-100/80 text-slate-500 border border-slate-200 rounded-2xl flex items-center justify-center text-[10px] font-extrabold uppercase tracking-[0.08em]">
+                                        Pré
+                                      </div>
+                                    </div>
+                                  )}
+
                                   <AppointmentCard
                                     data-card
                                     name={item.clientName}
                                     service={item.serviceName}
-                                    durationLabel={
-                                      item.total_duration_minutes
-                                        ? formatDuration(item.total_duration_minutes)
-                                        : null
-                                    }
+                                    durationLabel={durationMinutes ? formatDuration(durationMinutes) : null}
                                     statusLabel={getStatusLabel(item)}
                                     statusTone={getStatusTone(getStatusLabel(item))}
                                     startLabel={startLabel}
@@ -850,11 +887,22 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                         : undefined
                                     }
                                   />
-                                )}
-                              </div>
-                            );
-                          });
-                        })()}
+
+                                  {bufferAfter > 0 && (
+                                    <div
+                                      className="absolute left-0 right-0 pr-2 pointer-events-none"
+                                      style={{ top: apptHeight, height: postHeight }}
+                                    >
+                                      <div className="h-full bg-slate-100/80 text-slate-500 border border-slate-200 rounded-2xl flex items-center justify-center text-[10px] font-extrabold uppercase tracking-[0.08em]">
+                                        Pós
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : (

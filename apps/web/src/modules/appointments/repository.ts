@@ -11,8 +11,9 @@ export async function listAppointmentsInRange(tenantId: string, start: string, e
   return supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
-       clients ( id, name, initials, phone, health_tags, endereco_completo )`
+      `id, service_id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
+       clients ( id, name, initials, phone, health_tags, endereco_completo ),
+       services ( duration_minutes, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes )`
     )
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
@@ -38,8 +39,9 @@ export async function searchAppointments(tenantId: string, query: string, start:
   const baseQuery = supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
-       clients ( id, name, initials, phone, health_tags, endereco_completo )`
+      `id, service_id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
+       clients ( id, name, initials, phone, health_tags, endereco_completo ),
+       services ( duration_minutes, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes )`
     )
     .eq("tenant_id", tenantId)
     .gte("start_time", start)

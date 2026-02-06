@@ -31,6 +31,10 @@ import {
   updateAppointmentReturning,
 } from "./repository";
 
+const BRAZIL_TZ_OFFSET = "-03:00";
+
+const toBrazilDateTime = (date: string, time: string) => new Date(`${date}T${time}:00${BRAZIL_TZ_OFFSET}`);
+
 export async function startAppointment(id: string): Promise<ActionResult<{ id: string }>> {
   const parsed = startAppointmentSchema.safeParse({ id });
   if (!parsed.success) {
@@ -227,7 +231,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     throw new AppError("Dados incompletos", "VALIDATION_ERROR", 400, parsed.error);
   }
 
-  const startDateTime = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
+  const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   const supabase = createServiceClient();
   const { data: appointmentId, error: appointmentError } = await supabase.rpc("create_internal_appointment", {
     p_tenant_id: FIXED_TENANT_ID,
@@ -308,7 +312,7 @@ export async function submitPublicAppointment(data: {
     return fail(new AppError("Dados inválidos para agendamento", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const startDateTime = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
+  const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
 
   const supabase = await createClient();
   const { data: appointmentId, error } = await supabase.rpc("create_public_appointment", {
