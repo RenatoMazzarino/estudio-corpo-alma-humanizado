@@ -148,6 +148,8 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
         settings?.default_studio_buffer,
         30
       );
+  const safeBufferBefore = bufferBefore ?? 0;
+  const safeBufferAfter = bufferAfter ?? 0;
 
   const startOfDayStr = `${parsed.data.date}T00:00:00-03:00`;
   const endOfDayStr = `${parsed.data.date}T23:59:59-03:00`;
@@ -183,13 +185,13 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   let currentSlot = openMinutes;
 
   while (currentSlot <= closeMinutes) {
-    const slotBlockStart = currentSlot - bufferBefore;
-    const slotBlockEnd = currentSlot + serviceDuration + bufferAfter;
+    const slotBlockStart = currentSlot - safeBufferBefore;
+    const slotBlockEnd = currentSlot + serviceDuration + safeBufferAfter;
 
     const collidesWithAppt = appointments.some((appt) => {
       const apptStartMinutes = getBrazilMinutes(appt.start_time);
       const serviceData = Array.isArray(appt.services) ? appt.services[0] ?? null : appt.services;
-      const apptBufferBefore = appt.is_home_visit
+      const apptBufferBefore = (appt.is_home_visit
         ? resolveBuffer(
             serviceData?.buffer_before_minutes,
             settings?.buffer_before_minutes,
@@ -204,8 +206,8 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
             serviceData?.custom_buffer_minutes,
             settings?.default_studio_buffer,
             30
-          );
-      const apptBufferAfter = appt.is_home_visit
+          )) ?? 0;
+      const apptBufferAfter = (appt.is_home_visit
         ? resolveBuffer(
             serviceData?.buffer_after_minutes,
             settings?.buffer_after_minutes,
@@ -220,7 +222,7 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
             serviceData?.custom_buffer_minutes,
             settings?.default_studio_buffer,
             30
-          );
+          )) ?? 0;
       const apptServiceDuration = serviceData?.duration_minutes ?? 30;
       const apptTotalDuration =
         (appt.total_duration_minutes && appt.total_duration_minutes > 0
