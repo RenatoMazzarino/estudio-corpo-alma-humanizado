@@ -156,7 +156,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     () => ({
       startHour: 6,
       endHour: 22,
-      hourHeight: 24,
+      hourHeight: 64,
     }),
     []
   );
