@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { MessageCircle, MapPin, Phone } from "lucide-react";
 
 interface AppointmentCardProps {
@@ -16,6 +17,7 @@ interface AppointmentCardProps {
   onOpen: () => void;
   onWhatsapp?: () => void;
   onMaps?: () => void;
+  onLongPress?: () => void;
   ["data-card"]?: boolean;
 }
 
@@ -33,16 +35,59 @@ export function AppointmentCard({
   onOpen,
   onWhatsapp,
   onMaps,
+  onLongPress,
   "data-card": dataCard,
 }: AppointmentCardProps) {
+  const longPressTimeout = useRef<number | null>(null);
+  const startPoint = useRef<{ x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimeout.current) {
+      window.clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+    startPoint.current = null;
+  };
+
+  const triggerLongPress = () => {
+    suppressClick.current = true;
+    onLongPress?.();
+  };
+
   return (
     <div
       role="button"
       data-card={dataCard ? "" : undefined}
       tabIndex={0}
       onClick={(event) => {
-        if (event.defaultPrevented) return;
+        if (event.defaultPrevented || suppressClick.current) {
+          suppressClick.current = false;
+          return;
+        }
         onOpen();
+      }}
+      onPointerDown={(event) => {
+        if (!onLongPress) return;
+        if (event.pointerType === "mouse") return;
+        startPoint.current = { x: event.clientX, y: event.clientY };
+        longPressTimeout.current = window.setTimeout(() => {
+          triggerLongPress();
+        }, 500);
+      }}
+      onPointerMove={(event) => {
+        if (!startPoint.current || !longPressTimeout.current) return;
+        const dx = Math.abs(event.clientX - startPoint.current.x);
+        const dy = Math.abs(event.clientY - startPoint.current.y);
+        if (dx > 12 || dy > 12) {
+          clearLongPress();
+        }
+      }}
+      onPointerUp={() => {
+        clearLongPress();
+      }}
+      onPointerCancel={() => {
+        clearLongPress();
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {

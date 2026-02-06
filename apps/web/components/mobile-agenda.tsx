@@ -38,6 +38,13 @@ import { IconButton } from "./ui/buttons";
 import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import {
+  AgendaSearchModal,
+  type SearchAppointmentResult,
+  type SearchClientResult,
+  type SearchResults,
+} from "./agenda/agenda-search-modal";
+import { cancelAppointment } from "../app/actions";
+import {
   getDurationHeight,
   getOffsetForTime,
   getTimeRangeMinutes,
@@ -74,24 +81,6 @@ interface AvailabilityBlock {
   title: string;
   start_time: string;
   end_time: string;
-}
-
-interface SearchAppointmentResult {
-  id: string;
-  service_name: string;
-  start_time: string;
-  clients: { id: string; name: string; phone: string | null } | null;
-}
-
-interface SearchClientResult {
-  id: string;
-  name: string;
-  phone: string | null;
-}
-
-interface SearchResults {
-  appointments: SearchAppointmentResult[];
-  clients: SearchClientResult[];
 }
 
 interface MobileAgendaProps {
@@ -150,6 +139,14 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [searchResults, setSearchResults] = useState<SearchResults>({ appointments: [], clients: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
+  const [actionSheet, setActionSheet] = useState<{
+    id: string;
+    clientName: string;
+    serviceName: string;
+    startTime: string;
+    returnTo: string;
+  } | null>(null);
+  const [isActionPending, setIsActionPending] = useState(false);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
   const { toast, showToast } = useToast();
   const daySliderRef = useRef<HTMLDivElement | null>(null);
@@ -164,7 +161,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     () => ({
       startHour: 6,
       endHour: 22,
-      hourHeight: 75,
+      hourHeight: 24,
     }),
     []
   );
@@ -515,7 +512,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       return diffMinutes;
     }
     if (item.service_duration_minutes) return item.service_duration_minutes;
-    if (item.total_duration_minutes) return item.total_duration_minutes;
+    if (item.total_duration_minutes) {
+      const bufferBefore = item.buffer_before_minutes ?? 0;
+      const bufferAfter = item.buffer_after_minutes ?? 0;
+      const serviceMinutes = item.total_duration_minutes - bufferBefore - bufferAfter;
+      return serviceMinutes > 0 ? serviceMinutes : item.total_duration_minutes;
+    }
     return 60;
   };
 
@@ -812,8 +814,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           const bufferBefore = item.buffer_before_minutes ?? 0;
                           const bufferAfter = item.buffer_after_minutes ?? 0;
                           const apptHeight = getDurationHeight(durationMinutes, timeGridConfig);
-                          const preHeight = bufferBefore > 0 ? getDurationHeight(bufferBefore, timeGridConfig) : 0;
-                          const postHeight = bufferAfter > 0 ? getDurationHeight(bufferAfter, timeGridConfig) : 0;
+                          const rawPreHeight =
+                            bufferBefore > 0 ? getDurationHeight(bufferBefore, timeGridConfig) : 0;
+                          const postHeight =
+                            bufferAfter > 0 ? getDurationHeight(bufferAfter, timeGridConfig) : 0;
 
                           let endLabel = "";
                           if (item.finished_at) {
@@ -824,11 +828,18 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                           const top = getOffsetForTime(startTimeDate, timeGridConfig);
                           if (top === null) return null;
+                          const preHeight = rawPreHeight > 0 ? Math.min(rawPreHeight, top) : 0;
+                          const wrapperTop = top - preHeight;
+                          const wrapperHeight = preHeight + apptHeight + postHeight;
 
                           const returnTo = `/?view=day&date=${format(day, "yyyy-MM-dd")}`;
 
                           return (
-                            <div key={item.id} className="absolute left-0 right-0 pr-2 pointer-events-auto" style={{ top, height: apptHeight }}>
+                            <div
+                              key={item.id}
+                              className="absolute left-0 right-0 pr-2 pointer-events-auto"
+                              style={{ top: wrapperTop, height: wrapperHeight }}
+                            >
                               {isBlock ? (
                                 <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
                                   <div className="flex justify-between items-start mb-1">
@@ -848,68 +859,75 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                   </div>
                                 </div>
                               ) : (
-                                <>
-                                  {bufferBefore > 0 && (
-                                    <div
-                                      className="absolute left-0 right-0 pr-2 -translate-y-full pointer-events-none"
-                                      style={{ height: preHeight, top: 0 }}
-                                    >
-                                      <div className="h-full bg-slate-100/80 text-slate-500 border border-slate-200 rounded-2xl flex items-center justify-center text-[10px] font-extrabold uppercase tracking-[0.08em]">
-                                        Pré
+                                <div className="h-full flex flex-col">
+                                  {preHeight > 0 && (
+                                    <div className="pointer-events-none relative" style={{ height: preHeight }}>
+                                      <div className="absolute inset-x-2 top-1 h-1.5 rounded-full bg-slate-200/80" />
+                                      <div className="absolute left-2 top-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                                        Buffer Pré + {formatDuration(bufferBefore)}
                                       </div>
                                     </div>
                                   )}
 
-                                  <AppointmentCard
-                                    data-card
-                                    name={item.clientName}
-                                    service={item.serviceName}
-                                    durationLabel={durationMinutes ? formatDuration(durationMinutes) : null}
-                                    statusLabel={getStatusLabel(item)}
-                                    statusTone={getStatusTone(getStatusLabel(item))}
-                                    startLabel={startLabel}
-                                    endLabel={endLabel}
-                                    phone={item.phone}
-                                    isHomeVisit={!!isHomeVisit}
-                                    loading={loadingAppointmentId === item.id}
-                                    onOpen={() =>
-                                      (() => {
-                                        setLoadingAppointmentId(item.id);
-                                        setTimeout(() => setLoadingAppointmentId(null), 2000);
-                                        router.push(
-                                          `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
-                                        );
-                                      })()
-                                    }
-                                    onWhatsapp={
-                                      toWhatsappLink(item.phone)
-                                        ? () => window.open(toWhatsappLink(item.phone) ?? "", "_blank")
-                                        : undefined
-                                    }
-                                    onMaps={
-                                      isHomeVisit && item.address
-                                        ? () => {
-                                            const mapsQuery = encodeURIComponent(item.address ?? "");
-                                            window.open(
-                                              `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
-                                              "_blank"
-                                            );
-                                          }
-                                        : undefined
-                                    }
-                                  />
+                                  <div style={{ height: apptHeight }}>
+                                    <AppointmentCard
+                                      data-card
+                                      name={item.clientName}
+                                      service={item.serviceName}
+                                      durationLabel={durationMinutes ? formatDuration(durationMinutes) : null}
+                                      statusLabel={getStatusLabel(item)}
+                                      statusTone={getStatusTone(getStatusLabel(item))}
+                                      startLabel={startLabel}
+                                      endLabel={endLabel}
+                                      phone={item.phone}
+                                      isHomeVisit={!!isHomeVisit}
+                                      loading={loadingAppointmentId === item.id}
+                                      onOpen={() =>
+                                        (() => {
+                                          setLoadingAppointmentId(item.id);
+                                          setTimeout(() => setLoadingAppointmentId(null), 2000);
+                                          router.push(
+                                            `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
+                                          );
+                                        })()
+                                      }
+                                      onLongPress={() => {
+                                        setActionSheet({
+                                          id: item.id,
+                                          clientName: item.clientName,
+                                          serviceName: item.serviceName,
+                                          startTime: item.start_time,
+                                          returnTo,
+                                        });
+                                      }}
+                                      onWhatsapp={
+                                        toWhatsappLink(item.phone)
+                                          ? () => window.open(toWhatsappLink(item.phone) ?? "", "_blank")
+                                          : undefined
+                                      }
+                                      onMaps={
+                                        isHomeVisit && item.address
+                                          ? () => {
+                                              const mapsQuery = encodeURIComponent(item.address ?? "");
+                                              window.open(
+                                                `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
+                                                "_blank"
+                                              );
+                                            }
+                                          : undefined
+                                      }
+                                    />
+                                  </div>
 
-                                  {bufferAfter > 0 && (
-                                    <div
-                                      className="absolute left-0 right-0 pr-2 pointer-events-none"
-                                      style={{ top: apptHeight, height: postHeight }}
-                                    >
-                                      <div className="h-full bg-slate-100/80 text-slate-500 border border-slate-200 rounded-2xl flex items-center justify-center text-[10px] font-extrabold uppercase tracking-[0.08em]">
-                                        Pós
+                                  {postHeight > 0 && (
+                                    <div className="pointer-events-none relative" style={{ height: postHeight }}>
+                                      <div className="absolute inset-x-2 bottom-1 h-1.5 rounded-full bg-slate-200/80" />
+                                      <div className="absolute left-2 bottom-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                                        Buffer Pós + {formatDuration(bufferAfter)}
                                       </div>
                                     </div>
                                   )}
-                                </>
+                                </div>
                               )}
                             </div>
                           );
@@ -1121,114 +1139,90 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         </main>
       </ModulePage>
 
-      {isSearchOpen && (
-        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-6">
-          <div className="bg-white w-full max-h-[80vh] rounded-3xl shadow-float overflow-hidden flex flex-col">
-            <div className="sticky top-0 bg-white px-6 pt-5 pb-4 shadow-soft z-10">
-              <div className="flex items-center gap-3">
-                <IconButton
-                  size="sm"
-                  icon={<ChevronLeft className="w-4 h-4" />}
-                  aria-label="Voltar"
-                  onClick={() => {
-                    setIsSearchOpen(false);
-                    setSearchTerm("");
-                  }}
-                />
-                <Search className="w-4 h-4 text-muted" />
-                <input
-                  autoFocus
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Buscar em tudo..."
-                  className="flex-1 bg-transparent text-sm text-studio-text placeholder:text-muted focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSearchMode("full")}
-                  className="text-xs font-extrabold text-studio-green px-3 py-1.5 rounded-full bg-studio-light"
-                >
-                  Buscar
-                </button>
-              </div>
-              <p className="text-[11px] text-muted mt-2">Digite ao menos 3 letras para ver resultados.</p>
+      {actionSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <button
+            type="button"
+            aria-label="Fechar ações"
+            onClick={() => setActionSheet(null)}
+            className="absolute inset-0 bg-black/40"
+          />
+          <div className="relative w-full max-w-[420px] rounded-t-3xl bg-white p-5 shadow-float">
+            <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
+              Ações do agendamento
+            </div>
+            <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
+            <div className="text-xs text-muted">
+              {actionSheet.serviceName} • {format(parseDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 pb-8">
-              {isSearching && (
-                <div className="py-6 text-xs text-muted">Buscando...</div>
-              )}
-
-              {!isSearching && searchTerm.trim().length < 3 && (
-                <div className="py-10 text-center text-xs text-muted">Digite para começar a buscar.</div>
-              )}
-
-              {!isSearching && searchTerm.trim().length >= 3 && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">
-                      Agenda
-                    </h3>
-                    <div className="mt-2 space-y-2">
-                      {searchResults.appointments.length === 0 && (
-                        <p className="text-xs text-muted">Nenhum atendimento encontrado.</p>
-                      )}
-                      {searchResults.appointments.map((item) => {
-                        const when = format(parseDate(item.start_time), "dd MMM • HH:mm", { locale: ptBR });
-                        const clientName = item.clients?.name ?? "Cliente";
-                        const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                              setIsSearchOpen(false);
-                              setSearchTerm("");
-                              router.push(
-                                `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
-                              );
-                            }}
-                            className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
-                          >
-                            <div className="text-sm font-extrabold text-studio-text">{clientName}</div>
-                            <div className="text-xs text-muted">{item.service_name} • {when}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">
-                      Clientes
-                    </h3>
-                    <div className="mt-2 space-y-2">
-                      {searchResults.clients.length === 0 && (
-                        <p className="text-xs text-muted">Nenhum cliente encontrado.</p>
-                      )}
-                      {searchResults.clients.map((client) => (
-                        <button
-                          key={client.id}
-                          type="button"
-                          onClick={() => {
-                            setIsSearchOpen(false);
-                            setSearchTerm("");
-                            router.push(`/clientes/${client.id}`);
-                          }}
-                          className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
-                        >
-                          <div className="text-sm font-extrabold text-studio-text">{client.name}</div>
-                          {client.phone && <div className="text-xs text-muted">{client.phone}</div>}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextReturn = actionSheet.returnTo;
+                  setActionSheet(null);
+                  router.push(
+                    `/novo?appointmentId=${actionSheet.id}&returnTo=${encodeURIComponent(nextReturn)}`
+                  );
+                }}
+                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm font-extrabold text-studio-text hover:bg-studio-light transition"
+              >
+                Editar agendamento
+              </button>
+              <button
+                type="button"
+                disabled={isActionPending}
+                onClick={async () => {
+                  setIsActionPending(true);
+                  const result = await cancelAppointment(actionSheet.id);
+                  if (!result.ok) {
+                    showToast(result.error.message, "error");
+                  } else {
+                    showToast("Agendamento excluído.", "success");
+                    setActionSheet(null);
+                  }
+                  setIsActionPending(false);
+                }}
+                className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-100 transition disabled:opacity-60"
+              >
+                Excluir agendamento
+              </button>
+              <button
+                type="button"
+                onClick={() => setActionSheet(null)}
+                className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <AgendaSearchModal
+        open={isSearchOpen}
+        searchTerm={searchTerm}
+        isSearching={isSearching}
+        results={searchResults}
+        onClose={() => {
+          setIsSearchOpen(false);
+          setSearchTerm("");
+        }}
+        onSearchTermChange={setSearchTerm}
+        onSearchClick={() => setSearchMode("full")}
+        onSelectAppointment={(item) => {
+          const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
+          setIsSearchOpen(false);
+          setSearchTerm("");
+          router.push(`/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`);
+        }}
+        onSelectClient={(client) => {
+          setIsSearchOpen(false);
+          setSearchTerm("");
+          router.push(`/clientes/${client.id}`);
+        }}
+      />
 
       <FloatingActionMenu
         actions={[

@@ -91,7 +91,7 @@ export function TimerBubble() {
 
   if (!mounted || !session) return null;
 
-  const showBubble = bubbleVisible || !pathname.startsWith("/atendimento");
+  const showBubble = bubbleVisible;
   if (!showBubble) return null;
 
   const radius = 46;
@@ -146,6 +146,9 @@ export function TimerBubble() {
           onClick={(event) => {
             event.stopPropagation();
             setBubbleVisible(false);
+          }}
+          onPointerDown={(event) => {
+            event.stopPropagation();
           }}
           className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white shadow-soft border border-line text-muted flex items-center justify-center"
           aria-label="Fechar contador"
