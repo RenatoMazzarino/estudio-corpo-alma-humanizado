@@ -138,12 +138,9 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
 
   let currentSlot = openTime;
 
-  while (isBefore(currentSlot, closeTime)) {
+  while (!isAfter(currentSlot, closeTime)) {
     const slotBlockStart = addMinutes(currentSlot, -bufferBefore);
     const slotBlockEnd = addMinutes(currentSlot, serviceDuration + bufferAfter);
-    if (isBefore(slotBlockStart, openTime) || isAfter(slotBlockEnd, closeTime)) {
-      break;
-    }
 
     const collidesWithAppt = appointments.some((appt) => {
       const apptStart = parseISO(appt.start_time);

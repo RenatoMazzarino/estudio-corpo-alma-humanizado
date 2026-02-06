@@ -26,7 +26,16 @@ export async function searchAppointments(tenantId: string, query: string, start:
     return listAppointmentsInRange(tenantId, start, end);
   }
 
-  return supabase
+  const { data: clientRows } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .or(`name.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%`)
+    .limit(50);
+
+  const clientIds = (clientRows ?? []).map((row) => row.id).filter(Boolean);
+
+  const baseQuery = supabase
     .from("appointments")
     .select(
       `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
@@ -34,14 +43,14 @@ export async function searchAppointments(tenantId: string, query: string, start:
     )
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
-    .lte("start_time", end)
-    .or(
-      [
-        `service_name.ilike.%${safeQuery}%`,
-        `clients.name.ilike.%${safeQuery}%`,
-        `clients.phone.ilike.%${safeQuery}%`,
-      ].join(",")
-    );
+    .lte("start_time", end);
+
+  if (clientIds.length > 0) {
+    const clientIdFilter = clientIds.map((id) => `"${id}"`).join(",");
+    return baseQuery.or(`service_name.ilike.%${safeQuery}%,client_id.in.(${clientIdFilter})`);
+  }
+
+  return baseQuery.ilike("service_name", `%${safeQuery}%`);
 }
 
 export async function listCompletedAppointmentsInRange(tenantId: string, start: string, end: string) {

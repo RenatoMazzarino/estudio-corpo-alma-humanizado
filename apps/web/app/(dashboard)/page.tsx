@@ -1,6 +1,7 @@
 import { MobileAgenda } from "../../components/mobile-agenda";
 import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
+import { unstable_noStore as noStore } from "next/cache";
 import {
   listAppointmentsInRange,
   listAvailabilityBlocksInRange,
@@ -36,6 +37,7 @@ export default async function Home({
 }: {
   searchParams?: Promise<{ created?: string; q?: string }>;
 }) {
+  noStore();
   const resolvedSearchParams = await searchParams;
   const today = new Date();
   

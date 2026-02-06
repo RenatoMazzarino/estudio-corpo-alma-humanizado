@@ -173,6 +173,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     [timeGridConfig]
   );
 
+  const parseDate = useCallback((value: string) => {
+    const parsed = parseISO(value);
+    return isValid(parsed) ? parsed : new Date(value);
+  }, []);
+
   const monthDays = useMemo<Date[]>(
     () =>
       eachDayOfInterval({
@@ -185,13 +190,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const appointmentsByDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     appointments.forEach((appt) => {
-      const key = format(new Date(appt.start_time), "yyyy-MM-dd");
+      const key = format(parseDate(appt.start_time), "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(appt);
       map.set(key, list);
     });
     return map;
-  }, [appointments]);
+  }, [appointments, parseDate]);
 
   const syncViewToUrl = useCallback(
     (nextView: AgendaView, nextDate?: Date) => {
@@ -216,13 +221,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const blocksByDay = useMemo(() => {
     const map = new Map<string, AvailabilityBlock[]>();
     blocks.forEach((block) => {
-      const key = format(new Date(block.start_time), "yyyy-MM-dd");
+      const key = format(parseDate(block.start_time), "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(block);
       map.set(key, list);
     });
     return map;
-  }, [blocks]);
+  }, [blocks, parseDate]);
 
   useEffect(() => {
     if (view === "month") return;
@@ -325,10 +330,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
     const dayAppointments = (appointmentsByDay.get(key) ?? []).slice().sort((a, b) =>
-      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime()
     );
     const dayBlocks = (blocksByDay.get(key) ?? []).slice().sort((a, b) =>
-      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime()
     );
 
     const items: DayItem[] = [
@@ -358,7 +363,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         is_home_visit: false,
         total_duration_minutes: null,
       })),
-    ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    ].sort((a, b) => parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime());
 
     return { dayAppointments, dayBlocks, items };
   };
@@ -707,7 +712,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           height: (() => {
                             let lastBottom = 0;
                             items.forEach((item) => {
-                              const startTimeDate = new Date(item.start_time);
+                              const startTimeDate = parseDate(item.start_time);
                               const top = getOffsetForTime(startTimeDate, timeGridConfig);
                               if (top === null) return;
                               let durationMinutes = item.total_duration_minutes ?? 60;
@@ -715,7 +720,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                 durationMinutes = Math.max(
                                   15,
                                   Math.round(
-                                    (new Date(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
+                                    (parseDate(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
                                   )
                                 );
                               }
@@ -752,16 +757,16 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         {(() => {
                           let lastBottom = 0;
                           return items.map((item) => {
-                            const startTimeDate = new Date(item.start_time);
+                            const startTimeDate = parseDate(item.start_time);
                             const startLabel = format(startTimeDate, "HH:mm");
                             let endLabel = "";
                             let durationMinutes = item.total_duration_minutes ?? 60;
                             if (item.finished_at) {
-                              endLabel = format(new Date(item.finished_at), "HH:mm");
+                              endLabel = format(parseDate(item.finished_at), "HH:mm");
                               durationMinutes = Math.max(
                                 15,
                                 Math.round(
-                                  (new Date(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
+                                  (parseDate(item.finished_at).getTime() - startTimeDate.getTime()) / 60000
                                 )
                               );
                             } else if (item.total_duration_minutes) {
@@ -925,7 +930,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                       {dayAppointments.slice(0, 3).map((appt) => (
                         <div key={appt.id} className="flex justify-between text-sm">
                           <span className="text-muted">
-                            {format(new Date(appt.start_time), "HH:mm")}
+                            {format(parseDate(appt.start_time), "HH:mm")}
                           </span>
                           <span className="font-bold">
                             {appt.clients?.name ?? "Cliente"}
@@ -1110,7 +1115,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         <p className="text-xs text-muted">Nenhum atendimento encontrado.</p>
                       )}
                       {searchResults.appointments.map((item) => {
-                        const when = format(new Date(item.start_time), "dd MMM • HH:mm", { locale: ptBR });
+                        const when = format(parseDate(item.start_time), "dd MMM • HH:mm", { locale: ptBR });
                         const clientName = item.clients?.name ?? "Cliente";
                         const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
                         return (
