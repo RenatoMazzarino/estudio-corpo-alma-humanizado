@@ -37,12 +37,7 @@ import { FloatingActionMenu } from "./ui/floating-action-menu";
 import { IconButton } from "./ui/buttons";
 import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
-import {
-  AgendaSearchModal,
-  type SearchAppointmentResult,
-  type SearchClientResult,
-  type SearchResults,
-} from "./agenda/agenda-search-modal";
+import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
 import { cancelAppointment } from "../app/actions";
 import {
   getDurationHeight,

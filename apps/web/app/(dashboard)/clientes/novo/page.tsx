@@ -122,7 +122,7 @@ export default function NewClientPage() {
   });
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [extraData, setExtraData] = useState<Record<string, unknown>>({});
+  const [extraData] = useState<Record<string, unknown>>({});
   const [suggestions, setSuggestions] = useState<ClientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 

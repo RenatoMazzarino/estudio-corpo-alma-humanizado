@@ -126,6 +126,7 @@ function formatClientAddress(address: ClientAddress) {
 export function AppointmentForm({ services, clients, safeDate, initialAppointment, returnTo }: AppointmentFormProps) {
   const isEditing = Boolean(initialAppointment);
   const initialTimeRef = useRef(initialAppointment?.time ?? "");
+  const selectedTimeRef = useRef(initialAppointment?.time ?? "");
   const hasInitialManualAddress =
     !!initialAppointment?.isHomeVisit &&
     !initialAppointment?.clientAddressId &&
@@ -186,6 +187,10 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
     [selectedServiceId, services]
   );
 
+  useEffect(() => {
+    selectedTimeRef.current = selectedTime;
+  }, [selectedTime]);
+
   const filteredClients = useMemo(() => {
     if (!clientName.trim()) return [];
     const lower = clientName.toLowerCase();
@@ -240,7 +245,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
           date: selectedDate,
           isHomeVisit,
         });
-        const preferred = selectedTime || initialTimeRef.current;
+        const preferred = selectedTimeRef.current || initialTimeRef.current;
         const normalizedSlots =
           preferred && !slots.includes(preferred) ? [preferred, ...slots] : slots;
         setAvailableSlots(normalizedSlots);
