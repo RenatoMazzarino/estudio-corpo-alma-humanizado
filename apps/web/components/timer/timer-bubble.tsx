@@ -101,9 +101,9 @@ export function TimerBubble() {
   return (
     <div
       ref={bubbleRef}
-      className={`absolute z-40 h-[112px] w-[112px] rounded-full shadow-float backdrop-blur-md border border-studio-green/20 bg-white/80 ${
+      className={`absolute z-40 h-28 w-28 rounded-full shadow-float backdrop-blur-md border border-studio-green/20 bg-white/80 ${
         session && !isPaused
-          ? "after:content-[''] after:absolute after:inset-[-6px] after:rounded-full after:border-2 after:border-studio-green/30 after:animate-pulse"
+          ? "after:content-[''] after:absolute after:-inset-1.5 after:rounded-full after:border-2 after:border-studio-green/30 after:animate-pulse"
           : ""
       }`}
       style={bubblePosition ? { left: bubblePosition.x, top: bubblePosition.y } : undefined}

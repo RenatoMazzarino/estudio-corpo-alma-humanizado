@@ -184,7 +184,7 @@ export function PreStage({
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    className="w-5 h-5 accent-[#6A806C]"
+                    className="w-5 h-5 accent-studio-green"
                     checked={Boolean(item.completed_at)}
                     onChange={(event) => onToggleChecklist(item.id, event.target.checked)}
                   />

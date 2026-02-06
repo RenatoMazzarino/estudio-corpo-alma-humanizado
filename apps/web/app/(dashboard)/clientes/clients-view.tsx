@@ -129,7 +129,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
   const handleImportClients = async () => {
     const navigatorWithContacts = navigator as NavigatorWithContacts;
     if (!navigatorWithContacts.contacts?.select) {
-      showToast("Importação indisponível neste dispositivo.", "error");
+      showToast("Importação disponível apenas no app instalado ou navegador compatível.", "error");
       return;
     }
 
@@ -211,6 +211,8 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         showToast("Importação cancelada.", "info");
+      } else if (error instanceof DOMException && ["NotAllowedError", "NotSupportedError", "SecurityError"].includes(error.name)) {
+        showToast("Importação disponível apenas no app instalado ou navegador compatível.", "error");
       } else {
         showToast("Falha ao importar contatos.", "error");
       }
@@ -287,7 +289,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
                 </button>
               </div>
             }
-            className="min-h-[168px]"
+            className="min-h-42"
           />
         }
         contentClassName="relative flex-1"
@@ -308,7 +310,7 @@ export function ClientsView({ clients, lastVisits, query, filter }: ClientsViewP
 
           {existingLetters.map((letter) => (
             <section key={letter} id={`clients-letter-${letter}`} className="px-6 pt-4">
-              <div className="sticky top-[152px] z-10 bg-studio-bg/90 backdrop-blur py-2">
+              <div className="sticky top-38 z-10 bg-studio-bg/90 backdrop-blur py-2">
                 <h3 className="text-[11px] font-extrabold text-studio-green uppercase tracking-[0.2em]">
                   {letter}
                 </h3>

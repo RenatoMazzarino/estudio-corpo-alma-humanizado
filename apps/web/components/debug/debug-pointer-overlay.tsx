@@ -64,7 +64,7 @@ export function DebugPointerOverlay() {
   if (!box) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[9999]">
+    <div className="pointer-events-none fixed inset-0 z-9999">
       <div
         className="absolute border-2 border-red-500 bg-red-500/10"
         style={{ left: box.x, top: box.y, width: box.width, height: box.height }}

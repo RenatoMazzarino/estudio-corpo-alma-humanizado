@@ -556,7 +556,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
 
           <div
             className={`transition-all duration-300 overflow-hidden ${
-              isHomeVisit ? "max-h-[800px] opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
+              isHomeVisit ? "max-h-200 opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
             }`}
           >
             <div className="space-y-4">

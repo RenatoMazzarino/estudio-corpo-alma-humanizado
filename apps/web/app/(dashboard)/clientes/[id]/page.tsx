@@ -57,7 +57,7 @@ export default async function ClientProfilePage(props: PageProps) {
 
   return (
     <div className="-mx-4 -mt-4">
-      <div className="relative bg-paper min-h-[100dvh]">
+      <div className="relative bg-paper min-h-dvh">
         <div className="safe-top absolute top-0 left-0 w-full px-6 pt-6 flex justify-between items-center z-40 pointer-events-none">
           <Link
             href="/clientes"
@@ -96,7 +96,7 @@ export default async function ClientProfilePage(props: PageProps) {
                     const isCompleted = apt.status === "completed";
                     return (
                       <div key={apt.id} className="bg-white rounded-2xl p-4 shadow-sm border border-white flex gap-4">
-                        <div className="min-w-[54px] text-center">
+                        <div className="min-w-13.5 text-center">
                           <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">
                             {format(startDate, "MMM", { locale: ptBR })}
                           </p>

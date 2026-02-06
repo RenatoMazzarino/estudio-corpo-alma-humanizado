@@ -439,9 +439,9 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
 
   return (
     <div className="-mx-4 -mt-4">
-      <div className="bg-paper min-h-[100dvh] flex flex-col">
-        <header className="sticky top-0 relative bg-white rounded-b-[40px] shadow-soft z-30">
-          <div className="absolute inset-x-0 top-0 h-[112px] bg-gradient-to-b from-studio-light to-white"></div>
+      <div className="bg-paper min-h-dvh flex flex-col">
+        <header className="sticky top-0 bg-white rounded-b-[40px] shadow-soft z-30">
+          <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-b from-studio-light to-white"></div>
 
           <div className="relative px-5 pt-8 pb-4">
             <div className="flex items-center justify-between">
@@ -492,7 +492,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
 
             <div
               className={`mt-5 transition-all duration-200 overflow-hidden ${
-                headerCompact ? "max-h-0 opacity-0 -translate-y-1" : "max-h-[420px] opacity-100 translate-y-0"
+                headerCompact ? "max-h-0 opacity-0 -translate-y-1" : "max-h-105 opacity-100 translate-y-0"
               }`}
             >
               <div className="flex items-start gap-4">
@@ -659,7 +659,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
         <Toast toast={toast} />
 
         <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
-          <div className="w-full max-w-[414px] bg-white/95 backdrop-blur border-t border-line px-3 py-3 pb-4 rounded-t-2xl shadow-float">
+          <div className="w-full max-w-103.5 bg-white/95 backdrop-blur border-t border-line px-3 py-3 pb-4 rounded-t-2xl shadow-float">
             <div className="flex items-center justify-center gap-2 mb-2">
               {stageOrder.map((stage) => (
                 <button

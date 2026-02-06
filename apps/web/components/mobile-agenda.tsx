@@ -152,11 +152,14 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const selectedDateRef = useRef<Date>(selectedDate);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const timeColumnWidth = 72;
+  const timeColumnGap = 16;
+  const timelineLeftOffset = timeColumnWidth + timeColumnGap;
   const timeGridConfig = useMemo<TimeGridConfig>(
     () => ({
       startHour: 6,
       endHour: 22,
-      hourHeight: 104,
+      hourHeight: 140,
     }),
     []
   );
@@ -171,7 +174,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
       if (hour < timeGridConfig.endHour) {
         slots.push({
           key: `${hourLabel}:30`,
-          label: "30",
+          label: `${hourLabel}:30`,
           isHalf: true,
           minutes: minutesFromStart + 30,
         });
@@ -612,7 +615,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                 </div>
               }
               compact={headerCompact}
-              className={`${headerCompact ? "min-h-[120px]" : "min-h-[150px]"}`}
+            className={`${headerCompact ? "min-h-30" : "min-h-37.5"}`}
             />
 
             {isMonthPickerOpen && (
@@ -692,7 +695,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     <div className="flex items-center justify-between mb-0.5">
                       <div className="w-10" aria-hidden="true"></div>
                       <h2
-                        className={`text-[10px] font-extrabold uppercase tracking-widest capitalize ${
+                        className={`text-[10px] font-extrabold uppercase tracking-widest ${
                           isToday(day) ? "text-studio-green" : "text-muted"
                         }`}
                       >
@@ -788,10 +791,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                         {nowOffset !== null && (
                           <div
-                            className="absolute left-0 right-0 flex items-center gap-2 z-20"
-                            style={{ top: nowOffset }}
+                            className="absolute flex items-center gap-2 z-20"
+                            style={{ top: nowOffset, left: -timelineLeftOffset, right: 0 }}
                           >
-                            <span className="text-[11px] font-extrabold text-danger w-12 text-right">
+                            <span
+                              className="text-[11px] font-extrabold text-danger text-right pr-2"
+                              style={{ width: timeColumnWidth }}
+                            >
                               {format(now, "HH:mm")}
                             </span>
                             <div className="flex-1 h-px bg-danger/70 relative">
@@ -857,9 +863,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                 <div className="h-full flex flex-col">
                                   {preHeight > 0 && (
                                     <div className="pointer-events-none relative" style={{ height: preHeight }}>
-                                      <div className="absolute inset-x-2 top-1 h-1.5 rounded-full bg-slate-200/80" />
-                                      <div className="absolute left-2 top-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                                        Buffer Pré + {formatDuration(bufferBefore)}
+                                      <div className="absolute inset-0 mx-1 rounded-xl border border-slate-200/80 bg-slate-200/60 px-2 py-1 overflow-hidden">
+                                        <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 leading-none whitespace-nowrap">
+                                          Buffer Pré + {formatDuration(bufferBefore)}
+                                        </span>
                                       </div>
                                     </div>
                                   )}
@@ -916,9 +923,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
 
                                   {postHeight > 0 && (
                                     <div className="pointer-events-none relative" style={{ height: postHeight }}>
-                                      <div className="absolute inset-x-2 bottom-1 h-1.5 rounded-full bg-slate-200/80" />
-                                      <div className="absolute left-2 bottom-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                                        Buffer Pós + {formatDuration(bufferAfter)}
+                                      <div className="absolute inset-0 mx-1 rounded-xl border border-slate-200/80 bg-slate-200/60 px-2 py-1 flex items-end overflow-hidden">
+                                        <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 leading-none whitespace-nowrap">
+                                          Buffer Pós + {formatDuration(bufferAfter)}
+                                        </span>
                                       </div>
                                     </div>
                                   )}
@@ -1142,7 +1150,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
             onClick={() => setActionSheet(null)}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="relative w-full max-w-[420px] rounded-t-3xl bg-white p-5 shadow-float">
+          <div className="relative w-full max-w-105 rounded-t-3xl bg-white p-5 shadow-float">
             <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
               Ações do agendamento
             </div>

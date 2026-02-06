@@ -131,7 +131,7 @@ export function ClientProfile({ client, metrics, phones, emails, addresses, heal
 
       <section className="relative bg-white rounded-b-[2.5rem] shadow-soft overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-full h-36 bg-gradient-to-b from-studio-light to-white"></div>
+          <div className="absolute top-0 left-0 w-full h-36 bg-linear-to-b from-studio-light to-white"></div>
           <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-studio-light/60 blur-2xl"></div>
           <div className="absolute -left-12 top-10 w-52 h-52 rounded-full bg-studio-light/40 blur-2xl"></div>
         </div>
