@@ -119,6 +119,18 @@ pnpm check-types
 pnpm build
 ```
 
+## Conferir instalacao do Next e do Turbo
+
+O Next esta dentro de `apps/web`, entao use:
+```powershell
+pnpm --filter web exec next --version
+```
+
+O Turbo fica no root:
+```powershell
+pnpm exec turbo --version
+```
+
 ## Supabase local (dev)
 
 Subir o banco local:
@@ -135,6 +147,25 @@ Parar o Supabase local:
 ```powershell
 pnpm supabase stop
 ```
+
+### Aplicar migrations no banco LOCAL (sem resetar)
+
+1) Garanta que o Supabase local esta rodando:
+```powershell
+pnpm supabase start
+```
+
+2) Aplique as migrations pendentes:
+```powershell
+pnpm supabase migration up
+```
+
+Opcional (ver o que seria aplicado):
+```powershell
+pnpm supabase migration list
+```
+
+**Importante**: use sempre `pnpm supabase ...` (o comando `supabase` sozinho nao existe no Windows).
 
 ### Env local (obrigatorio)
 
@@ -156,6 +187,34 @@ SUPABASE_SERVICE_ROLE_KEY=SEU_SERVICE_ROLE_LOCAL
 ## Supabase online (producao)
 
 Para producao, configure as variaveis no **Vercel** (Environment Variables). Nao coloque chaves de producao no repo.
+
+### Aplicar migrations no banco ONLINE (sem resetar)
+
+1) Faça login e vincule o projeto (uma vez):
+```powershell
+pnpm supabase login
+pnpm supabase link --project-ref <seu_project_ref>
+```
+
+2) Aplique as migrations pendentes no banco remoto:
+```powershell
+pnpm supabase db push
+```
+
+Opcional (ver o que seria aplicado):
+```powershell
+pnpm supabase db push --dry-run
+```
+
+Se precisar informar senha manualmente:
+```powershell
+pnpm supabase db push --password "SUA_SENHA_DO_BANCO"
+```
+
+Se quiser apontar para um DB especifico:
+```powershell
+pnpm supabase db push --db-url "postgresql://USER:PASSWORD@HOST:5432/postgres"
+```
 
 ### Conexao no VS Code (PostgreSQL Microsoft)
 
@@ -207,6 +266,13 @@ pnpm nao reconhecido:
 Node nao aparece depois de `nvm use`:
 - Feche e abra o VS Code
 - Rode `where.exe node` para confirmar o PATH
+- Se `pnpm dev` falhar com `spawn C:\\nvm4w\\nodejs\\node.exe ENOENT`, execute:
+```powershell
+nvm use 24.13.0
+where.exe node
+node -v
+```
+- Se ainda falhar, rode `nvm use 24.13.0` em um PowerShell **como Administrador** (vai pedir UAC), feche e reabra o VS Code e tente novamente.
 
 Supabase CLI avisa falta de binario no Windows:
 - Se `pnpm supabase --version` funciona, pode ignorar o warning
