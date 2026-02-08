@@ -2,9 +2,9 @@
 
 ## Requisitos
 
-- Node.js 20.11.1+ (use `.nvmrc`).
-- pnpm 9 (via `corepack enable`).
-- Docker + Supabase CLI (instalado via `pnpm install`).
+- Node.js 24.13.0+ (use `.nvmrc`).
+- pnpm 10.29.1 (via `corepack enable`).
+- Docker + Supabase CLI 2.75.0 (instalado via `pnpm install`).
 - `SUPABASE_SERVICE_ROLE_KEY` para operações administrativas server-side (RLS habilitado).
 - VS Code: use o TypeScript do workspace (evita erro de JSX).
 

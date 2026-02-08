@@ -1,20 +1,20 @@
-# REPO_INVENTORY
+﻿# REPO_INVENTORY
 
-## Árvore (nível 1–2)
+## Arvore (nivel 1-2)
 ```
 .
-├─ apps/
-│  └─ web/
-├─ packages/
-│  ├─ eslint-config/
-│  ├─ typescript-config/
-│  └─ ui/
-├─ supabase/
-│  └─ migrations/
-├─ docs/
-├─ package.json
-├─ pnpm-workspace.yaml
-├─ turbo.json
+|-- apps/
+|   `-- web/
+|-- packages/
+|   |-- eslint-config/
+|   |-- typescript-config/
+|   `-- ui/
+|-- supabase/
+|   `-- migrations/
+|-- docs/
+|-- package.json
+|-- pnpm-workspace.yaml
+`-- turbo.json
 ```
 
 ## Apps / Packages
@@ -22,15 +22,17 @@
 - **Packages**: `packages/ui`, `packages/eslint-config`, `packages/typescript-config`
 
 ## Stack detectada
-- **Next.js** 16.1.0 (App Router)
+- **Node.js** 24.13.0
+- **pnpm** 10.29.1
+- **Turbo** 2.8.3
+- **Next.js** 16.1.6 (App Router)
 - **React** 19.2.0
 - **TypeScript** 5.9.2
-- **Tailwind** 4.1.x
+- **Tailwind** 4.1.18
 - **Supabase** (`@supabase/ssr`, `@supabase/supabase-js`)
 - **UI/Icons**: `lucide-react`
-- **Calendário**: `react-big-calendar`
+- **Calendario**: `react-big-calendar`
 - **Data**: `date-fns`
-- **Monorepo**: Turbo + pnpm
 
 ## Scripts relevantes
 ### Root `package.json`
@@ -41,7 +43,7 @@
 - `check-types`: `turbo run check-types`
 
 ### `apps/web/package.json`
-- `dev`: `next dev --port 3000`
+- `dev`: `next dev --turbo --port 3000`
 - `build`: `next build`
 - `start`: `next start`
 - `lint`: `eslint --max-warnings 0`

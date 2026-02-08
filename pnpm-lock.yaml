@@ -12,8 +12,8 @@ importers:
         specifier: ^3.7.4
         version: 3.7.4
       supabase:
-        specifier: ^2.72.9
-        version: 2.72.9
+        specifier: ^2.75.0
+        version: 2.75.0
       turbo:
         specifier: ^2.8.3
         version: 2.8.3
@@ -1810,8 +1810,8 @@ packages:
       babel-plugin-macros:
         optional: true
 
-  supabase@2.72.9:
-    resolution: {integrity: sha512-kifjjxhjs0K1c10YiXh3bZ2lRp9s+MnloT1sTUAoV7mIkkfYn6XCq59hEYoNxfaZyE4j8nuQKszHz5XCMmFt9w==}
+  supabase@2.75.0:
+    resolution: {integrity: sha512-Xaai8Wp7F03OMkOWSyS1OMMdk5DxkauJxcMMesj4mO6jDGEZpWBwgo/gIUb4hsckexmr/RXYdpDpTbUIMXahbw==}
     engines: {npm: '>=8'}
     hasBin: true
 
@@ -3764,7 +3764,7 @@ snapshots:
       client-only: 0.0.1
       react: 19.2.0
 
-  supabase@2.72.9:
+  supabase@2.75.0:
     dependencies:
       bin-links: 6.0.0
       https-proxy-agent: 7.0.6
