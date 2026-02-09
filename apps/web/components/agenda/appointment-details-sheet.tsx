@@ -252,12 +252,13 @@ export function AppointmentDetailsSheet({
 
   const buildPaymentLink = () => {
     const base = resolvePublicBaseUrl();
-    return base ? `${base}/pagamento-link.html` : "";
+    return base ? `${base}/pagamento` : "";
   };
 
   const buildReceiptLink = () => {
     const base = resolvePublicBaseUrl();
-    return base ? `${base}/assets/comprovante-sinal.png` : "";
+    const appointmentId = appointment?.id;
+    return base && appointmentId ? `${base}/comprovante/${appointmentId}` : "";
   };
 
   const buildSignalChargeMessage = () => {
@@ -278,7 +279,9 @@ export function AppointmentDetailsSheet({
     const paidValue = formatCurrency(paidAmount);
     const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
     const receiptLink = buildReceiptLink();
-    const receiptLine = receiptLink ? `Comprovante:\n${receiptLink}\n\n` : "";
+    const receiptLine = receiptLink
+      ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\nVocê pode baixar ou imprimir direto pelo link.\n\n`
+      : "";
     return `${greeting} Tudo bem? 🌿 Aqui é a Flora. Passando para confirmar que recebemos seu sinal de ${paidValue}! ✨ Seu horário para ${serviceName} está reservado.\n\n${receiptLine}Até o dia do atendimento! 🌸`;
   };
 
@@ -286,8 +289,10 @@ export function AppointmentDetailsSheet({
     const serviceName = appointment?.service_name ?? "";
     const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
     const receiptLink = buildReceiptLink();
-    const receiptLine = receiptLink ? `Comprovante:\n${receiptLink}\n\n` : "";
-    return `${greeting} Tudo bem? 🌿\n\nAqui é a Flora, assistente virtual do Estúdio Corpo & Alma. Passando para avisar que recebemos o seu sinal e está tudo certinho! ✨\n\nSeu horário para ${serviceName} está super confirmado.\n\n${receiptLine}Qualquer dúvida ou se precisar de algo antes do seu atendimento, é só me chamar por aqui.\n\nUm abraço iluminado! Equipe Corpo & Alma 🌸`;
+    const receiptLine = receiptLink
+      ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\nVocê pode baixar ou imprimir direto pelo link.\n\n`
+      : "";
+    return `${greeting} Tudo bem? 🌿\n\nAqui é a Flora, assistente virtual do Estúdio Corpo & Alma. Passando para avisar que recebemos o seu pagamento e está tudo certinho! ✨\n\nSeu horário para ${serviceName} está super confirmado.\n\n${receiptLine}Até o dia do atendimento! 🌸`;
   };
 
   return createPortal(
