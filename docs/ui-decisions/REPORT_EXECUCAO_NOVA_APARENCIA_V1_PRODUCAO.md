@@ -20,12 +20,25 @@
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Agenda: grade com meia-hora, horários menores por padrão e buffers de atendimento (pré/pós) visíveis.
+- Agenda (Dia): escala **1 min = 2px** (slot 30 min = 60px), linhas tracejadas e altura dos cards alinhada exatamente à grade.
+- Agenda (Dia): buffers com efeito “sanduíche” (listras diagonais + borda esquerda tracejada) e cards com layout elástico (pequeno/médio/grande) com botões adaptativos.
+- Agenda (Dia): cards refatorados para exibir sempre 5 dados; versão compacta para 25–30min; status de agendamento como **dot** e status financeiro em **chip**.
+- Agenda (Dia/Semana): cancelados ocultos na grade; cards domiciliares com cor correta; linhas de semana alinhadas ao padrão visual.
+- Agenda: clique abre **Bottom Sheet** com gesto de arrastar para fechar e conteúdo dentro do frame.
 - Agenda: horário Brasil (America/Sao_Paulo) aplicado no cálculo de disponibilidade.
 - UI: toast padrão para feedback de sucesso/erro.
 - UI: módulos Financeiro (ex-Caixa) e Mensagens adicionados; FAB com ações financeiras em “em dev”.
 - Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
+- Atendimento: **pré-atendimento removido**, sessão vira etapa 1; checklist movido para a sessão; etapas reduzidas (sessão → checkout → pós).
+- Atendimento: cancelamento de agendamento via modal com confirmação e refresh da agenda.
+- Modal de detalhes: logística com mapa clicável; cabeçalho com badge de agendamento e chip financeiro; mensagens e observações ajustadas.
+- Financeiro: seção de **Sinal/Reserva** no modal, com templates de WhatsApp e links públicos (pagamento + comprovante).
+- Checkout: valor a cobrar considera sinal já pago (total restante).
+- Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
+- Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
+- Repo/Docs: alinhamento de versões Node/pnpm e comandos de `next`/`turbo`/migrations documentados.
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
 - [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
@@ -41,8 +54,17 @@
 4. `20260203103000_update_internal_appointment_rpc.sql` — RPC `create_internal_appointment` com endereço do cliente, buffers e override de preço.
 5. `20260203104000_add_client_health_items.sql` — tabela `client_health_items` (alergias/condições).
 6. `20260203105000_add_client_avatars_bucket.sql` — bucket `client-avatars` + policies.
+7. `20260209090000_add_signal_percentage_to_settings.sql` — configura percentual de sinal no `settings`.
+8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
+- `af03117` — docs: add next/turbo and migration commands
+- `c6f268c` — chore: align node/pnpm versions and deps
+- `1ed83b7` — fix(ui): ajustar classes e agenda
+- `da2b77f` — fix(agenda): aumenta a altura das horas na agenda para melhor visualização
+- `0d988b2` — fix(agenda): ajusta altura das horas na agenda para melhor visualização
+- `dd3a559` — fix(build): null-safe buffers in availability
+- `4be823e` — docs(report): atualiza resumo e commits recentes
 - `f8ea4af` — feat(ui): header modulo e busca na agenda
 - `e0358ba` — fix(agenda): header e cards
 - `18d7b3e` — fix(agenda): hoje confiavel e cards clicaveis
@@ -87,12 +109,17 @@
 - `apps/web/app/(dashboard)/clientes/*` (lista, novo, detalhe)
 - `apps/web/app/(dashboard)/novo/*` (form de agendamento interno)
 - `apps/web/components/mobile-agenda.tsx`
+- `apps/web/components/agenda/appointment-card.tsx`
+- `apps/web/components/agenda/appointment-details-sheet.tsx`
 - `apps/web/src/modules/clients/*`
 - `apps/web/src/modules/appointments/*`
 - `apps/web/app/(dashboard)/configuracoes/*`
+- `apps/web/src/modules/settings/*`
+- `apps/web/src/shared/config.ts`
 - `apps/web/components/ui/*` (inclui ModuleHeader)
 - `apps/web/components/ui/module-page.tsx` (layout em 3 partes: Header/Content)
 - `apps/web/app/api/search/route.ts` (busca global para o modal da Agenda)
+- `apps/web/public/assets/*` e `apps/web/public/pagamento-link.html`
 - `supabase/migrations/*` (novas migrations acima)
 
 ## 6) Como rodar migrations localmente
@@ -107,6 +134,7 @@ supabase db push
 
 ## 8) Como testar manualmente (roteiro rápido)
 - Agenda DIA: linha vermelha move e posiciona; trocar tabs; clicar em “Hoje”.
+- Agenda DIA: cards alinhados à grade de 30 min (60px), layout elástico (pequeno/médio/grande) e buffers em efeito sanduíche.
 - Agenda: abrir modal de busca (ícone) e validar resultados em tempo real.
 - Agenda: buffers pré/pós respeitam o tempo total e a grade de meia hora.
 - /novo: header, voltar para o dia de origem, domicílio (modal), override de preço e buffers.
@@ -133,6 +161,8 @@ Comandos executados na raiz:
 - `pnpm check-types` ✅
 - `pnpm build` ✅
 - `pnpm test` — **não existe script** no repo.
+Última rodada:
+- `pnpm lint` ✅
 
 ## 12) Pendências / próximos passos
 - Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
