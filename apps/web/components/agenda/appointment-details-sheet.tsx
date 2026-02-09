@@ -80,11 +80,13 @@ const getStatusInfo = (status?: string | null) => {
   }
 };
 
-const paymentStatusMap: Record<string, { label: string; className: string; textClass: string }> = {
+const paymentStatusMap = {
   paid: { label: "PAGO", className: "bg-emerald-50 text-emerald-700", textClass: "text-emerald-600" },
   partial: { label: "SINAL PAGO", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
   pending: { label: "A RECEBER", className: "bg-gray-100 text-gray-500", textClass: "text-gray-500" },
-};
+} as const;
+
+type PaymentStatus = keyof typeof paymentStatusMap;
 
 export function AppointmentDetailsSheet({
   open,
@@ -207,8 +209,10 @@ export function AppointmentDetailsSheet({
   const statusInfo = getStatusInfo(appointment?.status ?? "pending");
   const appointmentStatusDot = statusInfo.dotClass ?? "bg-amber-400";
   const rawPaymentStatus = appointment?.payment_status ?? "pending";
-  const paymentStatus = paymentStatusMap[rawPaymentStatus] ? rawPaymentStatus : "pending";
-  const paymentInfo = paymentStatusMap[paymentStatus] ?? paymentStatusMap.pending;
+  const paymentStatus = Object.prototype.hasOwnProperty.call(paymentStatusMap, rawPaymentStatus)
+    ? (rawPaymentStatus as PaymentStatus)
+    : "pending";
+  const paymentInfo = paymentStatusMap[paymentStatus];
   const hasAddress = addressLine.length > 0;
   const mapsHref = isHomeVisit && hasAddress
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`
