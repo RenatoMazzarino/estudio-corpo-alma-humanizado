@@ -1,46 +1,76 @@
 "use client";
 
 import { useRef } from "react";
-import { MessageCircle, MapPin, Phone } from "lucide-react";
+import { Home } from "lucide-react";
 
 interface AppointmentCardProps {
   name: string;
   service: string;
   durationLabel?: string | null;
-  statusLabel: string;
-  statusTone: string;
   startLabel: string;
   endLabel?: string;
-  phone?: string | null;
+  status?: string | null;
+  paymentStatus?: string | null;
   isHomeVisit: boolean;
+  compact?: boolean;
+  hasPreBuffer?: boolean;
+  hasPostBuffer?: boolean;
   loading?: boolean;
   onOpen: () => void;
-  onWhatsapp?: () => void;
-  onMaps?: () => void;
   onLongPress?: () => void;
   ["data-card"]?: boolean;
 }
+
+const appointmentStatusMap: Record<string, { label: string; dotClass: string }> = {
+  pending: { label: "Pendente", dotClass: "bg-amber-400" },
+  confirmed: { label: "Confirmado", dotClass: "bg-studio-green" },
+  in_progress: { label: "Em andamento", dotClass: "bg-sky-500" },
+};
+
+const paymentStatusMap: Record<string, { label: string; compactLabel: string; className: string; textClass: string }> = {
+  paid: { label: "PAGO", compactLabel: "PAGO", className: "bg-emerald-50 text-emerald-700", textClass: "text-emerald-600" },
+  partial: { label: "SINAL PAGO", compactLabel: "SINAL", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
+  pending: { label: "A RECEBER", compactLabel: "A RECEBER", className: "bg-gray-100 text-gray-500", textClass: "text-gray-500" },
+};
 
 export function AppointmentCard({
   name,
   service,
   durationLabel,
-  statusLabel,
-  statusTone,
   startLabel,
   endLabel,
-  phone,
+  status,
+  paymentStatus,
   isHomeVisit,
+  compact = false,
+  hasPreBuffer = false,
+  hasPostBuffer = false,
   loading = false,
   onOpen,
-  onWhatsapp,
-  onMaps,
   onLongPress,
   "data-card": dataCard,
 }: AppointmentCardProps) {
   const longPressTimeout = useRef<number | null>(null);
   const startPoint = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
+  const radiusClass = `rounded-2xl${hasPreBuffer ? " rounded-t-none" : ""}${hasPostBuffer ? " rounded-b-none" : ""}`;
+  const statusInfo = status ? appointmentStatusMap[status] : null;
+  const statusLabel = statusInfo?.label ?? "Agendado";
+  const statusDotClass = statusInfo?.dotClass ?? "bg-gray-300";
+  const paymentInfo = paymentStatus ? paymentStatusMap[paymentStatus] : null;
+  const paymentLabel = paymentInfo?.label ?? "";
+  const paymentCompactLabel = paymentInfo?.compactLabel ?? paymentLabel;
+  const paymentClass = paymentInfo?.className ?? "bg-gray-100 text-gray-500";
+  const paymentTextClass = paymentInfo?.textClass ?? "text-gray-500";
+  const timeRange = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+  const paddingClass = compact ? "p-2" : "p-3";
+  const nameClass = compact ? "text-[11px]" : "text-sm";
+  const serviceClass = compact ? "text-[10px]" : "text-[11px]";
+  const timeClass = compact ? "text-[10px]" : "text-[11px]";
+  const statusBadgeClass = compact ? "text-[8px] px-1.5 py-0.5" : "text-[9px] px-2 py-1";
+  const gapClass = compact ? "gap-0.5" : "gap-1";
+  const homeTagLabel = compact ? "Dom" : "Domicílio";
+  const homeTagClass = compact ? "text-[8px] px-1.5 py-0.5" : "text-[9px] px-2 py-0.5";
 
   const clearLongPress = () => {
     if (longPressTimeout.current) {
@@ -96,84 +126,79 @@ export function AppointmentCard({
         }
       }}
       aria-busy={loading}
-      className={`h-full w-full text-left bg-white p-4 rounded-3xl shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${
-        isHomeVisit ? "border-purple-500" : "border-studio-green"
-      } ${loading ? "opacity-80 cursor-wait" : ""}`}
+      className={`h-full w-full text-left bg-white shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${paddingClass} ${radiusClass} ${
+        loading ? "opacity-80 cursor-wait" : ""
+      } ${isHomeVisit ? "border-dom" : "border-studio-green"}`}
+      style={{ borderLeftColor: isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)" }}
     >
       {loading && (
         <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10">
-          <div className="w-6 h-6 border-2 border-studio-green/40 border-t-studio-green rounded-full animate-spin" />
+          <div
+            className="w-6 h-6 border-2 rounded-full animate-spin"
+            style={{
+              borderColor: "rgba(0,0,0,0.1)",
+              borderTopColor: isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)",
+            }}
+          />
         </div>
       )}
-      <div className="flex flex-col h-full gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">{name}</h3>
-            <p className="text-xs text-muted line-clamp-1">
-              {service}
-              {durationLabel ? ` (${durationLabel})` : ""}
-            </p>
-          </div>
-          <span
-            className={`text-[10px] font-semibold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full ${
-              isHomeVisit ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
-            }`}
-          >
-            {isHomeVisit ? "Domicílio" : "Estúdio"}
-          </span>
-        </div>
-
-        <div className="border-t border-line pt-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[11px] text-muted flex-wrap">
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-1 rounded-full ${statusTone}`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current inline-block"></span>
-              {statusLabel}
-            </span>
-            <span className="font-semibold">
-              {startLabel}
-              {endLabel ? ` – ${endLabel}` : ""}
-            </span>
-            {phone && (
-              <span className="inline-flex items-center gap-1">
-                <Phone className="w-3 h-3" /> {phone}
+      {compact ? (
+        <div className="flex flex-col h-full gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1 min-w-0">
+              <span className={`w-2 h-2 rounded-full ${statusDotClass}`} title={statusLabel} />
+              <h3 className={`font-extrabold text-studio-text leading-tight truncate ${nameClass}`}>{name}</h3>
+              {isHomeVisit && (
+                <span className={`inline-flex items-center gap-1 rounded-full bg-purple-50 text-dom font-extrabold uppercase tracking-[0.08em] shrink-0 ${homeTagClass}`}>
+                  <Home className="w-3 h-3" /> {homeTagLabel}
+                </span>
+              )}
+            </div>
+            {paymentCompactLabel && (
+              <span className={`text-[9px] font-extrabold uppercase tracking-[0.08em] ${paymentTextClass}`}>
+                {paymentCompactLabel}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {onWhatsapp && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onWhatsapp();
-                }}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center transition active:scale-95 active:bg-studio-green/10"
-                aria-label="Abrir WhatsApp"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </button>
+          <div className={`flex items-center justify-between gap-2 text-muted ${timeClass}`}>
+            <p className={`font-medium truncate ${serviceClass}`}>
+              {service}
+              {durationLabel ? ` (${durationLabel})` : ""}
+            </p>
+            <span className="font-semibold text-studio-text shrink-0">{timeRange}</span>
+          </div>
+        </div>
+      ) : (
+        <div className={`flex flex-col h-full ${gapClass}`}>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${statusDotClass}`} title={statusLabel} />
+                <h3 className={`font-extrabold text-studio-text leading-tight line-clamp-1 ${nameClass}`}>{name}</h3>
+              </div>
+              <p className={`text-muted line-clamp-1 ${serviceClass}`}>
+                {service}
+                {durationLabel ? ` (${durationLabel})` : ""}
+              </p>
+            </div>
+            {isHomeVisit && (
+              <span className={`inline-flex items-center gap-1 rounded-full bg-purple-50 text-dom font-extrabold uppercase tracking-[0.08em] ${homeTagClass}`}>
+                <Home className="w-3 h-3" /> {homeTagLabel}
+              </span>
             )}
-            {onMaps && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onMaps();
-                }}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center transition active:scale-95 active:bg-studio-green/10"
-                aria-label="Abrir GPS"
-              >
-                <MapPin className="w-4 h-4" />
-              </button>
+          </div>
+
+          <div className={`mt-auto flex items-center justify-between gap-2 text-muted ${timeClass}`}>
+            <span className="font-semibold text-studio-text">{timeRange}</span>
+            {paymentLabel && (
+              <span className={`inline-flex items-center gap-1 rounded-full font-extrabold uppercase tracking-[0.08em] ${statusBadgeClass} ${paymentClass}`}>
+                {paymentLabel}
+              </span>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

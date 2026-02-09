@@ -22,6 +22,7 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   CalendarPlus,
+  Car,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -38,7 +39,16 @@ import { IconButton } from "./ui/buttons";
 import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
+import { AppointmentDetailsSheet } from "./agenda/appointment-details-sheet";
 import { cancelAppointment } from "../app/actions";
+import {
+  confirmPre,
+  getAttendance,
+  sendMessage,
+  sendReminder24h,
+} from "../app/(dashboard)/atendimento/[id]/actions";
+import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
+import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
 import {
   getDurationHeight,
   getOffsetForTime,
@@ -81,6 +91,8 @@ interface AvailabilityBlock {
 interface MobileAgendaProps {
   appointments: Appointment[];
   blocks: AvailabilityBlock[];
+  signalPercentage?: number;
+  publicBaseUrl?: string;
 }
 
 type AgendaView = "day" | "week" | "month";
@@ -99,13 +111,20 @@ type DayItem = {
   payment_status?: string | null;
   is_home_visit: boolean | null;
   total_duration_minutes: number | null;
+  price?: number | null;
   phone?: string | null;
   address?: string | null;
 };
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
+const hiddenAppointmentStatuses = new Set(["canceled_by_client", "canceled_by_studio", "no_show"]);
 
-export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
+export function MobileAgenda({
+  appointments,
+  blocks,
+  signalPercentage = 30,
+  publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
+}: MobileAgendaProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [headerCompact, setHeaderCompact] = useState(false);
@@ -134,6 +153,11 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const [searchResults, setSearchResults] = useState<SearchResults>({ appointments: [], clients: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsAppointmentId, setDetailsAppointmentId] = useState<string | null>(null);
+  const [detailsData, setDetailsData] = useState<AttendanceOverview | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsActionPending, setDetailsActionPending] = useState(false);
   const [actionSheet, setActionSheet] = useState<{
     id: string;
     clientName: string;
@@ -152,6 +176,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   const selectedDateRef = useRef<Date>(selectedDate);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const createdToastShown = useRef(false);
   const timeColumnWidth = 72;
   const timeColumnGap = 16;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -159,7 +184,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     () => ({
       startHour: 6,
       endHour: 22,
-      hourHeight: 140,
+      hourHeight: 120,
     }),
     []
   );
@@ -201,16 +226,21 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     [currentMonth]
   );
 
+  const visibleAppointments = useMemo(
+    () => appointments.filter((appt) => !hiddenAppointmentStatuses.has(appt.status)),
+    [appointments]
+  );
+
   const appointmentsByDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
-    appointments.forEach((appt) => {
+    visibleAppointments.forEach((appt) => {
       const key = format(parseDate(appt.start_time), "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(appt);
       map.set(key, list);
     });
     return map;
-  }, [appointments, parseDate]);
+  }, [visibleAppointments, parseDate]);
 
   const syncViewToUrl = useCallback(
     (nextView: AgendaView, nextDate?: Date) => {
@@ -342,12 +372,42 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
   }, [searchTerm, isSearchOpen, searchMode]);
 
   useEffect(() => {
-    if (searchParams.get("created") !== "1") return;
+    if (searchParams.get("created") !== "1") {
+      createdToastShown.current = false;
+      return;
+    }
+    if (createdToastShown.current) return;
+    createdToastShown.current = true;
     showToast("Agendamento criado com sucesso.", "success");
     const params = new URLSearchParams(searchParams.toString());
     params.delete("created");
     router.replace(`/?${params.toString()}`, { scroll: false });
   }, [searchParams, router, showToast]);
+
+  const fetchAttendanceDetails = useCallback(
+    async (appointmentId: string) => {
+      setDetailsLoading(true);
+      try {
+        const data = await getAttendance(appointmentId);
+        setDetailsData(data ?? null);
+      } catch {
+        showToast("Não foi possível carregar os detalhes.", "error");
+        setDetailsData(null);
+      } finally {
+        setDetailsLoading(false);
+        setLoadingAppointmentId(null);
+      }
+    },
+    [showToast]
+  );
+
+  useEffect(() => {
+    if (!detailsOpen || !detailsAppointmentId) {
+      setDetailsData(null);
+      return;
+    }
+    fetchAttendanceDetails(detailsAppointmentId);
+  }, [detailsOpen, detailsAppointmentId, fetchAttendanceDetails]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -367,12 +427,13 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         service_duration_minutes: appt.service_duration_minutes ?? null,
         buffer_before_minutes: appt.buffer_before_minutes ?? null,
         buffer_after_minutes: appt.buffer_after_minutes ?? null,
-        clientName: appt.clients?.name ?? "Cliente",
+        clientName: appt.clients?.name ?? "",
         serviceName: appt.service_name,
         status: appt.status,
         payment_status: appt.payment_status ?? null,
-        is_home_visit: appt.is_home_visit ?? false,
+        is_home_visit: appt.is_home_visit ?? null,
         total_duration_minutes: appt.total_duration_minutes ?? null,
+        price: appt.price ?? null,
         phone: appt.clients?.phone ?? null,
         address: appt.clients?.endereco_completo ?? null,
       })),
@@ -390,6 +451,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
         payment_status: null,
         is_home_visit: false,
         total_duration_minutes: null,
+        price: null,
       })),
     ].sort((a, b) => parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime());
 
@@ -519,30 +581,134 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
     return 60;
   };
 
-  const getStatusLabel = (item: DayItem) => {
-    if (item.status === "completed") {
-      return item.payment_status === "paid" ? "Concluído e pago" : "Concluído pendente";
-    }
-    if (item.status === "confirmed" || item.status === "in_progress") {
-      return "Confirmado";
-    }
-    if (item.status === "pending") return "Agendado";
-    return "Agendado";
-  };
-
-  const getStatusTone = (label: string) => {
-    if (label === "Concluído e pago") return "bg-green-100 text-green-700";
-    if (label === "Concluído pendente") return "bg-orange-100 text-orange-700";
-    if (label === "Confirmado") return "bg-studio-green/10 text-studio-green";
-    return "bg-studio-light text-studio-text";
-  };
-
   const toWhatsappLink = (phone?: string | null) => {
     if (!phone) return null;
     const digits = phone.replace(/\D/g, "");
     if (!digits) return null;
     const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
     return `https://wa.me/${withCountry}`;
+  };
+
+  const buildMessage = (type: MessageType, appointment: AttendanceOverview["appointment"]) => {
+    const name = appointment.clients?.name?.trim() ?? "";
+    const greetingName = name ? `, ${name}` : "";
+    const startDate = new Date(appointment.start_time);
+    const dayOfWeek = format(startDate, "EEEE", { locale: ptBR });
+    const dayOfWeekLabel = dayOfWeek ? `${dayOfWeek[0]?.toUpperCase() ?? ""}${dayOfWeek.slice(1)}` : "";
+    const dateLabel = format(startDate, "dd/MM", { locale: ptBR });
+    const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
+    const serviceName = appointment.service_name ?? "";
+    const dateLine = [dayOfWeekLabel, dateLabel].filter(Boolean).join(", ");
+    const serviceSegment = serviceName ? ` 💆‍♀️ Serviço: ${serviceName}` : "";
+
+    if (type === "created_confirmation") {
+      return `Olá${greetingName}! Tudo bem? Aqui é a Flora, assistente virtual do Estúdio 🌸\n\nQue notícia boa! Já reservei o seu horário na agenda da Jana. Seu momento de autocuidado está garantidíssimo.\n\n🗓 Data: ${dateLine} ⏰ Horário: ${timeLabel}${serviceSegment}\n\nDeixei tudo organizado por aqui. Se precisar remarcar ou tiver alguma dúvida, é só me chamar. Até logo! 💚`;
+    }
+    if (type === "reminder_24h") {
+      const serviceLine = serviceName ? `para o seu ${serviceName} às ${timeLabel}.` : `para o seu horário às ${timeLabel}.`;
+      return `Oie${greetingName}! Flora passando para iluminar seu dia ✨\n\nAmanhã é o dia de você se cuidar com a Jana! Ela já está preparando a sala com todo carinho ${serviceLine}\n\nPosso deixar confirmado na agenda dela? (É só responder com um 👍 ou 'Sim')`;
+    }
+    if (name) {
+      return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
+    }
+    return "Obrigada pelo atendimento! Pode avaliar nossa experiência de 0 a 10?";
+  };
+
+  const openWhatsapp = (phone: string | null | undefined, message: string) => {
+    const link = toWhatsappLink(phone);
+    if (!link) return false;
+    const url = `${link}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    return true;
+  };
+
+  const handleSendMessage = async (type: MessageType) => {
+    if (!detailsData) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast("Sem telefone de WhatsApp cadastrado.", "error");
+      return;
+    }
+    setDetailsActionPending(true);
+    const message = buildMessage(type, detailsData.appointment);
+    openWhatsapp(phone, message);
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type,
+      channel: "whatsapp",
+      payload: { message },
+    });
+    if (!result?.ok) {
+      showToast(result.error?.message ?? "Não foi possível registrar a mensagem.", "error");
+      setDetailsActionPending(false);
+      return;
+    }
+    showToast("Mensagem registrada.", "success");
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleSendReminder = async () => {
+    if (!detailsData) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast("Sem telefone de WhatsApp cadastrado.", "error");
+      return;
+    }
+    setDetailsActionPending(true);
+    const message = buildMessage("reminder_24h", detailsData.appointment);
+    openWhatsapp(phone, message);
+    const result = await sendReminder24h({ appointmentId: detailsData.appointment.id, message });
+    if (!result.ok) {
+      showToast(result.error.message, "error");
+      setDetailsActionPending(false);
+      return;
+    }
+    showToast("Lembrete 24h registrado.", "success");
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleConfirmClient = async () => {
+    if (!detailsData) return;
+    setDetailsActionPending(true);
+    const result = await confirmPre({ appointmentId: detailsData.appointment.id, channel: "manual" });
+    if (!result.ok) {
+      showToast(result.error.message, "error");
+      setDetailsActionPending(false);
+      return;
+    }
+    showToast("Cliente confirmado.", "success");
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!detailsData) return;
+    setDetailsActionPending(true);
+    const result = await cancelAppointment(detailsData.appointment.id);
+    if (!result.ok) {
+      showToast(result.error.message, "error");
+      setDetailsActionPending(false);
+      return;
+    }
+    showToast("Agendamento cancelado.", "success");
+    setDetailsOpen(false);
+    setDetailsAppointmentId(null);
+    setDetailsData(null);
+    setLoadingAppointmentId(null);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleStartSession = () => {
+    if (!detailsData) return;
+    const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
+    setDetailsOpen(false);
+    router.push(`/atendimento/${detailsData.appointment.id}?stage=session&return=${encodeURIComponent(returnTo)}`);
   };
 
   return (
@@ -778,9 +944,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                         {timeSlots.map((slot, index) => (
                           <div
                             key={slot.key}
-                            className={`absolute border-t pointer-events-none ${
-                              slot.isHalf ? "border-line/30" : "border-line/60"
-                            }`}
+                            className="absolute border-t border-dashed border-[#e5e5e5] pointer-events-none"
                             style={{
                               top: index * slotHeight,
                               left: slot.isHalf ? 12 : 0,
@@ -810,8 +974,10 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           const startTimeDate = parseDate(item.start_time);
                           const startLabel = format(startTimeDate, "HH:mm");
                           const isBlock = item.type === "block";
-                          const isHomeVisit = item.is_home_visit;
+                          const isHomeVisit =
+                            typeof item.is_home_visit === "boolean" ? item.is_home_visit : Boolean(item.address);
                           const durationMinutes = getServiceDuration(item);
+                          const isCompact = durationMinutes <= 30;
                           const bufferBefore = item.buffer_before_minutes ?? 0;
                           const bufferAfter = item.buffer_after_minutes ?? 0;
                           const apptHeight = getDurationHeight(durationMinutes, timeGridConfig);
@@ -819,6 +985,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                             bufferBefore > 0 ? getDurationHeight(bufferBefore, timeGridConfig) : 0;
                           const postHeight =
                             bufferAfter > 0 ? getDurationHeight(bufferAfter, timeGridConfig) : 0;
+                          const accentColor = isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)";
+                          const stripeColor = isHomeVisit ? "rgba(168,85,247,0.16)" : "rgba(106,128,108,0.16)";
+                          const bufferStyle = {
+                            borderLeftColor: accentColor,
+                            backgroundImage: `repeating-linear-gradient(135deg, ${stripeColor} 0, ${stripeColor} 6px, transparent 6px, transparent 12px)`,
+                          } as const;
 
                           let endLabel = "";
                           if (item.finished_at) {
@@ -832,6 +1004,8 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                           const preHeight = rawPreHeight > 0 ? Math.min(rawPreHeight, top) : 0;
                           const wrapperTop = top - preHeight;
                           const wrapperHeight = preHeight + apptHeight + postHeight;
+                          const hasPreBuffer = preHeight > 0;
+                          const hasPostBuffer = postHeight > 0;
 
                           const returnTo = `/?view=day&date=${format(day, "yyyy-MM-dd")}`;
 
@@ -863,9 +1037,12 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                 <div className="h-full flex flex-col">
                                   {preHeight > 0 && (
                                     <div className="pointer-events-none relative" style={{ height: preHeight }}>
-                                      <div className="absolute inset-0 mx-1 rounded-xl border border-slate-200/80 bg-slate-200/60 px-2 py-1 overflow-hidden">
-                                        <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 leading-none whitespace-nowrap">
-                                          Buffer Pré + {formatDuration(bufferBefore)}
+                                      <div
+                                        className="absolute inset-0 rounded-2xl rounded-b-none border-l-4 border-dashed px-3 py-1 flex items-start overflow-hidden"
+                                        style={bufferStyle}
+                                      >
+                                        <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted/80 leading-none whitespace-nowrap">
+                                          Buffer Pré · {formatDuration(bufferBefore)}
                                         </span>
                                       </div>
                                     </div>
@@ -877,20 +1054,20 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                       name={item.clientName}
                                       service={item.serviceName}
                                       durationLabel={durationMinutes ? formatDuration(durationMinutes) : null}
-                                      statusLabel={getStatusLabel(item)}
-                                      statusTone={getStatusTone(getStatusLabel(item))}
                                       startLabel={startLabel}
                                       endLabel={endLabel}
-                                      phone={item.phone}
+                                      status={item.status}
+                                      paymentStatus={item.payment_status ?? null}
                                       isHomeVisit={!!isHomeVisit}
+                                      compact={isCompact}
+                                      hasPreBuffer={hasPreBuffer}
+                                      hasPostBuffer={hasPostBuffer}
                                       loading={loadingAppointmentId === item.id}
                                       onOpen={() =>
                                         (() => {
                                           setLoadingAppointmentId(item.id);
-                                          setTimeout(() => setLoadingAppointmentId(null), 2000);
-                                          router.push(
-                                            `/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`
-                                          );
+                                          setDetailsAppointmentId(item.id);
+                                          setDetailsOpen(true);
                                         })()
                                       }
                                       onLongPress={() => {
@@ -902,30 +1079,17 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                                           returnTo,
                                         });
                                       }}
-                                      onWhatsapp={
-                                        toWhatsappLink(item.phone)
-                                          ? () => window.open(toWhatsappLink(item.phone) ?? "", "_blank")
-                                          : undefined
-                                      }
-                                      onMaps={
-                                        isHomeVisit && item.address
-                                          ? () => {
-                                              const mapsQuery = encodeURIComponent(item.address ?? "");
-                                              window.open(
-                                                `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
-                                                "_blank"
-                                              );
-                                            }
-                                          : undefined
-                                      }
                                     />
                                   </div>
 
                                   {postHeight > 0 && (
                                     <div className="pointer-events-none relative" style={{ height: postHeight }}>
-                                      <div className="absolute inset-0 mx-1 rounded-xl border border-slate-200/80 bg-slate-200/60 px-2 py-1 flex items-end overflow-hidden">
-                                        <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500 leading-none whitespace-nowrap">
-                                          Buffer Pós + {formatDuration(bufferAfter)}
+                                      <div
+                                        className="absolute inset-0 rounded-2xl rounded-t-none border-l-4 border-dashed px-3 py-1 flex items-end overflow-hidden"
+                                        style={bufferStyle}
+                                      >
+                                        <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted/80 leading-none whitespace-nowrap">
+                                          Buffer Pós · {formatDuration(bufferAfter)}
                                         </span>
                                       </div>
                                     </div>
@@ -1008,14 +1172,19 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                     </div>
                     <div className="space-y-2">
                       {dayAppointments.slice(0, 3).map((appt) => (
-                        <div key={appt.id} className="flex justify-between text-sm">
-                          <span className="text-muted">
+                        <div key={appt.id} className="flex items-center gap-2 text-sm">
+                          <span className="text-xs font-semibold text-muted">
                             {format(parseDate(appt.start_time), "HH:mm")}
                           </span>
-                          <span className="font-bold">
-                            {appt.clients?.name ?? "Cliente"}
-                            {appt.is_home_visit ? " (Dom)" : ""}
+                          <span className="text-xs text-muted">•</span>
+                          <span className="font-bold text-studio-text truncate">
+                            {appt.clients?.name ?? ""}
                           </span>
+                          {appt.is_home_visit && (
+                            <span className="ml-auto flex items-center justify-center w-6 h-6 rounded-full bg-purple-50 text-dom">
+                              <Car className="w-3 h-3" />
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1184,6 +1353,7 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
                   } else {
                     showToast("Agendamento excluído.", "success");
                     setActionSheet(null);
+                    router.refresh();
                   }
                   setIsActionPending(false);
                 }}
@@ -1225,6 +1395,25 @@ export function MobileAgenda({ appointments, blocks }: MobileAgendaProps) {
           setSearchTerm("");
           router.push(`/clientes/${client.id}`);
         }}
+      />
+
+      <AppointmentDetailsSheet
+        open={detailsOpen}
+        loading={detailsLoading}
+        details={detailsData}
+        actionPending={detailsActionPending}
+        signalPercentage={signalPercentage}
+        publicBaseUrl={publicBaseUrl}
+        onClose={() => {
+          setDetailsOpen(false);
+          setDetailsAppointmentId(null);
+          setDetailsActionPending(false);
+        }}
+        onStartSession={handleStartSession}
+        onSendCreatedMessage={() => handleSendMessage("created_confirmation")}
+        onSendReminder={handleSendReminder}
+        onConfirmClient={handleConfirmClient}
+        onCancelAppointment={handleCancelAppointment}
       />
 
       <FloatingActionMenu

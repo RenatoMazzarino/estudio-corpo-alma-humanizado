@@ -41,6 +41,7 @@ export function AppShell({ children }: AppShellProps) {
         }`}
       >
         <div
+          id="app-frame"
           className={`
           app-frame bg-studio-bg grid grid-rows-[1fr_auto] relative shadow-2xl min-h-0 ${
             debugTouch ? "debug-hitbox debug-overflow" : "overflow-hidden"

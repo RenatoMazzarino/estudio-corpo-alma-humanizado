@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ToastTone = "success" | "error" | "info";
 
@@ -32,21 +32,24 @@ export function useToast(duration = 1800) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  const clearToast = () => {
+  const clearToast = useCallback(() => {
     setToast(null);
     if (timerRef.current) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-  };
+  }, []);
 
-  const showToast = (message: string, tone: ToastTone = "info") => {
+  const showToast = useCallback(
+    (message: string, tone: ToastTone = "info") => {
     setToast({ message, tone });
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => setToast(null), duration);
-  };
+    },
+    [duration]
+  );
 
-  useEffect(() => () => clearToast(), []);
+  useEffect(() => () => clearToast(), [clearToast]);
 
   return { toast, showToast, clearToast };
 }

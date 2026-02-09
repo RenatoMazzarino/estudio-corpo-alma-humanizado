@@ -132,6 +132,7 @@ export interface AppointmentDetails {
   start_time: string;
   finished_at: string | null;
   status: string | null;
+  payment_status?: string | null;
   price: number | null;
   is_home_visit?: boolean | null;
   service_duration_minutes?: number | null;
@@ -149,6 +150,8 @@ export interface AppointmentDetails {
     id: string;
     name: string;
     initials: string | null;
+    avatar_url?: string | null;
+    is_vip?: boolean | null;
     phone?: string | null;
     health_tags?: string[] | null;
     endereco_completo?: string | null;

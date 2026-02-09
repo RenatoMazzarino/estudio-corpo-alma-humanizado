@@ -46,9 +46,9 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   const { data: appointmentData, error: appointmentError } = await supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+      `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
-       clients ( id, name, initials, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
+       clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
        services ( duration_minutes, price, home_visit_fee )`
     )
     .eq("id", appointmentId)
@@ -83,6 +83,17 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   let attendance: AttendanceRow;
   if (attendanceData) {
     attendance = attendanceData as AttendanceRow;
+    if (appointment.status === "pending" && attendance.session_status === "locked") {
+      const { data: updated } = await supabase
+        .from("appointment_attendances")
+        .update({ session_status: "available" })
+        .eq("appointment_id", appointmentId)
+        .select("*")
+        .single();
+      if (updated) {
+        attendance = updated as AttendanceRow;
+      }
+    }
   } else {
     const stageDefaults = deriveStageFromStatus(appointment.status);
     const { data: inserted } = await supabase

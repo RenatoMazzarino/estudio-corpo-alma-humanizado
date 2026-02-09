@@ -1226,6 +1226,8 @@ export type Database = {
           default_home_buffer: number | null
           default_studio_buffer: number | null
           id: string
+          public_base_url: string | null
+          signal_percentage: number | null
           tenant_id: string
           updated_at: string | null
           whatsapp_notification_number: string | null
@@ -1237,6 +1239,8 @@ export type Database = {
           default_home_buffer?: number | null
           default_studio_buffer?: number | null
           id?: string
+          public_base_url?: string | null
+          signal_percentage?: number | null
           tenant_id?: string
           updated_at?: string | null
           whatsapp_notification_number?: string | null
@@ -1248,6 +1252,8 @@ export type Database = {
           default_home_buffer?: number | null
           default_studio_buffer?: number | null
           id?: string
+          public_base_url?: string | null
+          signal_percentage?: number | null
           tenant_id?: string
           updated_at?: string | null
           whatsapp_notification_number?: string | null
