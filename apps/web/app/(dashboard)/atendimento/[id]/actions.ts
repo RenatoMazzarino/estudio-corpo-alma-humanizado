@@ -154,6 +154,43 @@ export async function confirmPre(payload: { appointmentId: string; channel?: str
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
+export async function cancelPreConfirmation(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+  const parsed = appointmentIdSchema.safeParse(payload);
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("appointment_attendances")
+    .update({
+      confirmed_at: null,
+      confirmed_channel: null,
+      pre_status: "available",
+      session_status: "available",
+    })
+    .eq("appointment_id", parsed.data.appointmentId);
+
+  const mapped = mapSupabaseError(error);
+  if (mapped) return fail(mapped);
+
+  const { error: appointmentError } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+    status: "pending",
+  });
+  const mappedAppointmentError = mapSupabaseError(appointmentError);
+  if (mappedAppointmentError) return fail(mappedAppointmentError);
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "pre_confirmation_canceled",
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  revalidatePath("/");
+  return ok({ appointmentId: parsed.data.appointmentId });
+}
+
 export async function sendReminder24h(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
   if (!parsed.success) {

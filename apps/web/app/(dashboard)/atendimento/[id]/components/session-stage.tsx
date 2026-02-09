@@ -1,10 +1,12 @@
 "use client";
 
-import type { AttendanceRow, EvolutionEntry } from "../../../../../lib/attendance/attendance-types";
+import type { AttendanceRow, ChecklistItem, EvolutionEntry } from "../../../../../lib/attendance/attendance-types";
 import { StageStatusBadge } from "./stage-status";
 
 interface SessionStageProps {
   attendance: AttendanceRow;
+  checklist: ChecklistItem[];
+  onToggleChecklist: (itemId: string, completed: boolean) => void;
   evolution: EvolutionEntry[];
   summary: string;
   complaint: string;
@@ -17,6 +19,8 @@ interface SessionStageProps {
 
 export function SessionStage({
   attendance,
+  checklist,
+  onToggleChecklist,
   evolution,
   summary,
   complaint,
@@ -36,8 +40,53 @@ export function SessionStage({
       )
     : [];
 
+  const checklistSourceLabel = (source: string | null) => {
+    if (!source) return "manual";
+    const normalized = source.replace(/_/g, " ").trim().toLowerCase();
+    if (normalized === "service preset") return "serviço";
+    if (normalized === "default") return "padrão";
+    return normalized;
+  };
+
   return (
     <div className="space-y-5">
+      <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-serif font-bold text-studio-text">Checklist inicial</h2>
+            <p className="text-xs text-muted mt-1">Materiais e pré-sessão.</p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          {checklist.length === 0 ? (
+            <p className="text-xs text-muted">Nenhum item cadastrado.</p>
+          ) : (
+            <div className="space-y-2">
+              {checklist.map((item) => (
+                <label
+                  key={item.id}
+                  className="flex items-center justify-between bg-paper border border-line rounded-2xl p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 accent-studio-green"
+                      checked={Boolean(item.completed_at)}
+                      onChange={(event) => onToggleChecklist(item.id, event.target.checked)}
+                    />
+                    <span className="text-sm font-bold text-studio-text">{item.label}</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-muted uppercase">
+                    {checklistSourceLabel(item.source)}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
         <div className="flex items-start justify-between gap-3">
           <div>

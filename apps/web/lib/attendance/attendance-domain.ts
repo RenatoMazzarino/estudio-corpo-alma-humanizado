@@ -86,7 +86,7 @@ export function deriveStageFromStatus(status: string | null): {
   return {
     currentStage: "hub",
     preStatus: "available",
-    sessionStatus: "locked",
+    sessionStatus: "available",
     checkoutStatus: "locked",
     postStatus: "locked",
     timerStatus: "idle",

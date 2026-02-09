@@ -18,9 +18,9 @@ export default async function AtendimentoPage(props: PageProps) {
 
   const stageParam = resolvedSearchParams?.stage;
   const initialStage =
-    stageParam === "pre" || stageParam === "session" || stageParam === "checkout" || stageParam === "post"
+    stageParam === "session" || stageParam === "checkout" || stageParam === "post"
       ? stageParam
-      : "pre";
+      : "session";
 
   return <AttendancePage data={attendance} initialStage={initialStage} />;
 }

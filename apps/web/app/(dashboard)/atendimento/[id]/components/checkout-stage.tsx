@@ -55,6 +55,11 @@ export function CheckoutStage({
 
   const subtotal = checkout?.subtotal ?? 0;
   const total = checkout?.total ?? 0;
+  const paidTotal = useMemo(
+    () => payments.filter((payment) => payment.status === "paid").reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0),
+    [payments]
+  );
+  const remainingTotal = useMemo(() => Math.max(total - paidTotal, 0), [total, paidTotal]);
 
   const appliedDiscountValue = useMemo(() => Math.max(0, subtotal - total), [subtotal, total]);
 
@@ -70,8 +75,8 @@ export function CheckoutStage({
   }, [items]);
 
   useEffect(() => {
-    setPaymentAmount(total);
-  }, [total]);
+    setPaymentAmount(remainingTotal);
+  }, [remainingTotal]);
 
   useEffect(() => {
     setDiscountType(checkout?.discount_type ?? "value");
@@ -265,12 +270,20 @@ export function CheckoutStage({
             <input
               type="number"
               value={paymentAmount}
-              onChange={(event) => setPaymentAmount(Number(event.target.value))}
+              onChange={(event) => {
+                const nextValue = Number(event.target.value);
+                if (Number.isNaN(nextValue)) {
+                  setPaymentAmount(0);
+                  return;
+                }
+                setPaymentAmount(Math.min(Math.max(nextValue, 0), remainingTotal));
+              }}
+              max={remainingTotal}
               className="w-full px-4 py-3 rounded-2xl bg-paper border border-gray-100 text-sm font-bold"
               disabled={isLocked}
             />
             <button
-              onClick={() => onRecordPayment(paymentMethod, paymentAmount)}
+              onClick={() => onRecordPayment(paymentMethod, Math.min(paymentAmount, remainingTotal))}
               disabled={isLocked}
               className={`px-4 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
                 isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"

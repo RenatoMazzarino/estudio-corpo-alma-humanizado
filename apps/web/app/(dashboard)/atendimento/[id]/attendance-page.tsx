@@ -5,17 +5,8 @@ import { format, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, Minimize2, MapPin } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type {
-  AttendanceOverview,
-  StageKey,
-  StageStatus,
-  MessageType,
-} from "../../../../lib/attendance/attendance-types";
+import type { AttendanceOverview, StageKey, StageStatus } from "../../../../lib/attendance/attendance-types";
 import {
-  confirmPre,
-  sendReminder24h,
-  sendMessage,
-  saveInternalNotes,
   toggleChecklistItem,
   saveEvolution,
   setCheckoutItems,
@@ -28,7 +19,6 @@ import {
   finishAttendance,
 } from "./actions";
 import { useTimer } from "../../../../components/timer/use-timer";
-import { PreStage } from "./components/pre-stage";
 import { SessionStage } from "./components/session-stage";
 import { CheckoutStage } from "./components/checkout-stage";
 import { PostStage } from "./components/post-stage";
@@ -57,14 +47,14 @@ function getInitials(name: string) {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
 
-const stageOrder: StageKey[] = ["pre", "session", "checkout", "post"];
+const stageOrder: StageKey[] = ["session", "checkout", "post"];
 
 export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("return");
   const [activeStage, setActiveStage] = useState<StageKey>(
-    initialStage && initialStage !== "hub" ? initialStage : "pre"
+    initialStage && initialStage !== "hub" && initialStage !== "pre" ? initialStage : "session"
   );
   const [headerCompact, setHeaderCompact] = useState(false);
   const pagerRef = useRef<HTMLDivElement | null>(null);
@@ -84,8 +74,6 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const appointment = data.appointment;
   const attendance = data.attendance;
   const contactPhone = appointment.clients?.phone?.replace(/\D/g, "") ?? null;
-  const appointmentLabel = format(new Date(appointment.start_time), "dd/MM 'às' HH:mm", { locale: ptBR });
-
   const stageStatusMap: Record<StageKey, StageStatus> = {
     hub: "available",
     pre: attendance.pre_status,
@@ -109,7 +97,6 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const [complaint, setComplaint] = useState(initialEvolution?.complaint ?? "");
   const [techniques, setTechniques] = useState(initialEvolution?.techniques ?? "");
   const [recommendations, setRecommendations] = useState(initialEvolution?.recommendations ?? "");
-  const [internalNotes, setInternalNotes] = useState(appointment.internal_notes ?? "");
 
   useEffect(() => {
     setSummary(initialEvolution?.summary ?? "");
@@ -118,9 +105,6 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
     setRecommendations(initialEvolution?.recommendations ?? "");
   }, [initialEvolution]);
 
-  useEffect(() => {
-    setInternalNotes(appointment.internal_notes ?? "");
-  }, [appointment.internal_notes]);
 
   useEffect(() => {
     const scrollContainer = document.querySelector("[data-shell-scroll]");
@@ -136,7 +120,8 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
 
   useEffect(() => {
     if (!pagerRef.current) return;
-    const targetStage = initialStage && initialStage !== "hub" ? initialStage : "pre";
+    const targetStage =
+      initialStage && initialStage !== "hub" && initialStage !== "pre" ? initialStage : "session";
     const index = stageOrder.indexOf(targetStage);
     if (index < 0) return;
     const width = pagerRef.current.clientWidth;
@@ -165,7 +150,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
     if (scrollLockRef.current) return;
     const width = event.currentTarget.clientWidth || 1;
     const index = Math.round(event.currentTarget.scrollLeft / width);
-    const nextStage = stageOrder[index] ?? "pre";
+    const nextStage = stageOrder[index] ?? "session";
     if (nextStage !== activeStage) {
       setActiveStage(nextStage);
     }
@@ -186,83 +171,9 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
     router.refresh();
   };
 
-  const handleSendReminder = async () => {
-    if (!contactPhone) {
-      showToast("Sem telefone de WhatsApp cadastrado.");
-      return;
-    }
-    const message = buildMessage("reminder_24h");
-    openWhatsapp(message);
-    const result = await sendReminder24h({ appointmentId: appointment.id, message });
-    if (!result.ok) {
-      showToast(result.error.message);
-      return;
-    }
-    showToast("Lembrete 24h registrado.");
-    router.refresh();
-  };
-
-  const buildMessage = (type: MessageType) => {
-    const name = appointment.clients?.name ?? "Cliente";
-    if (type === "created_confirmation") {
-      return `Olá ${name}! Confirmamos seu atendimento em ${appointmentLabel}. Qualquer dúvida, responda por aqui.`;
-    }
-    if (type === "reminder_24h") {
-      return `Oi ${name}! Lembrete do seu atendimento em ${appointmentLabel}. Responda para confirmar, por favor.`;
-    }
-    return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
-  };
-
-  const openWhatsapp = (message: string) => {
-    if (!contactPhone) return false;
-    const url = `https://wa.me/${contactPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-    return true;
-  };
-
-  const handleSendMessage = async (type: MessageType) => {
-    if (!contactPhone) {
-      showToast("Sem telefone de WhatsApp cadastrado.");
-      return;
-    }
-    const message = buildMessage(type);
-    openWhatsapp(message);
-    const result = await sendMessage({
-      appointmentId: appointment.id,
-      type,
-      channel: "whatsapp",
-      payload: { message },
-    });
-    if (!result?.ok) {
-      showToast(result.error?.message ?? "Não foi possível registrar a mensagem.");
-      return;
-    }
-    showToast("Mensagem registrada.");
-    router.refresh();
-  };
-
-  const handleConfirmPre = async () => {
-    const result = await confirmPre({ appointmentId: appointment.id, channel: "manual" });
-    if (!result.ok) {
-      showToast(result.error.message);
-      return;
-    }
-    router.refresh();
-    scrollToStage("session");
-  };
-
   const handleToggleChecklist = async (itemId: string, completed: boolean) => {
     const result = await toggleChecklistItem({ appointmentId: appointment.id, itemId, completed });
     if (!result.ok) showToast(result.error.message);
-    router.refresh();
-  };
-
-  const handleSaveNotes = async (notes: string) => {
-    const result = await saveInternalNotes({ appointmentId: appointment.id, internalNotes: notes });
-    if (!result.ok) {
-      showToast(result.error.message);
-      return;
-    }
     router.refresh();
   };
 
@@ -332,12 +243,20 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
     router.refresh();
   };
 
+  const openWhatsapp = (message: string) => {
+    if (!contactPhone) return false;
+    const url = `https://wa.me/${contactPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    return true;
+  };
+
   const handleSendSurvey = async () => {
     if (!contactPhone) {
       showToast("Sem telefone de WhatsApp cadastrado.");
       return;
     }
-    const message = buildMessage("post_survey");
+    const name = appointment.clients?.name ?? "Cliente";
+    const message = `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
     openWhatsapp(message);
     const result = await sendSurvey({ appointmentId: appointment.id, message });
     if (!result.ok) showToast(result.error.message);
@@ -393,13 +312,6 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const nextStage = activeIndex < stageOrder.length - 1 ? stageOrder[activeIndex + 1] : null;
 
   const primaryAction = (() => {
-    if (activeStage === "pre") {
-      return {
-        label: attendance.pre_status === "done" ? "Pré concluído" : "Concluir pré",
-        onClick: handleConfirmPre,
-        disabled: attendance.pre_status === "done",
-      };
-    }
     if (activeStage === "session") {
       return {
         label: attendance.session_status === "done" ? "Sessão concluída" : "Publicar evolução",
@@ -574,30 +486,16 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
             className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth"
           >
             <section className="min-w-full snap-start px-5 pt-5 pb-32">
-              <PreStage
-                appointment={appointment}
-                attendance={attendance}
-                checklist={data.checklist}
-                onConfirm={handleConfirmPre}
-                onSendReminder={handleSendReminder}
-                onSendMessage={handleSendMessage}
-                onToggleChecklist={handleToggleChecklist}
-                onSaveNotes={handleSaveNotes}
-                internalNotes={internalNotes}
-                onInternalNotesChange={setInternalNotes}
-                messages={data.messages}
-              />
-            </section>
-
-            <section className="min-w-full snap-start px-5 pt-5 pb-32">
               {stageStatusMap.session === "locked" ? (
                 <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
                   <p className="text-sm font-bold text-studio-text">Etapa bloqueada</p>
-                  <p className="text-xs text-muted mt-1">Conclua a confirmação no Pré-atendimento para liberar.</p>
+                  <p className="text-xs text-muted mt-1">Confirme o agendamento no modal para liberar a sessão.</p>
                 </div>
               ) : (
                 <SessionStage
                   attendance={attendance}
+                  checklist={data.checklist}
+                  onToggleChecklist={handleToggleChecklist}
                   evolution={data.evolution}
                   summary={summary}
                   complaint={complaint}
