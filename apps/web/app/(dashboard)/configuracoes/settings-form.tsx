@@ -14,11 +14,19 @@ interface SettingsFormProps {
   businessHours: BusinessHourItem[];
   bufferBeforeMinutes: number;
   bufferAfterMinutes: number;
+  signalPercentage: number;
+  publicBaseUrl: string;
 }
 
 const dayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-export function SettingsForm({ businessHours, bufferBeforeMinutes, bufferAfterMinutes }: SettingsFormProps) {
+export function SettingsForm({
+  businessHours,
+  bufferBeforeMinutes,
+  bufferAfterMinutes,
+  signalPercentage,
+  publicBaseUrl,
+}: SettingsFormProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -89,7 +97,29 @@ export function SettingsForm({ businessHours, bufferBeforeMinutes, bufferAfterMi
             />
           </div>
         </div>
-        <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar buffers</button>
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Percentual do sinal (%)</label>
+          <input
+            type="number"
+            name="signal_percentage"
+            min={0}
+            max={100}
+            step={1}
+            defaultValue={signalPercentage}
+            className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase ml-1">URL pública (para links no WhatsApp)</label>
+          <input
+            type="text"
+            name="public_base_url"
+            defaultValue={publicBaseUrl}
+            placeholder="https://seu-dominio.com"
+            className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
+          />
+        </div>
+        <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar configurações</button>
       </form>
 
       {message && <div className="text-xs text-gray-500">{message}</div>}

@@ -8,7 +8,7 @@ export async function getSettings(tenantId: string) {
   const supabase = createServiceClient();
   return supabase
     .from("settings")
-    .select("default_home_buffer, default_studio_buffer, buffer_before_minutes, buffer_after_minutes")
+    .select("default_home_buffer, default_studio_buffer, buffer_before_minutes, buffer_after_minutes, signal_percentage, public_base_url")
     .eq("tenant_id", tenantId)
     .single();
 }

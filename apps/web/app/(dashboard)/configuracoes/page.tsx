@@ -1,10 +1,13 @@
 import { ChevronLeft, Settings } from "lucide-react";
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { getSettings, listBusinessHours } from "../../../src/modules/settings/repository";
+import { DEFAULT_PUBLIC_BASE_URL } from "../../../src/shared/config";
 import { SettingsForm } from "./settings-form";
 
 export default async function ConfiguracoesPage() {
+  noStore();
   const { data: businessHoursData } = await listBusinessHours(FIXED_TENANT_ID);
   const { data: settingsData } = await getSettings(FIXED_TENANT_ID);
 
@@ -52,6 +55,8 @@ export default async function ConfiguracoesPage() {
           settingsData?.default_studio_buffer ??
           30
         }
+        signalPercentage={settingsData?.signal_percentage ?? 30}
+        publicBaseUrl={settingsData?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
       />
     </div>
   );
