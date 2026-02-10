@@ -20,6 +20,7 @@
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, override de preço e buffers pré/pós configuráveis.
 - Agendamento interno (/novo): seleção automática de cliente existente (anti-duplicidade), endereço domiciliar com busca por CEP ou texto e preenchimento inteligente.
 - Agendamento interno (/novo): botões de busca de endereço com visual enterprise e persistência dos dados ao alternar local.
+- Agendamento interno (/novo): botões "Buscar por CEP" e "Buscar endereço" com altura reduzida para otimizar o espaço.
 - Agendamento interno (/novo): confirmação de envio da mensagem de agendamento com registro automático no modal.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Agenda: grade com meia-hora, horários menores por padrão e buffers de atendimento (pré/pós) visíveis.
@@ -43,6 +44,7 @@
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
+- Repo/Docs: versão do Turbo atualizada para `^2.8.4` na documentação.
 - Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
 - Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
 - UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.
@@ -66,6 +68,9 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
+- `e86acc1` — docs: atualizar versao do turbo
+- `e997ce7` — chore(deps): atualizar turbo para 2.8.4
+- `6c683e1` — fix(form): reduzir altura dos botoes de endereco
 - `af03117` — docs: add next/turbo and migration commands
 - `c6f268c` — chore: align node/pnpm versions and deps
 - `1ed83b7` — fix(ui): ajustar classes e agenda
