@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import "./receipt.module.css";
 
 interface ReceiptData {
   id: string;
@@ -73,7 +75,7 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
             <div ref={receiptRef} id="receipt-content" className="receipt-paper relative px-8 pb-10 pt-12">
               <header className="flex flex-col items-start gap-3 border-b border-dashed border-gray-200 pb-6">
                 <div className="flex items-center gap-3">
-                  <img src="/logo.png" alt="Corpo & Alma" className="h-10 w-auto" />
+                  <Image src="/logo.png" alt="Corpo & Alma" width={160} height={40} className="h-10 w-auto" priority />
                   <div>
                     <p className="text-xs uppercase tracking-[0.28em] text-muted font-semibold">
                       Corpo & Alma Humanizado
@@ -156,34 +158,6 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
         </div>
       </div>
 
-      <style jsx global>{`
-        html,
-        body {
-          overflow: auto;
-        }
-        @media print {
-          body {
-            background: #ffffff !important;
-          }
-          .receipt-page {
-            background: #ffffff !important;
-            padding: 0 !important;
-          }
-          .receipt-actions {
-            display: none !important;
-          }
-          .receipt-shell {
-            box-shadow: none !important;
-            border: none !important;
-          }
-          .receipt-paper {
-            padding-top: 16px !important;
-          }
-        }
-        @page {
-          margin: 12mm;
-        }
-      `}</style>
     </>
   );
 }

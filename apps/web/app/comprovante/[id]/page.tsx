@@ -77,7 +77,6 @@ export default async function ComprovantePage(props: PageProps) {
   const paidPayments = (paymentsData ?? []).filter((payment) => payment.status === "paid");
   const paidAmount = paidPayments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
   const lastPaid = paidPayments.length > 0 ? paidPayments[paidPayments.length - 1] : null;
-  const paidAt = lastPaid?.paid_at ?? lastPaid?.created_at ?? null;
   const transactionId = lastPaid?.transaction_id ?? lastPaid?.id ?? appointment.id;
 
   const totalAmount = Number(checkoutData?.total ?? appointment.price ?? 0);

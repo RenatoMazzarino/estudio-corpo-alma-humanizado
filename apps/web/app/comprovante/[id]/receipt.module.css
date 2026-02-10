@@ -1,0 +1,28 @@
+:global(html),
+:global(body) {
+  overflow: auto;
+}
+
+@media print {
+  :global(body) {
+    background: #ffffff !important;
+  }
+  :global(.receipt-page) {
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+  :global(.receipt-actions) {
+    display: none !important;
+  }
+  :global(.receipt-shell) {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  :global(.receipt-paper) {
+    padding-top: 16px !important;
+  }
+}
+
+@page {
+  margin: 12mm;
+}
