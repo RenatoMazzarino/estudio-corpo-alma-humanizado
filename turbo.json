@@ -1,5 +1,5 @@
 {
-  "ui": "tui",
+  "ui": "stream",
   "globalEnv": ["SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_MAPS_API_KEY", "APP_TIMEZONE"],
   "tasks": {
     "build": {

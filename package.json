@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "pnpm exec turbo run build",
-    "dev": "pnpm exec turbo run dev",
+    "dev": "pnpm exec turbo run dev --output-logs=full --log-order=stream",
     "lint": "pnpm exec turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "pnpm exec turbo run check-types",
