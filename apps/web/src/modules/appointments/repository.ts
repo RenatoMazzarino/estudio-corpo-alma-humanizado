@@ -138,7 +138,7 @@ export async function listAvailabilityBlocksInRange(tenantId: string, start: str
   const supabase = createServiceClient();
   return supabase
     .from("availability_blocks")
-    .select("id, title, start_time, end_time, reason")
+    .select("id, title, start_time, end_time, reason, block_type, is_full_day")
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
     .lte("start_time", end);
@@ -166,12 +166,28 @@ export async function insertAvailabilityBlocks(
   return supabase.from("availability_blocks").insert(payload);
 }
 
-export async function deleteAvailabilityBlocksInRange(tenantId: string, start: string, end: string) {
+export async function deleteAvailabilityBlocksInRange(
+  tenantId: string,
+  start: string,
+  end: string,
+  blockType?: string
+) {
   const supabase = createServiceClient();
-  return supabase
+  let query = supabase
     .from("availability_blocks")
     .delete()
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
     .lte("end_time", end);
+
+  if (blockType) {
+    query = query.eq("block_type", blockType);
+  }
+
+  return query;
+}
+
+export async function deleteAvailabilityBlockById(tenantId: string, id: string) {
+  const supabase = createServiceClient();
+  return supabase.from("availability_blocks").delete().eq("tenant_id", tenantId).eq("id", id);
 }

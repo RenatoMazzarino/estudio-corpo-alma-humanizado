@@ -654,27 +654,33 @@ export type Database = {
       }
       availability_blocks: {
         Row: {
+          block_type: string
           created_at: string | null
           end_time: string
           id: string
+          is_full_day: boolean | null
           reason: string | null
           start_time: string
           tenant_id: string
           title: string
         }
         Insert: {
+          block_type?: string
           created_at?: string | null
           end_time: string
           id?: string
+          is_full_day?: boolean | null
           reason?: string | null
           start_time: string
           tenant_id?: string
           title?: string
         }
         Update: {
+          block_type?: string
           created_at?: string | null
           end_time?: string
           id?: string
+          is_full_day?: boolean | null
           reason?: string | null
           start_time?: string
           tenant_id?: string

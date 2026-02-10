@@ -1476,7 +1476,7 @@ export function MobileAgenda({
             helper: "Em dev",
           },
           {
-            label: "Bloquear plantão",
+            label: "Gestão de Agenda",
             icon: <Hospital className="w-5 h-5" />,
             onClick: () => router.push("/bloqueios"),
             tone: "danger",

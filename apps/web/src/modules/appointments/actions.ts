@@ -883,9 +883,7 @@ export async function createShiftBlocks(
   const monthEnd = endOfDay(setDate(baseDate, totalDays)).toISOString();
 
   const { data: existingBlocks } = await listAvailabilityBlocksInRange(FIXED_TENANT_ID, monthStart, monthEnd);
-  const existingBlockDays = new Set(
-    (existingBlocks ?? []).map((block) => format(new Date(block.start_time), "yyyy-MM-dd"))
-  );
+  const shiftBlocks = (existingBlocks ?? []).filter((block) => (block as { block_type?: string | null }).block_type === "shift");
 
   const { data: existingAppointments } = await listAppointmentsInRange(FIXED_TENANT_ID, monthStart, monthEnd);
   const appointmentDays = new Set(
@@ -903,27 +901,33 @@ export async function createShiftBlocks(
 
       const dayKey = format(currentDay, "yyyy-MM-dd");
       selectedDays.push(dayKey);
-      if (!existingBlockDays.has(dayKey)) {
+      if (!shiftBlocks.some((block) => format(new Date(block.start_time), "yyyy-MM-dd") === dayKey)) {
         blocksToInsert.push({
           tenant_id: FIXED_TENANT_ID,
-          title: "Bloqueio",
+          title: "Plantão",
           start_time: start.toISOString(),
           end_time: end.toISOString(),
-          reason: "Bloqueio",
+          reason: "Plantão",
+          block_type: "shift",
+          is_full_day: true,
         });
       }
     }
   }
-
-  const conflictingBlocks = selectedDays.filter((day) => existingBlockDays.has(day)).length;
   const conflictingAppointments = selectedDays.filter((day) => appointmentDays.has(day)).length;
 
-  if ((conflictingBlocks > 0 || conflictingAppointments > 0) && !force) {
+  if (conflictingAppointments > 0 && !force) {
     return ok({
       count: 0,
       requiresConfirm: true,
-      conflicts: { blocks: conflictingBlocks, appointments: conflictingAppointments },
+      conflicts: { blocks: 0, appointments: conflictingAppointments },
     });
+  }
+
+  if (selectedDays.length > 0) {
+    const { error: clearError } = await deleteAvailabilityBlocksInRange(FIXED_TENANT_ID, monthStart, monthEnd, "shift");
+    const mappedClearError = mapSupabaseError(clearError);
+    if (mappedClearError) return fail(mappedClearError);
   }
 
   if (blocksToInsert.length > 0) {
@@ -952,7 +956,7 @@ export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{
   const lastDay = getDaysInMonth(baseDate);
   const endOfMonth = endOfDay(setDate(baseDate, lastDay)).toISOString();
 
-  const { error } = await deleteAvailabilityBlocksInRange(FIXED_TENANT_ID, startOfMonth, endOfMonth);
+  const { error } = await deleteAvailabilityBlocksInRange(FIXED_TENANT_ID, startOfMonth, endOfMonth, "shift");
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 
