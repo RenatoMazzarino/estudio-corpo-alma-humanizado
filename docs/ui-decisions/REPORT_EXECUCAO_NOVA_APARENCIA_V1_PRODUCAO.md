@@ -70,7 +70,7 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
-- `HEAD` — fix(dev): executar turbo sem daemon no pnpm dev
+- `65fd940` — fix(dev): executar turbo sem daemon no pnpm dev
 - `3137abd` — revert(dev): restaurar turbo tui no pnpm dev
 - `225a2cb` — chore(dev): usar turbo em modo stream
 - `e86acc1` — docs: atualizar versao do turbo
