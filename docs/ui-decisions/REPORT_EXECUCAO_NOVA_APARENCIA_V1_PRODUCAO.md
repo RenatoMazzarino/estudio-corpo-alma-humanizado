@@ -17,7 +17,9 @@
 - Agenda: botão Hoje na linha do dia da semana; cards padronizados via componente único.
 - Agenda: retorno do atendimento mantém dia/visão de origem.
 - TimerBubble: botão “X” para fechar contador flutuante.
-- Agendamento interno (/novo): header padronizado, retorno para o dia correto, domicílio com endereços do cliente (modal + cadastro), override de preço e buffers pré/pós configuráveis.
+- Agendamento interno (/novo): header padronizado, retorno para o dia correto, override de preço e buffers pré/pós configuráveis.
+- Agendamento interno (/novo): seleção automática de cliente existente (anti-duplicidade), endereço domiciliar com busca por CEP ou texto e preenchimento inteligente.
+- Agendamento interno (/novo): confirmação de envio da mensagem de agendamento com registro automático no modal.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Agenda: grade com meia-hora, horários menores por padrão e buffers de atendimento (pré/pós) visíveis.
 - Agenda (Dia): escala **1 min = 2px** (slot 30 min = 60px), linhas tracejadas e altura dos cards alinhada exatamente à grade.
@@ -38,7 +40,8 @@
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
-- Repo/Docs: alinhamento de versões Node/pnpm e comandos de `next`/`turbo`/migrations documentados.
+- APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
+- Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
 - [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
@@ -119,8 +122,11 @@
 - `apps/web/components/ui/*` (inclui ModuleHeader)
 - `apps/web/components/ui/module-page.tsx` (layout em 3 partes: Header/Content)
 - `apps/web/app/api/search/route.ts` (busca global para o modal da Agenda)
+- `apps/web/app/api/address-search/route.ts` (Google Places Autocomplete)
+- `apps/web/app/api/address-details/route.ts` (Google Places Details)
 - `apps/web/public/assets/*` e `apps/web/public/pagamento-link.html`
 - `supabase/migrations/*` (novas migrations acima)
+- `docs/apis/API_GUIDE.md`
 
 ## 6) Como rodar migrations localmente
 ```bash
@@ -167,3 +173,4 @@ Comandos executados na raiz:
 ## 12) Pendências / próximos passos
 - Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
 - Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste adicional).
+- Configurar `GOOGLE_MAPS_API_KEY` nas variáveis de ambiente da Vercel (produção).

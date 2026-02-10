@@ -385,56 +385,6 @@ export function MobileAgenda({
     router.replace(`/?${params.toString()}`, { scroll: false });
   }, [searchParams, router, showToast]);
 
-  useEffect(() => {
-    const sendCreated = searchParams.get("sendCreated");
-    const appointmentId = searchParams.get("appointmentId");
-    if (sendCreated !== "1" || !appointmentId) {
-      createdMessageSent.current = false;
-      return;
-    }
-    if (createdMessageSent.current) return;
-    createdMessageSent.current = true;
-
-    const triggerSend = async () => {
-      setDetailsActionPending(true);
-      try {
-        const attendance = await getAttendance(appointmentId);
-        if (!attendance) {
-          showToast("Não foi possível localizar o agendamento.", "error");
-          return;
-        }
-        const phone = attendance.appointment.clients?.phone ?? null;
-        if (!phone) {
-          showToast("Sem telefone de WhatsApp cadastrado.", "error");
-          return;
-        }
-        const message = buildMessage("created_confirmation", attendance.appointment);
-        openWhatsapp(phone, message);
-        const result = await sendMessage({
-          appointmentId,
-          type: "created_confirmation",
-          channel: "whatsapp",
-          payload: { message },
-        });
-        if (!result.ok) {
-          showToast(result.error.message ?? "Não foi possível registrar a mensagem.", "error");
-          return;
-        }
-        showToast("Mensagem de agendamento registrada.", "success");
-        await fetchAttendanceDetails(appointmentId);
-        router.refresh();
-      } finally {
-        setDetailsActionPending(false);
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete("sendCreated");
-        params.delete("appointmentId");
-        router.replace(`/?${params.toString()}`, { scroll: false });
-      }
-    };
-
-    triggerSend();
-  }, [searchParams, router, showToast, fetchAttendanceDetails, openWhatsapp]);
-
   const fetchAttendanceDetails = useCallback(
     async (appointmentId: string) => {
       setDetailsLoading(true);
@@ -675,6 +625,56 @@ export function MobileAgenda({
     },
     [toWhatsappLink]
   );
+
+  useEffect(() => {
+    const sendCreated = searchParams.get("sendCreated");
+    const appointmentId = searchParams.get("appointmentId");
+    if (sendCreated !== "1" || !appointmentId) {
+      createdMessageSent.current = false;
+      return;
+    }
+    if (createdMessageSent.current) return;
+    createdMessageSent.current = true;
+
+    const triggerSend = async () => {
+      setDetailsActionPending(true);
+      try {
+        const attendance = await getAttendance(appointmentId);
+        if (!attendance) {
+          showToast("Não foi possível localizar o agendamento.", "error");
+          return;
+        }
+        const phone = attendance.appointment.clients?.phone ?? null;
+        if (!phone) {
+          showToast("Sem telefone de WhatsApp cadastrado.", "error");
+          return;
+        }
+        const message = buildMessage("created_confirmation", attendance.appointment);
+        openWhatsapp(phone, message);
+        const result = await sendMessage({
+          appointmentId,
+          type: "created_confirmation",
+          channel: "whatsapp",
+          payload: { message },
+        });
+        if (!result.ok) {
+          showToast(result.error.message ?? "Não foi possível registrar a mensagem.", "error");
+          return;
+        }
+        showToast("Mensagem de agendamento registrada.", "success");
+        await fetchAttendanceDetails(appointmentId);
+        router.refresh();
+      } finally {
+        setDetailsActionPending(false);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("sendCreated");
+        params.delete("appointmentId");
+        router.replace(`/?${params.toString()}`, { scroll: false });
+      }
+    };
+
+    triggerSend();
+  }, [searchParams, router, showToast, fetchAttendanceDetails, openWhatsapp]);
 
   const handleSendMessage = async (type: MessageType) => {
     if (!detailsData) return;

@@ -243,6 +243,16 @@ export async function createAppointment(formData: FormData): Promise<void> {
     throw new AppError("Dados incompletos", "VALIDATION_ERROR", 400, parsed.error);
   }
 
+  let resolvedClientId = parsed.data.clientId ?? null;
+  if (!resolvedClientId && parsed.data.clientName && parsed.data.clientPhone) {
+    const { data: existingClient } = await findClientByNamePhone(
+      FIXED_TENANT_ID,
+      parsed.data.clientName,
+      parsed.data.clientPhone
+    );
+    resolvedClientId = existingClient?.id ?? null;
+  }
+
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   const supabase = createServiceClient();
   const { data: appointmentId, error: appointmentError } = await supabase.rpc("create_internal_appointment", {
@@ -261,7 +271,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     p_address_label: parsed.data.addressLabel ?? undefined,
     is_home_visit: parsed.data.isHomeVisit ?? false,
     p_internal_notes: parsed.data.internalNotes ?? undefined,
-    p_client_id: parsed.data.clientId ?? undefined,
+    p_client_id: resolvedClientId ?? undefined,
     p_client_address_id: parsed.data.clientAddressId ?? undefined,
     p_price_override: parsed.data.priceOverride ?? undefined,
   });
