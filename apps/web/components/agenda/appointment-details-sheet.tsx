@@ -206,9 +206,12 @@ export function AppointmentDetailsSheet({
 
   const createdMessage = messageByType(messages, "created_confirmation");
   const reminderMessage = messageByType(messages, "reminder_24h");
-  const isConfirmed = Boolean(attendance?.confirmed_at);
-  const confirmedLabel = attendance?.confirmed_at
-    ? format(new Date(attendance.confirmed_at), "dd MMM 'às' HH:mm", { locale: ptBR })
+  const appointmentStatus = appointment?.status ?? "pending";
+  const shouldShowConfirmed = ["confirmed", "in_progress", "completed"].includes(appointmentStatus);
+  const confirmedAt = shouldShowConfirmed ? attendance?.confirmed_at ?? null : null;
+  const isConfirmed = Boolean(confirmedAt);
+  const confirmedLabel = confirmedAt
+    ? format(new Date(confirmedAt), "dd MMM 'às' HH:mm", { locale: ptBR })
     : "";
   const confirmedText = confirmedLabel ? `Confirmado em ${confirmedLabel}` : "Confirmado";
   const statusInfo = getStatusInfo(appointment?.status ?? "pending");
