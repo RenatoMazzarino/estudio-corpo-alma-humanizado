@@ -71,6 +71,7 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
+- `fd4849a` — docs: registrar downgrade do turbo
 - `597fd3d` — chore(deps): fixar turbo em 2.8.3
 - `2902cda` — chore(dev): restaurar schema do turbo.json
 - `6799a0c` — chore(deps): atualizar turbo para 2.8.5
