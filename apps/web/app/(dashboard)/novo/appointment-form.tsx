@@ -836,10 +836,12 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                         setCepDraftStatus("idle");
                         setCepDraftResult(null);
                       }}
-                      className="rounded-2xl border border-purple-200 bg-white px-4 py-1 text-left hover:border-purple-300 hover:bg-purple-100/60 transition"
+                      className="rounded-2xl border border-purple-200 bg-white px-4 py-0 text-left hover:border-purple-300 hover:bg-purple-100/60 transition"
                     >
-                      <span className="text-[11px] font-extrabold uppercase text-purple-700">Buscar por CEP</span>
-                      <span className="block text-[10px] text-purple-500 mt-0.5">Rápido e direto</span>
+                      <span className="text-[10px] font-extrabold uppercase text-purple-700 leading-tight">
+                        Buscar por CEP
+                      </span>
+                      <span className="block text-[9px] text-purple-500 leading-tight">Rápido e direto</span>
                     </button>
                     <button
                       type="button"
@@ -850,12 +852,14 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                         setAddressSearchLoading(false);
                         setAddressSearchError(null);
                       }}
-                      className="rounded-2xl border border-purple-200 bg-white px-4 py-1 text-left hover:border-purple-300 hover:bg-purple-100/60 transition"
+                      className="rounded-2xl border border-purple-200 bg-white px-4 py-0 text-left hover:border-purple-300 hover:bg-purple-100/60 transition"
                     >
-                      <span className="text-[11px] font-extrabold uppercase text-purple-700">
+                      <span className="text-[10px] font-extrabold uppercase text-purple-700 leading-tight">
                         Buscar endereço
                       </span>
-                      <span className="block text-[10px] text-purple-500 mt-0.5">Digite rua, bairro, número</span>
+                      <span className="block text-[9px] text-purple-500 leading-tight">
+                        Digite rua, bairro, número
+                      </span>
                     </button>
                   </div>
                   {clientAddresses.length > 0 && (
