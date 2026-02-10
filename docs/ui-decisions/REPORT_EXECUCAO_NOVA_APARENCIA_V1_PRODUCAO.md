@@ -19,6 +19,7 @@
 - TimerBubble: botão “X” para fechar contador flutuante.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, override de preço e buffers pré/pós configuráveis.
 - Agendamento interno (/novo): seleção automática de cliente existente (anti-duplicidade), endereço domiciliar com busca por CEP ou texto e preenchimento inteligente.
+- Agendamento interno (/novo): botões de busca de endereço com visual enterprise e persistência dos dados ao alternar local.
 - Agendamento interno (/novo): confirmação de envio da mensagem de agendamento com registro automático no modal.
 - Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
 - Agenda: grade com meia-hora, horários menores por padrão e buffers de atendimento (pré/pós) visíveis.
