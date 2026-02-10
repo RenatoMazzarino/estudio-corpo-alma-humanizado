@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, MapPin } from "lucide-react";
+import { CheckCircle2, MapPin, Sparkles } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import "./receipt.module.css";
@@ -67,90 +67,94 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
     <>
       <div className="receipt-page min-h-screen bg-[#333333] text-studio-text px-4 py-10 flex items-center justify-center">
         <div className="w-full max-w-md">
-          <div className="receipt-shell relative rounded-[28px] bg-white shadow-2xl border border-white/70 overflow-hidden">
-            <div className="bg-studio-green text-white px-8 pt-10 pb-8">
-              <div className="mx-auto w-14 h-14 rounded-full bg-white/15 flex items-center justify-center">
-                <Image src="/logo.png" alt="Estúdio Corpo & Alma Humanizado" width={42} height={42} className="h-9 w-auto" priority />
+          <div className="receipt-shell relative rounded-[20px] bg-[#faf9f6] shadow-2xl overflow-hidden">
+            <div className="receipt-header bg-studio-green text-white px-6 pt-8 pb-10 text-center rounded-b-[30px]">
+              <div className="flex justify-center mb-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                  <Image src="/logo.png" alt="Estúdio Corpo & Alma Humanizado" width={28} height={28} className="h-7 w-7" priority />
+                </div>
               </div>
-              <div className="mt-4 text-center">
-                <h1 className="text-2xl font-serif font-semibold">Estúdio Corpo & Alma Humanizado</h1>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-white/80 mt-1">Estúdio de bem-estar</p>
-              </div>
-              <div className="mt-4 flex justify-center">
-                <span className="px-4 py-1 rounded-full bg-white/20 text-[10px] font-extrabold uppercase tracking-[0.16em]">
+              <h1 className="font-serif text-2xl font-bold tracking-wide">Estúdio Corpo & Alma Humanizado</h1>
+              <p className="text-[10px] uppercase tracking-widest opacity-80 mt-1">Estúdio de bem-estar</p>
+              <div className="mt-6">
+                <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
                   {statusPill}
                 </span>
               </div>
             </div>
 
-            <div ref={receiptRef} id="receipt-content" className="receipt-paper bg-[#f9f7f2] px-8 pb-10 pt-6">
-              <div className="flex items-start justify-between text-sm">
+            <div ref={receiptRef} id="receipt-content" className="receipt-paper px-6 py-6 pb-8">
+              <div className="flex justify-between items-end mb-6">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">Cliente</p>
-                  <p className="text-lg font-serif font-semibold text-studio-text">{data.clientName}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Cliente</p>
+                  <p className="font-serif text-lg font-bold text-gray-800">{data.clientName}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">Data</p>
-                  <p className="text-sm font-semibold text-studio-text">{data.dateLabel}</p>
-                  <p className="text-xs text-muted">{data.timeLabel}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Data</p>
+                  <p className="font-bold text-gray-800 text-sm">{data.dateLabel}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{data.timeLabel}</p>
                 </div>
               </div>
 
-              <div className="mt-5 rounded-2xl bg-white border border-gray-100 p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </span>
+              <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm mb-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-green-50 text-studio-green flex items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold text-studio-text">{data.serviceName}</p>
-                    <p className="text-xs text-muted">Serviço</p>
+                    <p className="text-xs font-bold text-gray-800">{data.serviceName}</p>
+                    <p className="text-[10px] text-gray-400">Serviço confirmado</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-purple-50 text-dom flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-purple-50 text-studio-accent flex items-center justify-center">
                     <MapPin className="w-4 h-4" />
-                  </span>
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold text-studio-text">{data.locationLabel}</p>
-                    {data.locationDetail && <p className="text-xs text-muted">{data.locationDetail}</p>}
+                    <p className="text-xs font-bold text-gray-800">{data.locationLabel}</p>
+                    {data.locationDetail && <p className="text-[10px] text-gray-400">{data.locationDetail}</p>}
                   </div>
                 </div>
               </div>
 
-              <div className="relative mt-6">
-                <div className="border-t border-dashed border-gray-200"></div>
-                <span className="receipt-cutout absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#333333]" />
-                <span className="receipt-cutout absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#333333]" />
-              </div>
+              <div className="dashed-line"></div>
 
-              <div className="mt-5 space-y-3 text-sm">
-                <div className="flex items-center justify-between text-muted">
-                  <span>Valor total</span>
-                  <span className="font-semibold text-studio-text">{data.totalLabel}</span>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Valor Total</span>
+                  <span>{data.totalLabel}</span>
                 </div>
+
                 {!isPaid && (
-                  <div className="flex items-center justify-between text-muted">
-                    <span>Sinal pago (PIX)</span>
-                    <span className="font-semibold text-emerald-600">- {data.signalLabel}</span>
+                  <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-green-50 p-2 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Sinal Pago (PIX)</span>
+                    </div>
+                    <span>- {data.signalLabel}</span>
                   </div>
                 )}
+
                 {isPaid ? (
-                  <div className="flex items-center justify-between text-muted">
-                    <span>Total pago</span>
-                    <span className="font-semibold text-emerald-600">{data.paidLabel}</span>
+                  <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-green-50 p-2 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Pagamento Integral</span>
+                    </div>
+                    <span>{data.paidLabel}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-muted">
-                    <span className="uppercase text-[10px] tracking-[0.2em]">Restante a pagar</span>
-                    <span className="text-lg font-serif font-bold text-studio-text">{data.remainingLabel}</span>
+                  <div className="flex justify-between items-end pt-2">
+                    <span className="text-xs font-bold text-gray-400 uppercase">Restante a Pagar</span>
+                    <span className="font-serif text-2xl font-bold text-gray-800">{data.remainingLabel}</span>
                   </div>
                 )}
               </div>
 
-              <footer className="mt-6 flex items-center justify-between text-[11px] text-muted">
-                <span>Gerado por Flora</span>
-                <span>ID: {data.transactionId}</span>
-              </footer>
+              <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-center gap-2 opacity-60">
+                <CheckCircle2 className="w-4 h-4 text-studio-green" />
+                <p className="text-[10px] text-gray-500 font-medium">Gerado por Flora • ID: {data.transactionId}</p>
+              </div>
             </div>
           </div>
         </div>

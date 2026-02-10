@@ -29,3 +29,40 @@
 @page {
   margin: 12mm;
 }
+
+:global(.receipt-header) {
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+}
+
+:global(.dashed-line) {
+  border-top: 2px dashed #e5e7eb;
+  margin: 20px 0;
+  position: relative;
+}
+
+:global(.dashed-line)::before,
+:global(.dashed-line)::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  background-color: #333333;
+  border-radius: 999px;
+}
+
+:global(.dashed-line)::before {
+  left: -30px;
+}
+
+:global(.dashed-line)::after {
+  right: -30px;
+}
+
+@media print {
+  :global(.dashed-line)::before,
+  :global(.dashed-line)::after {
+    background-color: #ffffff;
+  }
+}
