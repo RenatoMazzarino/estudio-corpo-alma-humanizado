@@ -3,6 +3,7 @@
 import { addMinutes, endOfDay, format, getDaysInMonth, parseISO, setDate, startOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createClient } from "../../../lib/supabase/server";
 import { createServiceClient } from "../../../lib/supabase/service";
@@ -255,26 +256,29 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   const supabase = createServiceClient();
-  const { data: appointmentId, error: appointmentError } = await supabase.rpc("create_internal_appointment", {
-    p_tenant_id: FIXED_TENANT_ID,
-    service_id: parsed.data.serviceId,
-    p_start_time: startDateTime.toISOString(),
-    client_name: parsed.data.clientName,
-    client_phone: parsed.data.clientPhone ?? undefined,
-    p_address_cep: parsed.data.addressCep ?? undefined,
-    p_address_logradouro: parsed.data.addressLogradouro ?? undefined,
-    p_address_numero: parsed.data.addressNumero ?? undefined,
-    p_address_complemento: parsed.data.addressComplemento ?? undefined,
-    p_address_bairro: parsed.data.addressBairro ?? undefined,
-    p_address_cidade: parsed.data.addressCidade ?? undefined,
-    p_address_estado: parsed.data.addressEstado ?? undefined,
-    p_address_label: parsed.data.addressLabel ?? undefined,
-    is_home_visit: parsed.data.isHomeVisit ?? false,
-    p_internal_notes: parsed.data.internalNotes ?? undefined,
-    p_client_id: resolvedClientId ?? undefined,
-    p_client_address_id: parsed.data.clientAddressId ?? undefined,
-    p_price_override: parsed.data.priceOverride ?? undefined,
-  });
+  const { data: appointmentId, error: appointmentError } = (await supabase.rpc(
+    "create_internal_appointment",
+    {
+      p_tenant_id: FIXED_TENANT_ID,
+      service_id: parsed.data.serviceId,
+      p_start_time: startDateTime.toISOString(),
+      client_name: parsed.data.clientName,
+      client_phone: parsed.data.clientPhone ?? undefined,
+      p_address_cep: parsed.data.addressCep ?? undefined,
+      p_address_logradouro: parsed.data.addressLogradouro ?? undefined,
+      p_address_numero: parsed.data.addressNumero ?? undefined,
+      p_address_complemento: parsed.data.addressComplemento ?? undefined,
+      p_address_bairro: parsed.data.addressBairro ?? undefined,
+      p_address_cidade: parsed.data.addressCidade ?? undefined,
+      p_address_estado: parsed.data.addressEstado ?? undefined,
+      p_address_label: parsed.data.addressLabel ?? undefined,
+      is_home_visit: parsed.data.isHomeVisit ?? false,
+      p_internal_notes: parsed.data.internalNotes ?? undefined,
+      p_client_id: resolvedClientId ?? undefined,
+      p_client_address_id: parsed.data.clientAddressId ?? undefined,
+      p_price_override: parsed.data.priceOverride ?? undefined,
+    }
+  )) as { data: string | null; error: PostgrestError | null };
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) throw mappedAppointmentError;
@@ -310,7 +314,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   }
 
   revalidatePath(`/?view=day&date=${parsed.data.date}`);
-  const createdId = typeof appointmentId === "string" ? appointmentId : appointmentId?.toString?.();
+  const createdId = appointmentId ?? null;
   const sendCreatedParam = sendCreatedMessage && createdId ? `&sendCreated=1&appointmentId=${createdId}` : "";
   redirect(`/?view=day&date=${parsed.data.date}&created=1${sendCreatedParam}`);
 }
