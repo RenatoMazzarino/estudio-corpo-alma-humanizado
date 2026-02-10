@@ -138,6 +138,13 @@ Subir o banco local:
 pnpm supabase start
 ```
 
+### Atualizar DB local (comando direto)
+
+```powershell
+pnpm supabase start
+pnpm supabase migration up
+```
+
 Ver URLs e chaves locais:
 ```powershell
 pnpm supabase status
@@ -187,6 +194,14 @@ SUPABASE_SERVICE_ROLE_KEY=SEU_SERVICE_ROLE_LOCAL
 ## Supabase online (producao)
 
 Para producao, configure as variaveis no **Vercel** (Environment Variables). Nao coloque chaves de producao no repo.
+
+### Atualizar DB online (comando direto)
+
+```powershell
+pnpm supabase login
+pnpm supabase link --project-ref <seu_project_ref>
+pnpm supabase db push
+```
 
 ### Aplicar migrations no banco ONLINE (sem resetar)
 
