@@ -46,6 +46,7 @@
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
 - Repo/Docs: versão do Turbo atualizada para `^2.8.4` na documentação.
 - Dev: `pnpm dev` voltou ao TUI padrão do Turbo (logs em stream opcionais quando necessário).
+- Dev: `pnpm dev` ajustado para `--no-daemon` no Turbo para evitar travas no Windows.
 - Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
 - Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
 - UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.
@@ -69,6 +70,7 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
+- `HEAD` — fix(dev): executar turbo sem daemon no pnpm dev
 - `3137abd` — revert(dev): restaurar turbo tui no pnpm dev
 - `225a2cb` — chore(dev): usar turbo em modo stream
 - `e86acc1` — docs: atualizar versao do turbo
