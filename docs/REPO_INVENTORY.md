@@ -24,7 +24,7 @@
 ## Stack detectada
 - **Node.js** 24.13.0
 - **pnpm** 10.29.1
-- **Turbo** 2.8.3
+- **Turbo** 2.8.4
 - **Next.js** 16.1.6 (App Router)
 - **React** 19.2.0
 - **TypeScript** 5.9.2
