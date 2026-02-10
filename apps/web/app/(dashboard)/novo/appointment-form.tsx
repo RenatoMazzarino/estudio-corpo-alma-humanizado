@@ -125,6 +125,17 @@ function formatClientAddress(address: ClientAddress) {
 
 export function AppointmentForm({ services, clients, safeDate, initialAppointment, returnTo }: AppointmentFormProps) {
   const isEditing = Boolean(initialAppointment);
+  const sectionCardClass = "bg-white rounded-2xl shadow-sm p-5 border border-stone-100";
+  const sectionHeaderTextClass = "text-xs font-bold text-gray-400 uppercase tracking-widest";
+  const sectionNumberClass =
+    "w-5 h-5 rounded-full bg-studio-green/10 text-studio-green flex items-center justify-center text-[10px] font-bold";
+  const labelClass = "block text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1 ml-1";
+  const inputClass =
+    "w-full px-4 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium";
+  const inputWithIconClass =
+    "w-full pl-11 pr-4 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium";
+  const selectClass =
+    "w-full pl-4 pr-10 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium appearance-none transition-all";
   const initialTimeRef = useRef(initialAppointment?.time ?? "");
   const selectedTimeRef = useRef(initialAppointment?.time ?? "");
   const hasInitialManualAddress =
@@ -406,17 +417,15 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
       <input type="hidden" name="clientId" value={selectedClientId ?? ""} />
       <input type="hidden" name="client_address_id" value={selectedAddressId ?? ""} />
       <input type="hidden" name="address_label" value={addressLabel} />
-      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
+      <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
-            1
-          </div>
-          <h2 className="text-xs font-extrabold text-muted uppercase tracking-widest">Cliente</h2>
+          <div className={sectionNumberClass}>1</div>
+          <h2 className={sectionHeaderTextClass}>Cliente</h2>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Nome Completo</label>
+            <label className={labelClass}>Nome completo</label>
             <div className="relative">
               <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
               <input
@@ -428,7 +437,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                   setClientName(event.target.value);
                   setSelectedClientId(null);
                 }}
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text transition-all"
+                className={inputWithIconClass}
                 required
               />
             </div>
@@ -436,13 +445,13 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
               <Sparkles className="w-3 h-3" /> Se já existir, vinculamos automaticamente.
             </p>
             {filteredClients.length > 0 && (
-              <div className="mt-3 bg-white border border-line rounded-2xl shadow-soft p-2 space-y-1">
+              <div className="mt-3 bg-white border border-stone-100 rounded-2xl shadow-sm p-2 space-y-1">
                 {filteredClients.map((client) => (
                   <button
                     type="button"
                     key={client.id}
                     onClick={() => handleSelectClient(client)}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-studio-light text-sm text-studio-text flex items-center justify-between"
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between"
                   >
                     <span className="font-medium">{client.name}</span>
                     {client.phone && <span className="text-xs text-muted">{client.phone}</span>}
@@ -453,7 +462,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">WhatsApp (Opcional)</label>
+            <label className={labelClass}>WhatsApp (opcional)</label>
             <div className="relative">
               <Phone className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
               <input
@@ -463,7 +472,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                 value={clientPhone}
                 onChange={(event) => setClientPhone(formatPhone(event.target.value))}
                 inputMode="numeric"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm transition-all"
+                className={inputWithIconClass}
               />
             </div>
             <p className="text-[11px] text-muted mt-2 ml-1">Ajuda a localizar cadastros antigos 💚</p>
@@ -471,22 +480,20 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
         </div>
       </section>
 
-      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
+      <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
-            2
-          </div>
-          <h2 className="text-xs font-extrabold text-muted uppercase tracking-widest">O que e Onde?</h2>
+          <div className={sectionNumberClass}>2</div>
+          <h2 className={sectionHeaderTextClass}>O que e onde?</h2>
         </div>
 
         <div className="mb-6">
-          <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Procedimento</label>
+          <label className={labelClass}>Procedimento</label>
           <div className="relative">
             <select
               name="serviceId"
               value={selectedServiceId}
               onChange={handleServiceChange}
-              className="w-full pl-4 pr-10 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text appearance-none transition-all"
+              className={selectClass}
               required
             >
               <option value="" disabled>
@@ -520,15 +527,15 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
         </div>
 
         <div>
-          <label className="block text-xs font-extrabold text-studio-green mb-2 uppercase">Local</label>
-          <div className="bg-studio-bg p-1 rounded-2xl border border-line grid grid-cols-2 gap-2">
+          <label className={labelClass}>Local</label>
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setIsHomeVisit(false)}
-              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border-2 ${
+              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 !isHomeVisit
-                  ? "bg-white border-studio-green text-studio-green shadow-soft"
-                  : "bg-studio-light text-muted border-transparent"
+                  ? "border-studio-green bg-green-50 text-studio-green"
+                  : "border-stone-100 bg-stone-50 text-gray-400"
               }`}
             >
               <Building2 className="w-5 h-5" />
@@ -539,10 +546,10 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
               type="button"
               onClick={() => setIsHomeVisit(true)}
               disabled={!canHomeVisit}
-              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border-2 ${
+              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 isHomeVisit
-                  ? "bg-white border-purple-500 text-purple-600 shadow-soft"
-                  : "bg-studio-light text-muted border-transparent"
+                  ? "border-purple-500 bg-purple-50 text-purple-600"
+                  : "border-stone-100 bg-stone-50 text-gray-400"
               } ${!canHomeVisit ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <Car className="w-5 h-5" />
@@ -602,16 +609,14 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                   </div>
 
                   <div className="mb-3">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-purple-500 mb-2">
-                      Identificação
-                    </label>
+                    <label className={labelClass}>Identificação</label>
                     <input
                       name="address_label"
                       type="text"
                       placeholder="Casa, Trabalho, etc."
                       value={addressLabel}
                       onChange={(event) => setAddressLabel(event.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                      className={inputClass}
                     />
                   </div>
 
@@ -628,10 +633,10 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                         }}
                         inputMode="numeric"
                         aria-invalid={cepStatus === "error" ? "true" : "false"}
-                        className={`w-full px-4 py-3 rounded-xl bg-white border text-sm font-medium focus:outline-none focus:ring-2 ${
+                        className={`w-full px-4 py-3 rounded-xl bg-stone-50 border text-sm font-medium focus:outline-none focus:ring-1 ${
                           cepStatus === "error"
                             ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                            : "border-purple-200 focus:ring-purple-300/40 focus:border-purple-400"
+                            : "border-stone-100 focus:ring-studio-green focus:border-studio-green"
                         }`}
                       />
                     </div>
@@ -651,7 +656,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                     placeholder="Rua / Avenida"
                     value={logradouro}
                     onChange={(e) => setLogradouro(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium mb-2"
+                    className={`${inputClass} mb-2`}
                   />
 
                   <div className="grid grid-cols-3 gap-2">
@@ -661,7 +666,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                       placeholder="Nº"
                       value={numero}
                       onChange={(e) => setNumero(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                      className={inputClass}
                     />
                     <input
                       name="address_complemento"
@@ -669,7 +674,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                       placeholder="Complemento"
                       value={complemento}
                       onChange={(e) => setComplemento(e.target.value)}
-                      className="col-span-2 w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                      className={`col-span-2 ${inputClass}`}
                     />
                   </div>
 
@@ -680,7 +685,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                       placeholder="Bairro"
                       value={bairro}
                       onChange={(e) => setBairro(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                      className={inputClass}
                     />
                     <input
                       name="address_cidade"
@@ -688,7 +693,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                       placeholder="Cidade"
                       value={cidade}
                       onChange={(e) => setCidade(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium"
+                      className={inputClass}
                     />
                   </div>
 
@@ -699,7 +704,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                     value={estado}
                     onChange={(e) => setEstado(e.target.value.toUpperCase())}
                     maxLength={2}
-                    className="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-300/40 text-sm font-medium uppercase mt-2"
+                    className={`${inputClass} uppercase mt-2`}
                   />
                   {mapsQuery && (
                     <a
@@ -718,17 +723,15 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
         </div>
       </section>
 
-      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white">
+      <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">
-            3
-          </div>
-          <h2 className="text-xs font-extrabold text-muted uppercase tracking-widest">Finalização</h2>
+          <div className={sectionNumberClass}>3</div>
+          <h2 className={sectionHeaderTextClass}>Finalização</h2>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Valor Final</label>
+            <label className={labelClass}>Valor final</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
               <input
@@ -736,7 +739,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                 value={finalPrice}
                 readOnly
                 placeholder="0,00"
-                className="w-full pl-9 pr-3 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-lg font-bold text-studio-text"
+                className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
               />
             </div>
             <p className="text-[10px] text-muted mt-1 ml-1">
@@ -745,13 +748,13 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Data</label>
+            <label className={labelClass}>Data</label>
             <input
               name="date"
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="w-full px-3 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-studio-text"
+              className={inputClass}
               required
             />
             {blockStatus === "loading" && (
@@ -766,7 +769,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
         </div>
 
         <div className="mb-4">
-          <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">Ajustar valor (opcional)</label>
+          <label className={labelClass}>Ajustar valor (opcional)</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
             <input
@@ -776,14 +779,14 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
               value={priceOverride}
               onChange={(event) => setPriceOverride(event.target.value)}
               placeholder={displayedPrice || "0,00"}
-              className="w-full pl-9 pr-3 py-3 rounded-2xl bg-white border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-semibold text-studio-text"
+              className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
             />
           </div>
           <p className="text-[10px] text-muted mt-1 ml-1">Se deixar vazio, usamos o valor do serviço.</p>
         </div>
 
         <div>
-          <label className="block text-xs font-extrabold text-studio-green mb-2 uppercase">Horário</label>
+          <label className={labelClass}>Horário</label>
           <div className="grid grid-cols-4 gap-2">
             {!selectedServiceId || !selectedDate ? (
               <div className="col-span-4 text-xs text-muted">Selecione data e serviço para ver horários.</div>
@@ -799,8 +802,8 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
                   onClick={() => setSelectedTime(slot)}
                   className={`py-2 rounded-xl text-xs font-bold transition ${
                     selectedTime === slot
-                      ? "bg-studio-green text-white shadow-soft transform scale-105"
-                      : "border border-line text-muted hover:border-studio-green hover:text-studio-green"
+                      ? "bg-studio-green text-white shadow-sm transform scale-105"
+                      : "border border-stone-100 text-gray-400 hover:border-studio-green hover:text-studio-green"
                   }`}
                 >
                   {slot}
@@ -835,8 +838,8 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
           </p>
         </div>
 
-        <div className="mt-5 pt-4 border-t border-line">
-          <label className="block text-xs font-extrabold text-muted mb-1.5 uppercase">
+        <div className="mt-5 pt-4 border-t border-stone-100">
+          <label className={labelClass}>
             Observações internas do agendamento
           </label>
           <textarea
@@ -844,7 +847,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
             rows={2}
             value={internalNotes}
             onChange={(event) => setInternalNotes(event.target.value)}
-            className="w-full px-4 py-3 rounded-2xl bg-studio-bg border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm"
+            className={`${inputClass} resize-none`}
             placeholder="Ex: Cliente prefere pressão leve..."
           />
           <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
@@ -923,9 +926,9 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
 
       <button
         type="submit"
-        className="w-full py-4 rounded-2xl bg-studio-green text-white font-extrabold shadow-soft hover:bg-studio-green-dark transition flex items-center justify-center gap-2 group mb-4"
+        className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
       >
-        <Check className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        <Check className="w-5 h-5" />
         Agendar
       </button>
     </form>
