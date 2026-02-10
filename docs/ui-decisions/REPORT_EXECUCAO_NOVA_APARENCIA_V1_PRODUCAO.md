@@ -16,6 +16,7 @@
 - Agenda: cards com altura mínima maior e indicador de conexão no header.
 - Agenda: botão Hoje na linha do dia da semana; cards padronizados via componente único.
 - Agenda: retorno do atendimento mantém dia/visão de origem.
+- Agenda: central de mensagens automáticas via arquivo MD (templates editáveis sem mexer no código).
 - TimerBubble: botão “X” para fechar contador flutuante.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, override de preço e buffers pré/pós configuráveis.
 - Agendamento interno (/novo): seleção automática de cliente existente (anti-duplicidade), endereço domiciliar com busca por CEP ou texto e preenchimento inteligente.
@@ -38,9 +39,11 @@
 - Modal de detalhes: logística com mapa clicável; cabeçalho com badge de agendamento e chip financeiro; mensagens e observações ajustadas.
 - Financeiro: seção de **Sinal/Reserva** no modal, com templates de WhatsApp e links públicos (pagamento + comprovante).
 - Checkout: valor a cobrar considera sinal já pago (total restante).
+- Gestão de Agenda: novo módulo de **Disponibilidade Inteligente** (macro calendário + micro detalhes), com gerador de escala, tipos de bloqueio e confirmação de conflitos.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
+- DB: `availability_blocks` com `block_type` e `is_full_day` para suportar bloqueios inteligentes.
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
@@ -68,6 +71,7 @@
 6. `20260203105000_add_client_avatars_bucket.sql` — bucket `client-avatars` + policies.
 7. `20260209090000_add_signal_percentage_to_settings.sql` — configura percentual de sinal no `settings`.
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
+9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
 - `ff5fe93` — revert(dev): restaurar config original do turbo
@@ -134,11 +138,15 @@
 - `apps/web/components/mobile-agenda.tsx`
 - `apps/web/components/agenda/appointment-card.tsx`
 - `apps/web/components/agenda/appointment-details-sheet.tsx`
+- `apps/web/components/availability-manager.tsx`
+- `apps/web/app/(dashboard)/bloqueios/*`
 - `apps/web/src/modules/clients/*`
 - `apps/web/src/modules/appointments/*`
 - `apps/web/app/(dashboard)/configuracoes/*`
 - `apps/web/src/modules/settings/*`
 - `apps/web/src/shared/config.ts`
+- `apps/web/src/shared/auto-messages.*`
+- `apps/web/content/auto-messages.md`
 - `apps/web/components/ui/*` (inclui ModuleHeader)
 - `apps/web/components/ui/module-page.tsx` (layout em 3 partes: Header/Content)
 - `apps/web/app/api/search/route.ts` (busca global para o modal da Agenda)
@@ -194,3 +202,13 @@ Comandos executados na raiz:
 - Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
 - Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste adicional).
 - Configurar `GOOGLE_MAPS_API_KEY` nas variáveis de ambiente da Vercel (produção).
+
+## 13) Gestão de Disponibilidade Inteligente (novo módulo)
+- **Renomeação do menu:** “Bloquear plantão” virou **Gestão de Agenda** (menu do FAB), mantendo a rota `/bloqueios`.
+- **Arquitetura de dados:** `availability_blocks` agora possui `block_type` (`shift`, `personal`, `vacation`, `administrative`) e `is_full_day` para distinguir bloqueios integrais vs parciais.
+- **Gerador de Escala:** aplica dias pares/ímpares criando blocos do tipo `shift`; ao reaplicar, remove **apenas** os `shift` do mês, preservando bloqueios pessoais/administrativos.
+- **Calendário Macro:** visão mensal com indicadores por tipo (pontos coloridos) e destaque de plantão; navegação por mês.
+- **Detalhe do Dia (Micro):** lista dos bloqueios com título, horário (ou “Dia todo”) e tag de tipo, além de ação de exclusão.
+- **Novo Bloqueio:** bottom sheet com título, tipo, toggle “Dia inteiro” e horários quando parcial.
+- **Segurança de conflitos:** bloqueios sobrepostos são impedidos; se houver agendamentos no intervalo, o sistema solicita confirmação e mantém os atendimentos.
+- **Integração com disponibilidade:** bloqueios continuam reduzindo slots em `availability.ts` via start/end time, respeitando dia inteiro e parciais.
