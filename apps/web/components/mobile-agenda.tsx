@@ -1460,16 +1460,6 @@ export function MobileAgenda({
             tone: "danger",
           },
           {
-            label: "Novo Agendamento",
-            icon: <CalendarPlus className="w-5 h-5" />,
-            onClick: () => {
-              const dateParam = format(selectedDate, "yyyy-MM-dd");
-              const returnTo = `/?view=${view}&date=${dateParam}`;
-              router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
-            },
-            tone: "neutral",
-          },
-          {
             label: "Conta a pagar",
             icon: <ArrowDownCircle className="w-5 h-5" />,
             disabled: true,
@@ -1480,6 +1470,16 @@ export function MobileAgenda({
             icon: <ArrowUpCircle className="w-5 h-5" />,
             disabled: true,
             helper: "Em dev",
+          },
+          {
+            label: "Novo Agendamento",
+            icon: <CalendarPlus className="w-5 h-5" />,
+            onClick: () => {
+              const dateParam = format(selectedDate, "yyyy-MM-dd");
+              const returnTo = `/?view=${view}&date=${dateParam}`;
+              router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`);
+            },
+            tone: "neutral",
           },
         ]}
       />

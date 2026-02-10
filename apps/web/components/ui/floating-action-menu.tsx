@@ -21,22 +21,26 @@ interface FloatingActionMenuProps {
   bottomOffset?: string;
 }
 
-const toneStyles: Record<ActionTone, { pill: string; icon: string }> = {
+const toneStyles: Record<ActionTone, { pill: string; icon: string; label: string }> = {
   green: {
-    pill: "bg-white border border-line hover:bg-studio-green/10",
-    icon: "bg-studio-light text-studio-green group-hover:bg-studio-green group-hover:text-white",
+    pill: "bg-white/95 border border-white/70 hover:bg-white",
+    icon: "bg-studio-green/10 text-studio-green group-hover:bg-studio-green group-hover:text-white",
+    label: "text-studio-text",
   },
   danger: {
-    pill: "bg-white border border-line hover:bg-red-50",
+    pill: "bg-white/95 border border-white/70 hover:bg-white",
     icon: "bg-red-100 text-red-500 group-hover:bg-red-500 group-hover:text-white",
+    label: "text-studio-text",
   },
   neutral: {
-    pill: "bg-white border border-line hover:bg-studio-green/10",
-    icon: "bg-studio-bg text-studio-green group-hover:bg-studio-green group-hover:text-white",
+    pill: "bg-white/95 border border-white/70 hover:bg-white",
+    icon: "bg-studio-green/10 text-studio-green group-hover:bg-studio-green group-hover:text-white",
+    label: "text-studio-text",
   },
   gray: {
-    pill: "bg-white border border-line",
+    pill: "bg-white/80 border border-white/60",
     icon: "bg-stone-100 text-stone-400",
+    label: "text-stone-400",
   },
 };
 
@@ -70,7 +74,7 @@ export function FloatingActionMenu({
         style={{ bottom: bottomOffset }}
       >
         {open && (
-          <div className="absolute bottom-14 right-0 flex flex-col items-end gap-3 transition-all duration-200 pointer-events-auto">
+          <div className="absolute bottom-14 right-0 flex flex-col items-end gap-2 transition-all duration-200 pointer-events-auto">
             {actions.map((action) => {
               const tone = action.disabled ? "gray" : action.tone ?? "green";
               const styles = toneStyles[tone];
@@ -82,22 +86,22 @@ export function FloatingActionMenu({
                     setOpen(false);
                     action.onClick?.();
                   }}
-                  className={`group flex items-center gap-3 pl-4 pr-2 py-2 rounded-full shadow-float transition pointer-events-auto ${
+                  className={`group flex items-center gap-3 pl-4 pr-2 py-2.5 rounded-2xl shadow-[0_10px_30px_-16px_rgba(0,0,0,0.45)] transition pointer-events-auto backdrop-blur-md ${
                     styles.pill
                   } ${action.disabled ? "opacity-60 cursor-not-allowed" : ""}`}
                   type="button"
                   disabled={action.disabled}
                 >
                   <div className="flex flex-col items-end leading-tight">
-                    <span className="text-sm font-extrabold text-studio-text">{action.label}</span>
+                    <span className={`text-[13px] font-semibold ${styles.label}`}>{action.label}</span>
                     {action.helper && (
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-stone-400">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-stone-400">
                         {action.helper}
                       </span>
                     )}
                   </div>
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition ${styles.icon}`}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition ${styles.icon}`}
                   >
                     {action.icon}
                   </div>
