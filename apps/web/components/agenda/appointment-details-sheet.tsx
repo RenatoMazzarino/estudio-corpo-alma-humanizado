@@ -235,6 +235,9 @@ export function AppointmentDetailsSheet({
   const signalAmount = Math.round(signalBaseAmount * 100) / 100;
   const remainingAmount = Math.max(totalAmount - paidAmount, 0);
   const signalRemaining = Math.min(Math.max(signalAmount - paidAmount, 0), remainingAmount);
+  const canRegisterSignal = paymentStatus === "pending" && paidAmount <= 0 && signalRemaining > 0;
+  const canRegisterFull = paymentStatus !== "paid" && remainingAmount > 0;
+  const showManualRegister = canRegisterSignal || canRegisterFull;
   const paymentDateLabel = paidAt ? format(new Date(paidAt), "dd/MM", { locale: ptBR }) : "";
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -459,78 +462,76 @@ export function AppointmentDetailsSheet({
                     </div>
                   )}
 
-                  <div className="border-t border-line pt-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                      Registrar pagamento manual
-                    </p>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {([
-                        { key: "pix", label: "Pix" },
-                        { key: "card", label: "Cartão" },
-                        { key: "cash", label: "Dinheiro" },
-                      ] as const).map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={() => setPaymentMethod(item.key)}
-                          disabled={actionPending}
-                          className={`h-9 rounded-xl text-[10px] font-extrabold border transition ${
-                            paymentMethod === item.key
-                              ? "border-studio-green bg-studio-light text-studio-green"
-                              : "border-line text-muted hover:bg-paper"
-                          } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
+                  {showManualRegister && (
+                    <div className="border-t border-line pt-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                        Registrar pagamento manual
+                      </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {([
+                          { key: "pix", label: "Pix" },
+                          { key: "card", label: "Cartão" },
+                          { key: "cash", label: "Dinheiro" },
+                        ] as const).map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setPaymentMethod(item.key)}
+                            disabled={actionPending}
+                            className={`h-9 rounded-xl text-[10px] font-extrabold border transition ${
+                              paymentMethod === item.key
+                                ? "border-studio-green bg-studio-light text-studio-green"
+                                : "border-line text-muted hover:bg-paper"
+                            } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
 
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onRecordPayment?.({
-                            type: "signal",
-                            amount: signalRemaining,
-                            method: paymentMethod,
-                          })
-                        }
-                        disabled={actionPending || signalRemaining <= 0}
-                        className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                          signalRemaining > 0
-                            ? "border-amber-200 text-amber-700 bg-amber-50"
-                            : "border-line text-muted bg-paper"
-                        } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                      >
-                        {signalRemaining > 0
-                          ? `Registrar sinal (${formatCurrency(signalRemaining)})`
-                          : "Sinal registrado"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onRecordPayment?.({
-                            type: "full",
-                            amount: remainingAmount,
-                            method: paymentMethod,
-                          })
-                        }
-                        disabled={actionPending || remainingAmount <= 0}
-                        className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                          remainingAmount > 0
-                            ? "border-studio-green text-studio-green bg-studio-light"
-                            : "border-line text-muted bg-paper"
-                        } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                      >
-                        {remainingAmount > 0
-                          ? `Pagamento integral (${formatCurrency(remainingAmount)})`
-                          : "Pagamento completo"}
-                      </button>
+                      <div className={`mt-3 grid gap-2 ${canRegisterSignal && canRegisterFull ? "grid-cols-2" : "grid-cols-1"}`}>
+                        {canRegisterSignal && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onRecordPayment?.({
+                                type: "signal",
+                                amount: signalRemaining,
+                                method: paymentMethod,
+                              })
+                            }
+                            disabled={actionPending}
+                            className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                              "border-amber-200 text-amber-700 bg-amber-50"
+                            } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            Registrar sinal ({formatCurrency(signalRemaining)})
+                          </button>
+                        )}
+                        {canRegisterFull && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onRecordPayment?.({
+                                type: "full",
+                                amount: remainingAmount,
+                                method: paymentMethod,
+                              })
+                            }
+                            disabled={actionPending}
+                            className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                              "border-studio-green text-studio-green bg-studio-light"
+                            } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            Pagamento integral ({formatCurrency(remainingAmount)})
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[10px] text-muted">
+                        O valor do sinal segue a porcentagem configurada nas configurações.
+                      </p>
                     </div>
-                    <p className="mt-2 text-[10px] text-muted">
-                      O valor do sinal segue a porcentagem configurada nas configurações.
-                    </p>
-                  </div>
+                  )}
                 </div>
               </section>
 
