@@ -12,7 +12,7 @@ Supabase CLI: ferramenta para subir o banco local e gerar tipos
 **Versoes que estamos usando agora**
 Node: 24.13.0
 pnpm: 10.29.1
-Turbo: 2.8.4
+Turbo: 2.8.5
 Supabase CLI: 2.75.0
 Git: 2.53.0
 Docker: 29.2.0

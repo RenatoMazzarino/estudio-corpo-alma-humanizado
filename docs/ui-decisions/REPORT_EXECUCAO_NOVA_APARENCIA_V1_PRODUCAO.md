@@ -44,7 +44,7 @@
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
-- Repo/Docs: versão do Turbo atualizada para `^2.8.4` na documentação.
+- Repo/Docs: versão do Turbo atualizada para `^2.8.5` na documentação.
 - Dev: `pnpm dev` voltou ao TUI padrão do Turbo (logs em stream opcionais quando necessário).
 - Dev: `pnpm dev` ajustado para `--no-daemon` no Turbo para evitar travas no Windows.
 - Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
@@ -70,6 +70,7 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
+- `6799a0c` — chore(deps): atualizar turbo para 2.8.5
 - `65fd940` — fix(dev): executar turbo sem daemon no pnpm dev
 - `3137abd` — revert(dev): restaurar turbo tui no pnpm dev
 - `225a2cb` — chore(dev): usar turbo em modo stream

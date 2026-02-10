@@ -4,7 +4,7 @@
 
 - Node.js 24.13.0+ (use `.nvmrc`).
 - pnpm 10.29.1 (via `corepack enable`).
-- Turbo 2.8.4 (devDependency no root).
+- Turbo 2.8.5 (devDependency no root).
 - Docker + Supabase CLI 2.75.0 (instalado via `pnpm install`).
 - `SUPABASE_SERVICE_ROLE_KEY` para operações administrativas server-side (RLS habilitado).
 - VS Code: use o TypeScript do workspace (evita erro de JSX).
