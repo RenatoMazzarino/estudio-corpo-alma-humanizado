@@ -74,6 +74,9 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `f1b9b63` — docs(report): atualizar gestão de agenda e mensagens automáticas
+- `854cee3` — feat(agenda): gestão de disponibilidade inteligente
+- `8bd573e` — feat(messages): centralizar templates automáticos
 - `ff5fe93` — revert(dev): restaurar config original do turbo
 - `fd4849a` — docs: registrar downgrade do turbo
 - `597fd3d` — chore(deps): fixar turbo em 2.8.3
