@@ -381,6 +381,143 @@ export function AppointmentDetailsSheet({
             <div className="mt-6 space-y-5">
               <section>
                 <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                  <MapPin className="w-3.5 h-3.5" />
+                  Logística
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                    <span className="text-xs font-bold text-studio-text block">{dateLabel}</span>
+                    <span className="text-[10px] font-bold text-muted uppercase">{timeLabel}</span>
+                  </div>
+                  <div
+                    className={`bg-white rounded-2xl p-3 border border-line col-span-2 relative ${
+                      isHomeVisit ? "" : "flex items-center justify-center"
+                    }`}
+                  >
+                    {isHomeVisit ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-dom">
+                            Domicílio
+                          </span>
+                        </div>
+                        {hasAddress && (
+                          <p className="text-xs font-bold text-studio-text truncate pr-8 mt-1">
+                            {addressLine}
+                          </p>
+                        )}
+                        {hasAddress && mapsHref && (
+                          <a
+                            href={mapsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-dom shadow-sm border border-line"
+                            aria-label="Abrir rota no mapa"
+                          >
+                            <MapPin className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-base font-extrabold text-studio-green tracking-wide w-full text-center">
+                        Estúdio
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Comunicação
+                </div>
+
+                <div className="bg-white rounded-2xl border border-line px-4 py-2 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 py-3 border-b border-line">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-studio-text">Aviso de Agendamento</p>
+                        <p className="text-[10px] text-muted">
+                          {isMessageSent(createdMessage?.status) ? formatSentLabel(createdMessage?.sent_at ?? null) : "Pendente de envio"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onSendCreatedMessage}
+                      disabled={actionPending}
+                      className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
+                    >
+                      {isMessageSent(createdMessage?.status) ? "Reenviar" : "Enviar"}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 py-3 border-b border-line">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-studio-text">Lembrete 24h</p>
+                        <p className="text-[10px] text-muted">
+                          {isMessageSent(reminderMessage?.status)
+                            ? formatSentLabel(reminderMessage?.sent_at ?? null)
+                            : "Pendente de envio"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onSendReminder}
+                      disabled={actionPending}
+                      className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
+                    >
+                      {isMessageSent(reminderMessage?.status) ? "Reenviar" : "Enviar"}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
+                        <ThumbsUp className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-studio-text">Confirmação do Cliente</p>
+                        <p className="text-[10px] text-muted">
+                          {isConfirmed ? confirmedText : "Aguardando resposta..."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isConfirmed && (
+                        <button
+                          type="button"
+                          onClick={onConfirmClient}
+                          disabled={actionPending}
+                          className="px-3 py-1.5 border border-studio-green text-studio-green rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
+                        >
+                          Confirmar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCancelDialogOpen(true)}
+                        disabled={actionPending}
+                        className="px-3 py-1.5 border border-red-200 text-red-600 rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
                   <Wallet className="w-3.5 h-3.5" />
                   Financeiro
                 </div>
@@ -532,143 +669,6 @@ export function AppointmentDetailsSheet({
                       </p>
                     </div>
                   )}
-                </div>
-              </section>
-
-              <section>
-                <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                  <MapPin className="w-3.5 h-3.5" />
-                  Logística
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                    <span className="text-xs font-bold text-studio-text block">{dateLabel}</span>
-                    <span className="text-[10px] font-bold text-muted uppercase">{timeLabel}</span>
-                  </div>
-                  <div
-                    className={`bg-white rounded-2xl p-3 border border-line col-span-2 relative ${
-                      isHomeVisit ? "" : "flex items-center justify-center"
-                    }`}
-                  >
-                    {isHomeVisit ? (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-dom">
-                            Domicílio
-                          </span>
-                        </div>
-                        {hasAddress && (
-                          <p className="text-xs font-bold text-studio-text truncate pr-8 mt-1">
-                            {addressLine}
-                          </p>
-                        )}
-                        {hasAddress && mapsHref && (
-                          <a
-                            href={mapsHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-dom shadow-sm border border-line"
-                            aria-label="Abrir rota no mapa"
-                          >
-                            <MapPin className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-base font-extrabold text-studio-green tracking-wide w-full text-center">
-                        Estúdio
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <section>
-                <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Comunicação
-                </div>
-
-                <div className="bg-white rounded-2xl border border-line px-4 py-2 shadow-sm">
-                  <div className="flex items-center justify-between gap-3 py-3 border-b border-line">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
-                        <Bell className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-studio-text">Aviso de Agendamento</p>
-                        <p className="text-[10px] text-muted">
-                          {isMessageSent(createdMessage?.status) ? formatSentLabel(createdMessage?.sent_at ?? null) : "Pendente de envio"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onSendCreatedMessage}
-                      disabled={actionPending}
-                      className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-                    >
-                      {isMessageSent(createdMessage?.status) ? "Reenviar" : "Enviar"}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 py-3 border-b border-line">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-studio-text">Lembrete 24h</p>
-                        <p className="text-[10px] text-muted">
-                          {isMessageSent(reminderMessage?.status)
-                            ? formatSentLabel(reminderMessage?.sent_at ?? null)
-                            : "Pendente de envio"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onSendReminder}
-                      disabled={actionPending}
-                      className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-                    >
-                      {isMessageSent(reminderMessage?.status) ? "Reenviar" : "Enviar"}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
-                        <ThumbsUp className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-studio-text">Confirmação do Cliente</p>
-                        <p className="text-[10px] text-muted">
-                          {isConfirmed ? confirmedText : "Aguardando resposta..."}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!isConfirmed && (
-                        <button
-                          type="button"
-                          onClick={onConfirmClient}
-                          disabled={actionPending}
-                          className="px-3 py-1.5 border border-studio-green text-studio-green rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-                        >
-                          Confirmar
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setCancelDialogOpen(true)}
-                        disabled={actionPending}
-                        className="px-3 py-1.5 border border-red-200 text-red-600 rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </section>
 
