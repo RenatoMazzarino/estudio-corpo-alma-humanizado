@@ -71,7 +71,7 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
-- `HEAD` — chore(dev): restaurar schema do turbo.json
+- `2902cda` — chore(dev): restaurar schema do turbo.json
 - `6799a0c` — chore(deps): atualizar turbo para 2.8.5
 - `65fd940` — fix(dev): executar turbo sem daemon no pnpm dev
 - `3137abd` — revert(dev): restaurar turbo tui no pnpm dev
