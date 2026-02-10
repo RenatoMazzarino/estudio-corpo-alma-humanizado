@@ -45,6 +45,7 @@
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
 - Repo/Docs: versão do Turbo atualizada para `^2.8.4` na documentação.
+- Dev: `pnpm dev` voltou ao TUI padrão do Turbo (logs em stream opcionais quando necessário).
 - Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
 - Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
 - UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.
@@ -68,6 +69,8 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 
 ## 4) Commits (hash + objetivo)
+- `3137abd` — revert(dev): restaurar turbo tui no pnpm dev
+- `225a2cb` — chore(dev): usar turbo em modo stream
 - `e86acc1` — docs: atualizar versao do turbo
 - `e997ce7` — chore(deps): atualizar turbo para 2.8.4
 - `6c683e1` — fix(form): reduzir altura dos botoes de endereco
