@@ -19,7 +19,6 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  ArrowDownCircle,
   ArrowUpCircle,
   CalendarPlus,
   Car,
@@ -1448,10 +1447,10 @@ export function MobileAgenda({
       <FloatingActionMenu
         actions={[
           {
-            label: "Novo Cliente",
-            icon: <UserPlus className="w-5 h-5" />,
-            onClick: () => router.push("/clientes/novo"),
-            tone: "green",
+            label: "Lançamentos financeiros",
+            icon: <ArrowUpCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
           },
           {
             label: "Bloquear Plantão",
@@ -1460,16 +1459,10 @@ export function MobileAgenda({
             tone: "danger",
           },
           {
-            label: "Conta a pagar",
-            icon: <ArrowDownCircle className="w-5 h-5" />,
-            disabled: true,
-            helper: "Em dev",
-          },
-          {
-            label: "Conta a receber",
-            icon: <ArrowUpCircle className="w-5 h-5" />,
-            disabled: true,
-            helper: "Em dev",
+            label: "Novo Cliente",
+            icon: <UserPlus className="w-5 h-5" />,
+            onClick: () => router.push("/clientes/novo"),
+            tone: "green",
           },
           {
             label: "Novo Agendamento",
