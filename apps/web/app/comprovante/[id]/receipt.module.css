@@ -7,6 +7,9 @@
   :global(body) {
     background: #ffffff !important;
   }
+  :global(.receipt-cutout) {
+    background: #ffffff !important;
+  }
   :global(.receipt-page) {
     background: #ffffff !important;
     padding: 0 !important;

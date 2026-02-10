@@ -42,7 +42,9 @@ export default async function ComprovantePage(props: PageProps) {
 
   const { data: appointmentData } = await supabase
     .from("appointments")
-    .select("id, service_name, start_time, price, payment_status, clients ( name )")
+    .select(
+      "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name )"
+    )
     .eq("id", params.id)
     .eq("tenant_id", FIXED_TENANT_ID)
     .maybeSingle();
@@ -57,6 +59,12 @@ export default async function ComprovantePage(props: PageProps) {
     start_time: string;
     price: number | null;
     payment_status: string | null;
+    is_home_visit: boolean | null;
+    address_logradouro: string | null;
+    address_numero: string | null;
+    address_bairro: string | null;
+    address_cidade: string | null;
+    address_estado: string | null;
     clients: { name: string | null } | null;
   };
 
@@ -97,24 +105,39 @@ export default async function ComprovantePage(props: PageProps) {
   const startDate = new Date(appointment.start_time);
   const dateLabel = format(startDate, "dd/MM/yyyy", { locale: ptBR });
   const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
-  const paymentStatusLabel = derivedStatus === "paid" ? "Pagamento integral" : "Sinal pago";
-  const signalLabel = derivedStatus === "partial" ? formatCurrency(paidAmount) : "—";
+  const signalLabel = formatCurrency(paidAmount);
   const paidLabel = formatCurrency(derivedStatus === "paid" ? totalAmount || paidAmount : paidAmount);
+  const remainingAmount = Math.max(totalAmount - paidAmount, 0);
+  const addressLine = [
+    appointment.address_logradouro,
+    appointment.address_numero,
+    appointment.address_bairro,
+    appointment.address_cidade,
+    appointment.address_estado,
+  ]
+    .filter((value) => value && value.trim().length > 0)
+    .join(", ");
+  const locationLabel = appointment.is_home_visit ? "Atendimento Domiciliar" : "Atendimento no Estúdio";
+  const locationDetail = appointment.is_home_visit
+    ? addressLine || "Endereço informado no agendamento"
+    : "Estúdio Corpo & Alma Humanizado";
   const generatedAtLabel = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
   return (
     <>
       <ReceiptView
         data={{
-          id: appointment.id,
           clientName: appointment.clients?.name ?? "Cliente",
           serviceName: appointment.service_name,
           dateLabel,
           timeLabel,
-          paymentStatusLabel,
+          paymentStatus: derivedStatus,
+          locationLabel,
+          locationDetail,
           totalLabel: formatCurrency(totalAmount),
           signalLabel,
           paidLabel,
+          remainingLabel: formatCurrency(remainingAmount),
           transactionId,
           generatedAtLabel,
         }}

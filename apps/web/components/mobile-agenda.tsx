@@ -44,6 +44,7 @@ import { cancelAppointment } from "../app/actions";
 import {
   confirmPre,
   getAttendance,
+  recordPayment,
   sendMessage,
   sendReminder24h,
 } from "../app/(dashboard)/atendimento/[id]/actions";
@@ -700,6 +701,33 @@ export function MobileAgenda({
     setDetailsAppointmentId(null);
     setDetailsData(null);
     setLoadingAppointmentId(null);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleRecordPayment = async (payload: {
+    type: "signal" | "full";
+    amount: number;
+    method: "pix" | "card" | "cash" | "other";
+  }) => {
+    if (!detailsData) return;
+    if (!payload.amount || payload.amount <= 0) {
+      showToast("Valor de pagamento inválido.", "error");
+      return;
+    }
+    setDetailsActionPending(true);
+    const result = await recordPayment({
+      appointmentId: detailsData.appointment.id,
+      method: payload.method,
+      amount: payload.amount,
+    });
+    if (!result.ok) {
+      showToast(result.error.message ?? "Não foi possível registrar o pagamento.", "error");
+      setDetailsActionPending(false);
+      return;
+    }
+    showToast(payload.type === "signal" ? "Sinal registrado." : "Pagamento integral registrado.", "success");
+    await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
   };
@@ -1414,6 +1442,7 @@ export function MobileAgenda({
         onSendReminder={handleSendReminder}
         onConfirmClient={handleConfirmClient}
         onCancelAppointment={handleCancelAppointment}
+        onRecordPayment={handleRecordPayment}
       />
 
       <FloatingActionMenu

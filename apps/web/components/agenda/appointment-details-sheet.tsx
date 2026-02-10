@@ -32,6 +32,7 @@ interface AppointmentDetailsSheetProps {
   onSendReminder: () => void;
   onConfirmClient: () => void;
   onCancelAppointment: () => void;
+  onRecordPayment?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
 }
 
 const messageByType = (messages: AppointmentMessage[], type: MessageType) =>
@@ -87,6 +88,7 @@ const paymentStatusMap = {
 } as const;
 
 type PaymentStatus = keyof typeof paymentStatusMap;
+type PaymentMethod = "pix" | "card" | "cash" | "other";
 
 export function AppointmentDetailsSheet({
   open,
@@ -101,11 +103,13 @@ export function AppointmentDetailsSheet({
   onSendReminder,
   onConfirmClient,
   onCancelAppointment,
+  onRecordPayment,
 }: AppointmentDetailsSheetProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -123,6 +127,7 @@ export function AppointmentDetailsSheet({
     }
     setCancelDialogOpen(false);
     setDragOffset(0);
+    setPaymentMethod("pix");
     dragOffsetRef.current = 0;
   }, [open, details?.appointment?.id]);
 
@@ -227,7 +232,9 @@ export function AppointmentDetailsSheet({
     ? Math.min(Math.max(signalPercentage, 0), 100)
     : 30;
   const signalBaseAmount = totalAmount > 0 ? totalAmount * (normalizedSignalPercentage / 100) : 0;
-  const signalAmount = paidAmount > 0 ? paidAmount : Math.round(signalBaseAmount * 100) / 100;
+  const signalAmount = Math.round(signalBaseAmount * 100) / 100;
+  const remainingAmount = Math.max(totalAmount - paidAmount, 0);
+  const signalRemaining = Math.min(Math.max(signalAmount - paidAmount, 0), remainingAmount);
   const paymentDateLabel = paidAt ? format(new Date(paidAt), "dd/MM", { locale: ptBR }) : "";
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -451,6 +458,79 @@ export function AppointmentDetailsSheet({
                       </button>
                     </div>
                   )}
+
+                  <div className="border-t border-line pt-3">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                      Registrar pagamento manual
+                    </p>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {([
+                        { key: "pix", label: "Pix" },
+                        { key: "card", label: "Cartão" },
+                        { key: "cash", label: "Dinheiro" },
+                      ] as const).map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setPaymentMethod(item.key)}
+                          disabled={actionPending}
+                          className={`h-9 rounded-xl text-[10px] font-extrabold border transition ${
+                            paymentMethod === item.key
+                              ? "border-studio-green bg-studio-light text-studio-green"
+                              : "border-line text-muted hover:bg-paper"
+                          } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onRecordPayment?.({
+                            type: "signal",
+                            amount: signalRemaining,
+                            method: paymentMethod,
+                          })
+                        }
+                        disabled={actionPending || signalRemaining <= 0}
+                        className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                          signalRemaining > 0
+                            ? "border-amber-200 text-amber-700 bg-amber-50"
+                            : "border-line text-muted bg-paper"
+                        } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                      >
+                        {signalRemaining > 0
+                          ? `Registrar sinal (${formatCurrency(signalRemaining)})`
+                          : "Sinal registrado"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onRecordPayment?.({
+                            type: "full",
+                            amount: remainingAmount,
+                            method: paymentMethod,
+                          })
+                        }
+                        disabled={actionPending || remainingAmount <= 0}
+                        className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                          remainingAmount > 0
+                            ? "border-studio-green text-studio-green bg-studio-light"
+                            : "border-line text-muted bg-paper"
+                        } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                      >
+                        {remainingAmount > 0
+                          ? `Pagamento integral (${formatCurrency(remainingAmount)})`
+                          : "Pagamento completo"}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[10px] text-muted">
+                      O valor do sinal segue a porcentagem configurada nas configurações.
+                    </p>
+                  </div>
                 </div>
               </section>
 
