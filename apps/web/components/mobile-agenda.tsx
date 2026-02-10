@@ -49,6 +49,8 @@ import {
 } from "../app/(dashboard)/atendimento/[id]/actions";
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
 import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
+import type { AutoMessageTemplates } from "../src/shared/auto-messages.types";
+import { applyAutoMessageTemplate } from "../src/shared/auto-messages.utils";
 import {
   getDurationHeight,
   getOffsetForTime,
@@ -86,6 +88,8 @@ interface AvailabilityBlock {
   title: string;
   start_time: string;
   end_time: string;
+  block_type?: string | null;
+  is_full_day?: boolean | null;
 }
 
 interface MobileAgendaProps {
@@ -93,6 +97,7 @@ interface MobileAgendaProps {
   blocks: AvailabilityBlock[];
   signalPercentage?: number;
   publicBaseUrl?: string;
+  messageTemplates: AutoMessageTemplates;
 }
 
 type AgendaView = "day" | "week" | "month";
@@ -124,6 +129,7 @@ export function MobileAgenda({
   blocks,
   signalPercentage = 30,
   publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
+  messageTemplates,
 }: MobileAgendaProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -592,7 +598,7 @@ export function MobileAgenda({
 
   const buildMessage = (type: MessageType, appointment: AttendanceOverview["appointment"]) => {
     const name = appointment.clients?.name?.trim() ?? "";
-    const greetingName = name ? `, ${name}` : "";
+    const greeting = name ? `Olá, ${name}!` : "Olá!";
     const startDate = new Date(appointment.start_time);
     const dayOfWeek = format(startDate, "EEEE", { locale: ptBR });
     const dayOfWeekLabel = dayOfWeek ? `${dayOfWeek[0]?.toUpperCase() ?? ""}${dayOfWeek.slice(1)}` : "";
@@ -603,11 +609,23 @@ export function MobileAgenda({
     const serviceSegment = serviceName ? ` 💆‍♀️ Serviço: ${serviceName}` : "";
 
     if (type === "created_confirmation") {
-      return `Olá${greetingName}! Tudo bem? Aqui é a Flora, assistente virtual do Estúdio 🌸\n\nQue notícia boa! Já reservei o seu horário na agenda da Jana. Seu momento de autocuidado está garantidíssimo.\n\n🗓 Data: ${dateLine} ⏰ Horário: ${timeLabel}${serviceSegment}\n\nDeixei tudo organizado por aqui. Se precisar remarcar ou tiver alguma dúvida, é só me chamar. Até logo! 💚`;
+      return applyAutoMessageTemplate(messageTemplates.created_confirmation, {
+        greeting,
+        date_line: dateLine,
+        time: timeLabel,
+        service_name: serviceName,
+        service_segment: serviceSegment,
+      }).trim();
     }
     if (type === "reminder_24h") {
       const serviceLine = serviceName ? `para o seu ${serviceName} às ${timeLabel}.` : `para o seu horário às ${timeLabel}.`;
-      return `Oie${greetingName}! Flora passando para iluminar seu dia ✨\n\nAmanhã é o dia de você se cuidar com a Jana! Ela já está preparando a sala com todo carinho ${serviceLine}\n\nPosso deixar confirmado na agenda dela? (É só responder com um 👍 ou 'Sim')`;
+      return applyAutoMessageTemplate(messageTemplates.reminder_24h, {
+        greeting,
+        service_line: serviceLine,
+        service_name: serviceName,
+        time: timeLabel,
+        date_line: dateLine,
+      }).trim();
     }
     if (name) {
       return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
@@ -1435,6 +1453,7 @@ export function MobileAgenda({
         actionPending={detailsActionPending}
         signalPercentage={signalPercentage}
         publicBaseUrl={publicBaseUrl}
+        messageTemplates={messageTemplates}
         onClose={() => {
           setDetailsOpen(false);
           setDetailsAppointmentId(null);
@@ -1457,7 +1476,7 @@ export function MobileAgenda({
             helper: "Em dev",
           },
           {
-            label: "Bloquear Plantão",
+            label: "Bloquear plantão",
             icon: <Hospital className="w-5 h-5" />,
             onClick: () => router.push("/bloqueios"),
             tone: "danger",

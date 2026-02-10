@@ -18,6 +18,8 @@ import {
 import Image from "next/image";
 import type { AttendanceOverview, AppointmentMessage, MessageType } from "../../lib/attendance/attendance-types";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
+import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
+import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
 
 interface AppointmentDetailsSheetProps {
   open: boolean;
@@ -26,6 +28,7 @@ interface AppointmentDetailsSheetProps {
   details: AttendanceOverview | null;
   signalPercentage?: number;
   publicBaseUrl?: string;
+  messageTemplates: AutoMessageTemplates;
   onClose: () => void;
   onStartSession: () => void;
   onSendCreatedMessage: () => void;
@@ -97,6 +100,7 @@ export function AppointmentDetailsSheet({
   details,
   signalPercentage = 30,
   publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
+  messageTemplates,
   onClose,
   onStartSession,
   onSendCreatedMessage,
@@ -284,7 +288,15 @@ export function AppointmentDetailsSheet({
     const linkBlock = paymentLink
       ? `👇 Segue o link para pagamento:\n\n💰 Valor do Sinal: ${signalValue}\nLink:\n${paymentLink}\n\n`
       : "";
-    return `${greeting} Tudo bem? 🌿\n\nAqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado.\n\nFiquei muito feliz com seu agendamento! Para deixarmos o seu horário de ${serviceName} reservadinho e confirmado para o dia ${dateValue} às ${timeValue}, precisamos apenas da confirmação do sinal/reserva.\n\n${linkBlock}É rapidinho! Assim que confirmar, eu já te envio o comprovante e garantimos a sua vaga.\n\nQualquer dúvida, estou por aqui! Um abraço 🌸`;
+
+    return applyAutoMessageTemplate(messageTemplates.signal_charge, {
+      greeting,
+      service_name: serviceName,
+      date_line: dateValue,
+      time: timeValue,
+      signal_amount: signalValue,
+      payment_link_block: linkBlock,
+    }).trim();
   };
 
   const buildSignalReceiptMessage = () => {
@@ -295,7 +307,12 @@ export function AppointmentDetailsSheet({
     const receiptLine = receiptLink
       ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\nVocê pode baixar ou imprimir direto pelo link.\n\n`
       : "";
-    return `${greeting} Tudo bem? 🌿 Aqui é a Flora. Passando para confirmar que recebemos seu sinal de ${paidValue}! ✨ Seu horário para ${serviceName} está reservado.\n\n${receiptLine}Até o dia do atendimento! 🌸`;
+    return applyAutoMessageTemplate(messageTemplates.signal_receipt, {
+      greeting,
+      service_name: serviceName,
+      signal_amount: paidValue,
+      receipt_link_block: receiptLine,
+    }).trim();
   };
 
   const buildPaidReceiptMessage = () => {
@@ -305,7 +322,11 @@ export function AppointmentDetailsSheet({
     const receiptLine = receiptLink
       ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\nVocê pode baixar ou imprimir direto pelo link.\n\n`
       : "";
-    return `${greeting} Tudo bem? 🌿\n\nAqui é a Flora, assistente virtual do Estúdio Corpo & Alma. Passando para avisar que recebemos o seu pagamento e está tudo certinho! ✨\n\nSeu horário para ${serviceName} está super confirmado.\n\n${receiptLine}Até o dia do atendimento! 🌸`;
+    return applyAutoMessageTemplate(messageTemplates.payment_receipt, {
+      greeting,
+      service_name: serviceName,
+      receipt_link_block: receiptLine,
+    }).trim();
   };
 
   return createPortal(

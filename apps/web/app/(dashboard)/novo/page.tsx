@@ -10,6 +10,7 @@ import { listServices } from "../../../src/modules/services/repository";
 import { listClients } from "../../../src/modules/clients/repository";
 import { getAppointmentById } from "../../../src/modules/appointments/repository";
 import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
+import { getAutoMessageTemplates } from "../../../src/shared/auto-messages";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -86,6 +87,7 @@ export default async function NewAppointment(props: PageProps) {
         priceOverride: appointment.price_override ?? null,
       }
     : null;
+  const messageTemplates = getAutoMessageTemplates();
 
   return (
     <div className="-mx-4 -mt-4">
@@ -111,6 +113,7 @@ export default async function NewAppointment(props: PageProps) {
           safeDate={safeDate}
           initialAppointment={initialAppointment}
           returnTo={returnTo}
+          messageTemplates={messageTemplates}
         />
       </main>
     </div>

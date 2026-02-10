@@ -4,6 +4,7 @@ import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { unstable_noStore as noStore } from "next/cache";
 import { getSettings } from "../../src/modules/settings/repository";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
+import { getAutoMessageTemplates } from "../../src/shared/auto-messages";
 import {
   listAppointmentsInRange,
   listAvailabilityBlocksInRange,
@@ -136,6 +137,7 @@ export default async function Home({
   );
 
   const blocks = blocksData || [];
+  const messageTemplates = getAutoMessageTemplates();
 
   return (
     <MobileAgenda
@@ -143,6 +145,7 @@ export default async function Home({
       blocks={blocks}
       signalPercentage={settings?.signal_percentage ?? 30}
       publicBaseUrl={settings?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
+      messageTemplates={messageTemplates}
     />
   );
 }

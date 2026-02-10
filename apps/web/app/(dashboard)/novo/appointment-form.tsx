@@ -21,6 +21,8 @@ import { createAppointment, getClientAddresses, updateAppointment } from "./appo
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
+import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.types";
+import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
 
 interface Service {
   id: string;
@@ -39,6 +41,7 @@ interface AppointmentFormProps {
   safeDate: string;
   initialAppointment?: InitialAppointment | null;
   returnTo?: string;
+  messageTemplates: AutoMessageTemplates;
 }
 
 interface ClientAddress {
@@ -137,9 +140,10 @@ function buildCreatedMessage(params: {
   date: string;
   time: string;
   serviceName: string;
+  template: string;
 }) {
   const name = params.clientName.trim();
-  const greetingName = name ? `, ${name}` : "";
+  const greeting = name ? `Olá, ${name}!` : "Olá!";
   const dateTime = params.date && params.time ? `${params.date}T${params.time}:00` : params.date;
   const startDate = dateTime ? parseISO(dateTime) : new Date();
   const dayOfWeek = format(startDate, "EEEE", { locale: ptBR });
@@ -151,10 +155,23 @@ function buildCreatedMessage(params: {
   const dateLine = [dayOfWeekLabel, dateLabel].filter(Boolean).join(", ");
   const serviceSegment = params.serviceName ? ` 💆‍♀️ Serviço: ${params.serviceName}` : "";
 
-  return `Olá${greetingName}! Tudo bem? Aqui é a Flora, assistente virtual do Estúdio 🌸\n\nQue notícia boa! Já reservei o seu horário na agenda da Jana. Seu momento de autocuidado está garantidíssimo.\n\n🗓 Data: ${dateLine} ⏰ Horário: ${timeLabel}${serviceSegment}\n\nDeixei tudo organizado por aqui. Se precisar remarcar ou tiver alguma dúvida, é só me chamar. Até logo! 💚`;
+  return applyAutoMessageTemplate(params.template, {
+    greeting,
+    date_line: dateLine,
+    time: timeLabel,
+    service_name: params.serviceName,
+    service_segment: serviceSegment,
+  }).trim();
 }
 
-export function AppointmentForm({ services, clients, safeDate, initialAppointment, returnTo }: AppointmentFormProps) {
+export function AppointmentForm({
+  services,
+  clients,
+  safeDate,
+  initialAppointment,
+  returnTo,
+  messageTemplates,
+}: AppointmentFormProps) {
   const isEditing = Boolean(initialAppointment);
   const formRef = useRef<HTMLFormElement | null>(null);
   const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
@@ -598,6 +615,7 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
         date: selectedDate,
         time: selectedTime,
         serviceName: selectedService?.name ?? "",
+        template: messageTemplates.created_confirmation,
       });
       const opened = openWhatsappFromForm(messageText);
       if (!opened) {
