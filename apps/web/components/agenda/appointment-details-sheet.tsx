@@ -709,7 +709,7 @@ export function AppointmentDetailsSheet({
       </div>
 
       {cancelDialogOpen && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-auto">
+        <div className="absolute inset-0 z-60 flex items-center justify-center pointer-events-auto">
           <button
             type="button"
             aria-label="Fechar confirmação"

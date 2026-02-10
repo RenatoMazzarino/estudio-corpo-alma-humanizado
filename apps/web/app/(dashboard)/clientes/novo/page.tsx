@@ -555,7 +555,7 @@ export default function NewClientPage() {
               <button
                 type="button"
                 onClick={handleCepLookup}
-                className="mt-6 h-[46px] rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs border border-studio-green/10"
+                className="mt-6 h-11.5 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs border border-studio-green/10"
               >
                 {cepStatus === "loading" ? "Buscando" : "Buscar"}
               </button>

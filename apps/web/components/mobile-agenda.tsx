@@ -175,9 +175,8 @@ export function MobileAgenda({
   const pendingViewRef = useRef<AgendaView | null>(null);
   const selectedDateRef = useRef<Date>(selectedDate);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
   const createdToastShown = useRef(false);
-  const createdMessageSent = useRef(false);
   const timeColumnWidth = 72;
   const timeColumnGap = 16;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -483,6 +482,7 @@ export function MobileAgenda({
 
   useEffect(() => {
     if (view !== "day") return;
+    setNow(new Date());
     let interval: ReturnType<typeof setInterval> | null = null;
     const delay = 60000 - (Date.now() % 60000);
     const timeout = setTimeout(() => {
@@ -625,56 +625,6 @@ export function MobileAgenda({
     },
     [toWhatsappLink]
   );
-
-  useEffect(() => {
-    const sendCreated = searchParams.get("sendCreated");
-    const appointmentId = searchParams.get("appointmentId");
-    if (sendCreated !== "1" || !appointmentId) {
-      createdMessageSent.current = false;
-      return;
-    }
-    if (createdMessageSent.current) return;
-    createdMessageSent.current = true;
-
-    const triggerSend = async () => {
-      setDetailsActionPending(true);
-      try {
-        const attendance = await getAttendance(appointmentId);
-        if (!attendance) {
-          showToast("Não foi possível localizar o agendamento.", "error");
-          return;
-        }
-        const phone = attendance.appointment.clients?.phone ?? null;
-        if (!phone) {
-          showToast("Sem telefone de WhatsApp cadastrado.", "error");
-          return;
-        }
-        const message = buildMessage("created_confirmation", attendance.appointment);
-        openWhatsapp(phone, message);
-        const result = await sendMessage({
-          appointmentId,
-          type: "created_confirmation",
-          channel: "whatsapp",
-          payload: { message },
-        });
-        if (!result.ok) {
-          showToast(result.error.message ?? "Não foi possível registrar a mensagem.", "error");
-          return;
-        }
-        showToast("Mensagem de agendamento registrada.", "success");
-        await fetchAttendanceDetails(appointmentId);
-        router.refresh();
-      } finally {
-        setDetailsActionPending(false);
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete("sendCreated");
-        params.delete("appointmentId");
-        router.replace(`/?${params.toString()}`, { scroll: false });
-      }
-    };
-
-    triggerSend();
-  }, [searchParams, router, showToast, fetchAttendanceDetails, openWhatsapp]);
 
   const handleSendMessage = async (type: MessageType) => {
     if (!detailsData) return;
@@ -929,7 +879,7 @@ export function MobileAgenda({
               const appointmentCount = dayAppointments.length;
               const homeCount = dayAppointments.filter((appt) => appt.is_home_visit).length;
               const blockCount = dayBlocks.length;
-              const nowOffset = isToday(day) ? getOffsetForTime(now, timeGridConfig) : null;
+              const nowOffset = now && isToday(day) ? getOffsetForTime(now, timeGridConfig) : null;
 
               return (
                 <div
@@ -1034,7 +984,7 @@ export function MobileAgenda({
                           />
                         ))}
 
-                        {nowOffset !== null && (
+                        {nowOffset !== null && now && (
                           <div
                             className="absolute flex items-center gap-2 z-20"
                             style={{ top: nowOffset, left: -timelineLeftOffset, right: 0 }}

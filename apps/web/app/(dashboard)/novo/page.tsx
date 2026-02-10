@@ -9,6 +9,7 @@ import { AppointmentForm } from "./appointment-form";
 import { listServices } from "../../../src/modules/services/repository";
 import { listClients } from "../../../src/modules/clients/repository";
 import { getAppointmentById } from "../../../src/modules/appointments/repository";
+import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -28,7 +29,7 @@ function getSafeDate(dateParam: string | string[] | undefined): string {
 
 function formatDateInBrazil(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
+    timeZone: BRAZIL_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -37,7 +38,7 @@ function formatDateInBrazil(date: Date) {
 
 function formatTimeInBrazil(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
+    timeZone: BRAZIL_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",

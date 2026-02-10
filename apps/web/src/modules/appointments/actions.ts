@@ -10,6 +10,7 @@ import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
+import { insertAttendanceEvent } from "../../../lib/attendance/attendance-repository";
 import {
   cancelAppointmentSchema,
   createInternalAppointmentSchema,
@@ -28,6 +29,7 @@ import {
 import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
 import { insertNotificationJob } from "../notifications/repository";
 import { getTenantBySlug } from "../settings/repository";
+import { BRAZIL_TZ_OFFSET } from "../../shared/timezone";
 import {
   deleteAvailabilityBlocksInRange,
   insertAvailabilityBlocks,
@@ -36,8 +38,6 @@ import {
   updateAppointment,
   updateAppointmentReturning,
 } from "./repository";
-
-const BRAZIL_TZ_OFFSET = "-03:00";
 
 const toBrazilDateTime = (date: string, time: string) => new Date(`${date}T${time}:00${BRAZIL_TZ_OFFSET}`);
 
@@ -214,6 +214,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const internalNotes = (formData.get("internalNotes") as string | null) || null;
   const rawPriceOverride = (formData.get("price_override") as string | null) || null;
   const sendCreatedMessage = formData.get("send_created_message") === "1";
+  const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
 
   const priceOverride = rawPriceOverride
     ? Number(rawPriceOverride.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""))
@@ -311,12 +312,29 @@ export async function createAppointment(formData: FormData): Promise<void> {
       status: "pending",
       scheduled_for: new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString(),
     });
+
+    if (sendCreatedMessage) {
+      const supabase = createServiceClient();
+      await supabase.from("appointment_messages").insert({
+        appointment_id: appointmentId,
+        tenant_id: tenantId,
+        type: "created_confirmation",
+        status: "sent_manual",
+        sent_at: new Date().toISOString(),
+        payload: sendCreatedMessageText ? { message: sendCreatedMessageText } : null,
+      });
+
+      await insertAttendanceEvent({
+        tenantId,
+        appointmentId,
+        eventType: "message_sent",
+        payload: { type: "created_confirmation", channel: "manual" },
+      });
+    }
   }
 
   revalidatePath(`/?view=day&date=${parsed.data.date}`);
-  const createdId = appointmentId ?? null;
-  const sendCreatedParam = sendCreatedMessage && createdId ? `&sendCreated=1&appointmentId=${createdId}` : "";
-  redirect(`/?view=day&date=${parsed.data.date}&created=1${sendCreatedParam}`);
+  redirect(`/?view=day&date=${parsed.data.date}&created=1`);
 }
 
 export async function updateInternalAppointment(formData: FormData): Promise<void> {

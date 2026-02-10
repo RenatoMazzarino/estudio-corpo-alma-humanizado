@@ -13,6 +13,8 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createAppointment, getClientAddresses, updateAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
@@ -130,10 +132,33 @@ function formatClientAddress(address: ClientAddress) {
   return parts.join(", ");
 }
 
+function buildCreatedMessage(params: {
+  clientName: string;
+  date: string;
+  time: string;
+  serviceName: string;
+}) {
+  const name = params.clientName.trim();
+  const greetingName = name ? `, ${name}` : "";
+  const dateTime = params.date && params.time ? `${params.date}T${params.time}:00` : params.date;
+  const startDate = dateTime ? parseISO(dateTime) : new Date();
+  const dayOfWeek = format(startDate, "EEEE", { locale: ptBR });
+  const dayOfWeekLabel = dayOfWeek ? `${dayOfWeek[0]?.toUpperCase() ?? ""}${dayOfWeek.slice(1)}` : "";
+  const dateLabel = params.date
+    ? format(parseISO(params.date), "dd/MM", { locale: ptBR })
+    : format(startDate, "dd/MM", { locale: ptBR });
+  const timeLabel = params.time || format(startDate, "HH:mm", { locale: ptBR });
+  const dateLine = [dayOfWeekLabel, dateLabel].filter(Boolean).join(", ");
+  const serviceSegment = params.serviceName ? ` 💆‍♀️ Serviço: ${params.serviceName}` : "";
+
+  return `Olá${greetingName}! Tudo bem? Aqui é a Flora, assistente virtual do Estúdio 🌸\n\nQue notícia boa! Já reservei o seu horário na agenda da Jana. Seu momento de autocuidado está garantidíssimo.\n\n🗓 Data: ${dateLine} ⏰ Horário: ${timeLabel}${serviceSegment}\n\nDeixei tudo organizado por aqui. Se precisar remarcar ou tiver alguma dúvida, é só me chamar. Até logo! 💚`;
+}
+
 export function AppointmentForm({ services, clients, safeDate, initialAppointment, returnTo }: AppointmentFormProps) {
   const isEditing = Boolean(initialAppointment);
   const formRef = useRef<HTMLFormElement | null>(null);
   const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
+  const sendMessageTextInputRef = useRef<HTMLInputElement | null>(null);
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
   const sectionCardClass = "bg-white rounded-2xl shadow-sm p-5 border border-stone-100";
   const sectionHeaderTextClass = "text-xs font-bold text-gray-400 uppercase tracking-widest";
@@ -549,10 +574,42 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
     }
     setAddressConfirmed(true);
   };
+
+  const openWhatsappFromForm = (message: string) => {
+    const phone = resolvedClientPhone || clientPhone;
+    const digits = phone.replace(/\D/g, "");
+    if (!digits) {
+      window.alert("Sem telefone de WhatsApp cadastrado.");
+      return false;
+    }
+    const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
+    const url = `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    return true;
+  };
+
   const handleSchedule = (shouldSendMessage: boolean) => {
     if (!formRef.current) return;
+    let shouldRecord = shouldSendMessage;
+    let messageText = "";
+    if (shouldSendMessage) {
+      messageText = buildCreatedMessage({
+        clientName,
+        date: selectedDate,
+        time: selectedTime,
+        serviceName: selectedService?.name ?? "",
+      });
+      const opened = openWhatsappFromForm(messageText);
+      if (!opened) {
+        shouldRecord = false;
+        messageText = "";
+      }
+    }
     if (sendMessageInputRef.current) {
-      sendMessageInputRef.current.value = shouldSendMessage ? "1" : "";
+      sendMessageInputRef.current.value = shouldRecord ? "1" : "";
+    }
+    if (sendMessageTextInputRef.current) {
+      sendMessageTextInputRef.current.value = messageText;
     }
     setIsSendPromptOpen(false);
     formRef.current.requestSubmit();
@@ -566,6 +623,9 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
       <input type="hidden" name="client_address_id" value={isHomeVisit ? (selectedAddressId ?? "") : ""} />
       <input type="hidden" name="address_label" value={isHomeVisit ? addressLabel : ""} />
       {!isEditing && <input ref={sendMessageInputRef} type="hidden" name="send_created_message" value="" />}
+      {!isEditing && (
+        <input ref={sendMessageTextInputRef} type="hidden" name="send_created_message_text" value="" />
+      )}
       <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
           <div className={sectionNumberClass}>1</div>

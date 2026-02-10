@@ -5,6 +5,7 @@ import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { getAvailableSlotsSchema } from "../../shared/validation/appointments";
+import { BRAZIL_TIME_ZONE } from "../../shared/timezone";
 
 interface GetSlotsParams {
   tenantId: string;
@@ -40,8 +41,6 @@ const resolveBuffer = (...values: Array<number | null | undefined>) => {
   if (positive !== undefined) return positive;
   return 0;
 };
-
-const BRAZIL_TIME_ZONE = "America/Sao_Paulo";
 
 const parseTimeToMinutes = (time: string) => {
   const [hourRaw, minuteRaw] = time.split(":");
