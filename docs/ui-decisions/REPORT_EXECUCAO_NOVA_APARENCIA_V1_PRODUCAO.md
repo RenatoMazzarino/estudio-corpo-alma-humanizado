@@ -45,9 +45,8 @@
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
 - Repo/Docs: versão do Turbo ajustada para `2.8.3` (downgrade temporário para estabilidade do TUI no Windows).
-- Dev: `pnpm dev` voltou ao TUI padrão do Turbo (logs em stream opcionais quando necessário).
-- Dev: `pnpm dev` ajustado para `--no-daemon` no Turbo para evitar travas no Windows.
-- Dev/Editor: `$schema` do `turbo.json` restaurado para facilitar validação no VSCode (pode requerer Trust do domínio).
+- Dev: `pnpm dev` segue com o TUI padrão do Turbo (comportamento original).
+- Dev/Editor: `$schema` removido do `turbo.json` para evitar aviso de schema não confiável no VSCode.
 - Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
 - Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
 - UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.

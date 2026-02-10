@@ -1,5 +1,4 @@
 {
-  "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "globalEnv": ["SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_MAPS_API_KEY", "APP_TIMEZONE"],
   "tasks": {
