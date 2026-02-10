@@ -125,6 +125,9 @@ function formatClientAddress(address: ClientAddress) {
 
 export function AppointmentForm({ services, clients, safeDate, initialAppointment, returnTo }: AppointmentFormProps) {
   const isEditing = Boolean(initialAppointment);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
+  const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
   const sectionCardClass = "bg-white rounded-2xl shadow-sm p-5 border border-stone-100";
   const sectionHeaderTextClass = "text-xs font-bold text-gray-400 uppercase tracking-widest";
   const sectionNumberClass =
@@ -409,14 +412,23 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
   );
   const finalPrice = priceOverride ? priceOverride : displayedPrice;
   const formAction = isEditing ? updateAppointment : createAppointment;
+  const handleSchedule = (shouldSendMessage: boolean) => {
+    if (!formRef.current) return;
+    if (sendMessageInputRef.current) {
+      sendMessageInputRef.current.value = shouldSendMessage ? "1" : "";
+    }
+    setIsSendPromptOpen(false);
+    formRef.current.requestSubmit();
+  };
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
       {isEditing && <input type="hidden" name="appointmentId" value={initialAppointment?.id ?? ""} />}
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <input type="hidden" name="clientId" value={selectedClientId ?? ""} />
       <input type="hidden" name="client_address_id" value={selectedAddressId ?? ""} />
       <input type="hidden" name="address_label" value={addressLabel} />
+      {!isEditing && <input ref={sendMessageInputRef} type="hidden" name="send_created_message" value="" />}
       <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
           <div className={sectionNumberClass}>1</div>
@@ -924,13 +936,66 @@ export function AppointmentForm({ services, clients, safeDate, initialAppointmen
         </div>
       )}
 
-      <button
-        type="submit"
-        className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
-      >
-        <Check className="w-5 h-5" />
-        Agendar
-      </button>
+      {isSendPromptOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
+                  Aviso de agendamento
+                </p>
+                <h3 className="text-lg font-serif text-studio-text">Enviar mensagem agora?</h3>
+                <p className="text-xs text-muted mt-1">
+                  Se escolher sim, abriremos o WhatsApp com a mensagem pronta.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSendPromptOpen(false)}
+                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => handleSchedule(true)}
+                className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
+              >
+                Enviar e agendar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSchedule(false)}
+                className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+              >
+                Agendar sem enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isEditing ? (
+        <button
+          type="submit"
+          className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
+        >
+          <Check className="w-5 h-5" />
+          Agendar
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsSendPromptOpen(true)}
+          className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
+        >
+          <Check className="w-5 h-5" />
+          Agendar
+        </button>
+      )}
     </form>
   );
 }

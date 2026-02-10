@@ -177,6 +177,7 @@ export function MobileAgenda({
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState(() => new Date());
   const createdToastShown = useRef(false);
+  const createdMessageSent = useRef(false);
   const timeColumnWidth = 72;
   const timeColumnGap = 16;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -384,6 +385,56 @@ export function MobileAgenda({
     router.replace(`/?${params.toString()}`, { scroll: false });
   }, [searchParams, router, showToast]);
 
+  useEffect(() => {
+    const sendCreated = searchParams.get("sendCreated");
+    const appointmentId = searchParams.get("appointmentId");
+    if (sendCreated !== "1" || !appointmentId) {
+      createdMessageSent.current = false;
+      return;
+    }
+    if (createdMessageSent.current) return;
+    createdMessageSent.current = true;
+
+    const triggerSend = async () => {
+      setDetailsActionPending(true);
+      try {
+        const attendance = await getAttendance(appointmentId);
+        if (!attendance) {
+          showToast("Não foi possível localizar o agendamento.", "error");
+          return;
+        }
+        const phone = attendance.appointment.clients?.phone ?? null;
+        if (!phone) {
+          showToast("Sem telefone de WhatsApp cadastrado.", "error");
+          return;
+        }
+        const message = buildMessage("created_confirmation", attendance.appointment);
+        openWhatsapp(phone, message);
+        const result = await sendMessage({
+          appointmentId,
+          type: "created_confirmation",
+          channel: "whatsapp",
+          payload: { message },
+        });
+        if (!result.ok) {
+          showToast(result.error.message ?? "Não foi possível registrar a mensagem.", "error");
+          return;
+        }
+        showToast("Mensagem de agendamento registrada.", "success");
+        await fetchAttendanceDetails(appointmentId);
+        router.refresh();
+      } finally {
+        setDetailsActionPending(false);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("sendCreated");
+        params.delete("appointmentId");
+        router.replace(`/?${params.toString()}`, { scroll: false });
+      }
+    };
+
+    triggerSend();
+  }, [searchParams, router, showToast, fetchAttendanceDetails, openWhatsapp]);
+
   const fetchAttendanceDetails = useCallback(
     async (appointmentId: string) => {
       setDetailsLoading(true);
@@ -581,13 +632,13 @@ export function MobileAgenda({
     return 60;
   };
 
-  const toWhatsappLink = (phone?: string | null) => {
+  const toWhatsappLink = useCallback((phone?: string | null) => {
     if (!phone) return null;
     const digits = phone.replace(/\D/g, "");
     if (!digits) return null;
     const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
     return `https://wa.me/${withCountry}`;
-  };
+  }, []);
 
   const buildMessage = (type: MessageType, appointment: AttendanceOverview["appointment"]) => {
     const name = appointment.clients?.name?.trim() ?? "";
@@ -614,13 +665,16 @@ export function MobileAgenda({
     return "Obrigada pelo atendimento! Pode avaliar nossa experiência de 0 a 10?";
   };
 
-  const openWhatsapp = (phone: string | null | undefined, message: string) => {
-    const link = toWhatsappLink(phone);
-    if (!link) return false;
-    const url = `${link}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-    return true;
-  };
+  const openWhatsapp = useCallback(
+    (phone: string | null | undefined, message: string) => {
+      const link = toWhatsappLink(phone);
+      if (!link) return false;
+      const url = `${link}?text=${encodeURIComponent(message)}`;
+      window.open(url, "_blank");
+      return true;
+    },
+    [toWhatsappLink]
+  );
 
   const handleSendMessage = async (type: MessageType) => {
     if (!detailsData) return;

@@ -212,6 +212,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const addressLabel = (formData.get("address_label") as string | null) || null;
   const internalNotes = (formData.get("internalNotes") as string | null) || null;
   const rawPriceOverride = (formData.get("price_override") as string | null) || null;
+  const sendCreatedMessage = formData.get("send_created_message") === "1";
 
   const priceOverride = rawPriceOverride
     ? Number(rawPriceOverride.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""))
@@ -299,7 +300,9 @@ export async function createAppointment(formData: FormData): Promise<void> {
   }
 
   revalidatePath(`/?view=day&date=${parsed.data.date}`);
-  redirect(`/?view=day&date=${parsed.data.date}&created=1`);
+  const createdId = typeof appointmentId === "string" ? appointmentId : appointmentId?.toString?.();
+  const sendCreatedParam = sendCreatedMessage && createdId ? `&sendCreated=1&appointmentId=${createdId}` : "";
+  redirect(`/?view=day&date=${parsed.data.date}&created=1${sendCreatedParam}`);
 }
 
 export async function updateInternalAppointment(formData: FormData): Promise<void> {
