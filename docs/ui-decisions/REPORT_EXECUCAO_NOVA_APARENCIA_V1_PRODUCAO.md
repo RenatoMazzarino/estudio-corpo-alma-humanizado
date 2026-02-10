@@ -45,6 +45,8 @@
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
 - Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
 - Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
+- UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.
+- UI: modais do formulário abrem dentro do frame do app; ajustes de classes canônicas e avisos de schema.
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
 - [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
