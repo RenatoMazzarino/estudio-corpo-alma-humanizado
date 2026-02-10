@@ -47,7 +47,7 @@ export default async function ComprovantePage(props: PageProps) {
     .eq("tenant_id", FIXED_TENANT_ID)
     .maybeSingle();
 
-  if (!appointmentData || !appointmentData.payment_status || appointmentData.payment_status === "pending") {
+  if (!appointmentData) {
     return <ReceiptNotFound />;
   }
 
@@ -74,19 +74,32 @@ export default async function ComprovantePage(props: PageProps) {
     .eq("tenant_id", FIXED_TENANT_ID)
     .order("created_at", { ascending: true });
 
+  const appointmentStatus = appointment.payment_status ?? "pending";
   const paidPayments = (paymentsData ?? []).filter((payment) => payment.status === "paid");
   const paidAmount = paidPayments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
   const lastPaid = paidPayments.length > 0 ? paidPayments[paidPayments.length - 1] : null;
   const transactionId = lastPaid?.transaction_id ?? lastPaid?.id ?? appointment.id;
 
   const totalAmount = Number(checkoutData?.total ?? appointment.price ?? 0);
+  let derivedStatus: "paid" | "partial" | "pending" = "pending";
+  if (paidAmount > 0 && totalAmount > 0) {
+    derivedStatus = paidAmount >= totalAmount ? "paid" : "partial";
+  } else if (paidAmount > 0) {
+    derivedStatus = appointmentStatus === "paid" ? "paid" : "partial";
+  } else if (appointmentStatus === "paid" || appointmentStatus === "partial") {
+    derivedStatus = appointmentStatus;
+  }
+
+  if (!appointmentData || derivedStatus === "pending") {
+    return <ReceiptNotFound />;
+  }
+
   const startDate = new Date(appointment.start_time);
   const dateLabel = format(startDate, "dd/MM/yyyy", { locale: ptBR });
   const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
-  const paymentStatusLabel =
-    appointment.payment_status === "paid" ? "Pagamento integral" : "Sinal pago";
-  const signalLabel = appointment.payment_status === "partial" ? formatCurrency(paidAmount) : "—";
-  const paidLabel = formatCurrency(appointment.payment_status === "paid" ? totalAmount : paidAmount);
+  const paymentStatusLabel = derivedStatus === "paid" ? "Pagamento integral" : "Sinal pago";
+  const signalLabel = derivedStatus === "partial" ? formatCurrency(paidAmount) : "—";
+  const paidLabel = formatCurrency(derivedStatus === "paid" ? totalAmount || paidAmount : paidAmount);
   const generatedAtLabel = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
   return (
