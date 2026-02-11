@@ -441,16 +441,16 @@ export function AvailabilityManager() {
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-6 space-y-8 pb-28">
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1">
-                    Selecione o motivo
-                  </label>
-
+              <div className="overflow-y-auto p-6 space-y-6 pb-28">
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <Shield className="w-3.5 h-3.5" />
+                    Motivo
+                  </div>
                   <div className="grid grid-cols-4 gap-3">
                     {([
                       { type: "shift", label: "Home Care", active: "ring-purple-500/50 text-purple-700 bg-purple-50 border-purple-100", idle: "border-stone-100 text-gray-400", icon: <Stethoscope className="w-6 h-6" /> },
-                      { type: "personal", label: "Pessoal", active: "ring-orange-400/50 text-orange-600 bg-orange-50 border-orange-100", idle: "border-stone-100 text-gray-400", icon: <Coffee className="w-6 h-6" /> },
+                      { type: "personal", label: "Pessoal", active: "ring-amber-400/50 text-amber-600 bg-amber-50 border-amber-100", idle: "border-stone-100 text-gray-400", icon: <Coffee className="w-6 h-6" /> },
                       { type: "vacation", label: "Férias", active: "ring-teal-400/50 text-teal-600 bg-teal-50 border-teal-100", idle: "border-stone-100 text-gray-400", icon: <Umbrella className="w-6 h-6" /> },
                       { type: "administrative", label: "Outro", active: "ring-gray-300 text-gray-600 bg-stone-100 border-stone-200", idle: "border-stone-100 text-gray-400", icon: <Shield className="w-6 h-6" /> },
                     ] as const).map((option) => {
@@ -482,65 +482,77 @@ export function AvailabilityManager() {
                       );
                     })}
                   </div>
-                </div>
+                </section>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400">
-                        <Calendar className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="text-sm font-bold text-gray-700 block">Dia Inteiro</span>
-                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
-                          Bloqueia a data completa
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setBlockFullDay((prev) => !prev)}
-                      className={`w-12 h-7 rounded-full relative transition-colors ${
-                        blockFullDay ? "bg-studio-green" : "bg-stone-300"
-                      }`}
-                      aria-pressed={blockFullDay}
-                    >
-                      <span
-                        className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-md transition-transform ${
-                          blockFullDay ? "translate-x-5" : ""
-                        }`}
-                      />
-                    </button>
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Horário
                   </div>
-
-                  {!blockFullDay && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                          Início
-                        </label>
-                        <input
-                          type="time"
-                          value={blockStart}
-                          onChange={(event) => setBlockStart(event.target.value)}
-                          className="w-full bg-stone-50 border-0 rounded-xl py-4 pl-4 pr-3 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none shadow-sm"
-                        />
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-studio-light text-studio-green flex items-center justify-center">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-bold text-studio-text block">Dia Inteiro</span>
+                          <span className="text-[10px] text-muted font-bold uppercase tracking-wide">
+                            Bloqueia a data completa
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                          Fim
-                        </label>
-                        <input
-                          type="time"
-                          value={blockEnd}
-                          onChange={(event) => setBlockEnd(event.target.value)}
-                          className="w-full bg-stone-50 border-0 rounded-xl py-4 pl-4 pr-3 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none shadow-sm"
+                      <button
+                        type="button"
+                        onClick={() => setBlockFullDay((prev) => !prev)}
+                        className={`w-12 h-7 rounded-full relative transition-colors ${
+                          blockFullDay ? "bg-studio-green" : "bg-stone-300"
+                        }`}
+                        aria-pressed={blockFullDay}
+                      >
+                        <span
+                          className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-md transition-transform ${
+                            blockFullDay ? "translate-x-5" : ""
+                          }`}
                         />
-                      </div>
+                      </button>
                     </div>
-                  )}
 
-                  <div>
+                    {!blockFullDay && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
+                            Início
+                          </label>
+                          <input
+                            type="time"
+                            value={blockStart}
+                            onChange={(event) => setBlockStart(event.target.value)}
+                            className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-base font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
+                            Fim
+                          </label>
+                          <input
+                            type="time"
+                            value={blockEnd}
+                            onChange={(event) => setBlockEnd(event.target.value)}
+                            className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-base font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Detalhes
+                  </div>
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
                     <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
                       Título do bloqueio
                     </label>
@@ -549,20 +561,19 @@ export function AvailabilityManager() {
                       value={blockTitle}
                       onChange={(event) => setBlockTitle(event.target.value)}
                       placeholder="Ex: Plantão Home Care"
-                      className="w-full bg-white border border-stone-100 rounded-xl py-4 px-4 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-studio-green/20 placeholder-gray-300 transition-all outline-none"
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-studio-green/20 placeholder-gray-300 transition-all outline-none"
                     />
                   </div>
-                  
-                </div>
+                </section>
 
                 {pendingBlockConfirm && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-3">
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
                     <p className="font-bold">Existem agendamentos no horário.</p>
                     <p>{pendingBlockConfirm.appointments} atendimento(s) serão mantidos e não serão cancelados.</p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setPendingBlockConfirm(null)}
-                        className="px-3 py-2 rounded-lg bg-white border border-orange-200 text-orange-700 text-xs font-bold"
+                        className="px-3 py-1.5 rounded-full border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide"
                       >
                         Cancelar
                       </button>
@@ -572,7 +583,7 @@ export function AvailabilityManager() {
                           setPendingBlockConfirm(null);
                           handleCreateBlock(true, payload);
                         }}
-                        className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
+                        className="px-3 py-1.5 rounded-full bg-studio-text text-white text-[10px] font-extrabold uppercase tracking-wide"
                       >
                         Criar mesmo assim
                       </button>
@@ -622,50 +633,56 @@ export function AvailabilityManager() {
               </div>
 
               <div className="overflow-y-auto p-6 space-y-6 pb-28">
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1">
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <Calendar className="w-3.5 h-3.5" />
                     Mês da escala
-                  </label>
-                  <input
-                    type="month"
-                    value={scaleMonth}
-                    onChange={(event) => setScaleMonth(event.target.value)}
-                    className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1">
-                    Padrão de plantão
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setScaleType("odd")}
-                      className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-wide border transition ${
-                        scaleType === "odd"
-                          ? "bg-studio-light text-studio-green border-studio-green/20"
-                          : "bg-white text-gray-400 border-stone-100"
-                      }`}
-                    >
-                      Bloquear dias ímpares
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setScaleType("even")}
-                      className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-wide border transition ${
-                        scaleType === "even"
-                          ? "bg-studio-light text-studio-green border-studio-green/20"
-                          : "bg-white text-gray-400 border-stone-100"
-                      }`}
-                    >
-                      Bloquear dias pares
-                    </button>
                   </div>
-                </div>
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
+                    <input
+                      type="month"
+                      value={scaleMonth}
+                      onChange={(event) => setScaleMonth(event.target.value)}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
+                    />
+                  </div>
+                </section>
+
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Padrão de plantão
+                  </div>
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setScaleType("odd")}
+                        className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                          scaleType === "odd"
+                            ? "bg-studio-text text-white border-studio-text"
+                            : "bg-white text-gray-400 border-stone-100"
+                        }`}
+                      >
+                        Bloquear dias ímpares
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setScaleType("even")}
+                        className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                          scaleType === "even"
+                            ? "bg-studio-text text-white border-studio-text"
+                            : "bg-white text-gray-400 border-stone-100"
+                        }`}
+                      >
+                        Bloquear dias pares
+                      </button>
+                    </div>
+                  </div>
+                </section>
 
                 {pendingScaleConfirm && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-3">
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
                     <p className="font-bold">Existem agendamentos neste mês.</p>
                     <p>
                       {pendingScaleConfirm.appointments} dia(s) têm agendamentos. Bloquear não cancela automaticamente.
@@ -673,7 +690,7 @@ export function AvailabilityManager() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setPendingScaleConfirm(null)}
-                        className="px-3 py-2 rounded-lg bg-white border border-orange-200 text-orange-700 text-xs font-bold"
+                        className="px-3 py-1.5 rounded-full border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide"
                       >
                         Cancelar
                       </button>
@@ -683,7 +700,7 @@ export function AvailabilityManager() {
                           setPendingScaleConfirm(null);
                           runCreateScale(type, scaleMonth, true);
                         }}
-                        className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
+                        className="px-3 py-1.5 rounded-full bg-studio-text text-white text-[10px] font-extrabold uppercase tracking-wide"
                       >
                         Criar mesmo assim
                       </button>
@@ -717,3 +734,4 @@ export function AvailabilityManager() {
     </div>
   );
 }
+
