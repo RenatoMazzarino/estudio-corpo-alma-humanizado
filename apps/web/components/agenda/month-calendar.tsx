@@ -100,6 +100,8 @@ export function MonthCalendar({
           const tone = getDayTone?.(day) ?? "none";
           const toneClass =
             tone === "shift" && !isSelected && !isDayToday ? "bg-purple-50 text-purple-700" : "";
+          const todayClass = isDayToday && !isSelected ? "border border-studio-green text-studio-green" : "";
+          const selectedClass = isSelected ? "bg-studio-green text-white shadow-soft" : "";
 
           return (
             <button
@@ -110,12 +112,8 @@ export function MonthCalendar({
             >
               <span
                 className={`w-8 h-8 flex items-center justify-center rounded-full font-extrabold transition ${
-                  isDayToday
-                    ? "bg-studio-green text-white shadow-soft"
-                    : isCurrent
-                      ? "text-studio-text"
-                      : "text-muted/60"
-                } ${toneClass} ${isSelected && !isDayToday ? "bg-studio-dark text-white ring-1 ring-studio-dark/30" : ""}`}
+                  isCurrent ? "text-studio-text" : "text-muted/60"
+                } ${toneClass} ${todayClass} ${selectedClass}`}
               >
                 {format(day, "dd")}
               </span>
