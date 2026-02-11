@@ -81,6 +81,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `d2fed94` — style(ui): mover gerador para botao no header
 - `f1c910b` — fix(ui): renomear botoes do modal de escala
 - `307a8fd` — style(ui): mover gerador de escala para modal
 - `4ea0495` — docs(report): registrar ajustes de agenda
