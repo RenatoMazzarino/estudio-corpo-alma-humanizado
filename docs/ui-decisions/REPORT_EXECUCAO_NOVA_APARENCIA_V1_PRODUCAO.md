@@ -86,6 +86,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `875ecec` — docs(report): registrar atualização de modais
 - `a7afc30` — style(agenda): alinhar modais da gestão ao modal do agendamento
 - `c3ad877` — docs(report): atualizar gestão de agenda na visão mês
 - `8926463` — refactor(agenda): mover gestão para visão mês
