@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Calendar,
   CheckCircle2,
-  ChevronRight,
   Coffee,
   Plus,
   Sparkles,
@@ -270,26 +269,6 @@ export function AvailabilityManager() {
 
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={openScaleModal}
-        className="w-full bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-between gap-4 text-left"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-studio-green">
-              Gerador automático
-            </div>
-            <div className="text-xs text-gray-500">
-              Configure escala por dias pares ou ímpares.
-            </div>
-          </div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-gray-300" />
-      </button>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
@@ -297,12 +276,22 @@ export function AvailabilityManager() {
             <Calendar className="w-4 h-4 text-studio-green" />
             Calendário
           </div>
-          <button
-            onClick={openNewBlockModal}
-            className="inline-flex items-center gap-1 px-3 py-2 rounded-full bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Novo bloqueio
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openScaleModal}
+              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm"
+              aria-label="Gerador de escala"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+            <button
+              onClick={openNewBlockModal}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-full bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Novo bloqueio
+            </button>
+          </div>
         </div>
 
         <MonthCalendar

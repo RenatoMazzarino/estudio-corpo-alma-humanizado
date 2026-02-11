@@ -46,6 +46,7 @@
 - Gestão de Agenda: resumo do mês removido; gerador automático compacto e ordem (escala → calendário → detalhes).
 - Gestão de Agenda: gerador de escala virou botão que abre modal para mês + par/ímpar.
 - Gestão de Agenda: botões do modal de escala renomeados para "Bloquear dias ímpares/pares".
+- Gestão de Agenda: gerador automático virou botão compacto (ícone varinha) no cabeçalho da página.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
