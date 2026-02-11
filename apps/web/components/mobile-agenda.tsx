@@ -24,6 +24,7 @@ import {
   Car,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Home,
   Hospital,
   Search,
@@ -39,7 +40,7 @@ import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
 import { AppointmentDetailsSheet } from "./agenda/appointment-details-sheet";
-import { AvailabilityManager } from "./availability-manager";
+import { AvailabilityManager, type AvailabilityManagerHandle } from "./availability-manager";
 import { cancelAppointment } from "../app/actions";
 import {
   confirmPre,
@@ -179,6 +180,7 @@ export function MobileAgenda({
   const { toast, showToast } = useToast();
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
+  const availabilityRef = useRef<AvailabilityManagerHandle | null>(null);
   const isUserScrolling = useRef(false);
   const skipAutoScrollSync = useRef(false);
   const pendingViewRef = useRef<AgendaView | null>(null);
@@ -1318,7 +1320,7 @@ export function MobileAgenda({
         <section
           className={`${view === "month" ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}
         >
-          <AvailabilityManager />
+          <AvailabilityManager ref={availabilityRef} />
         </section>
         </main>
       </ModulePage>
@@ -1437,6 +1439,14 @@ export function MobileAgenda({
             icon: <ArrowUpCircle className="w-5 h-5" />,
             disabled: true,
             helper: "Em dev",
+          },
+          {
+            label: "Bloquear horário",
+            icon: <Clock className="w-5 h-5" />,
+            onClick: () => {
+              availabilityRef.current?.openBlockModal(selectedDate);
+            },
+            tone: "neutral",
           },
           {
             label: "Novo Cliente",

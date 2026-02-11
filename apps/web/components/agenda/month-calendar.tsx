@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import {
   addMonths,
   eachDayOfInterval,
@@ -36,6 +36,7 @@ interface MonthCalendarProps {
   legendPlacement?: "top" | "bottom";
   headerActions?: ReactNode;
   footer?: ReactNode;
+  enableSwipe?: boolean;
 }
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -52,6 +53,7 @@ export function MonthCalendar({
   getDayTone,
   headerActions,
   footer,
+  enableSwipe = true,
 }: MonthCalendarProps) {
   const monthGridDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
@@ -59,10 +61,37 @@ export function MonthCalendar({
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
 
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!enableSwipe) return;
+    swipeStartRef.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!enableSwipe || !swipeStartRef.current) return;
+    const deltaX = event.clientX - swipeStartRef.current.x;
+    const deltaY = event.clientY - swipeStartRef.current.y;
+    swipeStartRef.current = null;
+    if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+    const direction = deltaX < 0 ? 1 : -1;
+    onChangeMonth?.(addMonths(currentMonth, direction));
+  };
+
+  const handlePointerCancel = () => {
+    swipeStartRef.current = null;
+  };
+
   const legendNode = legend ? <div className="mt-4">{legend}</div> : null;
 
   return (
-    <div className={`bg-white rounded-3xl shadow-soft p-4 ${className}`}>
+    <div
+      className={`bg-white rounded-3xl shadow-soft p-4 touch-pan-y ${className}`}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerCancel}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-extrabold text-studio-text capitalize">
           {format(currentMonth, "MMMM yyyy", { locale: ptBR })}

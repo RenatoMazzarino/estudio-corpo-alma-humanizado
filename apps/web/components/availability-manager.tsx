@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { format, isSameMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -9,7 +18,6 @@ import {
   Calendar,
   CheckCircle2,
   Coffee,
-  Plus,
   Sparkles,
   Shield,
   Stethoscope,
@@ -22,6 +30,10 @@ import { useToast } from "./ui/toast";
 import { MonthCalendar } from "./agenda/month-calendar";
 
 type BlockType = "shift" | "personal" | "vacation" | "administrative";
+
+export interface AvailabilityManagerHandle {
+  openBlockModal: (date?: Date) => void;
+}
 
 interface AvailabilityBlock {
   id: string;
@@ -88,7 +100,7 @@ const formatBlockTime = (block: AvailabilityBlock) => {
   return `${start} - ${end}`;
 };
 
-export function AvailabilityManager() {
+export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(function AvailabilityManager(_, ref) {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [overview, setOverview] = useState<MonthOverview>({ blocks: [], appointments: [] });
@@ -99,6 +111,7 @@ export function AvailabilityManager() {
   const [isScaleModalOpen, setIsScaleModalOpen] = useState(false);
   const [scaleMonth, setScaleMonth] = useState(format(new Date(), "yyyy-MM"));
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [blockDate, setBlockDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [blockTitle, setBlockTitle] = useState("");
   const [blockType, setBlockType] = useState<BlockType>("personal");
   const [blockFullDay, setBlockFullDay] = useState(true);
@@ -106,11 +119,35 @@ export function AvailabilityManager() {
   const [blockEnd, setBlockEnd] = useState("12:00");
   const [pendingBlockConfirm, setPendingBlockConfirm] = useState<null | { payload: CreateBlockPayload; appointments: number }>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [blockDragOffset, setBlockDragOffset] = useState(0);
+  const [isBlockDragging, setIsBlockDragging] = useState(false);
+  const [scaleDragOffset, setScaleDragOffset] = useState(0);
+  const [isScaleDragging, setIsScaleDragging] = useState(false);
+  const [scaleMonthOverview, setScaleMonthOverview] = useState<MonthOverview | null>(null);
+  const [isScaleOverviewLoading, setIsScaleOverviewLoading] = useState(false);
   const { showToast } = useToast();
+  const blockSheetRef = useRef<HTMLDivElement | null>(null);
+  const scaleSheetRef = useRef<HTMLDivElement | null>(null);
+  const blockDragStartRef = useRef<number | null>(null);
+  const scaleDragStartRef = useRef<number | null>(null);
+  const blockDragOffsetRef = useRef(0);
+  const scaleDragOffsetRef = useRef(0);
 
   useEffect(() => {
     setPortalTarget(document.getElementById("app-frame"));
   }, []);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      resetBlockDrag();
+    }
+  }, [isModalOpen]);
+
+  useEffect(() => {
+    if (!isScaleModalOpen) {
+      resetScaleDrag();
+    }
+  }, [isScaleModalOpen]);
 
   useEffect(() => {
     async function loadOverview() {
@@ -119,6 +156,28 @@ export function AvailabilityManager() {
     }
     loadOverview();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    if (!isScaleModalOpen) return;
+    let active = true;
+    const loadScaleOverview = async () => {
+      if (scaleMonth === selectedMonth) {
+        setScaleMonthOverview(overview);
+        return;
+      }
+      setIsScaleOverviewLoading(true);
+      try {
+        const data = await getMonthOverview(scaleMonth);
+        if (active) setScaleMonthOverview(data);
+      } finally {
+        if (active) setIsScaleOverviewLoading(false);
+      }
+    };
+    loadScaleOverview();
+    return () => {
+      active = false;
+    };
+  }, [isScaleModalOpen, scaleMonth, selectedMonth, overview]);
 
   const currentMonthDate = useMemo(() => parseISO(`${selectedMonth}-01`), [selectedMonth]);
 
@@ -151,6 +210,10 @@ export function AvailabilityManager() {
 
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const selectedBlocks = blocksByDate.get(selectedKey) ?? [];
+  const scaleHasShiftBlocks = useMemo(() => {
+    const blocks = scaleMonthOverview?.blocks ?? [];
+    return blocks.some((block) => (block.block_type ?? block.reason) === "shift");
+  }, [scaleMonthOverview]);
   const handleMonthChange = (next: Date) => {
     setSelectedMonth(format(next, "yyyy-MM"));
   };
@@ -193,7 +256,7 @@ export function AvailabilityManager() {
     }
   };
 
-  const handleClearScale = async (monthStr: string) => {
+  const handleClearScale = async (monthStr: string, keepOpen = false) => {
     if (!confirm("Tem certeza? Isso apagará a escala (plantões) deste mês.")) return;
     setLoading(true);
     setMessage(null);
@@ -201,10 +264,14 @@ export function AvailabilityManager() {
       const result = await clearMonthBlocks(monthStr);
       if (!result.ok) throw result.error;
       setMessage({ type: "success", text: "Escala removida com sucesso!" });
-      setSelectedMonth(monthStr);
       const data = await getMonthOverview(monthStr);
-      setOverview(data);
-      setIsScaleModalOpen(false);
+      if (monthStr === selectedMonth) {
+        setOverview(data);
+      }
+      setScaleMonthOverview(data);
+      if (!keepOpen) {
+        setIsScaleModalOpen(false);
+      }
     } catch (error) {
       setMessage({
         type: "error",
@@ -215,7 +282,12 @@ export function AvailabilityManager() {
     }
   };
 
-  const openNewBlockModal = () => {
+  const openNewBlockModal = (dateOverride?: Date) => {
+    const baseDate = dateOverride ?? selectedDate;
+    setBlockDate(format(baseDate, "yyyy-MM-dd"));
+    if (dateOverride) {
+      setSelectedDate(dateOverride);
+    }
     setBlockTitle("");
     setBlockType("personal");
     setBlockFullDay(true);
@@ -224,9 +296,87 @@ export function AvailabilityManager() {
     setIsModalOpen(true);
   };
 
+  const resetBlockDrag = () => {
+    blockDragStartRef.current = null;
+    blockDragOffsetRef.current = 0;
+    setBlockDragOffset(0);
+    setIsBlockDragging(false);
+  };
+
+  const handleBlockDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    blockDragStartRef.current = event.clientY;
+    blockDragOffsetRef.current = 0;
+    setIsBlockDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleBlockDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (blockDragStartRef.current === null) return;
+    const delta = Math.max(0, event.clientY - blockDragStartRef.current);
+    blockDragOffsetRef.current = delta;
+    setBlockDragOffset(delta);
+  };
+
+  const handleBlockDragEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (blockDragStartRef.current === null) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    const sheetHeight = blockSheetRef.current?.getBoundingClientRect().height ?? 0;
+    const threshold = Math.max(80, sheetHeight * 0.25);
+    const finalOffset = blockDragOffsetRef.current;
+    if (finalOffset > threshold) {
+      resetBlockDrag();
+      setIsModalOpen(false);
+      return;
+    }
+    resetBlockDrag();
+  };
+
+  const resetScaleDrag = () => {
+    scaleDragStartRef.current = null;
+    scaleDragOffsetRef.current = 0;
+    setScaleDragOffset(0);
+    setIsScaleDragging(false);
+  };
+
+  const handleScaleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    scaleDragStartRef.current = event.clientY;
+    scaleDragOffsetRef.current = 0;
+    setIsScaleDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleScaleDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (scaleDragStartRef.current === null) return;
+    const delta = Math.max(0, event.clientY - scaleDragStartRef.current);
+    scaleDragOffsetRef.current = delta;
+    setScaleDragOffset(delta);
+  };
+
+  const handleScaleDragEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (scaleDragStartRef.current === null) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    const sheetHeight = scaleSheetRef.current?.getBoundingClientRect().height ?? 0;
+    const threshold = Math.max(80, sheetHeight * 0.25);
+    const finalOffset = scaleDragOffsetRef.current;
+    if (finalOffset > threshold) {
+      resetScaleDrag();
+      setIsScaleModalOpen(false);
+      return;
+    }
+    resetScaleDrag();
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openBlockModal: (date?: Date) => openNewBlockModal(date),
+    }),
+    [openNewBlockModal]
+  );
+
   const handleCreateBlock = async (force?: boolean, overridePayload?: CreateBlockPayload) => {
     const payload: CreateBlockPayload = overridePayload ?? {
-      date: selectedKey,
+      date: blockDate || selectedKey,
       title: blockTitle.trim() || "Bloqueio",
       blockType,
       fullDay: blockFullDay,
@@ -295,12 +445,6 @@ export function AvailabilityManager() {
               aria-label="Gerador de escala"
             >
               <Sparkles className="w-4 h-4" />
-            </button>
-            <button
-              onClick={openNewBlockModal}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-full bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm"
-            >
-              + NOVO
             </button>
           </div>
         }
@@ -417,8 +561,21 @@ export function AvailabilityManager() {
         portalTarget &&
         createPortal(
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in">
-            <div className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4">
-              <div className="pt-3 pb-1 flex justify-center bg-white">
+            <div
+              ref={blockSheetRef}
+              style={{
+                transform: `translateY(${blockDragOffset}px)`,
+                transition: isBlockDragging ? "none" : "transform 0.2s ease",
+              }}
+              className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
+            >
+              <div
+                className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
+                onPointerDown={handleBlockDragStart}
+                onPointerMove={handleBlockDragMove}
+                onPointerUp={handleBlockDragEnd}
+                onPointerCancel={handleBlockDragEnd}
+              >
                 <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
               </div>
 
@@ -486,6 +643,17 @@ export function AvailabilityManager() {
                   <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
                     <Calendar className="w-3.5 h-3.5" />
                     Horário
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
+                      Dia do bloqueio
+                    </label>
+                    <input
+                      type="date"
+                      value={blockDate}
+                      onChange={(event) => setBlockDate(event.target.value)}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:ring-1 focus:ring-studio-green/40 outline-none"
+                    />
                   </div>
                   <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
@@ -608,8 +776,21 @@ export function AvailabilityManager() {
         portalTarget &&
         createPortal(
           <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in">
-            <div className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4">
-              <div className="pt-3 pb-1 flex justify-center bg-white">
+            <div
+              ref={scaleSheetRef}
+              style={{
+                transform: `translateY(${scaleDragOffset}px)`,
+                transition: isScaleDragging ? "none" : "transform 0.2s ease",
+              }}
+              className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
+            >
+              <div
+                className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
+                onPointerDown={handleScaleDragStart}
+                onPointerMove={handleScaleDragMove}
+                onPointerUp={handleScaleDragEnd}
+                onPointerCancel={handleScaleDragEnd}
+              >
                 <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
               </div>
 
@@ -646,38 +827,55 @@ export function AvailabilityManager() {
                   </div>
                 </section>
 
-                <section>
-                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Padrão de plantão
+                {isScaleOverviewLoading ? (
+                  <div className="text-xs text-muted">Carregando escala do mês...</div>
+                ) : scaleHasShiftBlocks ? (
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
+                    <p className="font-bold">Já existe uma escala cadastrada nesse mês.</p>
+                    <p>Deseja apagar a escala atual para gerar uma nova?</p>
+                    <button
+                      type="button"
+                      onClick={() => handleClearScale(scaleMonth, true)}
+                      disabled={loading}
+                      className="px-3 py-1.5 rounded-full bg-red-100 text-red-600 text-[10px] font-extrabold uppercase tracking-wide hover:bg-red-200 transition disabled:opacity-60"
+                    >
+                      Apagar escala
+                    </button>
                   </div>
-                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setScaleType("odd")}
-                        className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                          scaleType === "odd"
-                            ? "bg-studio-text text-white border-studio-text"
-                            : "bg-white text-gray-400 border-stone-100"
-                        }`}
-                      >
-                        Bloquear dias ímpares
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setScaleType("even")}
-                        className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                          scaleType === "even"
-                            ? "bg-studio-text text-white border-studio-text"
-                            : "bg-white text-gray-400 border-stone-100"
-                        }`}
-                      >
-                        Bloquear dias pares
-                      </button>
+                ) : (
+                  <section>
+                    <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Padrão de plantão
                     </div>
-                  </div>
-                </section>
+                    <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setScaleType("odd")}
+                          className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                            scaleType === "odd"
+                              ? "bg-studio-text text-white border-studio-text"
+                              : "bg-white text-gray-400 border-stone-100"
+                          }`}
+                        >
+                          Bloquear dias ímpares
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScaleType("even")}
+                          className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                            scaleType === "even"
+                              ? "bg-studio-text text-white border-studio-text"
+                              : "bg-white text-gray-400 border-stone-100"
+                          }`}
+                        >
+                          Bloquear dias pares
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                )}
 
                 {pendingScaleConfirm && (
                   <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
@@ -716,20 +914,22 @@ export function AvailabilityManager() {
                 </button>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
-                <button
-                  onClick={() => runCreateScale(scaleType, scaleMonth)}
-                  disabled={loading}
-                  className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
-                >
-                  Aplicar escala
-                </button>
-              </div>
+              {!scaleHasShiftBlocks && (
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
+                  <button
+                    onClick={() => runCreateScale(scaleType, scaleMonth)}
+                    disabled={loading}
+                    className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+                  >
+                    Aplicar escala
+                  </button>
+                </div>
+              )}
             </div>
           </div>,
           portalTarget
         )}
     </div>
   );
-}
+});
 
