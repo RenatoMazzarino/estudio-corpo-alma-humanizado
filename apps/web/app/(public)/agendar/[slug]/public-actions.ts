@@ -285,33 +285,58 @@ export async function createPixPayment({
   };
 
   const idempotencyKey =
-    typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : undefined;
+    typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto
+      ? globalThis.crypto.randomUUID()
+      : undefined;
 
-  const response = await fetch("https://api.mercadopago.com/v1/payments", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
-    },
-    body: JSON.stringify({
-      transaction_amount: Number(amount.toFixed(2)),
-      description,
-      payment_method_id: "pix",
-      payer,
-      external_reference: appointmentId,
-      ...(process.env.MERCADOPAGO_WEBHOOK_URL
-        ? { notification_url: process.env.MERCADOPAGO_WEBHOOK_URL }
-        : {}),
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
+      },
+      body: JSON.stringify({
+        transaction_amount: Number(amount.toFixed(2)),
+        description,
+        payment_method_id: "pix",
+        payer,
+        external_reference: appointmentId,
+        ...(process.env.MERCADOPAGO_WEBHOOK_URL
+          ? { notification_url: process.env.MERCADOPAGO_WEBHOOK_URL }
+          : {}),
+      }),
+    });
+  } catch (error) {
+    return fail(
+      new AppError(
+        "Falha de rede ao criar pagamento Pix. Tente novamente.",
+        "UNKNOWN",
+        500,
+        error
+      )
+    );
+  }
 
-  const payload = await response.json();
+  const payloadText = await response.text();
+  let payload: Record<string, unknown> | null = null;
+  if (payloadText) {
+    try {
+      payload = JSON.parse(payloadText) as Record<string, unknown>;
+    } catch {
+      payload = { message: payloadText };
+    }
+  }
+
+  const payloadMessage =
+    payload && typeof payload.message === "string" ? payload.message : "Erro ao criar pagamento Pix.";
 
   if (!response.ok) {
     return fail(
       new AppError(
-        payload?.message ?? "Erro ao criar pagamento Pix.",
+        payloadMessage,
         "SUPABASE_ERROR",
         response.status,
         payload
@@ -319,13 +344,42 @@ export async function createPixPayment({
     );
   }
 
+  if (!payload || typeof payload.id === "undefined") {
+    return fail(
+      new AppError(
+        "Resposta inválida do Mercado Pago ao criar Pix.",
+        "SUPABASE_ERROR",
+        502,
+        payload
+      )
+    );
+  }
+
+  const pointOfInteraction = payload.point_of_interaction as
+    | { transaction_data?: Record<string, unknown> }
+    | undefined;
+  const transactionData = pointOfInteraction?.transaction_data;
+  const status = typeof payload.status === "string" ? payload.status : "pending";
+  const ticketUrl =
+    transactionData && typeof transactionData.ticket_url === "string"
+      ? transactionData.ticket_url
+      : null;
+  const qrCode =
+    transactionData && typeof transactionData.qr_code === "string" ? transactionData.qr_code : null;
+  const qrCodeBase64 =
+    transactionData && typeof transactionData.qr_code_base64 === "string"
+      ? transactionData.qr_code_base64
+      : null;
+  const transactionAmount =
+    typeof payload.transaction_amount === "number" ? payload.transaction_amount : amount;
+
   const result: PixPaymentResult = {
     id: String(payload.id),
-    status: payload.status ?? "pending",
-    ticket_url: payload?.point_of_interaction?.transaction_data?.ticket_url ?? null,
-    qr_code: payload?.point_of_interaction?.transaction_data?.qr_code ?? null,
-    qr_code_base64: payload?.point_of_interaction?.transaction_data?.qr_code_base64 ?? null,
-    transaction_amount: payload.transaction_amount ?? amount,
+    status,
+    ticket_url: ticketUrl,
+    qr_code: qrCode,
+    qr_code_base64: qrCodeBase64,
+    transaction_amount: transactionAmount,
   };
 
   const supabase = createServiceClient();
