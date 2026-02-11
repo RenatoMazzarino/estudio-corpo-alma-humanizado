@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   eachDayOfInterval,
@@ -36,7 +36,7 @@ interface AvailabilityBlock {
   title: string;
   start_time: string;
   end_time: string;
-  block_type?: BlockType | null;
+  block_type?: BlockType | string | null;
   is_full_day?: boolean | null;
 }
 
@@ -45,7 +45,17 @@ interface MonthOverview {
   appointments: { id: string; start_time: string; service_name: string }[];
 }
 
-const blockTypeMeta: Record<BlockType, { label: string; color: string; icon: JSX.Element }> = {
+interface CreateBlockPayload {
+  date: string;
+  title: string;
+  blockType: BlockType;
+  fullDay: boolean;
+  startTime?: string;
+  endTime?: string;
+  force?: boolean;
+}
+
+const blockTypeMeta: Record<BlockType, { label: string; color: string; icon: ReactNode }> = {
   shift: { label: "Plantão", color: "bg-purple-50 text-purple-700 border-purple-200", icon: <Stethoscope className="w-4 h-4" /> },
   personal: { label: "Pessoal", color: "bg-orange-50 text-orange-700 border-orange-200", icon: <Coffee className="w-4 h-4" /> },
   vacation: { label: "Férias", color: "bg-teal-50 text-teal-700 border-teal-200", icon: <Umbrella className="w-4 h-4" /> },
@@ -75,7 +85,7 @@ export function AvailabilityManager() {
   const [blockFullDay, setBlockFullDay] = useState(true);
   const [blockStart, setBlockStart] = useState("08:00");
   const [blockEnd, setBlockEnd] = useState("12:00");
-  const [pendingBlockConfirm, setPendingBlockConfirm] = useState<null | { payload: any; appointments: number }>(null);
+  const [pendingBlockConfirm, setPendingBlockConfirm] = useState<null | { payload: CreateBlockPayload; appointments: number }>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const { showToast } = useToast();
 
@@ -177,8 +187,8 @@ export function AvailabilityManager() {
     setIsModalOpen(true);
   };
 
-  const handleCreateBlock = async (force?: boolean, overridePayload?: any) => {
-    const payload = overridePayload ?? {
+  const handleCreateBlock = async (force?: boolean, overridePayload?: CreateBlockPayload) => {
+    const payload: CreateBlockPayload = overridePayload ?? {
       date: selectedKey,
       title: blockTitle.trim() || "Bloqueio",
       blockType,
@@ -318,11 +328,10 @@ export function AvailabilityManager() {
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  const next = pendingScaleConfirm.type;
-                  setPendingScaleConfirm(null);
-                  handleCreateScale(true);
-                }}
+                  onClick={() => {
+                    setPendingScaleConfirm(null);
+                    handleCreateScale(true);
+                  }}
                 className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
               >
                 Criar mesmo assim
