@@ -93,6 +93,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `6a47367` — docs(report): registrar swipe e bloqueio via fab
 - `ebb317d` — feat(agenda): swipe de meses e bloqueio via FAB
 - `a6d2506` — style(agenda): ajustar exibição de bloqueios na visão dia/semana
 - `e09d127` — style(ui): ajustar legenda do calendario em pill
