@@ -328,24 +328,26 @@ export function AvailabilityManager() {
           return dots;
         }}
         legend={
-          <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-muted">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Legenda:</span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-studio-green" />
-              atendimentos
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-              domicílio
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-              plantão
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              parcial
-            </span>
+          <div className="flex justify-center">
+            <div className="flex flex-wrap items-center gap-3 rounded-full bg-stone-50 border border-stone-100 px-4 py-2 text-[11px] text-muted">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Legenda:</span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-studio-green" />
+                atendimentos
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                domicílio
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                plantão
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                parcial
+              </span>
+            </div>
           </div>
         }
         legendPlacement="bottom"

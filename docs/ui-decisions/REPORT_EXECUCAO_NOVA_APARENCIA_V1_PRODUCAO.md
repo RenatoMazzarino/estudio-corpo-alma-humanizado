@@ -54,6 +54,7 @@
 - Gestão de Agenda: legenda do calendário abaixo e detalhes do dia integrados no card do calendário.
 - Gestão de Agenda: modais de **Novo Bloqueio** e **Gerador de Escala** reestilizados para seguir a mesma linguagem visual do modal de agendamento.
 - Gestão de Agenda: card externo removido — calendário virou o único card, com legenda + divisor e detalhes do dia dentro dele.
+- Gestão de Agenda: legenda do calendário voltou em formato de chip/card (pill) como no layout anterior.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
@@ -250,6 +251,7 @@ Comandos executados na raiz:
 - **Integração na Agenda:** Gestão de Agenda agora vive na visão **Mês** (calendário com ações no card), removendo a rota `/bloqueios` e o atalho do FAB.
 - **Consistência visual:** modais de bloqueio/escala adotam layout, botões e campos no mesmo padrão do modal de agendamento.
 - **Calendário único:** remoção do card externo; legenda e detalhes do dia ficam dentro do card do calendário.
+- **Legenda em pill:** legenda do calendário voltou ao estilo de chip arredondado para reforçar a leitura.
 - **Regra de bloqueios:** no agendamento interno, bloqueios geram apenas aviso; no agendamento público, horários bloqueados são removidos da disponibilidade.
 - **Arquitetura de dados:** `availability_blocks` agora possui `block_type` (`shift`, `personal`, `vacation`, `administrative`) e `is_full_day` para distinguir bloqueios integrais vs parciais.
 - **Gerador de Escala:** aplica dias pares/ímpares criando blocos do tipo `shift`; ao reaplicar, remove **apenas** os `shift` do mês, preservando bloqueios pessoais/administrativos.
