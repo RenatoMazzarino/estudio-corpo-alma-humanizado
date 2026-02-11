@@ -225,6 +225,7 @@ export function AppointmentForm({
   );
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasBlocks, setHasBlocks] = useState(false);
+  const [hasShiftBlock, setHasShiftBlock] = useState(false);
   const [blockStatus, setBlockStatus] = useState<"idle" | "loading">("idle");
   const [clientAddresses, setClientAddresses] = useState<ClientAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
@@ -366,6 +367,7 @@ export function AppointmentForm({
           serviceId: selectedServiceId,
           date: selectedDate,
           isHomeVisit,
+          ignoreBlocks: true,
         });
         const preferred = selectedTimeRef.current || initialTimeRef.current;
         const normalizedSlots =
@@ -398,8 +400,10 @@ export function AppointmentForm({
       try {
         const result = await getDateBlockStatus({ tenantId: FIXED_TENANT_ID, date: selectedDate });
         setHasBlocks(result.hasBlocks);
+        setHasShiftBlock(result.hasShift);
       } catch {
         setHasBlocks(false);
+        setHasShiftBlock(false);
       } finally {
         setBlockStatus("idle");
       }
@@ -1101,7 +1105,12 @@ export function AppointmentForm({
             {blockStatus === "loading" && (
               <p className="text-[11px] text-muted mt-2 ml-1">Verificando bloqueios...</p>
             )}
-            {blockStatus === "idle" && hasBlocks && (
+            {blockStatus === "idle" && hasShiftBlock && (
+              <div className="text-[11px] text-warn bg-warn/10 border border-warn/20 px-3 py-2 rounded-xl mt-2">
+                Você está de plantão esse dia, quer agendar mesmo assim?
+              </div>
+            )}
+            {blockStatus === "idle" && !hasShiftBlock && hasBlocks && (
               <div className="text-[11px] text-warn bg-warn/10 border border-warn/20 px-3 py-2 rounded-xl mt-2">
                 Há bloqueios registrados para esta data. Verifique antes de confirmar o horário.
               </div>

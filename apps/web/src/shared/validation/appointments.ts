@@ -87,6 +87,7 @@ export const getAvailableSlotsSchema = z.object({
   serviceId: z.string().uuid(),
   date: z.string().min(10),
   isHomeVisit: z.boolean().optional(),
+  ignoreBlocks: z.boolean().optional(),
 });
 
 export const finishAdminAppointmentSchema = z.object({

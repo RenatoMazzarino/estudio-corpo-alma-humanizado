@@ -12,6 +12,7 @@ interface GetSlotsParams {
   serviceId: string;
   date: string; // YYYY-MM-DD
   isHomeVisit?: boolean;
+  ignoreBlocks?: boolean;
 }
 
 interface AppointmentSlotRow {
@@ -72,9 +73,15 @@ const getBrazilMinutes = (isoValue: string) => {
   return hour * 60 + minute;
 };
 
-export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit = false }: GetSlotsParams): Promise<string[]> {
+export async function getAvailableSlots({
+  tenantId,
+  serviceId,
+  date,
+  isHomeVisit = false,
+  ignoreBlocks = false,
+}: GetSlotsParams): Promise<string[]> {
   const supabase = createServiceClient();
-  const parsed = getAvailableSlotsSchema.safeParse({ tenantId, serviceId, date, isHomeVisit });
+  const parsed = getAvailableSlotsSchema.safeParse({ tenantId, serviceId, date, isHomeVisit, ignoreBlocks });
   if (!parsed.success) {
     throw new AppError("Dados inválidos para disponibilidade", "VALIDATION_ERROR", 400, parsed.error);
   }
@@ -172,7 +179,7 @@ export async function getAvailableSlots({ tenantId, serviceId, date, isHomeVisit
   ]);
 
   const appointments = (appointmentsRes.data || []) as AppointmentSlotRow[];
-  const blocks = (blocksRes.data || []) as AvailabilityBlockRow[];
+  const blocks = ignoreBlocks ? [] : ((blocksRes.data || []) as AvailabilityBlockRow[]);
 
   const slots: string[] = [];
   const openTimeStr = businessHour.open_time.slice(0, 5);

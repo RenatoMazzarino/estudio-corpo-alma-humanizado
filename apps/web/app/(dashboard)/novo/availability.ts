@@ -9,6 +9,7 @@ interface GetSlotsParams {
   serviceId: string;
   date: string;
   isHomeVisit?: boolean;
+  ignoreBlocks?: boolean;
 }
 
 export async function getAvailableSlots(params: GetSlotsParams): Promise<string[]> {
@@ -20,11 +21,18 @@ interface GetBlockStatusParams {
   date: string;
 }
 
-export async function getDateBlockStatus(params: GetBlockStatusParams): Promise<{ hasBlocks: boolean }> {
+export async function getDateBlockStatus(
+  params: GetBlockStatusParams
+): Promise<{ hasBlocks: boolean; hasShift: boolean }> {
   const base = new Date(`${params.date}T00:00:00`);
   const start = startOfDay(base).toISOString();
   const end = endOfDay(base).toISOString();
 
   const { data } = await listAvailabilityBlocksInRange(params.tenantId, start, end);
-  return { hasBlocks: (data?.length ?? 0) > 0 };
+  const blocks = data ?? [];
+  const blockTypes = blocks
+    .map((block) => block.block_type ?? block.reason)
+    .filter((value): value is string => Boolean(value));
+  const hasShift = blockTypes.includes("shift");
+  return { hasBlocks: blocks.length > 0, hasShift };
 }
