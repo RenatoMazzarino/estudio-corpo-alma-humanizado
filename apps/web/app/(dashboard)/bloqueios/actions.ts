@@ -128,12 +128,3 @@ export async function deleteAvailabilityBlock(id: string): Promise<ActionResult<
   revalidatePath("/");
   return ok({ id });
 }
-
-export const formatBlockTimeLabel = (block: { start_time: string; end_time: string; is_full_day?: boolean | null }) => {
-  if (block.is_full_day) {
-    return "Dia todo";
-  }
-  const startLabel = format(parseISO(block.start_time), "HH:mm");
-  const endLabel = format(parseISO(block.end_time), "HH:mm");
-  return `${startLabel} - ${endLabel}`;
-};
