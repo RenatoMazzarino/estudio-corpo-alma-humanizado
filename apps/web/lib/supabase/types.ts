@@ -541,11 +541,16 @@ export type Database = {
         Row: {
           amount: number
           appointment_id: string
+          card_brand: string | null
+          card_last4: string | null
           created_at: string
           id: string
+          installments: number | null
           method: string
           paid_at: string | null
+          payment_method_id: string | null
           provider_ref: string | null
+          raw_payload: Json | null
           status: string
           tenant_id: string
           transaction_id: string | null
@@ -553,11 +558,16 @@ export type Database = {
         Insert: {
           amount: number
           appointment_id: string
+          card_brand?: string | null
+          card_last4?: string | null
           created_at?: string
           id?: string
+          installments?: number | null
           method: string
           paid_at?: string | null
+          payment_method_id?: string | null
           provider_ref?: string | null
+          raw_payload?: Json | null
           status?: string
           tenant_id?: string
           transaction_id?: string | null
@@ -565,11 +575,16 @@ export type Database = {
         Update: {
           amount?: number
           appointment_id?: string
+          card_brand?: string | null
+          card_last4?: string | null
           created_at?: string
           id?: string
+          installments?: number | null
           method?: string
           paid_at?: string | null
+          payment_method_id?: string | null
           provider_ref?: string | null
+          raw_payload?: Json | null
           status?: string
           tenant_id?: string
           transaction_id?: string | null
