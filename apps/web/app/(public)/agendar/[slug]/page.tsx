@@ -1,6 +1,6 @@
 import { BookingFlow } from "./booking-flow";
 import { notFound } from "next/navigation";
-import { getTenantBySlug } from "../../../../src/modules/settings/repository";
+import { getSettings, getTenantBySlug } from "../../../../src/modules/settings/repository";
 import { listPublicServices } from "../../../../src/modules/services/repository";
 
 interface PageProps {
@@ -26,7 +26,8 @@ export default async function PublicBookingPage(props: PageProps) {
 
   if (!tenant) notFound();
 
-  // 2. Buscar Serviços do Tenant
+  // 2. Buscar Serviços e Settings do Tenant
+  const { data: settings } = await getSettings(tenant.id);
   const { data: servicesData } = await listPublicServices(tenant.id);
   const services: PublicService[] = (servicesData ?? []).map((service) => ({
     id: service.id,
@@ -41,28 +42,34 @@ export default async function PublicBookingPage(props: PageProps) {
 
   return (
     <div className="min-h-screen bg-stone-50 flex justify-center">
-      <div className="w-full max-w-103.5 bg-studio-bg min-h-screen shadow-2xl relative flex flex-col border-x border-stone-200">
-        <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 px-6 py-5 flex items-center gap-3 sticky top-0 z-10">
-          <div className="w-10 h-10 bg-studio-green/10 text-studio-green rounded-2xl flex items-center justify-center font-bold">
-            {tenant.name.charAt(0)}
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-800">{tenant.name}</h1>
-            <p className="text-xs text-gray-500">Agendamento Online</p>
-          </div>
-        </div>
-
-        <div className="px-6 py-6 flex-1">
-          {services.length > 0 ? (
-            <BookingFlow tenant={tenant} services={services} />
-          ) : (
-            <div className="bg-white border border-stone-100 rounded-2xl p-6 text-center text-sm text-stone-500 shadow-sm">
-              Nenhum serviço cadastrado no momento.
+      <div className="w-full max-w-103.5 bg-studio-bg h-screen shadow-2xl relative border-x border-stone-200">
+        <div className="h-full overflow-y-auto">
+          <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 px-6 py-5 flex items-center gap-3 sticky top-0 z-10">
+            <div className="w-10 h-10 bg-studio-green/10 text-studio-green rounded-2xl flex items-center justify-center font-bold">
+              {tenant.name.charAt(0)}
             </div>
-          )}
-        </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-800">{tenant.name}</h1>
+              <p className="text-xs text-gray-500">Agendamento Online</p>
+            </div>
+          </div>
 
-        <div className="p-4 text-center text-xs text-gray-400">Powered by Studio</div>
+          <div className="px-6 py-6">
+            {services.length > 0 ? (
+              <BookingFlow
+                tenant={tenant}
+                services={services}
+                signalPercentage={settings?.signal_percentage ?? 30}
+              />
+            ) : (
+              <div className="bg-white border border-stone-100 rounded-2xl p-6 text-center text-sm text-stone-500 shadow-sm">
+                Nenhum serviço cadastrado no momento.
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 text-center text-xs text-gray-400">Powered by Studio</div>
+        </div>
       </div>
     </div>
   );
