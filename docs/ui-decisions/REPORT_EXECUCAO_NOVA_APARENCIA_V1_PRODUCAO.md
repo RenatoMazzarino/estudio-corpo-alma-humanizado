@@ -49,6 +49,7 @@
 - Gestão de Agenda: gerador automático virou botão compacto (ícone varinha) no cabeçalho da página.
 - Calendário mensal: dia atual com círculo transparente e borda verde; dia selecionado com preenchimento verde.
 - Gestão de Agenda: cores de bloqueio ajustadas (plantão vermelho, parcial âmbar) e dots com agendamentos/domicílio.
+- Gestão de Agenda: legenda do calendário abaixo e detalhes do dia integrados no card do calendário.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.

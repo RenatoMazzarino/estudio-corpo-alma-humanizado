@@ -353,12 +353,9 @@ export function AvailabilityManager() {
               </div>
             </div>
           }
-          legendPlacement="top"
+          legendPlacement="bottom"
         />
-      </div>
-
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="border-t border-stone-100 pt-4 space-y-4">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
               <Shield className="w-4 h-4 text-gray-500" />
@@ -369,47 +366,41 @@ export function AvailabilityManager() {
             </h3>
             <p className="text-xs text-gray-500 mt-1">Bloqueios cadastrados para o dia selecionado.</p>
           </div>
-          <button
-            onClick={openNewBlockModal}
-            className="px-3 py-2 rounded-full bg-studio-light text-studio-green text-xs font-bold uppercase tracking-wide"
-          >
-            + NOVO
-          </button>
-        </div>
 
-        {selectedBlocks.length === 0 ? (
-          <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-4 text-xs text-gray-500">
-            Nenhum bloqueio cadastrado para este dia.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {selectedBlocks.map((block) => {
-              const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
-              const timeClass = block.is_full_day ? meta.accentClass : "text-amber-600";
-              return (
-                <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${meta.iconClass}`}>
-                      {meta.icon}
+          {selectedBlocks.length === 0 ? (
+            <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-4 text-xs text-gray-500">
+              Nenhum bloqueio cadastrado para este dia.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {selectedBlocks.map((block) => {
+                const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
+                const timeClass = block.is_full_day ? meta.accentClass : "text-amber-600";
+                return (
+                  <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${meta.iconClass}`}>
+                        {meta.icon}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-gray-700">{block.title}</div>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${timeClass}`}>
+                          {formatBlockTime(block)}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm font-bold text-gray-700">{block.title}</div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${timeClass}`}>
-                        {formatBlockTime(block)}
-                      </span>
-                    </div>
+                    <button
+                      onClick={() => handleDeleteBlock(block.id)}
+                      className="w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-stone-50 flex items-center justify-center"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteBlock(block.id)}
-                    className="w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-stone-50 flex items-center justify-center"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {message && (
