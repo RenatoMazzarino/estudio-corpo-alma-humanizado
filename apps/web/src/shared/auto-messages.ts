@@ -23,7 +23,7 @@ const parseMessageFile = (content: string): Partial<AutoMessageTemplates> => {
     }
 
     if (currentKey) {
-      templates[currentKey].push(rawLine);
+      (templates[currentKey] ??= []).push(rawLine);
     }
   }
 

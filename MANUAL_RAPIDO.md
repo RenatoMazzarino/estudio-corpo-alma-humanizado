@@ -204,6 +204,13 @@ pnpm supabase link --project-ref <seu_project_ref>
 pnpm supabase db push
 ```
 
+Exemplo (projeto atual):
+```powershell
+pnpm supabase login
+pnpm supabase link --project-ref hxahbawhidqflocotyot
+pnpm supabase db push
+```
+
 ### Aplicar migrations no banco ONLINE (sem resetar)
 
 1) Faça login e vincule o projeto (uma vez):

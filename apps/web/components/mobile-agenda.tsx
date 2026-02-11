@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMinutes,
-  addMonths,
   eachDayOfInterval,
   endOfMonth,
   endOfWeek,
@@ -125,7 +124,6 @@ type DayItem = {
   is_full_day?: boolean | null;
 };
 
-const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 const hiddenAppointmentStatuses = new Set(["canceled_by_client", "canceled_by_studio", "no_show"]);
 
 export function MobileAgenda({

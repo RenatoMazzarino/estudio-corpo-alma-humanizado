@@ -1,6 +1,6 @@
 "use server";
 
-import { addMinutes, endOfDay, endOfMonth, format, parseISO, startOfDay, startOfMonth } from "date-fns";
+import { addMinutes, endOfDay, endOfMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
@@ -98,7 +98,7 @@ export async function createAvailabilityBlock(
     return ok({ requiresConfirm: true, conflicts: { appointments: conflicts.length } });
   }
 
-  const { data: inserted, error } = await insertAvailabilityBlocks([
+  const { error } = await insertAvailabilityBlocks([
     {
       tenant_id: FIXED_TENANT_ID,
       title,
@@ -115,7 +115,7 @@ export async function createAvailabilityBlock(
 
   revalidatePath("/");
 
-  return ok({ id: inserted?.[0]?.id });
+  return ok({});
 }
 
 export async function deleteAvailabilityBlock(id: string): Promise<ActionResult<{ id: string }>> {

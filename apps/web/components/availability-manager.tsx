@@ -42,6 +42,7 @@ interface AvailabilityBlock {
   end_time: string;
   block_type?: BlockType | string | null;
   is_full_day?: boolean | null;
+  reason?: string | null;
 }
 
 interface MonthOverview {
@@ -212,7 +213,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   const selectedBlocks = blocksByDate.get(selectedKey) ?? [];
   const scaleHasShiftBlocks = useMemo(() => {
     const blocks = scaleMonthOverview?.blocks ?? [];
-    return blocks.some((block) => (block.block_type ?? block.reason) === "shift");
+    return blocks.some((block) => block.block_type === "shift");
   }, [scaleMonthOverview]);
   const handleMonthChange = (next: Date) => {
     setSelectedMonth(format(next, "yyyy-MM"));
@@ -282,19 +283,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
     }
   };
 
-  const openNewBlockModal = (dateOverride?: Date) => {
-    const baseDate = dateOverride ?? selectedDate;
-    setBlockDate(format(baseDate, "yyyy-MM-dd"));
-    if (dateOverride) {
-      setSelectedDate(dateOverride);
-    }
-    setBlockTitle("");
-    setBlockType("personal");
-    setBlockFullDay(true);
-    setBlockStart("08:00");
-    setBlockEnd("12:00");
-    setIsModalOpen(true);
-  };
 
   const resetBlockDrag = () => {
     blockDragStartRef.current = null;
@@ -369,9 +357,21 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   useImperativeHandle(
     ref,
     () => ({
-      openBlockModal: (date?: Date) => openNewBlockModal(date),
+      openBlockModal: (date?: Date) => {
+        const baseDate = date ?? selectedDate;
+        setBlockDate(format(baseDate, "yyyy-MM-dd"));
+        if (date) {
+          setSelectedDate(date);
+        }
+        setBlockTitle("");
+        setBlockType("personal");
+        setBlockFullDay(true);
+        setBlockStart("08:00");
+        setBlockEnd("12:00");
+        setIsModalOpen(true);
+      },
     }),
-    [openNewBlockModal]
+    [selectedDate]
   );
 
   const handleCreateBlock = async (force?: boolean, overridePayload?: CreateBlockPayload) => {
@@ -567,7 +567,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
                 transform: `translateY(${blockDragOffset}px)`,
                 transition: isBlockDragging ? "none" : "transform 0.2s ease",
               }}
-              className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
+              className="w-full max-w-md bg-white rounded-t-4xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
             >
               <div
                 className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
@@ -782,7 +782,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
                 transform: `translateY(${scaleDragOffset}px)`,
                 transition: isScaleDragging ? "none" : "transform 0.2s ease",
               }}
-              className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
+              className="w-full max-w-md bg-white rounded-t-4xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
             >
               <div
                 className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
