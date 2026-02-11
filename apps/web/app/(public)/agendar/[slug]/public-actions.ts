@@ -310,12 +310,13 @@ export async function createPixPayment({
       }),
     });
   } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
     return fail(
       new AppError(
         "Falha de rede ao criar pagamento Pix. Tente novamente.",
         "UNKNOWN",
         500,
-        error
+        details
       )
     );
   }
