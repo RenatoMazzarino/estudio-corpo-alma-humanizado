@@ -49,6 +49,25 @@ export default async function ClientProfilePage(props: PageProps) {
       listClientHealthItems(FIXED_TENANT_ID, params.id),
     ]);
   const history = (historyData as AppointmentHistoryItem[] | null) ?? [];
+  const resolvedPhones =
+    phones && phones.length > 0
+      ? phones
+      : client.phone
+      ? [
+          {
+            id: "legacy-phone",
+            client_id: client.id,
+            tenant_id: client.tenant_id,
+            label: "Principal",
+            number_raw: client.phone,
+            number_e164: null,
+            is_primary: true,
+            is_whatsapp: true,
+            created_at: client.created_at ?? new Date().toISOString(),
+            updated_at: client.updated_at ?? client.created_at ?? new Date().toISOString(),
+          },
+        ]
+      : [];
 
   const visitsCount = history.length;
   const absencesCount = history.filter((apt) => apt.status === "no_show").length;
@@ -77,7 +96,7 @@ export default async function ClientProfilePage(props: PageProps) {
               lastVisitLabel,
             }}
             addresses={addresses ?? []}
-            phones={phones ?? []}
+            phones={resolvedPhones}
             emails={emails ?? []}
             healthItems={healthItems ?? []}
           />
