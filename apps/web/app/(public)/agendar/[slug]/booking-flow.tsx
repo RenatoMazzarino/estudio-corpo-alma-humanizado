@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Script from "next/script";
 import { addDays, format, isSameDay, parseISO } from "date-fns";
 import {
   Calendar,
@@ -17,12 +18,9 @@ import {
   User,
   Wallet,
 } from "lucide-react";
-import {
-  createCardCheckout,
-  createPixPayment,
-  lookupClientByPhone,
-  submitPublicAppointment,
-} from "./public-actions";
+import { submitPublicAppointment } from "./public-actions/appointments";
+import { lookupClientByPhone } from "./public-actions/clients";
+import { createCardPayment, createPixPayment } from "./public-actions/payments";
 import { getAvailableSlots } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 
@@ -50,6 +48,57 @@ interface BookingFlowProps {
 }
 
 type Step = "WELCOME" | "SELECT" | "REVIEW" | "PAYMENT" | "SUCCESS";
+type PaymentMethod = "pix" | "card" | null;
+
+type CardFormData = {
+  token: string;
+  paymentMethodId: string;
+  issuerId: string;
+  installments: string | number;
+  identificationType: string;
+  identificationNumber: string;
+  cardholderEmail: string;
+};
+
+type CardFormInstance = {
+  getCardFormData: () => CardFormData;
+  unmount?: () => void;
+};
+
+type CardFormOptions = {
+  amount: string;
+  iframe?: boolean;
+  form: {
+    id: string;
+    cardNumber: { id: string; placeholder?: string };
+    expirationDate: { id: string; placeholder?: string };
+    securityCode: { id: string; placeholder?: string };
+    cardholderName: { id: string; placeholder?: string };
+    issuer: { id: string; placeholder?: string };
+    installments: { id: string; placeholder?: string };
+    identificationType: { id: string; placeholder?: string };
+    identificationNumber: { id: string; placeholder?: string };
+    cardholderEmail: { id: string; placeholder?: string };
+  };
+  callbacks?: {
+    onFormMounted?: (error: unknown) => void;
+    onSubmit?: (event: Event) => void;
+    onFetching?: (resource: string) => void | (() => void);
+  };
+};
+
+type MercadoPagoConstructor = new (
+  publicKey: string,
+  options?: { locale?: string }
+) => {
+  cardForm: (options: CardFormOptions) => CardFormInstance;
+};
+
+declare global {
+  interface Window {
+    MercadoPago?: MercadoPagoConstructor;
+  }
+}
 
 const floraMessages: Record<Step, string> = {
   WELCOME: "Olá! Que alegria te ver por aqui. 🌿 Para começar, qual seu WhatsApp?",
@@ -92,8 +141,11 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
   } | null>(null);
   const [pixStatus, setPixStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pixError, setPixError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
   const [cardError, setCardError] = useState<string | null>(null);
+  const [mpReady, setMpReady] = useState(false);
+  const cardFormRef = useRef<CardFormInstance | null>(null);
   const [suggestedClient, setSuggestedClient] = useState<{
     name: string | null;
     address_cep: string | null;
@@ -121,6 +173,10 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
     ? Math.min(Math.max(Number(signalPercentage), 0), 100)
     : 30;
   const signalAmount = Number((totalPrice * (normalizedSignalPercentage / 100)).toFixed(2));
+  const cardholderEmail = useMemo(() => {
+    const digits = clientPhone.replace(/\D/g, "");
+    return `cliente+${digits || "anon"}@corpoealmahumanizado.com.br`;
+  }, [clientPhone]);
 
   const dateOptions = useMemo(() => {
     const base = new Date();
@@ -321,42 +377,129 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
     }
   };
 
-  const handleCardCheckout = async () => {
-    if (!appointmentId || !selectedService) return;
-    if (!clientName || !clientPhone) {
-      setCardError("Informe o telefone para continuar.");
-      return;
+  useEffect(() => {
+    if (paymentMethod === "pix") {
+      setCardError(null);
+      setCardStatus("idle");
     }
-    setCardStatus("loading");
-    setCardError(null);
-    const result = await createCardCheckout({
-      appointmentId,
-      tenantSlug: tenant.slug,
-      amount: signalAmount,
-      description: `${selectedService.name} - Sinal`,
-      payerName: clientName,
-      payerPhone: clientPhone,
-    });
-    if (!result.ok) {
-      setCardError(result.error.message);
-      setCardStatus("error");
-      return;
+    if (paymentMethod === "card") {
+      setPixError(null);
+      setPixStatus("idle");
     }
-    setCardStatus("idle");
-    window.location.href = result.data.checkoutUrl;
-  };
+  }, [paymentMethod]);
 
   useEffect(() => {
-    if (step !== "PAYMENT") return;
+    if (step !== "PAYMENT" || paymentMethod !== "card") {
+      cardFormRef.current?.unmount?.();
+      return;
+    }
+    const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+    if (!publicKey) {
+      setCardError("Chave pública do Mercado Pago ausente.");
+      return;
+    }
+    if (!mpReady) return;
+    if (!window.MercadoPago) {
+      setCardError("Não foi possível carregar o formulário de cartão.");
+      return;
+    }
+    cardFormRef.current?.unmount?.();
+    const mp = new window.MercadoPago(publicKey, { locale: "pt-BR" });
+    cardFormRef.current = mp.cardForm({
+      amount: signalAmount.toFixed(2),
+      iframe: true,
+      form: {
+        id: "mp-card-form",
+        cardNumber: { id: "mp-card-number", placeholder: "Número do cartão" },
+        expirationDate: { id: "mp-card-expiration", placeholder: "MM/AA" },
+        securityCode: { id: "mp-card-security", placeholder: "CVC" },
+        cardholderName: { id: "mp-cardholder-name", placeholder: "Nome no cartão" },
+        issuer: { id: "mp-card-issuer", placeholder: "Banco emissor" },
+        installments: { id: "mp-card-installments", placeholder: "Parcelas" },
+        identificationType: { id: "mp-card-identification-type", placeholder: "Tipo" },
+        identificationNumber: { id: "mp-card-identification-number", placeholder: "CPF" },
+        cardholderEmail: { id: "mp-card-email", placeholder: "Email" },
+      },
+      callbacks: {
+        onFormMounted: (error) => {
+          if (error) {
+            setCardError("Não foi possível carregar o formulário de cartão.");
+          }
+        },
+        onSubmit: async (event) => {
+          event.preventDefault();
+          if (!appointmentId || !selectedService) return;
+          const data = cardFormRef.current?.getCardFormData();
+          if (!data?.token || !data.paymentMethodId) {
+            setCardError("Preencha os dados do cartão para continuar.");
+            return;
+          }
+          setCardStatus("loading");
+          setCardError(null);
+          const result = await createCardPayment({
+            appointmentId,
+            tenantId: tenant.id,
+            amount: signalAmount,
+            description: `Sinal ${selectedService.name}`,
+            token: data.token,
+            paymentMethodId: data.paymentMethodId,
+            issuerId: data.issuerId,
+            installments: Number(data.installments) || 1,
+            payerEmail: data.cardholderEmail || cardholderEmail,
+            payerName: clientName,
+            payerPhone: clientPhone,
+            identificationType: data.identificationType,
+            identificationNumber: data.identificationNumber,
+          });
+          if (!result.ok) {
+            setCardStatus("error");
+            setCardError(result.error.message);
+            return;
+          }
+          setCardStatus("idle");
+          if (result.data.status === "approved") {
+            setStep("SUCCESS");
+          } else {
+            setCardError(
+              "Pagamento em processamento. Você receberá a confirmação assim que for aprovado."
+            );
+          }
+        },
+      },
+    });
+
+    return () => {
+      cardFormRef.current?.unmount?.();
+    };
+  }, [
+    appointmentId,
+    cardholderEmail,
+    clientName,
+    clientPhone,
+    mpReady,
+    paymentMethod,
+    selectedService,
+    signalAmount,
+    step,
+    tenant.id,
+  ]);
+
+  useEffect(() => {
+    if (step !== "PAYMENT" || paymentMethod !== "pix") return;
     if (!appointmentId || pixPayment || pixStatus === "loading") return;
     handleCreatePix();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, appointmentId]);
+  }, [step, appointmentId, paymentMethod]);
 
   const floraMessage = floraMessages[step];
 
   return (
     <div className="space-y-6">
+      <Script
+        src="https://sdk.mercadopago.com/js/v2"
+        strategy="afterInteractive"
+        onLoad={() => setMpReady(true)}
+      />
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-full bg-studio-green/10 text-studio-green flex items-center justify-center">
           <Flower2 className="w-5 h-5" />
@@ -788,73 +931,157 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
               <span className="text-lg font-black text-green-700">R$ {signalAmount.toFixed(2)}</span>
             </div>
 
-            {pixPayment?.qr_code_base64 ? (
-              <div className="rounded-2xl border border-stone-100 p-4 flex items-center justify-center bg-white">
-                <Image
-                  src={`data:image/png;base64,${pixPayment.qr_code_base64}`}
-                  alt="QR Code Pix"
-                  width={160}
-                  height={160}
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-stone-200 p-6 text-center text-xs text-gray-400">
-                {pixStatus === "loading" ? "Gerando QR Code Pix..." : "QR Code Pix indisponível"}
-              </div>
-            )}
-
-            {pixPayment?.qr_code && (
-              <div className="bg-stone-50 rounded-2xl p-3 text-[11px] text-gray-600 break-words">
-                {pixPayment.qr_code}
-              </div>
-            )}
-
-            {pixError && <p className="text-xs text-red-500">{pixError}</p>}
-
-            <div className="grid gap-3">
-              {pixPayment?.qr_code ? (
-                <button
-                  type="button"
-                  onClick={handleCopyPix}
-                  className="w-full border-2 border-dashed border-studio-green text-studio-green font-bold py-3 rounded-2xl flex items-center justify-center gap-2"
-                >
-                  <Copy className="w-4 h-4" /> Copiar chave Pix
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCreatePix}
-                  className="w-full bg-stone-900 text-white font-bold py-3 rounded-2xl"
-                >
-                  Gerar Pix
-                </button>
-              )}
+            <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setStep("SUCCESS")}
-                className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl"
+                onClick={() => setPaymentMethod("pix")}
+                className={`rounded-2xl border px-4 py-3 text-sm font-bold transition ${
+                  paymentMethod === "pix"
+                    ? "border-studio-green bg-green-50 text-studio-green"
+                    : "border-stone-200 text-gray-500"
+                }`}
               >
-                Já fiz o Pix! Finalizar
+                Pix
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("card")}
+                className={`rounded-2xl border px-4 py-3 text-sm font-bold transition ${
+                  paymentMethod === "card"
+                    ? "border-studio-green bg-green-50 text-studio-green"
+                    : "border-stone-200 text-gray-500"
+                }`}
+              >
+                Cartão
               </button>
             </div>
 
-            <div className="mt-6 border-t border-stone-100 pt-4 space-y-3">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pagamento com cartão</p>
-              {cardError && <p className="text-xs text-red-500">{cardError}</p>}
-              <button
-                type="button"
-                onClick={handleCardCheckout}
-                className="w-full border border-stone-200 text-gray-700 font-bold py-3 rounded-2xl bg-white"
-                disabled={cardStatus === "loading"}
-              >
-                {cardStatus === "loading" ? "Redirecionando..." : "Pagar com cartão (Mercado Pago)"}
-              </button>
-              <p className="text-[10px] text-gray-400">
-                Você será redirecionado para o checkout do Mercado Pago para concluir no cartão.
-              </p>
-            </div>
+            {!paymentMethod && (
+              <p className="text-xs text-gray-400">Escolha a forma de pagamento para continuar.</p>
+            )}
+
+            {paymentMethod === "pix" && (
+              <>
+                {pixPayment?.qr_code_base64 ? (
+                  <div className="rounded-2xl border border-stone-100 p-4 flex items-center justify-center bg-white">
+                    <Image
+                      src={`data:image/png;base64,${pixPayment.qr_code_base64}`}
+                      alt="QR Code Pix"
+                      width={160}
+                      height={160}
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-stone-200 p-6 text-center text-xs text-gray-400">
+                    {pixStatus === "loading" ? "Gerando QR Code Pix..." : "QR Code Pix indisponível"}
+                  </div>
+                )}
+
+                {pixPayment?.qr_code && (
+                  <div className="bg-stone-50 rounded-2xl p-3 text-[11px] text-gray-600 break-words">
+                    {pixPayment.qr_code}
+                  </div>
+                )}
+
+                {pixError && <p className="text-xs text-red-500">{pixError}</p>}
+
+                <div className="grid gap-3">
+                  {pixPayment?.qr_code ? (
+                    <button
+                      type="button"
+                      onClick={handleCopyPix}
+                      className="w-full border-2 border-dashed border-studio-green text-studio-green font-bold py-3 rounded-2xl flex items-center justify-center gap-2"
+                    >
+                      <Copy className="w-4 h-4" /> Copiar chave Pix
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleCreatePix}
+                      className="w-full bg-stone-900 text-white font-bold py-3 rounded-2xl"
+                    >
+                      Gerar Pix
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setStep("SUCCESS")}
+                    className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl"
+                  >
+                    Já fiz o Pix! Finalizar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {paymentMethod === "card" && (
+              <div className="mt-4 border-t border-stone-100 pt-4 space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pagamento com cartão</p>
+                {!process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY && (
+                  <p className="text-xs text-red-500">
+                    Chave pública do Mercado Pago não configurada.
+                  </p>
+                )}
+                {cardError && <p className="text-xs text-red-500">{cardError}</p>}
+
+                <form id="mp-card-form" className="grid gap-3">
+                  <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" id="mp-card-number" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" id="mp-card-expiration" />
+                    <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm" id="mp-card-security" />
+                  </div>
+                  <input
+                    id="mp-cardholder-name"
+                    name="cardholderName"
+                    defaultValue={clientName}
+                    placeholder="Nome no cartão"
+                    className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-gray-700"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      id="mp-card-issuer"
+                      name="issuer"
+                      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-gray-700"
+                    />
+                    <select
+                      id="mp-card-installments"
+                      name="installments"
+                      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-gray-700"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      id="mp-card-identification-type"
+                      name="identificationType"
+                      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-gray-700"
+                    />
+                    <input
+                      id="mp-card-identification-number"
+                      name="identificationNumber"
+                      placeholder="CPF"
+                      className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-gray-700"
+                    />
+                  </div>
+                  <input
+                    id="mp-card-email"
+                    name="cardholderEmail"
+                    type="email"
+                    readOnly
+                    value={cardholderEmail}
+                    className="hidden"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full border border-stone-200 text-gray-700 font-bold py-3 rounded-2xl bg-white"
+                    disabled={cardStatus === "loading"}
+                  >
+                    {cardStatus === "loading" ? "Processando cartão..." : "Pagar com cartão"}
+                  </button>
+                </form>
+              </div>
+            )}
 
             {appointmentId && (
               <p className="text-[10px] text-gray-400">Agendamento #{appointmentId}</p>

@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "../../../../lib/supabase/service";
+import type { Json } from "../../../../lib/supabase/types";
 
 type SignatureParts = {
   ts?: string;
@@ -100,6 +101,14 @@ export async function POST(request: Request) {
   const payment = (await paymentResponse.json()) as {
     id: string | number;
     status?: string;
+    status_detail?: string;
+    payment_method_id?: string;
+    payment_type_id?: string;
+    installments?: number;
+    card?: {
+      last_four_digits?: string;
+      brand?: string;
+    };
     transaction_amount?: number;
     date_approved?: string | null;
     external_reference?: string | null;
@@ -107,67 +116,82 @@ export async function POST(request: Request) {
 
   const providerRef = String(payment.id);
   const status = payment.status ?? "pending";
-  const amount = typeof payment.transaction_amount === "number" ? payment.transaction_amount : null;
+  const paymentMethodId =
+    typeof payment.payment_method_id === "string" ? payment.payment_method_id : null;
+  const paymentTypeId =
+    typeof payment.payment_type_id === "string" ? payment.payment_type_id : null;
+  const installments = typeof payment.installments === "number" ? payment.installments : null;
+  const cardLast4 = payment.card?.last_four_digits ?? null;
+  const cardBrand = payment.card?.brand ?? null;
   const approvedAt = payment.date_approved ?? null;
   const appointmentId = payment.external_reference ?? null;
+  const method = paymentMethodId === "pix" || paymentTypeId === "bank_transfer" ? "pix" : "card";
 
   const supabase = createServiceClient();
 
   const { data: existing } = await supabase
     .from("appointment_payments")
-    .select("id, appointment_id, amount")
+    .select("appointment_id, tenant_id, amount")
     .eq("provider_ref", providerRef)
     .maybeSingle();
 
   const resolvedAppointmentId = existing?.appointment_id ?? appointmentId;
+  const amount =
+    typeof payment.transaction_amount === "number" ? payment.transaction_amount : existing?.amount ?? 0;
 
-  if (!existing && resolvedAppointmentId) {
-    const { data: appointment } = await supabase
-      .from("appointments")
-      .select("id, tenant_id")
-      .eq("id", resolvedAppointmentId)
-      .single();
+  let appointment:
+    | { id: string; tenant_id: string; price: number | null; price_override: number | null }
+    | null = null;
 
-    if (appointment) {
-      await supabase.from("appointment_payments").insert({
-        appointment_id: appointment.id,
-        tenant_id: appointment.tenant_id,
-        method: "pix",
-        amount: amount ?? 0,
-        status,
-        provider_ref: providerRef,
-        paid_at: status === "approved" ? approvedAt ?? new Date().toISOString() : null,
-      });
-    }
-  }
-
-  if (existing) {
-    await supabase
-      .from("appointment_payments")
-      .update({
-        status,
-        amount: amount ?? existing.amount ?? 0,
-        paid_at: status === "approved" ? approvedAt ?? new Date().toISOString() : null,
-      })
-      .eq("id", existing.id);
-  }
-
-  if (resolvedAppointmentId && status === "approved") {
-    const { data: appointment } = await supabase
+  if (resolvedAppointmentId) {
+    const { data } = await supabase
       .from("appointments")
       .select("id, tenant_id, price, price_override")
       .eq("id", resolvedAppointmentId)
-      .single();
+      .maybeSingle();
+    if (data) appointment = data;
+  }
 
-    if (appointment) {
-      const total = appointment.price_override ?? appointment.price ?? 0;
-      const nextStatus = amount !== null && total > 0 && amount >= total ? "paid" : "partial";
-      await supabase
-        .from("appointments")
-        .update({ payment_status: nextStatus })
-        .eq("id", appointment.id)
-        .eq("tenant_id", appointment.tenant_id);
-    }
+  const resolvedTenantId = appointment?.tenant_id ?? existing?.tenant_id ?? null;
+
+  if (resolvedAppointmentId && resolvedTenantId) {
+    await supabase.from("appointment_payments").upsert(
+      {
+        appointment_id: resolvedAppointmentId,
+        tenant_id: resolvedTenantId,
+        method,
+        amount,
+        status,
+        provider_ref: providerRef,
+        paid_at: status === "approved" ? approvedAt ?? new Date().toISOString() : null,
+        payment_method_id: paymentMethodId,
+        installments,
+        card_last4: cardLast4,
+        card_brand: cardBrand,
+        raw_payload: payment,
+      },
+      { onConflict: "provider_ref,tenant_id" }
+    );
+  }
+
+  if (appointment && status === "approved") {
+    const total = appointment.price_override ?? appointment.price ?? 0;
+    const nextStatus = amount >= total && total > 0 ? "paid" : "partial";
+    await supabase
+      .from("appointments")
+      .update({ payment_status: nextStatus })
+      .eq("id", appointment.id)
+      .eq("tenant_id", appointment.tenant_id);
+  }
+
+  if (appointment) {
+    const eventPayload = { webhook: body ?? null, payment } as unknown as Json;
+    await supabase.from("appointment_events").insert({
+      appointment_id: appointment.id,
+      tenant_id: appointment.tenant_id,
+      event_type: "payment_webhook",
+      payload: eventPayload,
+    });
   }
 
   return NextResponse.json({ ok: true });
