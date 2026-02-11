@@ -281,12 +281,12 @@ export function AvailabilityManager() {
   return (
     <div className="space-y-5">
 
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-studio-green" />
-            Calendário
-          </div>
+      <MonthCalendar
+        currentMonth={currentMonthDate}
+        selectedDate={selectedDate}
+        onChangeMonth={(next) => handleMonthChange(next)}
+        onSelectDay={(day) => setSelectedDate(day)}
+        headerActions={
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -303,105 +303,101 @@ export function AvailabilityManager() {
               + NOVO
             </button>
           </div>
-        </div>
-
-        <MonthCalendar
-          currentMonth={currentMonthDate}
-          selectedDate={selectedDate}
-          onChangeMonth={(next) => handleMonthChange(next)}
-          onSelectDay={(day) => setSelectedDate(day)}
-          getDayTone={(day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayBlocks = blocksByDate.get(key) ?? [];
-            return dayBlocks.some((block) => (block.block_type ?? "personal") === "shift") ? "shift" : "none";
-          }}
-          getDayDots={(day) => {
-            const key = format(day, "yyyy-MM-dd");
-            const dayBlocks = blocksByDate.get(key) ?? [];
-            const dayAppointments = appointmentsByDate.get(key) ?? [];
-            const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
-            const hasAppointments = dayAppointments.length > 0;
-            const dayTypes = new Set(
-              dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType)
-            );
-            const dots = [];
-            if (hasAppointments) dots.push({ key: "appointments", className: "bg-studio-green" });
-            if (hasHome) dots.push({ key: "home", className: "bg-purple-400" });
-            if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-red-500" });
-            if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-amber-500" });
-            if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-500" });
-            if (dayTypes.has("administrative")) dots.push({ key: "administrative", className: "bg-gray-400" });
-            return dots;
-          }}
-          legend={
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-studio-light">
-                <span className="w-2 h-2 rounded-full bg-studio-green" />
-                <span className="text-[9px] font-bold uppercase tracking-wide text-studio-green">Agendado</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-50">
-                <span className="w-2 h-2 rounded-full bg-purple-400" />
-                <span className="text-[9px] font-bold uppercase tracking-wide text-purple-600">Domicílio</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-50">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                <span className="text-[9px] font-bold uppercase tracking-wide text-red-600">Plantão</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600">Parcial</span>
-              </div>
-            </div>
-          }
-          legendPlacement="bottom"
-        />
-        <div className="border-t border-stone-100 pt-4 space-y-4">
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-              <Shield className="w-4 h-4 text-gray-500" />
-              Detalhes do dia
-            </div>
-            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">
-              {format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR })}
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">Bloqueios cadastrados para o dia selecionado.</p>
+        }
+        getDayTone={(day) => {
+          const key = format(day, "yyyy-MM-dd");
+          const dayBlocks = blocksByDate.get(key) ?? [];
+          return dayBlocks.some((block) => (block.block_type ?? "personal") === "shift") ? "shift" : "none";
+        }}
+        getDayDots={(day) => {
+          const key = format(day, "yyyy-MM-dd");
+          const dayBlocks = blocksByDate.get(key) ?? [];
+          const dayAppointments = appointmentsByDate.get(key) ?? [];
+          const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
+          const hasAppointments = dayAppointments.length > 0;
+          const dayTypes = new Set(
+            dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType)
+          );
+          const dots = [];
+          if (hasAppointments) dots.push({ key: "appointments", className: "bg-studio-green" });
+          if (hasHome) dots.push({ key: "home", className: "bg-purple-400" });
+          if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-red-500" });
+          if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-amber-500" });
+          if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-500" });
+          if (dayTypes.has("administrative")) dots.push({ key: "administrative", className: "bg-gray-400" });
+          return dots;
+        }}
+        legend={
+          <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-muted">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Legenda:</span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-studio-green" />
+              atendimentos
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+              domicílio
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              plantão
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              parcial
+            </span>
           </div>
+        }
+        legendPlacement="bottom"
+        footer={
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+                <Shield className="w-4 h-4 text-gray-500" />
+                Detalhes do dia
+              </div>
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">
+                {format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR })}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Bloqueios cadastrados para o dia selecionado.</p>
+            </div>
 
-          {selectedBlocks.length === 0 ? (
-            <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-4 text-xs text-gray-500">
-              Nenhum bloqueio cadastrado para este dia.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {selectedBlocks.map((block) => {
-                const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
-                const timeClass = block.is_full_day ? meta.accentClass : "text-amber-600";
-                return (
-                  <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${meta.iconClass}`}>
-                        {meta.icon}
+            {selectedBlocks.length === 0 ? (
+              <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-4 text-xs text-gray-500">
+                Nenhum bloqueio cadastrado para este dia.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedBlocks.map((block) => {
+                  const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
+                  const timeClass = block.is_full_day ? meta.accentClass : "text-amber-600";
+                  return (
+                    <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${meta.iconClass}`}>
+                          {meta.icon}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-gray-700">{block.title}</div>
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${timeClass}`}>
+                            {formatBlockTime(block)}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-bold text-gray-700">{block.title}</div>
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${timeClass}`}>
-                          {formatBlockTime(block)}
-                        </span>
-                      </div>
+                      <button
+                        onClick={() => handleDeleteBlock(block.id)}
+                        className="w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-stone-50 flex items-center justify-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleDeleteBlock(block.id)}
-                      className="w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-stone-50 flex items-center justify-center"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        }
+      />
 
       {message && (
         <div

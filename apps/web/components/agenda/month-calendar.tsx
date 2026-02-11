@@ -34,6 +34,8 @@ interface MonthCalendarProps {
   className?: string;
   legend?: ReactNode;
   legendPlacement?: "top" | "bottom";
+  headerActions?: ReactNode;
+  footer?: ReactNode;
 }
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -48,6 +50,8 @@ export function MonthCalendar({
   legend,
   legendPlacement = "bottom",
   getDayTone,
+  headerActions,
+  footer,
 }: MonthCalendarProps) {
   const monthGridDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
@@ -64,20 +68,23 @@ export function MonthCalendar({
           {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onChangeMonth?.(addMonths(currentMonth, -1))}
-            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeMonth?.(addMonths(currentMonth, 1))}
-            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          {headerActions}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onChangeMonth?.(addMonths(currentMonth, -1))}
+              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeMonth?.(addMonths(currentMonth, 1))}
+              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -134,6 +141,7 @@ export function MonthCalendar({
       </div>
 
       {legendPlacement === "bottom" && legendNode}
+      {footer ? <div className="mt-4 border-t border-stone-100 pt-4">{footer}</div> : null}
     </div>
   );
 }
