@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Coffee,
   Plus,
+  Sparkles,
   Shield,
   Stethoscope,
   Trash2,
@@ -257,55 +258,14 @@ export function AvailabilityManager() {
   return (
     <div className="space-y-5">
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
-          <div className="w-8 h-8 rounded-lg bg-stone-50 text-studio-green flex items-center justify-center">
-            <Calendar className="w-4 h-4" />
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-studio-green">
+          <div className="w-7 h-7 rounded-lg bg-studio-light text-studio-green flex items-center justify-center">
+            <Sparkles className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Resumo do mês</div>
-            <div className="text-sm font-bold text-studio-text">Mês de referência</div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 tracking-widest">
-            Mês de referência
-          </label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-            className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
-          <div className="bg-stone-50 rounded-xl p-3 border border-stone-100">
-            <div className="font-bold text-gray-600">Bloqueios no mês</div>
-            <div>{overview.blocks.length} bloqueio(s)</div>
-          </div>
-          <div className="bg-stone-50 rounded-xl p-3 border border-stone-100">
-            <div className="font-bold text-gray-600">Agendamentos no mês</div>
-            <div>{overview.appointments.length} agendamento(s)</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
-        <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
-          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-            <Stethoscope className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Escala automática</div>
-            <div className="text-xs text-gray-400 uppercase tracking-wider">Home Care</div>
-          </div>
-          <span className="ml-auto text-[9px] font-bold uppercase text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
-            Plantões
-          </span>
+          Gerador automático
         </div>
         <p className="text-xs text-gray-500">
-          Gere plantões em massa para dias pares ou ímpares. Bloqueios pessoais são preservados.
+          Preencha o mês rapidamente para a rotina de Home Care (dias alternados).
         </p>
 
         <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
@@ -315,14 +275,14 @@ export function AvailabilityManager() {
               onChange={(event) => setScaleType(event.target.value as "even" | "odd")}
               className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 pl-3 pr-9 text-xs font-bold text-gray-600 focus:outline-none focus:ring-1 focus:ring-studio-green/40 appearance-none"
             >
-              <option value="even">Dias pares</option>
-              <option value="odd">Dias ímpares</option>
+              <option value="odd">Dias ímpares (1, 3, 5...)</option>
+              <option value="even">Dias pares (2, 4, 6...)</option>
             </select>
           </div>
           <button
             onClick={() => handleCreateScale()}
             disabled={loading}
-            className="px-4 py-3 rounded-xl bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm hover:bg-studio-green/90 transition disabled:opacity-50"
+            className="px-4 py-3 rounded-xl bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm hover:bg-studio-dark transition disabled:opacity-50"
           >
             Aplicar
           </button>
@@ -610,16 +570,17 @@ export function AvailabilityManager() {
 
                   <div>
                     <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                      Descrição (opcional)
+                      Título do bloqueio
                     </label>
                     <input
                       type="text"
                       value={blockTitle}
                       onChange={(event) => setBlockTitle(event.target.value)}
-                      placeholder="Ex: Almoço com cliente"
+                      placeholder="Ex: Plantão Home Care"
                       className="w-full bg-white border border-stone-100 rounded-xl py-4 px-4 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-studio-green/20 placeholder-gray-300 transition-all outline-none"
                     />
                   </div>
+                  
                 </div>
 
                 {pendingBlockConfirm && (
