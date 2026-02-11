@@ -120,6 +120,8 @@ type DayItem = {
   price?: number | null;
   phone?: string | null;
   address?: string | null;
+  block_type?: string | null;
+  is_full_day?: boolean | null;
 };
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -425,6 +427,27 @@ export function MobileAgenda({
       parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime()
     );
 
+    const blockItems = dayBlocks
+      .filter((block) => !((block.block_type ?? "") === "shift" && block.is_full_day))
+      .map((block) => ({
+        id: block.id,
+        type: "block" as const,
+        start_time: block.start_time,
+        finished_at: block.end_time,
+        service_duration_minutes: null,
+        buffer_before_minutes: null,
+        buffer_after_minutes: null,
+        clientName: block.title,
+        serviceName: "Plantão",
+        status: "blocked",
+        payment_status: null,
+        is_home_visit: false,
+        total_duration_minutes: null,
+        price: null,
+        block_type: block.block_type ?? null,
+        is_full_day: block.is_full_day ?? null,
+      }));
+
     const items: DayItem[] = [
       ...dayAppointments.map((appt) => ({
         id: appt.id,
@@ -444,22 +467,7 @@ export function MobileAgenda({
         phone: appt.clients?.phone ?? null,
         address: appt.clients?.endereco_completo ?? null,
       })),
-      ...dayBlocks.map((block) => ({
-        id: block.id,
-        type: "block" as const,
-        start_time: block.start_time,
-        finished_at: block.end_time,
-        service_duration_minutes: null,
-        buffer_before_minutes: null,
-        buffer_after_minutes: null,
-        clientName: block.title,
-        serviceName: "Plantão",
-        status: "blocked",
-        payment_status: null,
-        is_home_visit: false,
-        total_duration_minutes: null,
-        price: null,
-      })),
+      ...blockItems,
     ].sort((a, b) => parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime());
 
     return { dayAppointments, dayBlocks, items };
@@ -893,6 +901,12 @@ export function MobileAgenda({
               const appointmentCount = dayAppointments.length;
               const homeCount = dayAppointments.filter((appt) => appt.is_home_visit).length;
               const blockCount = dayBlocks.length;
+              const hasShiftBlock = dayBlocks.some(
+                (block) => (block.block_type ?? "") === "shift" && block.is_full_day
+              );
+              const hasPartialBlocks = dayBlocks.some(
+                (block) => !((block.block_type ?? "") === "shift" && block.is_full_day)
+              );
               const nowOffset = now && isToday(day) ? getOffsetForTime(now, timeGridConfig) : null;
 
               return (
@@ -941,9 +955,19 @@ export function MobileAgenda({
                           <Home className="w-3 h-3" /> {homeCount} domicílio
                         </span>
                       )}
-                      {appointmentCount === 0 && blockCount > 0 && (
+                      {hasShiftBlock && (
                         <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-red-100 text-red-600">
-                          <Hospital className="w-3 h-3" /> Bloqueado
+                          <Hospital className="w-3 h-3" /> Plantão
+                        </span>
+                      )}
+                      {!hasShiftBlock && appointmentCount === 0 && blockCount > 0 && (
+                        <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-amber-100 text-amber-700">
+                          Bloqueio parcial
+                        </span>
+                      )}
+                      {hasShiftBlock && hasPartialBlocks && (
+                        <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-amber-100 text-amber-700">
+                          Bloqueio parcial
                         </span>
                       )}
                       {appointmentCount === 0 && blockCount === 0 && (
@@ -1061,7 +1085,7 @@ export function MobileAgenda({
                               style={{ top: wrapperTop, height: wrapperHeight }}
                             >
                               {isBlock ? (
-                                <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-red-400 flex flex-col justify-between overflow-hidden">
+                                <div className="h-full bg-white p-3.5 rounded-3xl shadow-soft border-l-4 border-amber-400 flex flex-col justify-between overflow-hidden">
                                   <div className="flex justify-between items-start mb-1">
                                     <h3 className="font-extrabold text-studio-text text-sm leading-tight line-clamp-1">
                                       {item.clientName}
@@ -1193,7 +1217,13 @@ export function MobileAgenda({
             {weekDays.map((day) => {
               const { dayAppointments, dayBlocks } = getDayData(day);
               const hasAppointments = dayAppointments.length > 0;
-              const hasBlocks = dayBlocks.length > 0;
+              const hasShiftBlock = dayBlocks.some(
+                (block) => (block.block_type ?? "") === "shift" && block.is_full_day
+              );
+              const partialBlocks = dayBlocks.filter(
+                (block) => !((block.block_type ?? "") === "shift" && block.is_full_day)
+              );
+              const hasBlocks = partialBlocks.length > 0;
 
               if (hasAppointments) {
                 return (
@@ -1237,18 +1267,38 @@ export function MobileAgenda({
                 );
               }
 
-              if (hasBlocks) {
+              if (hasShiftBlock || hasBlocks) {
                 return (
-                  <div key={day.toISOString()} className="bg-white p-4 rounded-3xl border-l-4 border-red-400 shadow-soft opacity-90">
+                  <div
+                    key={day.toISOString()}
+                    className={`bg-white p-4 rounded-3xl shadow-soft opacity-90 ${
+                      hasBlocks ? "border-l-4 border-amber-400" : "border border-stone-100"
+                    }`}
+                  >
                     <div className="flex justify-between items-center">
                       <span className="font-extrabold text-studio-text capitalize">
                         {format(day, "EEE, dd", { locale: ptBR })}
                       </span>
-                      <span className="text-xs font-extrabold bg-red-100 text-danger px-2 py-1 rounded-full flex items-center gap-1">
-                        <Hospital className="w-3 h-3" /> PLANTÃO
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {hasShiftBlock && (
+                          <span className="text-xs font-extrabold bg-red-100 text-danger px-2 py-1 rounded-full flex items-center gap-1">
+                            <Hospital className="w-3 h-3" /> PLANTÃO
+                          </span>
+                        )}
+                        {hasBlocks && (
+                          <span className="text-xs font-extrabold bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1">
+                            Bloqueio parcial
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted mt-2">Bloqueado para agendamento online.</p>
+                    {hasBlocks ? (
+                      <p className="text-xs text-muted mt-2">
+                        {partialBlocks.length} bloqueio(s) parcial(is) neste dia.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted mt-2">Plantão programado.</p>
+                    )}
                   </div>
                 );
               }

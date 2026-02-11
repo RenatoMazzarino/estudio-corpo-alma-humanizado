@@ -31,6 +31,7 @@
 - Agenda (Dia/Semana): cancelados ocultos na grade; cards domiciliares com cor correta; linhas de semana alinhadas ao padrão visual.
 - Agenda: clique abre **Bottom Sheet** com gesto de arrastar para fechar e conteúdo dentro do frame.
 - Agenda: bloqueios não impedem agendamento interno (apenas aviso no formulário); agendamento online continua respeitando bloqueios.
+- Agenda (Dia/Semana): plantão agora aparece como **tag** no topo; bloqueios parciais seguem como cards com borda âmbar.
 - Agenda: horário Brasil (America/Sao_Paulo) aplicado no cálculo de disponibilidade.
 - UI: toast padrão para feedback de sucesso/erro.
 - UI: módulos Financeiro (ex-Caixa) e Mensagens adicionados; FAB com ações financeiras em “em dev”.
