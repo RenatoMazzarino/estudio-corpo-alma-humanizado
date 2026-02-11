@@ -39,7 +39,7 @@ import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
 import { AppointmentDetailsSheet } from "./agenda/appointment-details-sheet";
-import { MonthCalendar } from "./agenda/month-calendar";
+import { AvailabilityManager } from "./availability-manager";
 import { cancelAppointment } from "../app/actions";
 import {
   confirmPre,
@@ -1268,46 +1268,7 @@ export function MobileAgenda({
         <section
           className={`${view === "month" ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}
         >
-          <MonthCalendar
-            currentMonth={currentMonth}
-            selectedDate={selectedDate}
-            onChangeMonth={setCurrentMonth}
-            onSelectDay={(day) => {
-              setSelectedDate(day);
-              setViewAndSync("day", day);
-            }}
-            getDayDots={(day) => {
-              const key = format(day, "yyyy-MM-dd");
-              const dayAppointments = appointmentsByDay.get(key) ?? [];
-              const dayBlocks = blocksByDay.get(key) ?? [];
-              const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
-              const dots = [];
-              if (dayAppointments.length > 0) {
-                dots.push({ key: "appointments", className: "bg-studio-green" });
-              }
-              if (dayBlocks.length > 0) {
-                dots.push({ key: "blocks", className: "bg-red-400" });
-              }
-              if (hasHome) {
-                dots.push({ key: "home", className: "bg-purple-400" });
-              }
-              return dots;
-            }}
-            legend={
-              <div className="p-3 rounded-2xl bg-studio-light text-studio-green text-xs">
-                <span className="font-extrabold">Legenda:</span>
-                <span className="ml-2 inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-studio-green inline-block"></span> atendimentos
-                </span>
-                <span className="ml-2 inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-purple-400 inline-block"></span> domicílio
-                </span>
-                <span className="ml-2 inline-flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span> bloqueio
-                </span>
-              </div>
-            }
-          />
+          <AvailabilityManager />
         </section>
         </main>
       </ModulePage>
@@ -1426,12 +1387,6 @@ export function MobileAgenda({
             icon: <ArrowUpCircle className="w-5 h-5" />,
             disabled: true,
             helper: "Em dev",
-          },
-          {
-            label: "Gestão de Agenda",
-            icon: <Hospital className="w-5 h-5" />,
-            onClick: () => router.push("/bloqueios"),
-            tone: "danger",
           },
           {
             label: "Novo Cliente",

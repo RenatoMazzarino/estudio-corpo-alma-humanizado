@@ -113,7 +113,6 @@ export async function createAvailabilityBlock(
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 
-  revalidatePath("/bloqueios");
   revalidatePath("/");
 
   return ok({ id: inserted?.[0]?.id });
@@ -124,7 +123,6 @@ export async function deleteAvailabilityBlock(id: string): Promise<ActionResult<
   const { error } = await deleteAvailabilityBlockById(FIXED_TENANT_ID, id);
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
-  revalidatePath("/bloqueios");
   revalidatePath("/");
   return ok({ id });
 }
