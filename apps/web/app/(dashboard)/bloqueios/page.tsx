@@ -7,6 +7,7 @@ import { ModulePage } from "../../../components/ui/module-page";
 export default function BloqueiosPage() {
   return (
     <ModulePage
+      className="-mx-4 -mt-4"
       header={
         <AppHeader
           label="Agenda"
