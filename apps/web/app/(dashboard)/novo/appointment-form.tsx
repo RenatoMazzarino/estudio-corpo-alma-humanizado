@@ -394,6 +394,7 @@ export function AppointmentForm({
     async function fetchBlockStatus() {
       if (!selectedDate) {
         setHasBlocks(false);
+        setHasShiftBlock(false);
         return;
       }
       setBlockStatus("loading");
