@@ -74,6 +74,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `9b178e9` — fix(agenda): ajustar tipos do availability manager
 - `f1b9b63` — docs(report): atualizar gestão de agenda e mensagens automáticas
 - `854cee3` — feat(agenda): gestão de disponibilidade inteligente
 - `8bd573e` — feat(messages): centralizar templates automáticos
