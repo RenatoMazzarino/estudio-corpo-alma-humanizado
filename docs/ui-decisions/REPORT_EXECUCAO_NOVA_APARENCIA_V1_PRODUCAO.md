@@ -30,6 +30,7 @@
 - Agenda (Dia): cards refatorados para exibir sempre 5 dados; versão compacta para 25–30min; status de agendamento como **dot** e status financeiro em **chip**.
 - Agenda (Dia/Semana): cancelados ocultos na grade; cards domiciliares com cor correta; linhas de semana alinhadas ao padrão visual.
 - Agenda: clique abre **Bottom Sheet** com gesto de arrastar para fechar e conteúdo dentro do frame.
+- Agenda: bloqueios não impedem agendamento interno (apenas aviso no formulário); agendamento online continua respeitando bloqueios.
 - Agenda: horário Brasil (America/Sao_Paulo) aplicado no cálculo de disponibilidade.
 - UI: toast padrão para feedback de sucesso/erro.
 - UI: módulos Financeiro (ex-Caixa) e Mensagens adicionados; FAB com ações financeiras em “em dev”.
@@ -87,6 +88,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `5f63161` — feat(agenda): permitir agendar internamente apesar de bloqueios
 - `869e122` — docs(report): registrar ajuste no card do calendário
 - `9ba185f` — refactor(ui): simplificar card do calendário na visão mês
 - `875ecec` — docs(report): registrar atualização de modais
@@ -246,6 +248,7 @@ Comandos executados na raiz:
 - **Integração na Agenda:** Gestão de Agenda agora vive na visão **Mês** (calendário com ações no card), removendo a rota `/bloqueios` e o atalho do FAB.
 - **Consistência visual:** modais de bloqueio/escala adotam layout, botões e campos no mesmo padrão do modal de agendamento.
 - **Calendário único:** remoção do card externo; legenda e detalhes do dia ficam dentro do card do calendário.
+- **Regra de bloqueios:** no agendamento interno, bloqueios geram apenas aviso; no agendamento público, horários bloqueados são removidos da disponibilidade.
 - **Arquitetura de dados:** `availability_blocks` agora possui `block_type` (`shift`, `personal`, `vacation`, `administrative`) e `is_full_day` para distinguir bloqueios integrais vs parciais.
 - **Gerador de Escala:** aplica dias pares/ímpares criando blocos do tipo `shift`; ao reaplicar, remove **apenas** os `shift` do mês, preservando bloqueios pessoais/administrativos.
 - **Calendário Macro:** visão mensal com indicadores por tipo (pontos coloridos) e destaque de plantão; navegação por mês.
