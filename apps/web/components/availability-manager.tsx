@@ -34,7 +34,7 @@ interface AvailabilityBlock {
 
 interface MonthOverview {
   blocks: AvailabilityBlock[];
-  appointments: { id: string; start_time: string; service_name: string }[];
+  appointments: { id: string; start_time: string; service_name: string; is_home_visit?: boolean | null }[];
 }
 
 interface CreateBlockPayload {
@@ -53,17 +53,17 @@ const blockTypeMeta: Record<
 > = {
   shift: {
     label: "Plantão",
-    color: "bg-purple-50 text-purple-700 border-purple-200",
+    color: "bg-red-50 text-red-600 border-red-100",
     icon: <Stethoscope className="w-4 h-4" />,
-    iconClass: "bg-purple-100 text-purple-700",
-    accentClass: "text-purple-600",
+    iconClass: "bg-red-100 text-red-600",
+    accentClass: "text-red-600",
   },
   personal: {
     label: "Pessoal",
-    color: "bg-orange-50 text-orange-700 border-orange-200",
+    color: "bg-amber-50 text-amber-700 border-amber-100",
     icon: <Coffee className="w-4 h-4" />,
-    iconClass: "bg-orange-100 text-orange-700",
-    accentClass: "text-orange-600",
+    iconClass: "bg-amber-100 text-amber-700",
+    accentClass: "text-amber-600",
   },
   vacation: {
     label: "Férias",
@@ -137,6 +137,17 @@ export function AvailabilityManager() {
     });
     return grouped;
   }, [overview.blocks]);
+
+  const appointmentsByDate = useMemo(() => {
+    const grouped = new Map<string, MonthOverview["appointments"]>();
+    overview.appointments.forEach((appt) => {
+      const key = format(parseISO(appt.start_time), "yyyy-MM-dd");
+      const list = grouped.get(key) ?? [];
+      list.push(appt);
+      grouped.set(key, list);
+    });
+    return grouped;
+  }, [overview.appointments]);
 
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const selectedBlocks = blocksByDate.get(selectedKey) ?? [];
@@ -289,7 +300,7 @@ export function AvailabilityManager() {
               onClick={openNewBlockModal}
               className="inline-flex items-center gap-1 px-3 py-2 rounded-full bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm"
             >
-              <Plus className="w-4 h-4" /> Novo bloqueio
+              + NOVO
             </button>
           </div>
         </div>
@@ -307,25 +318,38 @@ export function AvailabilityManager() {
           getDayDots={(day) => {
             const key = format(day, "yyyy-MM-dd");
             const dayBlocks = blocksByDate.get(key) ?? [];
+            const dayAppointments = appointmentsByDate.get(key) ?? [];
+            const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
+            const hasAppointments = dayAppointments.length > 0;
             const dayTypes = new Set(
               dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType)
             );
             const dots = [];
-            if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-purple-500" });
-            if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-orange-500" });
+            if (hasAppointments) dots.push({ key: "appointments", className: "bg-studio-green" });
+            if (hasHome) dots.push({ key: "home", className: "bg-purple-400" });
+            if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-red-500" });
+            if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-amber-500" });
             if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-500" });
             if (dayTypes.has("administrative")) dots.push({ key: "administrative", className: "bg-gray-400" });
             return dots;
           }}
           legend={
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-50">
-                <span className="w-2 h-2 rounded-full bg-purple-500" />
-                <span className="text-[9px] font-bold uppercase tracking-wide text-purple-700">Plantão</span>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-studio-light">
+                <span className="w-2 h-2 rounded-full bg-studio-green" />
+                <span className="text-[9px] font-bold uppercase tracking-wide text-studio-green">Agendado</span>
               </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-50">
-                <span className="w-2 h-2 rounded-full bg-orange-500" />
-                <span className="text-[9px] font-bold uppercase tracking-wide text-orange-600">Parcial</span>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-50">
+                <span className="w-2 h-2 rounded-full bg-purple-400" />
+                <span className="text-[9px] font-bold uppercase tracking-wide text-purple-600">Domicílio</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-50">
+                <span className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="text-[9px] font-bold uppercase tracking-wide text-red-600">Plantão</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600">Parcial</span>
               </div>
             </div>
           }
@@ -349,7 +373,7 @@ export function AvailabilityManager() {
             onClick={openNewBlockModal}
             className="px-3 py-2 rounded-full bg-studio-light text-studio-green text-xs font-bold uppercase tracking-wide"
           >
-            + Novo bloqueio
+            + NOVO
           </button>
         </div>
 
@@ -361,6 +385,7 @@ export function AvailabilityManager() {
           <div className="space-y-3">
             {selectedBlocks.map((block) => {
               const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
+              const timeClass = block.is_full_day ? meta.accentClass : "text-amber-600";
               return (
                 <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
                   <div className="flex items-center gap-3">
@@ -369,7 +394,7 @@ export function AvailabilityManager() {
                     </div>
                     <div>
                       <div className="text-sm font-bold text-gray-700">{block.title}</div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${meta.accentClass}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${timeClass}`}>
                         {formatBlockTime(block)}
                       </span>
                     </div>
