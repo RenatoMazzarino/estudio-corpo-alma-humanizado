@@ -75,6 +75,8 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `3e7f9f7` — docs(report): registrar padronizacao do calendario
+- `1d0d6b4` — refactor(ui): padronizar calendario e layout da gestao
 - `e445ef0` — fix(ui): evitar keys duplicadas no calendario
 - `9a4d5c0` — fix(build): remover helper nao-async em server actions
 - `9b178e9` — fix(agenda): ajustar tipos do availability manager
