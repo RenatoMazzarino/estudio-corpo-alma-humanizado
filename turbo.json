@@ -1,6 +1,13 @@
 {
   "ui": "tui",
-  "globalEnv": ["SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_MAPS_API_KEY", "APP_TIMEZONE"],
+  "globalEnv": [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "GOOGLE_MAPS_API_KEY",
+    "APP_TIMEZONE",
+    "MERCADOPAGO_ACCESS_TOKEN",
+    "MERCADOPAGO_WEBHOOK_URL",
+    "MERCADOPAGO_WEBHOOK_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

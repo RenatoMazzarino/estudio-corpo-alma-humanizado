@@ -64,7 +64,7 @@ export default async function ClientProfilePage(props: PageProps) {
             is_primary: true,
             is_whatsapp: true,
             created_at: client.created_at ?? new Date().toISOString(),
-            updated_at: client.updated_at ?? client.created_at ?? new Date().toISOString(),
+            updated_at: client.created_at ?? new Date().toISOString(),
           },
         ]
       : [];

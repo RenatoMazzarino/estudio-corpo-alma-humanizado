@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     .eq("provider_ref", providerRef)
     .maybeSingle();
 
-  let resolvedAppointmentId = existing?.appointment_id ?? appointmentId;
+  const resolvedAppointmentId = existing?.appointment_id ?? appointmentId;
 
   if (!existing && resolvedAppointmentId) {
     const { data: appointment } = await supabase

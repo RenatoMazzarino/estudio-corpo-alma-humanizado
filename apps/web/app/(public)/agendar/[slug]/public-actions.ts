@@ -54,22 +54,8 @@ function normalizePhoneValue(value: string) {
   return value.replace(/\D/g, "");
 }
 
-function formatPhoneValue(value: string) {
-  const digits = normalizePhoneValue(value).slice(0, 11);
-  if (digits.length <= 10) {
-    return digits.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return digits.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
-}
-
 function sanitizeIlike(value: string) {
   return value.replace(/[%_,]/g, "").trim();
-}
-
-function phoneMatches(candidate: string | null | undefined, digits: string) {
-  if (!candidate) return false;
-  const normalized = normalizePhoneValue(candidate);
-  return normalized === digits || normalized.endsWith(digits);
 }
 
 function phoneMatchesAny(candidate: string | null | undefined, variants: string[]) {
