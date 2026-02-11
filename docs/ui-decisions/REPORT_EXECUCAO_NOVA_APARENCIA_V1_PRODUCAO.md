@@ -51,6 +51,7 @@
 - Calendário mensal: dia atual com círculo transparente e borda verde; dia selecionado com preenchimento verde.
 - Gestão de Agenda: cores de bloqueio ajustadas (plantão vermelho, parcial âmbar) e dots com agendamentos/domicílio.
 - Gestão de Agenda: legenda do calendário abaixo e detalhes do dia integrados no card do calendário.
+- Gestão de Agenda: modais de **Novo Bloqueio** e **Gerador de Escala** reestilizados para seguir a mesma linguagem visual do modal de agendamento.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
@@ -85,6 +86,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `a7afc30` — style(agenda): alinhar modais da gestão ao modal do agendamento
 - `c3ad877` — docs(report): atualizar gestão de agenda na visão mês
 - `8926463` — refactor(agenda): mover gestão para visão mês
 - `bcdda35` — style(ui): integrar detalhes ao calendario
@@ -238,6 +240,7 @@ Comandos executados na raiz:
 
 ## 13) Gestão de Disponibilidade Inteligente (novo módulo)
 - **Integração na Agenda:** Gestão de Agenda agora vive na visão **Mês** (calendário com ações no card), removendo a rota `/bloqueios` e o atalho do FAB.
+- **Consistência visual:** modais de bloqueio/escala adotam layout, botões e campos no mesmo padrão do modal de agendamento.
 - **Arquitetura de dados:** `availability_blocks` agora possui `block_type` (`shift`, `personal`, `vacation`, `administrative`) e `is_full_day` para distinguir bloqueios integrais vs parciais.
 - **Gerador de Escala:** aplica dias pares/ímpares criando blocos do tipo `shift`; ao reaplicar, remove **apenas** os `shift` do mês, preservando bloqueios pessoais/administrativos.
 - **Calendário Macro:** visão mensal com indicadores por tipo (pontos coloridos) e destaque de plantão; navegação por mês.
