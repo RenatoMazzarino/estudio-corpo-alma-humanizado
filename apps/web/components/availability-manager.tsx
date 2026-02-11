@@ -2,17 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import {
-  eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
-  format,
-  isSameDay,
-  isSameMonth,
-  parseISO,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
+import { format, isSameMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertCircle,
@@ -28,6 +18,7 @@ import {
 import { createShiftBlocks, clearMonthBlocks } from "../app/(dashboard)/admin/escala/actions";
 import { createAvailabilityBlock, deleteAvailabilityBlock, getMonthOverview } from "../app/(dashboard)/bloqueios/actions";
 import { useToast } from "./ui/toast";
+import { MonthCalendar } from "./agenda/month-calendar";
 
 type BlockType = "shift" | "personal" | "vacation" | "administrative";
 
@@ -61,8 +52,6 @@ const blockTypeMeta: Record<BlockType, { label: string; color: string; icon: Rea
   vacation: { label: "Férias", color: "bg-teal-50 text-teal-700 border-teal-200", icon: <Umbrella className="w-4 h-4" /> },
   administrative: { label: "Admin", color: "bg-gray-100 text-gray-600 border-gray-200", icon: <Shield className="w-4 h-4" /> },
 };
-
-const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 const formatBlockTime = (block: AvailabilityBlock) => {
   if (block.is_full_day) return "Dia todo";
@@ -108,12 +97,6 @@ export function AvailabilityManager() {
       setSelectedDate(currentMonthDate);
     }
   }, [currentMonthDate, selectedDate]);
-  const calendarDays = useMemo(() => {
-    const start = startOfWeek(startOfMonth(currentMonthDate), { weekStartsOn: 0 });
-    const end = endOfWeek(endOfMonth(currentMonthDate), { weekStartsOn: 0 });
-    return eachDayOfInterval({ start, end });
-  }, [currentMonthDate]);
-
   const blocksByDate = useMemo(() => {
     const grouped = new Map<string, AvailabilityBlock[]>();
     overview.blocks.forEach((block) => {
@@ -127,6 +110,9 @@ export function AvailabilityManager() {
 
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const selectedBlocks = blocksByDate.get(selectedKey) ?? [];
+  const handleMonthChange = (next: Date) => {
+    setSelectedMonth(format(next, "yyyy-MM"));
+  };
 
   const handleCreateScale = async (force?: boolean) => {
     setLoading(true);
@@ -243,15 +229,10 @@ export function AvailabilityManager() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-studio-light text-studio-green rounded-lg">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-studio-text">Gestão de Agenda</h2>
-            <p className="text-xs text-gray-500">Controle plantões, bloqueios pessoais e férias em um só lugar.</p>
-          </div>
+      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-5">
+        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+          <Calendar className="w-4 h-4 text-studio-green" />
+          Resumo do mês
         </div>
 
         <div className="space-y-2">
@@ -276,16 +257,19 @@ export function AvailabilityManager() {
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 space-y-4">
+      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-studio-text">Gerador de Escala</h3>
-            <p className="text-xs text-gray-500">Crie plantões por dias pares/ímpares automaticamente.</p>
+          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+            <Stethoscope className="w-4 h-4 text-purple-500" />
+            Gerador de escala
           </div>
           <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
             Plantões
           </span>
         </div>
+        <p className="text-xs text-gray-500">
+          Gere plantões em massa para dias pares ou ímpares. Bloqueios pessoais são preservados.
+        </p>
 
         <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
           <select
@@ -341,11 +325,11 @@ export function AvailabilityManager() {
         )}
       </div>
 
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 space-y-4">
+      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-studio-text">Calendário do mês</h3>
-            <p className="text-xs text-gray-500">Selecione um dia para ver ou adicionar bloqueios.</p>
+          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+            <Calendar className="w-4 h-4 text-studio-green" />
+            Calendário do mês
           </div>
           <button
             onClick={openNewBlockModal}
@@ -355,65 +339,53 @@ export function AvailabilityManager() {
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 text-[10px] text-gray-400 font-bold uppercase">
-          {weekdayLabels.map((label, index) => (
-            <div key={`${label}-${index}`} className="text-center">
-              {label}
+        <MonthCalendar
+          currentMonth={currentMonthDate}
+          selectedDate={selectedDate}
+          onChangeMonth={(next) => handleMonthChange(next)}
+          onSelectDay={(day) => setSelectedDate(day)}
+          getDayDots={(day) => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayBlocks = blocksByDate.get(key) ?? [];
+            const dayTypes = new Set(
+              dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType)
+            );
+            const dots = [];
+            if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-purple-400" });
+            if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-orange-400" });
+            if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-400" });
+            if (dayTypes.has("administrative")) dots.push({ key: "administrative", className: "bg-gray-400" });
+            return dots;
+          }}
+          legend={
+            <div className="p-3 rounded-2xl bg-studio-light text-studio-green text-xs">
+              <span className="font-extrabold">Legenda:</span>
+              <span className="ml-2 inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-purple-400 inline-block"></span> plantão
+              </span>
+              <span className="ml-2 inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span> pessoal
+              </span>
+              <span className="ml-2 inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-teal-400 inline-block"></span> férias
+              </span>
+              <span className="ml-2 inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-gray-400 inline-block"></span> admin
+              </span>
             </div>
-          ))}
-        </div>
-
-      <div className="grid grid-cols-7 gap-2">
-        {calendarDays.map((day) => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayBlocks = blocksByDate.get(key) ?? [];
-          const dayTypes = new Set(
-            dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType)
-          );
-          const hasShift = dayTypes.has("shift");
-          const dotOrder: BlockType[] = ["shift", "personal", "vacation", "administrative"];
-          const dotColors: Record<BlockType, string> = {
-            shift: "bg-purple-400",
-            personal: "bg-orange-400",
-            vacation: "bg-teal-400",
-            administrative: "bg-gray-400",
-          };
-          const isSelected = isSameDay(day, selectedDate);
-
-          return (
-            <button
-              key={key}
-                type="button"
-                onClick={() => setSelectedDate(day)}
-                className={`relative h-12 rounded-xl border text-sm font-semibold transition ${
-                  isSelected
-                    ? "bg-studio-green text-white border-studio-green"
-                    : isSameMonth(day, currentMonthDate)
-                      ? "bg-stone-50 border-stone-100 text-gray-700"
-                      : "bg-stone-50/60 border-stone-100 text-gray-400"
-                } ${hasShift && !isSelected ? "border-purple-300 bg-purple-50 text-purple-700" : ""}`}
-            >
-              {format(day, "d")}
-              {dayBlocks.length > 0 && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
-                  {dotOrder
-                    .filter((type) => dayTypes.has(type))
-                    .map((type) => (
-                      <span key={type} className={`w-2 h-2 rounded-full ${dotColors[type]}`} />
-                    ))}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+          }
+        />
       </div>
 
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-200 space-y-4">
+      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-studio-text">
-              Detalhes de {format(selectedDate, "dd MMMM", { locale: ptBR })}
+            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+              <Shield className="w-4 h-4 text-gray-500" />
+              Detalhes do dia
+            </div>
+            <h3 className="text-sm font-bold text-studio-text mt-1">
+              {format(selectedDate, "dd MMMM", { locale: ptBR })}
             </h3>
             <p className="text-xs text-gray-500">Bloqueios cadastrados para o dia selecionado.</p>
           </div>

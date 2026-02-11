@@ -39,6 +39,7 @@ import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
 import { AppointmentDetailsSheet } from "./agenda/appointment-details-sheet";
+import { MonthCalendar } from "./agenda/month-calendar";
 import { cancelAppointment } from "../app/actions";
 import {
   confirmPre,
@@ -556,11 +557,6 @@ export function MobileAgenda({
     return eachDayOfInterval({ start, end });
   }, [selectedDate]);
 
-  const monthGridDays = useMemo(() => {
-    const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
-    const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
-    return eachDayOfInterval({ start, end });
-  }, [currentMonth]);
 
   const formatDuration = (minutes: number | null) => {
     if (!minutes) return "";
@@ -1272,90 +1268,46 @@ export function MobileAgenda({
         <section
           className={`${view === "month" ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}
         >
-          <div className="bg-white rounded-3xl shadow-soft p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-extrabold text-studio-text capitalize">
-                {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
+          <MonthCalendar
+            currentMonth={currentMonth}
+            selectedDate={selectedDate}
+            onChangeMonth={setCurrentMonth}
+            onSelectDay={(day) => {
+              setSelectedDate(day);
+              setViewAndSync("day", day);
+            }}
+            getDayDots={(day) => {
+              const key = format(day, "yyyy-MM-dd");
+              const dayAppointments = appointmentsByDay.get(key) ?? [];
+              const dayBlocks = blocksByDay.get(key) ?? [];
+              const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
+              const dots = [];
+              if (dayAppointments.length > 0) {
+                dots.push({ key: "appointments", className: "bg-studio-green" });
+              }
+              if (dayBlocks.length > 0) {
+                dots.push({ key: "blocks", className: "bg-red-400" });
+              }
+              if (hasHome) {
+                dots.push({ key: "home", className: "bg-purple-400" });
+              }
+              return dots;
+            }}
+            legend={
+              <div className="p-3 rounded-2xl bg-studio-light text-studio-green text-xs">
+                <span className="font-extrabold">Legenda:</span>
+                <span className="ml-2 inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-studio-green inline-block"></span> atendimentos
+                </span>
+                <span className="ml-2 inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 inline-block"></span> domicílio
+                </span>
+                <span className="ml-2 inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span> bloqueio
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}
-                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1 text-center mb-2">
-              {weekdayLabels.map((label, index) => (
-                <div key={`${label}-${index}`} className="text-[10px] font-extrabold text-muted uppercase">
-                  {label}
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 gap-y-4 gap-x-1 text-center text-sm">
-              {monthGridDays.map((day) => {
-                const key = format(day, "yyyy-MM-dd");
-                const dayAppointments = appointmentsByDay.get(key) ?? [];
-                const dayBlocks = blocksByDay.get(key) ?? [];
-                const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
-                const isCurrent = isSameMonth(day, currentMonth);
-                const isDayToday = isToday(day);
-
-                return (
-                  <button
-                    key={day.toISOString()}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDate(day);
-                      setViewAndSync("day", day);
-                    }}
-                    className="relative flex flex-col items-center"
-                  >
-                    <span
-                      className={`w-8 h-8 flex items-center justify-center rounded-full font-extrabold transition ${
-                        isDayToday
-                          ? "bg-studio-green text-white shadow-soft"
-                          : isCurrent
-                            ? "text-studio-text"
-                            : "text-muted/60"
-                      }`}
-                    >
-                      {format(day, "dd")}
-                    </span>
-                    <div className="absolute -bottom-2 flex items-center gap-1">
-                      {dayAppointments.length > 0 && <span className="w-1.5 h-1.5 bg-studio-green rounded-full" />}
-                      {dayBlocks.length > 0 && <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />}
-                      {hasHome && <span className="w-1.5 h-1.5 bg-purple-400 rounded-full" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 p-3 rounded-2xl bg-studio-light text-studio-green text-xs">
-              <span className="font-extrabold">Legenda:</span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-studio-green inline-block"></span> atendimentos
-              </span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-purple-400 inline-block"></span> domicílio
-              </span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-400 inline-block"></span> bloqueio
-              </span>
-            </div>
-          </div>
+            }
+          />
         </section>
         </main>
       </ModulePage>
