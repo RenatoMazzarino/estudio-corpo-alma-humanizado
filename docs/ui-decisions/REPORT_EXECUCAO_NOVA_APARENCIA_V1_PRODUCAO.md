@@ -40,6 +40,7 @@
 - Financeiro: seção de **Sinal/Reserva** no modal, com templates de WhatsApp e links públicos (pagamento + comprovante).
 - Checkout: valor a cobrar considera sinal já pago (total restante).
 - Gestão de Agenda: novo módulo de **Disponibilidade Inteligente** (macro calendário + micro detalhes), com gerador de escala, tipos de bloqueio e confirmação de conflitos.
+- Gestão de Agenda: módulo integrado à visão **Mês** da Agenda (calendário + detalhes + “+ NOVO” + varinha), com remoção da tela `/bloqueios` e do atalho no FAB.
 - Agenda: calendário mensal extraído para componente reutilizável (Agenda + Gestão de Agenda).
 - Gestão de Agenda: layout refinado (cards compactos, calendário com legenda em pills e lista de bloqueios mais leve).
 - Gestão de Agenda: modal de “Novo Bloqueio” redesenhado em bottom sheet com seleção de motivo, toggle e CTA fixo.
@@ -169,7 +170,7 @@
 - `apps/web/components/agenda/appointment-details-sheet.tsx`
 - `apps/web/components/availability-manager.tsx`
 - `apps/web/components/agenda/month-calendar.tsx`
-- `apps/web/app/(dashboard)/bloqueios/*`
+- `apps/web/app/(dashboard)/bloqueios/actions.ts`
 - `apps/web/src/modules/clients/*`
 - `apps/web/src/modules/appointments/*`
 - `apps/web/app/(dashboard)/configuracoes/*`
@@ -234,7 +235,7 @@ Comandos executados na raiz:
 - Configurar `GOOGLE_MAPS_API_KEY` nas variáveis de ambiente da Vercel (produção).
 
 ## 13) Gestão de Disponibilidade Inteligente (novo módulo)
-- **Renomeação do menu:** “Bloquear plantão” virou **Gestão de Agenda** (menu do FAB), mantendo a rota `/bloqueios`.
+- **Integração na Agenda:** Gestão de Agenda agora vive na visão **Mês** (calendário com ações no card), removendo a rota `/bloqueios` e o atalho do FAB.
 - **Arquitetura de dados:** `availability_blocks` agora possui `block_type` (`shift`, `personal`, `vacation`, `administrative`) e `is_full_day` para distinguir bloqueios integrais vs parciais.
 - **Gerador de Escala:** aplica dias pares/ímpares criando blocos do tipo `shift`; ao reaplicar, remove **apenas** os `shift` do mês, preservando bloqueios pessoais/administrativos.
 - **Calendário Macro:** visão mensal com indicadores por tipo (pontos coloridos) e destaque de plantão; navegação por mês.
