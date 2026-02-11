@@ -27,6 +27,12 @@ interface PixPaymentResult {
   transaction_amount: number;
 }
 
+interface CardCheckoutResult {
+  preference_id: string;
+  init_point: string | null;
+  sandbox_init_point: string | null;
+}
+
 interface PublicAppointmentInput {
   tenantSlug: string;
   serviceId: string;
@@ -247,6 +253,147 @@ function splitPhone(phoneDigits: string) {
   const area = digits.slice(0, 2);
   const number = digits.slice(2);
   return { area_code: area || "11", number: number || digits };
+}
+
+export async function createCardCheckout({
+  appointmentId,
+  tenantSlug,
+  amount,
+  description,
+  payerName,
+  payerPhone,
+}: {
+  appointmentId: string;
+  tenantSlug: string;
+  amount: number;
+  description: string;
+  payerName: string;
+  payerPhone: string;
+}): Promise<ActionResult<{ checkoutUrl: string; preferenceId: string }>> {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!accessToken) {
+    return fail(
+      new AppError(
+        "MERCADOPAGO_ACCESS_TOKEN ausente: configure a chave no ambiente.",
+        "CONFIG_ERROR",
+        500
+      )
+    );
+  }
+
+  const { firstName, lastName } = splitName(payerName);
+  const phoneDigits = normalizePhoneValue(payerPhone);
+  const payer = {
+    email: buildPayerEmail(phoneDigits),
+    first_name: firstName,
+    last_name: lastName,
+    phone: splitPhone(phoneDigits),
+  };
+
+  const publicBaseUrl =
+    process.env.NEXT_PUBLIC_PUBLIC_BASE_URL ?? "https://public.corpoealmahumanizado.com.br";
+  const backUrl = `${publicBaseUrl}/agendar/${tenantSlug}`;
+  const idempotencyKey =
+    typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto
+      ? globalThis.crypto.randomUUID()
+      : undefined;
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
+      },
+      body: JSON.stringify({
+        external_reference: appointmentId,
+        items: [
+          {
+            title: description,
+            quantity: 1,
+            unit_price: Number(amount.toFixed(2)),
+          },
+        ],
+        payer,
+        back_urls: {
+          success: backUrl,
+          pending: backUrl,
+          failure: backUrl,
+        },
+        auto_return: "approved",
+        ...(process.env.MERCADOPAGO_WEBHOOK_URL
+          ? { notification_url: process.env.MERCADOPAGO_WEBHOOK_URL }
+          : {}),
+      }),
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(
+      new AppError(
+        "Falha de rede ao iniciar pagamento com cartão. Tente novamente.",
+        "UNKNOWN",
+        500,
+        details
+      )
+    );
+  }
+
+  const payloadText = await response.text();
+  let payload: Record<string, unknown> | null = null;
+  if (payloadText) {
+    try {
+      payload = JSON.parse(payloadText) as Record<string, unknown>;
+    } catch {
+      payload = { message: payloadText };
+    }
+  }
+
+  const payloadMessage =
+    payload && typeof payload.message === "string"
+      ? payload.message
+      : "Erro ao iniciar pagamento com cartão.";
+
+  if (!response.ok) {
+    return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  if (!payload || typeof payload.id === "undefined") {
+    return fail(
+      new AppError(
+        "Resposta inválida do Mercado Pago ao iniciar cartão.",
+        "SUPABASE_ERROR",
+        502,
+        payload
+      )
+    );
+  }
+
+  const result: CardCheckoutResult = {
+    preference_id: String(payload.id),
+    init_point: typeof payload.init_point === "string" ? payload.init_point : null,
+    sandbox_init_point:
+      typeof payload.sandbox_init_point === "string" ? payload.sandbox_init_point : null,
+  };
+
+  const checkoutUrl =
+    accessToken.startsWith("TEST-") && result.sandbox_init_point
+      ? result.sandbox_init_point
+      : result.init_point;
+
+  if (!checkoutUrl) {
+    return fail(
+      new AppError(
+        "Não foi possível obter o link de pagamento com cartão.",
+        "SUPABASE_ERROR",
+        502,
+        result
+      )
+    );
+  }
+
+  return ok({ checkoutUrl, preferenceId: result.preference_id });
 }
 
 export async function createPixPayment({

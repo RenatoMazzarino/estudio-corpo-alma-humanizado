@@ -17,7 +17,12 @@ import {
   User,
   Wallet,
 } from "lucide-react";
-import { createPixPayment, lookupClientByPhone, submitPublicAppointment } from "./public-actions";
+import {
+  createCardCheckout,
+  createPixPayment,
+  lookupClientByPhone,
+  submitPublicAppointment,
+} from "./public-actions";
 import { getAvailableSlots } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 
@@ -87,6 +92,8 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
   } | null>(null);
   const [pixStatus, setPixStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pixError, setPixError] = useState<string | null>(null);
+  const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [cardError, setCardError] = useState<string | null>(null);
   const [suggestedClient, setSuggestedClient] = useState<{
     name: string | null;
     address_cep: string | null;
@@ -312,6 +319,31 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
       setPixStatus("error");
       setPixError("Erro ao gerar Pix. Tente novamente.");
     }
+  };
+
+  const handleCardCheckout = async () => {
+    if (!appointmentId || !selectedService) return;
+    if (!clientName || !clientPhone) {
+      setCardError("Informe o telefone para continuar.");
+      return;
+    }
+    setCardStatus("loading");
+    setCardError(null);
+    const result = await createCardCheckout({
+      appointmentId,
+      tenantSlug: tenant.slug,
+      amount: signalAmount,
+      description: `${selectedService.name} - Sinal`,
+      payerName: clientName,
+      payerPhone: clientPhone,
+    });
+    if (!result.ok) {
+      setCardError(result.error.message);
+      setCardStatus("error");
+      return;
+    }
+    setCardStatus("idle");
+    window.location.href = result.data.checkoutUrl;
   };
 
   useEffect(() => {
@@ -806,6 +838,22 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
               >
                 Já fiz o Pix! Finalizar
               </button>
+            </div>
+
+            <div className="mt-6 border-t border-stone-100 pt-4 space-y-3">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pagamento com cartão</p>
+              {cardError && <p className="text-xs text-red-500">{cardError}</p>}
+              <button
+                type="button"
+                onClick={handleCardCheckout}
+                className="w-full border border-stone-200 text-gray-700 font-bold py-3 rounded-2xl bg-white"
+                disabled={cardStatus === "loading"}
+              >
+                {cardStatus === "loading" ? "Redirecionando..." : "Pagar com cartão (Mercado Pago)"}
+              </button>
+              <p className="text-[10px] text-gray-400">
+                Você será redirecionado para o checkout do Mercado Pago para concluir no cartão.
+              </p>
             </div>
 
             {appointmentId && (
