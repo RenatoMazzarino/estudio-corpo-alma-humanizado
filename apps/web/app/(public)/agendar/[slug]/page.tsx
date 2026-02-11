@@ -28,6 +28,10 @@ export default async function PublicBookingPage(props: PageProps) {
 
   // 2. Buscar Serviços e Settings do Tenant
   const { data: settings } = await getSettings(tenant.id);
+  const whatsappNumber =
+    settings && "whatsapp_notification_number" in settings
+      ? (settings as { whatsapp_notification_number?: string | null }).whatsapp_notification_number ?? null
+      : null;
   const { data: servicesData } = await listPublicServices(tenant.id);
   const services: PublicService[] = (servicesData ?? []).map((service) => ({
     id: service.id,
@@ -60,6 +64,7 @@ export default async function PublicBookingPage(props: PageProps) {
                 tenant={tenant}
                 services={services}
                 signalPercentage={settings?.signal_percentage ?? 30}
+                whatsappNumber={whatsappNumber}
               />
             ) : (
               <div className="bg-white border border-stone-100 rounded-2xl p-6 text-center text-sm text-stone-500 shadow-sm">

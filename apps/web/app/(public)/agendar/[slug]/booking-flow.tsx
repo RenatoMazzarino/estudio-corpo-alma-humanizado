@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock,
   Copy,
-  Flower2,
   Home,
   MapPin,
   Phone,
@@ -45,10 +44,12 @@ interface BookingFlowProps {
   tenant: Tenant;
   services: Service[];
   signalPercentage?: number | null;
+  whatsappNumber?: string | null;
 }
 
 type Step = "WELCOME" | "SELECT" | "REVIEW" | "PAYMENT" | "SUCCESS";
 type PaymentMethod = "pix" | "card" | null;
+type WelcomeIntent = "schedule" | "talk" | null;
 
 type CardFormData = {
   token: string;
@@ -100,16 +101,45 @@ declare global {
   }
 }
 
-const floraMessages: Record<Step, string> = {
-  WELCOME: "Olá! Que alegria te ver por aqui. 🌿 Para começar, qual seu WhatsApp?",
-  SELECT: "O que seu corpo e mente precisam hoje?",
-  REVIEW: "Deixa eu ver se entendi direitinho...",
-  PAYMENT: "Para garantir seu horário, precisamos apenas do sinal. O restante você acerta no estúdio 💚",
-  SUCCESS: "Agendamento recebido! Vou deixar tudo prontinho por aqui.",
+const stepMeta: Record<Step, { title: string; subtitle: string }> = {
+  WELCOME: {
+    title: "Bem-vindo ao Estúdio Corpo & Alma Humanizado",
+    subtitle: "Como podemos te ajudar hoje?",
+  },
+  SELECT: {
+    title: "Monte seu agendamento",
+    subtitle: "Escolha o cuidado ideal, dia e horário disponíveis.",
+  },
+  REVIEW: {
+    title: "Revise seu agendamento",
+    subtitle: "Confira os detalhes antes de avançar.",
+  },
+  PAYMENT: {
+    title: "Pagamento do sinal",
+    subtitle: "O restante você acerta no estúdio.",
+  },
+  SUCCESS: {
+    title: "Agendamento recebido!",
+    subtitle: "Vamos preparar tudo para o seu momento.",
+  },
 };
 
-export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowProps) {
+const stepIndex: Record<Step, number> = {
+  WELCOME: 1,
+  SELECT: 2,
+  REVIEW: 3,
+  PAYMENT: 4,
+  SUCCESS: 4,
+};
+
+export function BookingFlow({
+  tenant,
+  services,
+  signalPercentage,
+  whatsappNumber,
+}: BookingFlowProps) {
   const [step, setStep] = useState<Step>("WELCOME");
+  const [welcomeIntent, setWelcomeIntent] = useState<WelcomeIntent>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isHomeVisit, setIsHomeVisit] = useState(false);
   const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -177,6 +207,17 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
     const digits = clientPhone.replace(/\D/g, "");
     return `cliente+${digits || "anon"}@corpoealmahumanizado.com.br`;
   }, [clientPhone]);
+
+  const whatsappLink = useMemo(() => {
+    if (!whatsappNumber) return null;
+    const digits = whatsappNumber.replace(/\D/g, "");
+    if (!digits) return null;
+    const normalized = digits.length <= 11 ? `55${digits}` : digits;
+    const message = encodeURIComponent(
+      "Olá! Gostaria de falar com a Flora sobre meu agendamento."
+    );
+    return `https://wa.me/${normalized}?text=${message}`;
+  }, [whatsappNumber]);
 
   const dateOptions = useMemo(() => {
     const base = new Date();
@@ -491,7 +532,7 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, appointmentId, paymentMethod]);
 
-  const floraMessage = floraMessages[step];
+  const progressPercent = (stepIndex[step] / 4) * 100;
 
   return (
     <div className="space-y-6">
@@ -500,99 +541,179 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
         strategy="afterInteractive"
         onLoad={() => setMpReady(true)}
       />
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-studio-green/10 text-studio-green flex items-center justify-center">
-          <Flower2 className="w-5 h-5" />
+      <div className="bg-white border border-stone-100 shadow-soft rounded-3xl px-5 py-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
+            Etapa {stepIndex[step]} de 4
+          </p>
+          <span className="text-[11px] font-bold text-studio-green">Agendamento Online</span>
         </div>
-        <div className="bg-white border border-stone-100 shadow-soft rounded-2xl px-4 py-3 text-sm text-gray-700">
-          {floraMessage}
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-gray-800">{stepMeta[step].title}</h2>
+          <p className="text-sm text-gray-500">{stepMeta[step].subtitle}</p>
+        </div>
+        <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
+          <div className="h-full bg-studio-green" style={{ width: `${progressPercent}%` }} />
         </div>
       </div>
 
       {step === "WELCOME" && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="space-y-3">
-            <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest ml-1">
-              WhatsApp
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="tel"
-                placeholder="(11) 99999-9999"
-                value={clientPhone}
-                onChange={(event) => setClientPhone(formatPhone(event.target.value))}
-                inputMode="numeric"
-                className="w-full bg-white border border-stone-100 rounded-2xl py-4 pl-11 pr-4 text-lg font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-              />
+          <div className="bg-white rounded-3xl border border-stone-100 shadow-soft p-5 space-y-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Seja bem-vindo</p>
+              <h3 className="text-2xl font-bold text-gray-800">{tenant.name}</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Um espaço de cuidado, presença e bem-estar. Você está a poucos passos do seu momento.
+              </p>
             </div>
-            {isPhoneValid && clientLookupStatus !== "found" && clientLookupStatus !== "confirmed" && (
-              <p className="text-xs text-green-600 font-semibold">Telefone confirmado. Vamos continuar!</p>
-            )}
-            {clientLookupStatus === "loading" && (
-              <p className="text-xs text-gray-400">Verificando cadastro...</p>
-            )}
-            {clientLookupStatus === "found" && suggestedClient && (
-              <div className="bg-white border border-stone-100 rounded-2xl p-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-gray-400">Você é</p>
-                  <p className="text-sm font-bold text-gray-800">{suggestedClient.name}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleConfirmSuggestedClient}
-                    className="px-3 py-1.5 rounded-full bg-studio-green text-white text-[11px] font-bold"
-                  >
-                    Sim
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeclineSuggestedClient}
-                    className="px-3 py-1.5 rounded-full border border-stone-200 text-[11px] font-bold text-gray-500"
-                  >
-                    Não
-                  </button>
-                </div>
-              </div>
-            )}
-            {clientLookupStatus === "confirmed" && (
-              <p className="text-xs text-green-600 font-semibold">Cadastro confirmado. Bem-vindo(a) de volta!</p>
-            )}
-            {clientLookupStatus === "not_found" && (
-              <p className="text-xs text-gray-400">Não encontramos cadastro com esse número.</p>
-            )}
-            {clientLookupStatus === "declined" && (
-              <p className="text-xs text-gray-400">Tudo bem! Você pode informar seus dados abaixo.</p>
-            )}
+            <div className="grid gap-3">
+              <button
+                type="button"
+                onClick={() => setWelcomeIntent("schedule")}
+                className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                  welcomeIntent === "schedule"
+                    ? "border-studio-green bg-green-50"
+                    : "border-stone-100 bg-white"
+                }`}
+              >
+                <p className="text-sm font-bold text-gray-800">Agendar horário</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ver horários e reservar seu atendimento.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setWelcomeIntent("talk")}
+                className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                  welcomeIntent === "talk"
+                    ? "border-studio-green bg-green-50"
+                    : "border-stone-100 bg-white"
+                }`}
+              >
+                <p className="text-sm font-bold text-gray-800">Falar com a Flora</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Tirar dúvidas rápidas com a assistente do estúdio.
+                </p>
+              </button>
+            </div>
           </div>
 
-          {isPhoneValid && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest ml-1">
-                Como prefere ser chamado(a)?
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Seu nome"
-                  value={clientName}
-                  onChange={(event) => setClientName(event.target.value)}
-                  className="w-full bg-white border border-stone-100 rounded-2xl py-4 pl-11 pr-4 text-lg font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-              </div>
+          {welcomeIntent === "talk" && (
+            <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-soft">
+              <p className="text-sm font-semibold text-gray-700 mb-3">
+                Clique abaixo para falar com a Flora pelo WhatsApp.
+              </p>
+              {whatsappLink ? (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full inline-flex items-center justify-center rounded-2xl bg-studio-green text-white font-bold py-3"
+                >
+                  Abrir WhatsApp
+                </a>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  WhatsApp ainda não configurado pelo estúdio.
+                </p>
+              )}
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setStep("SELECT")}
-            disabled={!isPhoneValid || !clientName.trim() || clientLookupStatus === "found"}
-            className="w-full bg-studio-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Continuar
-          </button>
+          {welcomeIntent === "schedule" && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest ml-1">
+                  WhatsApp
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    value={clientPhone}
+                    onChange={(event) => setClientPhone(formatPhone(event.target.value))}
+                    inputMode="numeric"
+                    className="w-full bg-white border border-stone-100 rounded-2xl py-4 pl-11 pr-4 text-lg font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  />
+                </div>
+                {isPhoneValid && clientLookupStatus !== "found" && clientLookupStatus !== "confirmed" && (
+                  <p className="text-xs text-green-600 font-semibold">Telefone confirmado. Vamos continuar!</p>
+                )}
+                {clientLookupStatus === "loading" && (
+                  <p className="text-xs text-gray-400">Verificando cadastro...</p>
+                )}
+                {clientLookupStatus === "found" && suggestedClient && (
+                  <div className="bg-white border border-stone-100 rounded-2xl p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Você é</p>
+                      <p className="text-sm font-bold text-gray-800">{suggestedClient.name}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleConfirmSuggestedClient}
+                        className="px-3 py-1.5 rounded-full bg-studio-green text-white text-[11px] font-bold"
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeclineSuggestedClient}
+                        className="px-3 py-1.5 rounded-full border border-stone-200 text-[11px] font-bold text-gray-500"
+                      >
+                        Não
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {clientLookupStatus === "confirmed" && (
+                  <p className="text-xs text-green-600 font-semibold">
+                    Cadastro confirmado. Bem-vindo(a) de volta!
+                  </p>
+                )}
+                {clientLookupStatus === "not_found" && (
+                  <p className="text-xs text-gray-400">Não encontramos cadastro com esse número.</p>
+                )}
+                {clientLookupStatus === "declined" && (
+                  <p className="text-xs text-gray-400">Tudo bem! Você pode informar seus dados abaixo.</p>
+                )}
+              </div>
+
+              {isPhoneValid && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest ml-1">
+                    Como prefere ser chamado(a)?
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Seu nome"
+                      value={clientName}
+                      onChange={(event) => setClientName(event.target.value)}
+                      className="w-full bg-white border border-stone-100 rounded-2xl py-4 pl-11 pr-4 text-lg font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setStep("SELECT")}
+                disabled={
+                  welcomeIntent !== "schedule" ||
+                  !isPhoneValid ||
+                  !clientName.trim() ||
+                  clientLookupStatus === "found"
+                }
+                className="w-full bg-studio-green text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continuar
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -606,12 +727,6 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
-          <div className="space-y-2">
-            <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
-              <div className="h-full w-1/2 bg-studio-green" />
-            </div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Etapa 2 de 4</p>
-          </div>
 
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-gray-700">Escolha o serviço</h2>
@@ -847,12 +962,6 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
-          <div className="space-y-2">
-            <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
-              <div className="h-full w-3/4 bg-studio-green" />
-            </div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Etapa 3 de 4</p>
-          </div>
 
           <div className="bg-white rounded-3xl border border-stone-100 p-5 shadow-soft space-y-4">
             <div className="flex items-center justify-between">
@@ -914,12 +1023,6 @@ export function BookingFlow({ tenant, services, signalPercentage }: BookingFlowP
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
-          <div className="space-y-2">
-            <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
-              <div className="h-full w-full bg-studio-green" />
-            </div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Etapa 4 de 4</p>
-          </div>
 
           <div className="bg-white rounded-3xl border border-stone-100 p-5 shadow-soft space-y-4">
             <div className="flex items-center gap-2 text-sm text-gray-600">
