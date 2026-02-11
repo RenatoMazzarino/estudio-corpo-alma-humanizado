@@ -88,6 +88,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `21ac653` — docs(report): registrar regra de bloqueios
 - `5f63161` — feat(agenda): permitir agendar internamente apesar de bloqueios
 - `869e122` — docs(report): registrar ajuste no card do calendário
 - `9ba185f` — refactor(ui): simplificar card do calendário na visão mês
