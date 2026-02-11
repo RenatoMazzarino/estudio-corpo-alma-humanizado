@@ -238,9 +238,7 @@ Migrar a tela de **Atendimento** para a **UI V4** (baseada no HTML de referênci
   - `attendance-domain.ts` (regras/transições server-side)
 
 ### 8.2 Compatibilidade com UI antiga
-- Manter `AppointmentDetailsModal` como fallback por feature flag por um período:
-  - `NEXT_PUBLIC_ATTENDANCE_UIV4=1` (liga V4)
-  - Sem flag: renderiza UI antiga
+- UI antiga removida; a UI atual é padrão (sem feature flag).
 
 ---
 

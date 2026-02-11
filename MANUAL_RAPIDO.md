@@ -311,3 +311,61 @@ Python nao instalou pelo winget:
 ```powershell
 winget install --id Python.Python.3.12 -e
 ```
+
+## URLs publicas e Slug do Agendamento
+
+### Dominios em producao
+App interno (uso do estudio):
+```
+https://app.corpoealmahumanizado.com.br
+```
+
+Base publica (cliente final):
+```
+https://public.corpoealmahumanizado.com.br
+```
+
+Rotas publicas (cliente):
+```
+/agendar/<slug>
+/pagamento
+/comprovante/<id>
+```
+
+Exemplo (slug atual em producao):
+```
+https://public.corpoealmahumanizado.com.br/agendar/estudio-corpo-alma
+```
+
+### Dominios em local (dev)
+```
+http://localhost:3000/agendar/demo-local
+```
+
+### Alterar o slug (local e online)
+O slug fica na tabela `tenants`. Para mudar:
+
+**Online (Supabase Dashboard):**
+1) Acesse o Supabase > SQL Editor  
+2) Rode:
+```sql
+update tenants
+set slug = 'estudio-corpo-alma'
+where id = 'dccf4492-9576-479c-8594-2795bd6b81d7';
+```
+
+**Local (Supabase Studio):**
+1) Abra `http://localhost:54323` (Studio local)  
+2) Rode:
+```sql
+update tenants
+set slug = 'demo-local'
+where id = 'dccf4492-9576-479c-8594-2795bd6b81d7';
+```
+
+Se quiser voltar o slug local para o padrao:
+```sql
+update tenants
+set slug = 'estudio-corpo-alma'
+where id = 'dccf4492-9576-479c-8594-2795bd6b81d7';
+```
