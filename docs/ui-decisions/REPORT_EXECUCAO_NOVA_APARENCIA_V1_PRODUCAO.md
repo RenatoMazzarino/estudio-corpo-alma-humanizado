@@ -44,6 +44,7 @@
 - Gestão de Agenda: layout refinado (cards compactos, calendário com legenda em pills e lista de bloqueios mais leve).
 - Gestão de Agenda: modal de “Novo Bloqueio” redesenhado em bottom sheet com seleção de motivo, toggle e CTA fixo.
 - Gestão de Agenda: resumo do mês removido; gerador automático compacto e ordem (escala → calendário → detalhes).
+- Gestão de Agenda: gerador de escala virou botão que abre modal para mês + par/ímpar.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.

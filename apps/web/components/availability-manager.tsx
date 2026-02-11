@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Calendar,
   CheckCircle2,
+  ChevronRight,
   Coffee,
   Plus,
   Sparkles,
@@ -96,6 +97,8 @@ export function AvailabilityManager() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [scaleType, setScaleType] = useState<"even" | "odd">("even");
   const [pendingScaleConfirm, setPendingScaleConfirm] = useState<null | { type: "even" | "odd"; appointments: number }>(null);
+  const [isScaleModalOpen, setIsScaleModalOpen] = useState(false);
+  const [scaleMonth, setScaleMonth] = useState(format(new Date(), "yyyy-MM"));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [blockTitle, setBlockTitle] = useState("");
   const [blockType, setBlockType] = useState<BlockType>("personal");
@@ -142,26 +145,34 @@ export function AvailabilityManager() {
     setSelectedMonth(format(next, "yyyy-MM"));
   };
 
-  const handleCreateScale = async (force?: boolean) => {
+  const openScaleModal = () => {
+    setScaleMonth(selectedMonth);
+    setPendingScaleConfirm(null);
+    setIsScaleModalOpen(true);
+  };
+
+  const runCreateScale = async (type: "even" | "odd", monthStr: string, force?: boolean) => {
     setLoading(true);
     setMessage(null);
     try {
-      const result = await createShiftBlocks(scaleType, selectedMonth, force);
+      const result = await createShiftBlocks(type, monthStr, force);
       if (!result.ok) throw result.error;
       if (result.data.requiresConfirm && result.data.conflicts) {
-        setPendingScaleConfirm({ type: scaleType, appointments: result.data.conflicts.appointments });
+        setPendingScaleConfirm({ type, appointments: result.data.conflicts.appointments });
         return;
       }
       setMessage({
         type: "success",
-        text: `Escala aplicada para dias ${scaleType === "even" ? "pares" : "ímpares"} em ${format(
-          currentMonthDate,
+        text: `Escala aplicada para dias ${type === "even" ? "pares" : "ímpares"} em ${format(
+          parseISO(`${monthStr}-01`),
           "MMMM/yyyy",
           { locale: ptBR }
         )}.`,
       });
-      const data = await getMonthOverview(selectedMonth);
+      setSelectedMonth(monthStr);
+      const data = await getMonthOverview(monthStr);
       setOverview(data);
+      setIsScaleModalOpen(false);
     } catch (error) {
       setMessage({
         type: "error",
@@ -172,16 +183,18 @@ export function AvailabilityManager() {
     }
   };
 
-  const handleClearScale = async () => {
+  const handleClearScale = async (monthStr: string) => {
     if (!confirm("Tem certeza? Isso apagará a escala (plantões) deste mês.")) return;
     setLoading(true);
     setMessage(null);
     try {
-      const result = await clearMonthBlocks(selectedMonth);
+      const result = await clearMonthBlocks(monthStr);
       if (!result.ok) throw result.error;
       setMessage({ type: "success", text: "Escala removida com sucesso!" });
-      const data = await getMonthOverview(selectedMonth);
+      setSelectedMonth(monthStr);
+      const data = await getMonthOverview(monthStr);
       setOverview(data);
+      setIsScaleModalOpen(false);
     } catch (error) {
       setMessage({
         type: "error",
@@ -257,72 +270,26 @@ export function AvailabilityManager() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-studio-green">
-          <div className="w-7 h-7 rounded-lg bg-studio-light text-studio-green flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
+      <button
+        type="button"
+        onClick={openScaleModal}
+        className="w-full bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-between gap-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center">
+            <Sparkles className="w-5 h-5" />
           </div>
-          Gerador automático
-        </div>
-        <p className="text-xs text-gray-500">
-          Preencha o mês rapidamente para a rotina de Home Care (dias alternados).
-        </p>
-
-        <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
-          <div className="relative">
-            <select
-              value={scaleType}
-              onChange={(event) => setScaleType(event.target.value as "even" | "odd")}
-              className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 pl-3 pr-9 text-xs font-bold text-gray-600 focus:outline-none focus:ring-1 focus:ring-studio-green/40 appearance-none"
-            >
-              <option value="odd">Dias ímpares (1, 3, 5...)</option>
-              <option value="even">Dias pares (2, 4, 6...)</option>
-            </select>
-          </div>
-          <button
-            onClick={() => handleCreateScale()}
-            disabled={loading}
-            className="px-4 py-3 rounded-xl bg-studio-green text-white text-xs font-bold uppercase tracking-wide shadow-sm hover:bg-studio-dark transition disabled:opacity-50"
-          >
-            Aplicar
-          </button>
-        </div>
-
-        <button
-          onClick={handleClearScale}
-          disabled={loading}
-          className="w-full text-red-500 hover:text-red-700 text-sm font-medium py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-        >
-          <Trash2 size={16} />
-          Limpar escala de {format(currentMonthDate, "MMMM", { locale: ptBR })}
-        </button>
-
-        {pendingScaleConfirm && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-3">
-            <p className="font-bold">Existem agendamentos neste mês.</p>
-            <p>
-              {pendingScaleConfirm.appointments} dia(s) têm agendamentos. Bloquear não cancela automaticamente.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPendingScaleConfirm(null)}
-                className="px-3 py-2 rounded-lg bg-white border border-orange-200 text-orange-700 text-xs font-bold"
-              >
-                Cancelar
-              </button>
-              <button
-                  onClick={() => {
-                    setPendingScaleConfirm(null);
-                    handleCreateScale(true);
-                  }}
-                className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
-              >
-                Criar mesmo assim
-              </button>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-studio-green">
+              Gerador automático
+            </div>
+            <div className="text-xs text-gray-500">
+              Configure escala por dias pares ou ímpares.
             </div>
           </div>
-        )}
-      </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-300" />
+      </button>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
@@ -616,6 +583,126 @@ export function AvailabilityManager() {
                   className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
                 >
                   Confirmar bloqueio
+                </button>
+              </div>
+            </div>
+          </div>,
+          portalTarget
+        )}
+
+      {isScaleModalOpen &&
+        portalTarget &&
+        createPortal(
+          <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in">
+            <div className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4">
+              <div className="pt-3 pb-1 flex justify-center bg-white">
+                <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
+              </div>
+
+              <div className="px-6 pb-4 pt-2 flex items-center justify-between border-b border-stone-50">
+                <div>
+                  <h2 className="text-xl font-black text-studio-dark tracking-tight">Gerador Automático</h2>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mt-0.5">
+                    Defina o mês e o padrão da escala
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsScaleModalOpen(false)}
+                  className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100 hover:text-red-500 transition-colors"
+                  aria-label="Fechar"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-6 space-y-6 pb-28">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1">
+                    Mês da escala
+                  </label>
+                  <input
+                    type="month"
+                    value={scaleMonth}
+                    onChange={(event) => setScaleMonth(event.target.value)}
+                    className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1">
+                    Padrão de plantão
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setScaleType("odd")}
+                      className={`py-3 rounded-xl text-xs font-bold uppercase tracking-wide border transition ${
+                        scaleType === "odd"
+                          ? "bg-studio-light text-studio-green border-studio-green/20"
+                          : "bg-white text-gray-400 border-stone-100"
+                      }`}
+                    >
+                      Dias ímpares
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScaleType("even")}
+                      className={`py-3 rounded-xl text-xs font-bold uppercase tracking-wide border transition ${
+                        scaleType === "even"
+                          ? "bg-studio-light text-studio-green border-studio-green/20"
+                          : "bg-white text-gray-400 border-stone-100"
+                      }`}
+                    >
+                      Dias pares
+                    </button>
+                  </div>
+                </div>
+
+                {pendingScaleConfirm && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-3">
+                    <p className="font-bold">Existem agendamentos neste mês.</p>
+                    <p>
+                      {pendingScaleConfirm.appointments} dia(s) têm agendamentos. Bloquear não cancela automaticamente.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPendingScaleConfirm(null)}
+                        className="px-3 py-2 rounded-lg bg-white border border-orange-200 text-orange-700 text-xs font-bold"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => {
+                          const type = pendingScaleConfirm.type;
+                          setPendingScaleConfirm(null);
+                          runCreateScale(type, scaleMonth, true);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
+                      >
+                        Criar mesmo assim
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => handleClearScale(scaleMonth)}
+                  disabled={loading}
+                  className="w-full text-red-500 hover:text-red-700 text-xs font-bold uppercase tracking-wide py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                  Limpar escala do mês
+                </button>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
+                <button
+                  onClick={() => runCreateScale(scaleType, scaleMonth)}
+                  disabled={loading}
+                  className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+                >
+                  Aplicar escala
                 </button>
               </div>
             </div>
