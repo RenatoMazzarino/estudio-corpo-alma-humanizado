@@ -40,6 +40,7 @@
 - Financeiro: seção de **Sinal/Reserva** no modal, com templates de WhatsApp e links públicos (pagamento + comprovante).
 - Checkout: valor a cobrar considera sinal já pago (total restante).
 - Gestão de Agenda: novo módulo de **Disponibilidade Inteligente** (macro calendário + micro detalhes), com gerador de escala, tipos de bloqueio e confirmação de conflitos.
+- Agenda: calendário mensal extraído para componente reutilizável (Agenda + Gestão de Agenda).
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
@@ -145,6 +146,7 @@
 - `apps/web/components/agenda/appointment-card.tsx`
 - `apps/web/components/agenda/appointment-details-sheet.tsx`
 - `apps/web/components/availability-manager.tsx`
+- `apps/web/components/agenda/month-calendar.tsx`
 - `apps/web/app/(dashboard)/bloqueios/*`
 - `apps/web/src/modules/clients/*`
 - `apps/web/src/modules/appointments/*`
