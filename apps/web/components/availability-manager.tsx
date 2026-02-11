@@ -211,6 +211,14 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
 
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const selectedBlocks = blocksByDate.get(selectedKey) ?? [];
+  const blockDateLabel = useMemo(() => {
+    if (!blockDate) return format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR });
+    const parsed = parseISO(`${blockDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      return format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR });
+    }
+    return format(parsed, "EEEE, dd 'de' MMM", { locale: ptBR });
+  }, [blockDate, selectedDate]);
   const scaleHasShiftBlocks = useMemo(() => {
     const blocks = scaleMonthOverview?.blocks ?? [];
     return blocks.some((block) => block.block_type === "shift");
@@ -583,7 +591,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
                 <div>
                   <h2 className="text-xl font-black text-studio-dark tracking-tight">Novo Bloqueio</h2>
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mt-0.5">
-                    {format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR })}
+                    {blockDateLabel}
                   </p>
                 </div>
                 <button
