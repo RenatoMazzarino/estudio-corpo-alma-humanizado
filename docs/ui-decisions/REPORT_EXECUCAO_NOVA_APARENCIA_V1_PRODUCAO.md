@@ -84,6 +84,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `bcdda35` — style(ui): integrar detalhes ao calendario
 - `2486807` — style(ui): ajustar cores e dots do calendario
 - `3631caf` — style(ui): ajustar destaque de dia atual
 - `d2fed94` — style(ui): mover gerador para botao no header
