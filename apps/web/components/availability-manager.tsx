@@ -356,8 +356,8 @@ export function AvailabilityManager() {
         </div>
 
         <div className="grid grid-cols-7 gap-2 text-[10px] text-gray-400 font-bold uppercase">
-          {weekdayLabels.map((label) => (
-            <div key={label} className="text-center">
+          {weekdayLabels.map((label, index) => (
+            <div key={`${label}-${index}`} className="text-center">
               {label}
             </div>
           ))}
