@@ -96,7 +96,7 @@ export function AvailabilityManager() {
   const [scaleType, setScaleType] = useState<"even" | "odd">("even");
   const [pendingScaleConfirm, setPendingScaleConfirm] = useState<null | { type: "even" | "odd"; appointments: number }>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [blockTitle, setBlockTitle] = useState("Novo bloqueio");
+  const [blockTitle, setBlockTitle] = useState("");
   const [blockType, setBlockType] = useState<BlockType>("personal");
   const [blockFullDay, setBlockFullDay] = useState(true);
   const [blockStart, setBlockStart] = useState("08:00");
@@ -192,7 +192,7 @@ export function AvailabilityManager() {
   };
 
   const openNewBlockModal = () => {
-    setBlockTitle("Novo bloqueio");
+    setBlockTitle("");
     setBlockType("personal");
     setBlockFullDay(true);
     setBlockStart("08:00");
@@ -486,114 +486,175 @@ export function AvailabilityManager() {
       {isModalOpen &&
         portalTarget &&
         createPortal(
-          <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-white rounded-t-3xl p-6 space-y-4">
-              <div className="w-12 h-1.5 rounded-full bg-gray-200 mx-auto" />
-              <div>
-                <h3 className="text-lg font-serif font-bold text-studio-text">Novo Bloqueio</h3>
-                <p className="text-xs text-gray-500">Defina o tipo e o horário do bloqueio.</p>
+          <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in">
+            <div className="w-full max-w-md bg-white rounded-t-[32px] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4">
+              <div className="pt-3 pb-1 flex justify-center bg-white">
+                <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase ml-1">Título</label>
-                <input
-                  value={blockTitle}
-                  onChange={(event) => setBlockTitle(event.target.value)}
-                  className="w-full mt-1 bg-stone-50 border-stone-100 border rounded-xl py-3 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {(Object.keys(blockTypeMeta) as BlockType[]).map((type) => {
-                  const meta = blockTypeMeta[type];
-                  const isActive = blockType === type;
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setBlockType(type)}
-                      className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
-                        isActive ? meta.color : "border-stone-100 text-gray-400 bg-stone-50"
-                      }`}
-                    >
-                      {meta.icon}
-                      {meta.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <label className="flex items-center justify-between text-sm font-medium text-gray-600">
-                <span>Dia inteiro</span>
-                <input
-                  type="checkbox"
-                  checked={blockFullDay}
-                  onChange={(event) => setBlockFullDay(event.target.checked)}
-                  className="w-5 h-5 accent-studio-green"
-                />
-              </label>
-
-              {!blockFullDay && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase ml-1">Início</label>
-                    <input
-                      type="time"
-                      value={blockStart}
-                      onChange={(event) => setBlockStart(event.target.value)}
-                      className="w-full mt-1 bg-stone-50 border-stone-100 border rounded-xl py-3 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase ml-1">Fim</label>
-                    <input
-                      type="time"
-                      value={blockEnd}
-                      onChange={(event) => setBlockEnd(event.target.value)}
-                      className="w-full mt-1 bg-stone-50 border-stone-100 border rounded-xl py-3 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                    />
-                  </div>
+              <div className="px-6 pb-4 pt-2 flex items-center justify-between border-b border-stone-50">
+                <div>
+                  <h2 className="text-xl font-black text-studio-dark tracking-tight">Novo Bloqueio</h2>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mt-0.5">
+                    {format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR })}
+                  </p>
                 </div>
-              )}
-
-              {pendingBlockConfirm && (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-3">
-                  <p className="font-bold">Existem agendamentos no horário.</p>
-                  <p>{pendingBlockConfirm.appointments} atendimento(s) serão mantidos e não serão cancelados.</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPendingBlockConfirm(null)}
-                      className="px-3 py-2 rounded-lg bg-white border border-orange-200 text-orange-700 text-xs font-bold"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={() => {
-                        const payload = { ...pendingBlockConfirm.payload, force: true };
-                        setPendingBlockConfirm(null);
-                        handleCreateBlock(true, payload);
-                      }}
-                      className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
-                    >
-                      Criar mesmo assim
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
                 <button
+                  type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 rounded-xl border border-stone-200 text-gray-500 font-bold text-sm"
+                  className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100 hover:text-red-500 transition-colors"
+                  aria-label="Fechar"
                 >
-                  Cancelar
+                  ✕
                 </button>
+              </div>
+
+              <div className="overflow-y-auto p-6 space-y-8 pb-28">
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1">
+                    Selecione o motivo
+                  </label>
+
+                  <div className="grid grid-cols-4 gap-3">
+                    {([
+                      { type: "shift", label: "Home Care", active: "ring-purple-500/50 text-purple-700 bg-purple-50 border-purple-100", idle: "border-stone-100 text-gray-400", icon: <Stethoscope className="w-6 h-6" /> },
+                      { type: "personal", label: "Pessoal", active: "ring-orange-400/50 text-orange-600 bg-orange-50 border-orange-100", idle: "border-stone-100 text-gray-400", icon: <Coffee className="w-6 h-6" /> },
+                      { type: "vacation", label: "Férias", active: "ring-teal-400/50 text-teal-600 bg-teal-50 border-teal-100", idle: "border-stone-100 text-gray-400", icon: <Umbrella className="w-6 h-6" /> },
+                      { type: "administrative", label: "Outro", active: "ring-gray-300 text-gray-600 bg-stone-100 border-stone-200", idle: "border-stone-100 text-gray-400", icon: <Shield className="w-6 h-6" /> },
+                    ] as const).map((option) => {
+                      const isActive = blockType === option.type;
+                      return (
+                        <button
+                          key={option.type}
+                          type="button"
+                          onClick={() => setBlockType(option.type)}
+                          className="flex flex-col items-center gap-2 group"
+                        >
+                          <div
+                            className={`w-14 h-14 rounded-2xl border flex items-center justify-center transition-all ${
+                              isActive
+                                ? `ring-2 ring-offset-2 ${option.active}`
+                                : `bg-white ${option.idle} group-hover:bg-stone-50 group-hover:text-gray-600`
+                            }`}
+                          >
+                            {option.icon}
+                          </div>
+                          <span
+                            className={`text-[9px] font-bold uppercase tracking-wider text-center ${
+                              isActive ? "text-gray-700" : "text-gray-400"
+                            }`}
+                          >
+                            {option.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-gray-700 block">Dia Inteiro</span>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                          Bloqueia a data completa
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBlockFullDay((prev) => !prev)}
+                      className={`w-12 h-7 rounded-full relative transition-colors ${
+                        blockFullDay ? "bg-studio-green" : "bg-stone-300"
+                      }`}
+                      aria-pressed={blockFullDay}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-md transition-transform ${
+                          blockFullDay ? "translate-x-5" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {!blockFullDay && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
+                          Início
+                        </label>
+                        <input
+                          type="time"
+                          value={blockStart}
+                          onChange={(event) => setBlockStart(event.target.value)}
+                          className="w-full bg-stone-50 border-0 rounded-xl py-4 pl-4 pr-3 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none shadow-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
+                          Fim
+                        </label>
+                        <input
+                          type="time"
+                          value={blockEnd}
+                          onChange={(event) => setBlockEnd(event.target.value)}
+                          className="w-full bg-stone-50 border-0 rounded-xl py-4 pl-4 pr-3 text-lg font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none shadow-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
+                      Descrição (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={blockTitle}
+                      onChange={(event) => setBlockTitle(event.target.value)}
+                      placeholder="Ex: Almoço com cliente"
+                      className="w-full bg-white border border-stone-100 rounded-xl py-4 px-4 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-studio-green/20 placeholder-gray-300 transition-all outline-none"
+                    />
+                  </div>
+                </div>
+
+                {pendingBlockConfirm && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-3">
+                    <p className="font-bold">Existem agendamentos no horário.</p>
+                    <p>{pendingBlockConfirm.appointments} atendimento(s) serão mantidos e não serão cancelados.</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPendingBlockConfirm(null)}
+                        className="px-3 py-2 rounded-lg bg-white border border-orange-200 text-orange-700 text-xs font-bold"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => {
+                          const payload = { ...pendingBlockConfirm.payload, force: true };
+                          setPendingBlockConfirm(null);
+                          handleCreateBlock(true, payload);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-orange-600 text-white text-xs font-bold"
+                      >
+                        Criar mesmo assim
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
                 <button
                   onClick={() => handleCreateBlock()}
                   disabled={loading}
-                  className="flex-1 py-3 rounded-xl bg-studio-green text-white font-bold text-sm shadow-sm"
+                  className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
                 >
-                  Salvar bloqueio
+                  Confirmar bloqueio
                 </button>
               </div>
             </div>
