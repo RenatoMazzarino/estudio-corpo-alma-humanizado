@@ -56,6 +56,9 @@
 - Gestão de Agenda: modais de **Novo Bloqueio** e **Gerador de Escala** reestilizados para seguir a mesma linguagem visual do modal de agendamento.
 - Gestão de Agenda: card externo removido — calendário virou o único card, com legenda + divisor e detalhes do dia dentro dele.
 - Gestão de Agenda: legenda do calendário voltou em formato de chip/card (pill) como no layout anterior.
+- Gestão de Agenda: calendário com swipe horizontal entre meses; modais de bloqueio/escala com gesto de arrastar para fechar.
+- Agenda: botão “+ NOVO” saiu do calendário e virou ação do FAB como **Bloquear horário** (abre modal com data editável).
+- Gestão de Agenda: gerador de escala alerta quando já existe plantão no mês e solicita limpeza antes de gerar nova escala.
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
@@ -90,6 +93,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 
 ## 4) Commits (hash + objetivo)
+- `ebb317d` — feat(agenda): swipe de meses e bloqueio via FAB
 - `a6d2506` — style(agenda): ajustar exibição de bloqueios na visão dia/semana
 - `e09d127` — style(ui): ajustar legenda do calendario em pill
 - `b2522cb` — fix(agenda): resetar aviso de plantão ao limpar data
@@ -255,6 +259,9 @@ Comandos executados na raiz:
 - **Consistência visual:** modais de bloqueio/escala adotam layout, botões e campos no mesmo padrão do modal de agendamento.
 - **Calendário único:** remoção do card externo; legenda e detalhes do dia ficam dentro do card do calendário.
 - **Legenda em pill:** legenda do calendário voltou ao estilo de chip arredondado para reforçar a leitura.
+- **Swipe & modais:** navegação por meses via swipe horizontal e sheets de bloqueio/escala com gesto de arrastar para fechar.
+- **Ação rápida:** “Bloquear horário” migrou para o FAB (modal permite alterar a data).
+- **Escala sem duplicidade:** se já houver plantão no mês, o modal solicita apagar antes de gerar uma nova escala.
 - **Regra de bloqueios:** no agendamento interno, bloqueios geram apenas aviso; no agendamento público, horários bloqueados são removidos da disponibilidade.
 - **Arquitetura de dados:** `availability_blocks` agora possui `block_type` (`shift`, `personal`, `vacation`, `administrative`) e `is_full_day` para distinguir bloqueios integrais vs parciais.
 - **Gerador de Escala:** aplica dias pares/ímpares criando blocos do tipo `shift`; ao reaplicar, remove **apenas** os `shift` do mês, preservando bloqueios pessoais/administrativos.
