@@ -22,14 +22,18 @@ export interface MonthCalendarDot {
   title?: string;
 }
 
+type DayTone = "shift" | "none";
+
 interface MonthCalendarProps {
   currentMonth: Date;
   selectedDate?: Date | null;
   onSelectDay?: (day: Date) => void;
   onChangeMonth?: (nextMonth: Date) => void;
   getDayDots?: (day: Date) => MonthCalendarDot[];
+  getDayTone?: (day: Date) => DayTone;
   className?: string;
   legend?: ReactNode;
+  legendPlacement?: "top" | "bottom";
 }
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -42,12 +46,16 @@ export function MonthCalendar({
   getDayDots,
   className = "",
   legend,
+  legendPlacement = "bottom",
+  getDayTone,
 }: MonthCalendarProps) {
   const monthGridDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
     const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
     return eachDayOfInterval({ start, end });
   }, [currentMonth]);
+
+  const legendNode = legend ? <div className="mt-4">{legend}</div> : null;
 
   return (
     <div className={`bg-white rounded-3xl shadow-soft p-4 ${className}`}>
@@ -73,7 +81,9 @@ export function MonthCalendar({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+      {legendPlacement === "top" && legendNode}
+
+      <div className="grid grid-cols-7 gap-1 text-center mb-2 mt-3">
         {weekdayLabels.map((label, index) => (
           <div key={`${label}-${index}`} className="text-[10px] font-extrabold text-muted uppercase">
             {label}
@@ -87,6 +97,9 @@ export function MonthCalendar({
           const isDayToday = isToday(day);
           const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
           const dots = getDayDots?.(day) ?? [];
+          const tone = getDayTone?.(day) ?? "none";
+          const toneClass =
+            tone === "shift" && !isSelected && !isDayToday ? "bg-purple-50 text-purple-700" : "";
 
           return (
             <button
@@ -102,7 +115,7 @@ export function MonthCalendar({
                     : isCurrent
                       ? "text-studio-text"
                       : "text-muted/60"
-                } ${isSelected && !isDayToday ? "bg-studio-light text-studio-green ring-1 ring-studio-green/40" : ""}`}
+                } ${toneClass} ${isSelected && !isDayToday ? "bg-studio-dark text-white ring-1 ring-studio-dark/30" : ""}`}
               >
                 {format(day, "dd")}
               </span>
@@ -122,7 +135,7 @@ export function MonthCalendar({
         })}
       </div>
 
-      {legend && <div className="mt-4">{legend}</div>}
+      {legendPlacement === "bottom" && legendNode}
     </div>
   );
 }

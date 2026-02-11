@@ -46,11 +46,38 @@ interface CreateBlockPayload {
   force?: boolean;
 }
 
-const blockTypeMeta: Record<BlockType, { label: string; color: string; icon: ReactNode }> = {
-  shift: { label: "Plantão", color: "bg-purple-50 text-purple-700 border-purple-200", icon: <Stethoscope className="w-4 h-4" /> },
-  personal: { label: "Pessoal", color: "bg-orange-50 text-orange-700 border-orange-200", icon: <Coffee className="w-4 h-4" /> },
-  vacation: { label: "Férias", color: "bg-teal-50 text-teal-700 border-teal-200", icon: <Umbrella className="w-4 h-4" /> },
-  administrative: { label: "Admin", color: "bg-gray-100 text-gray-600 border-gray-200", icon: <Shield className="w-4 h-4" /> },
+const blockTypeMeta: Record<
+  BlockType,
+  { label: string; color: string; icon: ReactNode; iconClass: string; accentClass: string }
+> = {
+  shift: {
+    label: "Plantão",
+    color: "bg-purple-50 text-purple-700 border-purple-200",
+    icon: <Stethoscope className="w-4 h-4" />,
+    iconClass: "bg-purple-100 text-purple-700",
+    accentClass: "text-purple-600",
+  },
+  personal: {
+    label: "Pessoal",
+    color: "bg-orange-50 text-orange-700 border-orange-200",
+    icon: <Coffee className="w-4 h-4" />,
+    iconClass: "bg-orange-100 text-orange-700",
+    accentClass: "text-orange-600",
+  },
+  vacation: {
+    label: "Férias",
+    color: "bg-teal-50 text-teal-700 border-teal-200",
+    icon: <Umbrella className="w-4 h-4" />,
+    iconClass: "bg-teal-100 text-teal-700",
+    accentClass: "text-teal-600",
+  },
+  administrative: {
+    label: "Admin",
+    color: "bg-gray-100 text-gray-600 border-gray-200",
+    icon: <Shield className="w-4 h-4" />,
+    iconClass: "bg-gray-100 text-gray-600",
+    accentClass: "text-gray-500",
+  },
 };
 
 const formatBlockTime = (block: AvailabilityBlock) => {
@@ -228,42 +255,52 @@ export function AvailabilityManager() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-5">
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-          <Calendar className="w-4 h-4 text-studio-green" />
-          Resumo do mês
+    <div className="space-y-5">
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
+        <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
+          <div className="w-8 h-8 rounded-lg bg-stone-50 text-studio-green flex items-center justify-center">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Resumo do mês</div>
+            <div className="text-sm font-bold text-studio-text">Mês de referência</div>
+          </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Mês de Referência</label>
+          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 tracking-widest">
+            Mês de referência
+          </label>
           <input
             type="month"
             value={selectedMonth}
             onChange={(event) => setSelectedMonth(event.target.value)}
-            className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+            className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
           <div className="bg-stone-50 rounded-xl p-3 border border-stone-100">
-            <div className="font-bold text-gray-700">Bloqueios no mês</div>
+            <div className="font-bold text-gray-600">Bloqueios no mês</div>
             <div>{overview.blocks.length} bloqueio(s)</div>
           </div>
           <div className="bg-stone-50 rounded-xl p-3 border border-stone-100">
-            <div className="font-bold text-gray-700">Agendamentos no mês</div>
+            <div className="font-bold text-gray-600">Agendamentos no mês</div>
             <div>{overview.appointments.length} agendamento(s)</div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-            <Stethoscope className="w-4 h-4 text-purple-500" />
-            Gerador de escala
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
+        <div className="flex items-center gap-3 pb-3 border-b border-stone-100">
+          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+            <Stethoscope className="w-4 h-4" />
           </div>
-          <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Escala automática</div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider">Home Care</div>
+          </div>
+          <span className="ml-auto text-[9px] font-bold uppercase text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
             Plantões
           </span>
         </div>
@@ -272,14 +309,16 @@ export function AvailabilityManager() {
         </p>
 
         <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
-          <select
-            value={scaleType}
-            onChange={(event) => setScaleType(event.target.value as "even" | "odd")}
-            className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-          >
-            <option value="even">Dias pares</option>
-            <option value="odd">Dias ímpares</option>
-          </select>
+          <div className="relative">
+            <select
+              value={scaleType}
+              onChange={(event) => setScaleType(event.target.value as "even" | "odd")}
+              className="w-full bg-stone-50 border border-stone-100 rounded-xl py-3 pl-3 pr-9 text-xs font-bold text-gray-600 focus:outline-none focus:ring-1 focus:ring-studio-green/40 appearance-none"
+            >
+              <option value="even">Dias pares</option>
+              <option value="odd">Dias ímpares</option>
+            </select>
+          </div>
           <button
             onClick={() => handleCreateScale()}
             disabled={loading}
@@ -325,11 +364,11 @@ export function AvailabilityManager() {
         )}
       </div>
 
-      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-4">
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-studio-green" />
-            Calendário do mês
+            Calendário
           </div>
           <button
             onClick={openNewBlockModal}
@@ -344,6 +383,11 @@ export function AvailabilityManager() {
           selectedDate={selectedDate}
           onChangeMonth={(next) => handleMonthChange(next)}
           onSelectDay={(day) => setSelectedDate(day)}
+          getDayTone={(day) => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayBlocks = blocksByDate.get(key) ?? [];
+            return dayBlocks.some((block) => (block.block_type ?? "personal") === "shift") ? "shift" : "none";
+          }}
           getDayDots={(day) => {
             const key = format(day, "yyyy-MM-dd");
             const dayBlocks = blocksByDate.get(key) ?? [];
@@ -351,43 +395,39 @@ export function AvailabilityManager() {
               dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType)
             );
             const dots = [];
-            if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-purple-400" });
-            if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-orange-400" });
-            if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-400" });
+            if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-purple-500" });
+            if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-orange-500" });
+            if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-500" });
             if (dayTypes.has("administrative")) dots.push({ key: "administrative", className: "bg-gray-400" });
             return dots;
           }}
           legend={
-            <div className="p-3 rounded-2xl bg-studio-light text-studio-green text-xs">
-              <span className="font-extrabold">Legenda:</span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-purple-400 inline-block"></span> plantão
-              </span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span> pessoal
-              </span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-teal-400 inline-block"></span> férias
-              </span>
-              <span className="ml-2 inline-flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-gray-400 inline-block"></span> admin
-              </span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-50">
+                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                <span className="text-[9px] font-bold uppercase tracking-wide text-purple-700">Plantão</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-50">
+                <span className="w-2 h-2 rounded-full bg-orange-500" />
+                <span className="text-[9px] font-bold uppercase tracking-wide text-orange-600">Parcial</span>
+              </div>
             </div>
           }
+          legendPlacement="top"
         />
       </div>
 
-      <div className="bg-white p-5 rounded-3xl shadow-soft border border-stone-100 space-y-4">
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
               <Shield className="w-4 h-4 text-gray-500" />
               Detalhes do dia
             </div>
-            <h3 className="text-sm font-bold text-studio-text mt-1">
-              {format(selectedDate, "dd MMMM", { locale: ptBR })}
+            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">
+              {format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR })}
             </h3>
-            <p className="text-xs text-gray-500">Bloqueios cadastrados para o dia selecionado.</p>
+            <p className="text-xs text-gray-500 mt-1">Bloqueios cadastrados para o dia selecionado.</p>
           </div>
           <button
             onClick={openNewBlockModal}
@@ -406,18 +446,21 @@ export function AvailabilityManager() {
             {selectedBlocks.map((block) => {
               const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
               return (
-                <div key={block.id} className="flex items-center justify-between gap-3 p-3 bg-stone-50 rounded-xl border border-stone-100">
-                  <div>
-                    <div className="text-sm font-bold text-studio-text">{block.title}</div>
-                    <div className="text-xs text-gray-500">{formatBlockTime(block)}</div>
-                    <span className={`inline-flex items-center gap-1 mt-2 text-[10px] px-2 py-0.5 rounded-full border ${meta.color}`}>
+                <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${meta.iconClass}`}>
                       {meta.icon}
-                      {meta.label}
-                    </span>
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-gray-700">{block.title}</div>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${meta.accentClass}`}>
+                        {formatBlockTime(block)}
+                      </span>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDeleteBlock(block.id)}
-                    className="w-9 h-9 rounded-full border border-stone-200 text-gray-400 hover:text-red-500 hover:border-red-200 flex items-center justify-center"
+                    className="w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-stone-50 flex items-center justify-center"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

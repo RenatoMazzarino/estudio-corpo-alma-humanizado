@@ -41,6 +41,7 @@
 - Checkout: valor a cobrar considera sinal já pago (total restante).
 - Gestão de Agenda: novo módulo de **Disponibilidade Inteligente** (macro calendário + micro detalhes), com gerador de escala, tipos de bloqueio e confirmação de conflitos.
 - Agenda: calendário mensal extraído para componente reutilizável (Agenda + Gestão de Agenda).
+- Gestão de Agenda: layout refinado (cards compactos, calendário com legenda em pills e lista de bloqueios mais leve).
 - Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
