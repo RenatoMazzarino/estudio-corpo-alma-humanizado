@@ -637,24 +637,24 @@ export function AvailabilityManager() {
                     <button
                       type="button"
                       onClick={() => setScaleType("odd")}
-                      className={`py-3 rounded-xl text-xs font-bold uppercase tracking-wide border transition ${
+                      className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-wide border transition ${
                         scaleType === "odd"
                           ? "bg-studio-light text-studio-green border-studio-green/20"
                           : "bg-white text-gray-400 border-stone-100"
                       }`}
                     >
-                      Dias ímpares
+                      Bloquear dias ímpares
                     </button>
                     <button
                       type="button"
                       onClick={() => setScaleType("even")}
-                      className={`py-3 rounded-xl text-xs font-bold uppercase tracking-wide border transition ${
+                      className={`py-3 rounded-xl text-[11px] font-bold uppercase tracking-wide border transition ${
                         scaleType === "even"
                           ? "bg-studio-light text-studio-green border-studio-green/20"
                           : "bg-white text-gray-400 border-stone-100"
                       }`}
                     >
-                      Dias pares
+                      Bloquear dias pares
                     </button>
                   </div>
                 </div>
