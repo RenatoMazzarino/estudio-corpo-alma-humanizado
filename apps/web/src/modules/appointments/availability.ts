@@ -174,9 +174,16 @@ export async function getAvailableSlots({
       .from("availability_blocks")
       .select("start_time, end_time")
       .eq("tenant_id", parsed.data.tenantId)
-      .gte("end_time", startOfDayStr)
-      .lte("start_time", endOfDayStr)
+      .lt("start_time", endOfDayStr)
+      .gt("end_time", startOfDayStr)
   ]);
+
+  const appointmentsError = mapSupabaseError(appointmentsRes.error);
+  if (appointmentsError) throw appointmentsError;
+  if (!ignoreBlocks) {
+    const blocksError = mapSupabaseError(blocksRes.error);
+    if (blocksError) throw blocksError;
+  }
 
   const appointments = (appointmentsRes.data || []) as AppointmentSlotRow[];
   const blocks = ignoreBlocks ? [] : ((blocksRes.data || []) as AvailabilityBlockRow[]);

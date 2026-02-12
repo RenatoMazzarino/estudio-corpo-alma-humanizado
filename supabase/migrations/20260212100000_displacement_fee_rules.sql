@@ -92,6 +92,7 @@ DECLARE
   v_service services%ROWTYPE;
   v_settings settings%ROWTYPE;
   v_client_id uuid;
+  v_client_phone_digits text := regexp_replace(COALESCE(client_phone, ''), '\D', '', 'g');
   v_total_duration int;
   v_price numeric;
   v_finished_at timestamptz;
@@ -174,17 +175,33 @@ BEGIN
     v_price := v_price + v_displacement_fee;
   END IF;
 
-  SELECT id INTO v_client_id
-  FROM public.clients
-  WHERE tenant_id = v_tenant_id
-    AND phone = client_phone
-  ORDER BY created_at ASC
-  LIMIT 1;
+  IF v_client_phone_digits <> '' THEN
+    SELECT id INTO v_client_id
+    FROM public.clients
+    WHERE tenant_id = v_tenant_id
+      AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g') = v_client_phone_digits
+    ORDER BY created_at ASC
+    LIMIT 1;
+  END IF;
 
   IF v_client_id IS NULL THEN
-    INSERT INTO public.clients (tenant_id, name, phone, initials)
-    VALUES (v_tenant_id, client_name, client_phone, upper(left(client_name, 2)))
-    RETURNING id INTO v_client_id;
+    BEGIN
+      INSERT INTO public.clients (tenant_id, name, phone, initials)
+      VALUES (v_tenant_id, client_name, client_phone, upper(left(client_name, 2)))
+      RETURNING id INTO v_client_id;
+    EXCEPTION
+      WHEN unique_violation THEN
+        IF v_client_phone_digits = '' THEN
+          RAISE;
+        END IF;
+
+        SELECT id INTO v_client_id
+        FROM public.clients
+        WHERE tenant_id = v_tenant_id
+          AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g') = v_client_phone_digits
+        ORDER BY created_at ASC
+        LIMIT 1;
+    END;
   END IF;
 
   UPDATE public.clients
@@ -345,6 +362,7 @@ DECLARE
   v_service services%ROWTYPE;
   v_settings settings%ROWTYPE;
   v_client_id uuid;
+  v_client_phone_digits text := regexp_replace(COALESCE(client_phone, ''), '\D', '', 'g');
   v_total_duration int;
   v_price numeric;
   v_finished_at timestamptz;
@@ -433,19 +451,33 @@ BEGIN
 
   IF p_client_id IS NOT NULL THEN
     v_client_id := p_client_id;
-  ELSIF client_phone IS NOT NULL AND length(trim(client_phone)) > 0 THEN
+  ELSIF v_client_phone_digits <> '' THEN
     SELECT id INTO v_client_id
     FROM public.clients
     WHERE tenant_id = p_tenant_id
-      AND phone = client_phone
+      AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g') = v_client_phone_digits
     ORDER BY created_at ASC
     LIMIT 1;
   END IF;
 
   IF v_client_id IS NULL THEN
-    INSERT INTO public.clients (tenant_id, name, phone, initials)
-    VALUES (p_tenant_id, client_name, client_phone, upper(left(client_name, 2)))
-    RETURNING id INTO v_client_id;
+    BEGIN
+      INSERT INTO public.clients (tenant_id, name, phone, initials)
+      VALUES (p_tenant_id, client_name, client_phone, upper(left(client_name, 2)))
+      RETURNING id INTO v_client_id;
+    EXCEPTION
+      WHEN unique_violation THEN
+        IF v_client_phone_digits = '' THEN
+          RAISE;
+        END IF;
+
+        SELECT id INTO v_client_id
+        FROM public.clients
+        WHERE tenant_id = p_tenant_id
+          AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g') = v_client_phone_digits
+        ORDER BY created_at ASC
+        LIMIT 1;
+    END;
   END IF;
 
   v_address_cep := p_address_cep;
