@@ -18,9 +18,94 @@ interface PixPaymentResult {
 interface CardPaymentResult {
   id: string;
   status: string;
+  internal_status: "paid" | "pending" | "failed";
   status_detail: string | null;
   transaction_amount: number;
 }
+
+type InternalPaymentStatus = "paid" | "pending" | "failed";
+
+const mapProviderStatusToInternal = (providerStatus: string | null | undefined): InternalPaymentStatus => {
+  const normalized = (providerStatus ?? "").toLowerCase();
+  if (normalized === "approved") return "paid";
+  if (normalized === "rejected" || normalized === "cancelled" || normalized === "charged_back") {
+    return "failed";
+  }
+  return "pending";
+};
+
+const recalculateAppointmentPaymentStatus = async ({
+  appointmentId,
+  tenantId,
+}: {
+  appointmentId: string;
+  tenantId: string;
+}) => {
+  const supabase = createServiceClient();
+  const { data: appointment, error: appointmentError } = await supabase
+    .from("appointments")
+    .select("id, tenant_id, price, price_override")
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (appointmentError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        appointmentError
+      )
+    );
+  }
+
+  if (!appointment) {
+    return ok(null);
+  }
+
+  const { data: paidPayments, error: paidPaymentsError } = await supabase
+    .from("appointment_payments")
+    .select("amount")
+    .eq("tenant_id", tenantId)
+    .eq("appointment_id", appointmentId)
+    .eq("status", "paid");
+
+  if (paidPaymentsError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        paidPaymentsError
+      )
+    );
+  }
+
+  const total = Number(appointment.price_override ?? appointment.price ?? 0);
+  const paidTotal = (paidPayments ?? []).reduce((acc, item) => acc + Number(item.amount ?? 0), 0);
+  const nextStatus =
+    paidTotal >= total && total > 0 ? "paid" : paidTotal > 0 ? "partial" : "pending";
+
+  const { error: updateError } = await supabase
+    .from("appointments")
+    .update({ payment_status: nextStatus })
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId);
+
+  if (updateError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        updateError
+      )
+    );
+  }
+
+  return ok(null);
+};
 
 export async function createCardPayment({
   appointmentId,
@@ -150,6 +235,7 @@ export async function createCardPayment({
   }
 
   const status = typeof payload.status === "string" ? payload.status : "pending";
+  const internalStatus = mapProviderStatusToInternal(status);
   const statusDetail =
     payload && typeof payload.status_detail === "string" ? payload.status_detail : null;
   const transactionAmount =
@@ -165,21 +251,22 @@ export async function createCardPayment({
   const result: CardPaymentResult = {
     id: String(payload.id),
     status,
+    internal_status: internalStatus,
     status_detail: statusDetail,
     transaction_amount: transactionAmount,
   };
 
   const supabase = createServiceClient();
   const rawPayload = (payload ?? null) as unknown as Json | null;
-  await supabase.from("appointment_payments").upsert(
+  const { error: upsertError } = await supabase.from("appointment_payments").upsert(
     {
       appointment_id: appointmentId,
       tenant_id: tenantId,
       method: "card",
       amount: result.transaction_amount,
-      status: result.status,
+      status: result.internal_status,
       provider_ref: result.id,
-      paid_at: result.status === "approved" ? new Date().toISOString() : null,
+      paid_at: result.internal_status === "paid" ? new Date().toISOString() : null,
       payment_method_id: paymentMethod,
       installments: installmentsValue,
       card_last4: cardLast4,
@@ -188,23 +275,15 @@ export async function createCardPayment({
     },
     { onConflict: "provider_ref,tenant_id" }
   );
+  if (upsertError) {
+    return fail(
+      new AppError("Não foi possível registrar o pagamento.", "SUPABASE_ERROR", 500, upsertError)
+    );
+  }
 
-  if (result.status === "approved") {
-    const { data: appointment } = await supabase
-      .from("appointments")
-      .select("id, tenant_id, price, price_override")
-      .eq("id", appointmentId)
-      .single();
-
-    if (appointment) {
-      const total = appointment.price_override ?? appointment.price ?? 0;
-      const nextStatus = transactionAmount >= total ? "paid" : "partial";
-      await supabase
-        .from("appointments")
-        .update({ payment_status: nextStatus })
-        .eq("id", appointment.id)
-        .eq("tenant_id", appointment.tenant_id);
-    }
+  if (result.internal_status === "paid") {
+    const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+    if (!recalcResult.ok) return recalcResult;
   }
 
   return ok(result);
@@ -315,6 +394,7 @@ export async function createPixPayment({
     | undefined;
   const transactionData = pointOfInteraction?.transaction_data;
   const status = typeof payload.status === "string" ? payload.status : "pending";
+  const internalStatus = mapProviderStatusToInternal(status);
   const ticketUrl =
     transactionData && typeof transactionData.ticket_url === "string"
       ? transactionData.ticket_url
@@ -339,27 +419,29 @@ export async function createPixPayment({
 
   const supabase = createServiceClient();
   const rawPayload = (payload ?? null) as unknown as Json | null;
-  await supabase.from("appointment_payments").upsert(
+  const { error: upsertError } = await supabase.from("appointment_payments").upsert(
     {
       appointment_id: appointmentId,
       tenant_id: tenantId,
       method: "pix",
       amount: result.transaction_amount,
-      status: result.status,
+      status: internalStatus,
       provider_ref: result.id,
-      paid_at: result.status === "approved" ? new Date().toISOString() : null,
+      paid_at: internalStatus === "paid" ? new Date().toISOString() : null,
       payment_method_id: "pix",
       raw_payload: rawPayload,
     },
     { onConflict: "provider_ref,tenant_id" }
   );
+  if (upsertError) {
+    return fail(
+      new AppError("Não foi possível registrar o pagamento.", "SUPABASE_ERROR", 500, upsertError)
+    );
+  }
 
-  if (result.status === "approved") {
-    await supabase
-      .from("appointments")
-      .update({ payment_status: "partial" })
-      .eq("id", appointmentId)
-      .eq("tenant_id", tenantId);
+  if (internalStatus === "paid") {
+    const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+    if (!recalcResult.ok) return recalcResult;
   }
 
   return ok(result);

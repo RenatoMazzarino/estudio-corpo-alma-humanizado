@@ -8,6 +8,17 @@ type SignatureParts = {
   v1?: string;
 };
 
+type NotificationType = "payment" | "order" | "unknown";
+
+type MercadoPagoOrder = {
+  external_reference?: string | null;
+  transactions?: {
+    payments?: Array<{
+      id?: string | number;
+    }>;
+  } | null;
+};
+
 const parseSignatureHeader = (value: string | null): SignatureParts => {
   if (!value) return {};
   return value.split(",").reduce<SignatureParts>((acc, part) => {
@@ -29,6 +40,13 @@ const buildSignatureManifest = (dataId: string, requestId: string, ts: string) =
   return parts.length ? `${parts.join(";")};` : "";
 };
 
+const safeEqual = (left: string, right: string) => {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
 const verifyWebhookSignature = (request: Request, secret: string) => {
   const signature = parseSignatureHeader(request.headers.get("x-signature"));
   const requestId = request.headers.get("x-request-id") ?? "";
@@ -48,7 +66,28 @@ const verifyWebhookSignature = (request: Request, secret: string) => {
     .update(manifest)
     .digest("hex");
 
-  return expected === signature.v1;
+  return safeEqual(expected, signature.v1);
+};
+
+const resolveNotificationType = (
+  request: Request,
+  body: Record<string, unknown> | null
+): NotificationType => {
+  const urlType = new URL(request.url).searchParams.get("type");
+  const bodyType = typeof body?.type === "string" ? body.type : null;
+  const rawType = (urlType ?? bodyType ?? "").toLowerCase();
+  if (rawType === "payment") return "payment";
+  if (rawType === "order") return "order";
+  return "unknown";
+};
+
+const mapProviderStatusToInternal = (providerStatus: string | null | undefined) => {
+  const normalized = (providerStatus ?? "").toLowerCase();
+  if (normalized === "approved") return "paid";
+  if (normalized === "rejected" || normalized === "cancelled" || normalized === "charged_back") {
+    return "failed";
+  }
+  return "pending";
 };
 
 function getPaymentId(request: Request, body: Record<string, unknown> | null) {
@@ -81,10 +120,40 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const paymentId = getPaymentId(request, body);
+  const notificationType = resolveNotificationType(request, body);
+  const resourceId = getPaymentId(request, body);
 
-  if (!paymentId) {
+  if (!resourceId) {
     return NextResponse.json({ ok: true });
+  }
+
+  if (notificationType === "unknown") {
+    return NextResponse.json({ ok: true, skipped: "unsupported_notification_type" });
+  }
+
+  let paymentId = resourceId;
+  let appointmentIdFromOrder: string | null = null;
+
+  if (notificationType === "order") {
+    const orderResponse = await fetch(`https://api.mercadopago.com/v1/orders/${resourceId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!orderResponse.ok) {
+      return NextResponse.json({ ok: true, skipped: "order_lookup_failed" });
+    }
+
+    const order = (await orderResponse.json()) as MercadoPagoOrder;
+    appointmentIdFromOrder =
+      typeof order.external_reference === "string" ? order.external_reference : null;
+    const firstPaymentId = order.transactions?.payments?.[0]?.id;
+    if (!firstPaymentId) {
+      return NextResponse.json({ ok: true, skipped: "order_without_payment" });
+    }
+    paymentId = String(firstPaymentId);
   }
 
   const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -95,7 +164,7 @@ export async function POST(request: Request) {
   });
 
   if (!paymentResponse.ok) {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return NextResponse.json({ ok: true, skipped: "payment_lookup_failed" });
   }
 
   const payment = (await paymentResponse.json()) as {
@@ -115,7 +184,8 @@ export async function POST(request: Request) {
   };
 
   const providerRef = String(payment.id);
-  const status = payment.status ?? "pending";
+  const providerStatus = payment.status ?? "pending";
+  const status = mapProviderStatusToInternal(providerStatus);
   const paymentMethodId =
     typeof payment.payment_method_id === "string" ? payment.payment_method_id : null;
   const paymentTypeId =
@@ -124,16 +194,19 @@ export async function POST(request: Request) {
   const cardLast4 = payment.card?.last_four_digits ?? null;
   const cardBrand = payment.card?.brand ?? null;
   const approvedAt = payment.date_approved ?? null;
-  const appointmentId = payment.external_reference ?? null;
+  const appointmentId = payment.external_reference ?? appointmentIdFromOrder ?? null;
   const method = paymentMethodId === "pix" || paymentTypeId === "bank_transfer" ? "pix" : "card";
 
   const supabase = createServiceClient();
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("appointment_payments")
     .select("appointment_id, tenant_id, amount")
     .eq("provider_ref", providerRef)
     .maybeSingle();
+  if (existingError) {
+    return NextResponse.json({ ok: false, error: "Failed to read existing payment" }, { status: 500 });
+  }
 
   const resolvedAppointmentId = existing?.appointment_id ?? appointmentId;
   const amount =
@@ -155,7 +228,7 @@ export async function POST(request: Request) {
   const resolvedTenantId = appointment?.tenant_id ?? existing?.tenant_id ?? null;
 
   if (resolvedAppointmentId && resolvedTenantId) {
-    await supabase.from("appointment_payments").upsert(
+    const { error: paymentUpsertError } = await supabase.from("appointment_payments").upsert(
       {
         appointment_id: resolvedAppointmentId,
         tenant_id: resolvedTenantId,
@@ -163,7 +236,7 @@ export async function POST(request: Request) {
         amount,
         status,
         provider_ref: providerRef,
-        paid_at: status === "approved" ? approvedAt ?? new Date().toISOString() : null,
+        paid_at: status === "paid" ? approvedAt ?? new Date().toISOString() : null,
         payment_method_id: paymentMethodId,
         installments,
         card_last4: cardLast4,
@@ -172,26 +245,49 @@ export async function POST(request: Request) {
       },
       { onConflict: "provider_ref,tenant_id" }
     );
+    if (paymentUpsertError) {
+      return NextResponse.json({ ok: false, error: "Failed to upsert payment" }, { status: 500 });
+    }
   }
 
-  if (appointment && status === "approved") {
+  if (appointment) {
     const total = appointment.price_override ?? appointment.price ?? 0;
-    const nextStatus = amount >= total && total > 0 ? "paid" : "partial";
-    await supabase
+    const { data: paidPayments, error: paidPaymentsError } = await supabase
+      .from("appointment_payments")
+      .select("amount")
+      .eq("tenant_id", appointment.tenant_id)
+      .eq("appointment_id", appointment.id)
+      .eq("status", "paid");
+    if (paidPaymentsError) {
+      return NextResponse.json({ ok: false, error: "Failed to recalc appointment status" }, { status: 500 });
+    }
+    const paidTotal = (paidPayments ?? []).reduce(
+      (acc, item) => acc + Number(item.amount ?? 0),
+      0
+    );
+    const nextStatus =
+      paidTotal >= total && total > 0 ? "paid" : paidTotal > 0 ? "partial" : "pending";
+    const { error: updateAppointmentError } = await supabase
       .from("appointments")
       .update({ payment_status: nextStatus })
       .eq("id", appointment.id)
       .eq("tenant_id", appointment.tenant_id);
+    if (updateAppointmentError) {
+      return NextResponse.json({ ok: false, error: "Failed to update appointment payment status" }, { status: 500 });
+    }
   }
 
   if (appointment) {
     const eventPayload = { webhook: body ?? null, payment } as unknown as Json;
-    await supabase.from("appointment_events").insert({
+    const { error: eventError } = await supabase.from("appointment_events").insert({
       appointment_id: appointment.id,
       tenant_id: appointment.tenant_id,
       event_type: "payment_webhook",
       payload: eventPayload,
     });
+    if (eventError) {
+      return NextResponse.json({ ok: false, error: "Failed to register payment event" }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true });

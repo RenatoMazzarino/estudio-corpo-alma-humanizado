@@ -54,6 +54,7 @@ interface BookingFlowProps {
   services: Service[];
   signalPercentage?: number | null;
   whatsappNumber?: string | null;
+  mercadoPagoPublicKey?: string | null;
 }
 
 type Step =
@@ -147,6 +148,7 @@ export function BookingFlow({
   services,
   signalPercentage,
   whatsappNumber,
+  mercadoPagoPublicKey,
 }: BookingFlowProps) {
   const [step, setStep] = useState<Step>("WELCOME");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -652,7 +654,7 @@ export function BookingFlow({
       cardFormRef.current = null;
       return;
     }
-    const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+    const publicKey = mercadoPagoPublicKey ?? null;
     if (!publicKey) {
       setCardError("Chave pública do Mercado Pago ausente.");
       return;
@@ -751,6 +753,7 @@ export function BookingFlow({
     cardholderEmail,
     clientName,
     clientPhone,
+    mercadoPagoPublicKey,
     ensureAppointment,
     mpReady,
     paymentMethod,
