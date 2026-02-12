@@ -62,9 +62,11 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 
 ## 3) Mercado Pago (Checkout Transparente)
 ### Uso atual
-- Geração de cobrança Pix/cartão no fluxo público.
+- Geração de cobrança Pix/cartão no fluxo público via Orders API:
+  - `POST /v1/orders`
 - Webhook de confirmação assíncrona:
   - `POST /api/mercadopago/webhook`
+- Webhook processa notificações `order` e `payment` (com fallback para `topic` legado).
 
 ### Arquivos-chave
 - `apps/web/app/(public)/agendar/[slug]/public-actions/payments.ts`
@@ -88,6 +90,7 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
   - `x-request-id` (header)
   - `ts` (header `x-signature`)
 - Sem assinatura válida: `401`.
+- Em preview (`VERCEL_ENV=preview`), notificações sandbox (`live_mode=false`) podem ser aceitas para diagnóstico controlado.
 
 ---
 
@@ -108,6 +111,11 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 - Público: `public.corpoealmahumanizado.com.br`
 - Preview fixo: `dev.public.corpoealmahumanizado.com.br`
 
+### Observação de webhook em preview
+- Se Vercel Authentication estiver ativa em preview, a URL configurada no Mercado Pago precisa incluir
+  `?x-vercel-protection-bypass=<token-de-automacao>`.
+- Sem bypass, o Mercado Pago recebe `401` e não entrega atualização de status.
+
 ### Estratégia de variáveis
 - Production: credenciais live (MP + Supabase prod).
 - Preview: credenciais de teste.
@@ -126,6 +134,7 @@ pnpm build
 3. Infra externa
 - GCP APIs habilitadas e billing ativo.
 - Webhook MP configurado para URL do ambiente correto.
+ - Endpoint do webhook respondendo `200` sem bloqueio de autenticação para o ambiente alvo.
 4. Segurança
 - `MERCADOPAGO_WEBHOOK_SECRET` configurada e testada.
 5. Teste ponta a ponta
