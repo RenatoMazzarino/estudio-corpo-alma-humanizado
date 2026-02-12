@@ -18,6 +18,10 @@
 - Agenda: retorno do atendimento mantém dia/visão de origem.
 - Agendamento online: fluxo público refeito em 4 etapas (WhatsApp, serviço/data/horário, revisão, pagamento Pix) com UI guiada pela Flora.
 - Agendamento online: carrossel de datas, chips de horários, revisão tipo “ticket” e etapa de pagamento Pix integrada ao Mercado Pago (QR code, copiar e abrir Pix).
+- Agendamento online: taxa de deslocamento em domicílio agora é **calculada automaticamente por endereço** (Google Maps/Distance Matrix) e aplicada no total sem edição pelo cliente.
+- Agendamento interno (/novo): taxa de deslocamento passou a ser **recomendação editável** (inclusive zerar), mantendo cálculo automático base por endereço.
+- Serviços/DB: removida taxa fixa de domicílio por serviço (`services.home_visit_fee`) para centralizar a regra em cálculo dinâmico.
+- Branding: logos padronizados em `apps/web/public/brand/*` e aplicados nas telas/fluxos que já usam identidade visual do estúdio.
 - Pagamentos MP: webhook interno criado (`/api/mercadopago/webhook`) para atualizar status e refletir no pagamento do agendamento.
 - Agendamento online: busca de cliente por telefone com confirmação “Você é X?” + preenchimento automático.
 - Agenda: central de mensagens automáticas via arquivo MD (templates editáveis sem mexer no código).
@@ -68,6 +72,7 @@
 - Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
 - DB: `availability_blocks` com `block_type` e `is_full_day` para suportar bloqueios inteligentes.
+- DB: `appointments` com `displacement_fee` e `displacement_distance_km`; RPCs pública/interna atualizadas para receber taxa/distância calculadas.
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
@@ -98,6 +103,7 @@
 8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 10. `20260211120000_backfill_client_phones.sql` — backfill de `clients.phone` para `client_phones` (sem duplicar).
+11. `20260212100000_displacement_fee_rules.sql` — adiciona `appointments.displacement_fee`/`displacement_distance_km`, remove `services.home_visit_fee` e recria RPCs `create_public_appointment`/`create_internal_appointment` com taxa de deslocamento.
 
 ## 4) Commits (hash + objetivo)
 - `e1b8aa3` — docs(ui): add agenda v1 html specs
@@ -429,3 +435,9 @@ Comandos executados na raiz:
 - **Pagamento Pix integrado (MP):** criação de pagamento via API `v1/payments` com idempotência, retorno de `ticket_url`, `qr_code` e `qr_code_base64` para exibição/uso no checkout público.
 - **Env do MP:** integração usa `MERCADOPAGO_ACCESS_TOKEN` (obrigatório) e `MERCADOPAGO_WEBHOOK_URL` (opcional).
 - **Webhook MP:** rota pública `/api/mercadopago/webhook` consulta o pagamento no MP e atualiza `appointment_payments` + `appointments.payment_status`.
+- **Taxa de deslocamento automática:** API interna `/api/displacement-fee` usa Google Maps (Routes API) e aplica regra urbana/rodoviária; UI pública exibe taxa calculada e distância.
+- **Fallback operacional de deslocamento:** se Google Maps falhar, a API retorna taxa mínima provisória (R$ 15,00) para não quebrar o fluxo público.
+- **Taxa no fluxo interno:** taxa de deslocamento vira recomendação editável no formulário interno (pode alterar ou zerar).
+- **Taxa por serviço removida:** `services.home_visit_fee` removido de UI, repository e migration; preço de domicílio passa a vir do cálculo por endereço.
+- **Tailwind v4 (ajustes canônicos):** normalização aplicada na tela pública de agendamento (`booking-flow`) para classes sugeridas pelo IntelliSense.
+- **Voucher sobreposto:** visual final em overlay sobre tela escurecida (sem card sólido externo), com ações de baixar imagem e compartilhar.
