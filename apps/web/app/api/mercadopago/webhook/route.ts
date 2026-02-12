@@ -19,6 +19,10 @@ type MercadoPagoOrder = {
   } | null;
 };
 
+const logWebhookError = (message: string, details?: unknown) => {
+  console.error("[mercadopago-webhook]", message, details ?? {});
+};
+
 const parseSignatureHeader = (value: string | null): SignatureParts => {
   if (!value) return {};
   return value.split(",").reduce<SignatureParts>((acc, part) => {
@@ -240,6 +244,7 @@ export async function POST(request: Request) {
     .eq("provider_ref", providerRef)
     .maybeSingle();
   if (existingError) {
+    logWebhookError("failed to read existing payment", { error: existingError, paymentId });
     return NextResponse.json({ ok: false, error: "Failed to read existing payment" }, { status: 500 });
   }
 
@@ -281,6 +286,13 @@ export async function POST(request: Request) {
       { onConflict: "provider_ref,tenant_id" }
     );
     if (paymentUpsertError) {
+      logWebhookError("failed to upsert payment", {
+        error: paymentUpsertError,
+        paymentId,
+        providerRef,
+        resolvedAppointmentId,
+        resolvedTenantId,
+      });
       return NextResponse.json({ ok: false, error: "Failed to upsert payment" }, { status: 500 });
     }
   }
@@ -294,6 +306,11 @@ export async function POST(request: Request) {
       .eq("appointment_id", appointment.id)
       .eq("status", "paid");
     if (paidPaymentsError) {
+      logWebhookError("failed to recalc appointment status (read paid payments)", {
+        error: paidPaymentsError,
+        appointmentId: appointment.id,
+        tenantId: appointment.tenant_id,
+      });
       return NextResponse.json({ ok: false, error: "Failed to recalc appointment status" }, { status: 500 });
     }
     const paidTotal = (paidPayments ?? []).reduce(
@@ -308,6 +325,12 @@ export async function POST(request: Request) {
       .eq("id", appointment.id)
       .eq("tenant_id", appointment.tenant_id);
     if (updateAppointmentError) {
+      logWebhookError("failed to update appointment payment status", {
+        error: updateAppointmentError,
+        appointmentId: appointment.id,
+        tenantId: appointment.tenant_id,
+        nextStatus,
+      });
       return NextResponse.json({ ok: false, error: "Failed to update appointment payment status" }, { status: 500 });
     }
   }
@@ -321,6 +344,11 @@ export async function POST(request: Request) {
       payload: eventPayload,
     });
     if (eventError) {
+      logWebhookError("failed to register payment event", {
+        error: eventError,
+        appointmentId: appointment.id,
+        tenantId: appointment.tenant_id,
+      });
       return NextResponse.json({ ok: false, error: "Failed to register payment event" }, { status: 500 });
     }
   }
