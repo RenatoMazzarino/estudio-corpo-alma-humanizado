@@ -71,7 +71,7 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
             <div className="receipt-header bg-studio-green text-white px-6 pt-8 pb-10 text-center rounded-b-[30px]">
               <div className="flex justify-center mb-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <Image src="/logo.png" alt="Estúdio Corpo & Alma Humanizado" width={28} height={28} className="h-7 w-7" priority />
+                  <Image src="/brand/logo.png" alt="Estúdio Corpo & Alma Humanizado" width={28} height={28} className="h-7 w-7" priority />
                 </div>
               </div>
               <h1 className="font-serif text-2xl font-bold tracking-wide">Estúdio Corpo & Alma Humanizado</h1>

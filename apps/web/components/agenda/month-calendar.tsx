@@ -31,6 +31,7 @@ interface MonthCalendarProps {
   onChangeMonth?: (nextMonth: Date) => void;
   getDayDots?: (day: Date) => MonthCalendarDot[];
   getDayTone?: (day: Date) => DayTone;
+  isDayDisabled?: (day: Date) => boolean;
   className?: string;
   legend?: ReactNode;
   legendPlacement?: "top" | "bottom";
@@ -51,6 +52,7 @@ export function MonthCalendar({
   legend,
   legendPlacement = "bottom",
   getDayTone,
+  isDayDisabled,
   headerActions,
   footer,
   enableSwipe = true,
@@ -134,6 +136,7 @@ export function MonthCalendar({
           const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
           const dots = getDayDots?.(day) ?? [];
           const tone = getDayTone?.(day) ?? "none";
+          const disabled = isDayDisabled?.(day) ?? false;
           const toneClass =
             tone === "shift" && !isSelected && !isDayToday ? "bg-purple-50 text-purple-700" : "";
           const todayClass = isDayToday && !isSelected ? "border border-studio-green text-studio-green" : "";
@@ -143,8 +146,11 @@ export function MonthCalendar({
             <button
               key={day.toISOString()}
               type="button"
-              onClick={() => onSelectDay?.(day)}
-              className="relative flex flex-col items-center"
+              onClick={disabled ? undefined : () => onSelectDay?.(day)}
+              disabled={disabled}
+              className={`relative flex flex-col items-center ${
+                disabled ? "opacity-40 cursor-not-allowed" : ""
+              }`}
             >
               <span
                 className={`w-8 h-8 flex items-center justify-center rounded-full font-extrabold transition ${
