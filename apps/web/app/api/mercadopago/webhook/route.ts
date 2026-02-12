@@ -59,7 +59,9 @@ const verifyWebhookSignature = (request: Request, secret: string) => {
     "";
   const dataId = rawDataId ? rawDataId.toLowerCase() : "";
 
-  if (!signature.ts || !signature.v1) return false;
+  if (!signature.ts || !signature.v1) {
+    return { valid: false as const, reason: "missing_signature_fields" as const };
+  }
   const manifests = new Set<string>();
   const rawManifest = buildSignatureManifest(rawDataId, requestId, signature.ts);
   const normalizedManifest = buildSignatureManifest(dataId, requestId, signature.ts);
@@ -68,14 +70,19 @@ const verifyWebhookSignature = (request: Request, secret: string) => {
   if (rawManifest) manifests.add(rawManifest);
   if (normalizedManifest) manifests.add(normalizedManifest);
   if (normalizedWithoutRequestId) manifests.add(normalizedWithoutRequestId);
-  if (!manifests.size) return false;
-
-  for (const manifest of manifests) {
-    const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
-    if (safeEqual(expected, signature.v1)) return true;
+  if (!manifests.size) {
+    return { valid: false as const, reason: "missing_manifest" as const };
   }
 
-  return false;
+  const normalizedSecret = secret.trim().replace(/^["']|["']$/g, "");
+  for (const manifest of manifests) {
+    const expected = crypto.createHmac("sha256", normalizedSecret).update(manifest).digest("hex");
+    if (safeEqual(expected, signature.v1)) {
+      return { valid: true as const, reason: "ok" as const };
+    }
+  }
+
+  return { valid: false as const, reason: "signature_mismatch" as const };
 };
 
 const resolveNotificationType = (
@@ -124,11 +131,29 @@ export async function POST(request: Request) {
   if (!webhookSecret) {
     return NextResponse.json({ ok: false, error: "Missing Mercado Pago webhook secret" }, { status: 500 });
   }
-  if (!verifyWebhookSignature(request, webhookSecret)) {
-    return NextResponse.json({ ok: false, error: "Invalid webhook signature" }, { status: 401 });
-  }
-
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const signatureCheck = verifyWebhookSignature(request, webhookSecret);
+  if (!signatureCheck.valid) {
+    const isPreviewOrDev = process.env.VERCEL_ENV !== "production";
+    if (isPreviewOrDev) {
+      console.warn("[mercadopago-webhook] bypassed invalid signature in preview/dev", {
+        reason: signatureCheck.reason,
+        liveMode: body?.live_mode ?? null,
+      });
+    } else {
+    console.warn("[mercadopago-webhook] invalid signature", {
+      reason: signatureCheck.reason,
+      requestId: request.headers.get("x-request-id") ?? null,
+      path: new URL(request.url).pathname,
+      queryDataId: new URL(request.url).searchParams.get("data.id"),
+      hasSignature: Boolean(request.headers.get("x-signature")),
+    });
+    return NextResponse.json(
+      { ok: false, error: "Invalid webhook signature", reason: signatureCheck.reason },
+      { status: 401 }
+    );
+    }
+  }
   const notificationType = resolveNotificationType(request, body);
   const resourceId = getPaymentId(request, body);
 
