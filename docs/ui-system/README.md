@@ -3,8 +3,8 @@
 Este diretório transforma as referências visuais (HTMLs e Auditoria Visual PDF) em um guia técnico reutilizável.
 
 Referências obrigatórias:
-- `docs/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
-- HTMLs em `docs/ui-decisions/`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
+- HTMLs em `docs/legacy/agenda-v1-ui/ui-decisions/`
 
 Regra-mãe:
 - UI só usa dados persistidos ou derivados determinísticos.

@@ -9,6 +9,20 @@ Esta PR consolida a evolução da branch `agenda-v1-ui` para o estado final do m
 - cálculo automático de deslocamento,
 - hardening de dados de clientes (telefone).
 
+## Referências legadas usadas na execução (conteúdo)
+
+Arquivos de referência visual/funcional arquivados desta branch:
+- Índice consolidado: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
+- HTML/HTM de UI:
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela Agenda.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/prancha-de-calendario.html`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Fomulário Agendamento Interno.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Atendimento.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Novo Cliente.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Telas de Lista de Clientes e Detalhes de Clientes.htm`
+- Base visual complementar:
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
+
 ## Entregas principais
 
 ## 1) Agenda interna e UX mobile
@@ -42,16 +56,16 @@ Esta PR consolida a evolução da branch `agenda-v1-ui` para o estado final do m
 
 ## 6) Documentação
 - Report executivo atualizado:
-  - `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`
 - Auditoria final completa da branch:
-  - `docs/reports/BRANCH_AUDIT_AGENDA_FINAL_2026-02-12.md`
+  - `docs/legacy/agenda-v1-ui/reports/BRANCH_AUDIT_AGENDA_FINAL_2026-02-12.md`
 - Documentação de integrações:
   - `docs/integrations/INTEGRATIONS_TECNICO.md`
   - `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
 - Referências atualizadas em:
   - `README.md`
   - `MANUAL_RAPIDO.md`
-  - `docs/REPO_INVENTORY.md`
+  - `docs/legacy/agenda-v1-ui/diagnostics/REPO_INVENTORY.md`
 
 ## Validações executadas
 ```powershell

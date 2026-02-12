@@ -1,7 +1,7 @@
 # Plano Oficial — Nova Aparência/UX v1.0 (Produção)
 
 > **Escopo:** Agenda/Agendamentos, Atendimento (novo padrão produção) e Clientes (lista, detalhe e novo).  
-> **Fontes oficiais:** HTMLs em `docs/ui-decisions/*`, `Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf` e o estado atual do repo (rotas/actions/repos/migrations).  
+> **Fontes oficiais:** HTMLs em `docs/legacy/agenda-v1-ui/ui-decisions/*`, `Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf` e o estado atual do repo (rotas/actions/repos/migrations).  
 > **Regra-mãe:** UI ↔ DB 1:1 (exceto auditoria/logs/tenant).  
 > **Status:** Plano de produção alinhado ao **código atual** e **schema Supabase** do repo.
 
@@ -28,19 +28,19 @@
 
 ## 2. Fonte de verdade (HTMLs + decisões)
 **HTMLs de referência (visual/hierarquia):**
-- `docs/ui-decisions/Visão da Nova Tela Agenda.htm`
-- `docs/ui-decisions/Visão da Nova Tela de Fomulário Agendamento Interno.htm`
-- `docs/ui-decisions/Visão da Nova Tela de Atendimento.htm`
-- `docs/ui-decisions/Visão da Nova Telas de Lista de Clientes e Detalhes de Clientes.htm`
-- `docs/ui-decisions/Visão da Nova Tela de Novo Cliente.htm`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela Agenda.htm`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Fomulário Agendamento Interno.htm`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Atendimento.htm`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Telas de Lista de Clientes e Detalhes de Clientes.htm`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Novo Cliente.htm`
 
 **Auditoria Visual (padrões obrigatórios de tipografia, paleta, layout e interação):**
-- `docs/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
+- `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
 > O PDF é referência obrigatória para todas as telas e componentes (Agenda, Atendimento, Clientes).
 
 **Decisões técnicas anteriores relevantes:**
-- `docs/ui-decisions/AGENDA_V1_IMPLEMENTATION_NOTES.md` (mapeamento já aplicado em Agenda/Form interno)
-- `docs/ui-decisions/PLAN_ATENDIMENTO_UIV4.md` (base do fluxo de atendimento implementado)
+- `docs/legacy/agenda-v1-ui/ui-decisions/AGENDA_V1_IMPLEMENTATION_NOTES.md` (mapeamento já aplicado em Agenda/Form interno)
+- `docs/legacy/agenda-v1-ui/ui-decisions/PLAN_ATENDIMENTO_UIV4.md` (base do fluxo de atendimento implementado)
 
 ### 2.1 Estrutura oficial de documentação UI/UX
 Criar e manter a pasta `docs/ui-system/` com arquivos tarifados que transformem o “olhar o HTML” em documentação técnica:

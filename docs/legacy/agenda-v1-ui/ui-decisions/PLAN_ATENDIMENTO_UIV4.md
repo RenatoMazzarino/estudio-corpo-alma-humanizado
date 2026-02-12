@@ -31,7 +31,7 @@ Migrar a tela de **Atendimento** para a **UI V4** (baseada no HTML de referênci
 ## 2) Fonte de Verdade, Referências e Restrições
 
 ### Fonte de Verdade UI
-- `docs/ui-decisions/Visão da Nova Tela de Atendimento.htm` (HTML V4)
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Atendimento.htm` (HTML V4)
 
 ### Regras/Funcionalidades já existentes (devem ser preservadas)
 - Start/finish/cancel, status do appointment, UI atual de detalhes, timer localStorage + bar atual (a ser substituída).

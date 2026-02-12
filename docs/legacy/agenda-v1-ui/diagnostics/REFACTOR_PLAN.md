@@ -10,7 +10,7 @@ Plano faseado com PRs pequenos e testáveis. Cada tarefa inclui objetivo, arquiv
 - **Passos:**
   1. Definir versão de Node (>=18) em `.nvmrc`.
   2. Adicionar script `supabase:types` no root.
-  3. Documentar comandos em `docs/AUDIT_LOGS.md`.
+  3. Documentar comandos em `docs/legacy/agenda-v1-ui/diagnostics/AUDIT_LOGS.md`.
 - **Critérios de aceitação:** `pnpm install`, `pnpm lint`, `pnpm check-types`, `pnpm build` executam sem erro.
 - **Como testar:** rodar os scripts do root.
 
@@ -99,7 +99,7 @@ Plano faseado com PRs pequenos e testáveis. Cada tarefa inclui objetivo, arquiv
 - **Objetivo:** normalizar tenant_id, status e FKs.
 - **Arquivos afetados:** `supabase/migrations/*`, actions e repositories.
 - **Passos:**
-  1. Executar migrations do `docs/MIGRATION_PLAN.md`.
+  1. Executar migrations do `docs/legacy/agenda-v1-ui/diagnostics/MIGRATION_PLAN.md`.
   2. Ajustar queries para novos campos (`service_id`, `tenant_id` uuid).
 - **Critérios de aceitação:** schema e código 100% consistentes.
 - **Como testar:** rodar fluxo completo (novo agendamento, finalizar, caixa).

@@ -4,7 +4,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 - Todas as telas seguem 3 partes: **Header / Content / Navigation**.
 - `AppShell` controla o frame e o scroll único; `ModulePage` organiza header + conteúdo.
-- Referência: `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.
+- Referência: `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.
 
 ## Getting Started
 

@@ -45,7 +45,7 @@ pnpm install
 
 - Todas as telas seguem 3 partes: **Header / Content / Navigation**.
 - `AppShell` controla frame + scroll único; `ModulePage` organiza header e conteúdo.
-- Decisão documentada em `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md` e `docs/ui-system/README.md`.
+- Decisão documentada em `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md` e `docs/ui-system/README.md`.
 
 ## Scripts úteis
 
@@ -67,3 +67,8 @@ Integrações ativas no produto:
 - Google Maps Platform (endereços e taxa de deslocamento)
 - Mercado Pago Checkout Transparente (Pix/cartão + webhook)
 - WhatsApp (mensageria assistida por deep links/share)
+
+## Documentação
+
+- Índice de docs: `docs/README.md`
+- Arquivo legado da fase Agenda V1 UI: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`

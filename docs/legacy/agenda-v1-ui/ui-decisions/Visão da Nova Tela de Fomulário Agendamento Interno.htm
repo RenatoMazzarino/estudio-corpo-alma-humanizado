@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Novo Agendamento</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              studio: {
+                green: "#6A806C",
+                dark: "#4e5f50",
+                light: "#F3F6F4",
+                accent: "#D4A373",
+              },
+              paper: "#FAF9F6",
+              text: { main: "#2C3333", muted: "#868E96" },
+              dom: "#A855F7",
+              danger: "#DC2626",
+            },
+            fontFamily: {
+              serif: ['"Playfair Display"', "serif"],
+              sans: ['"Lato"', "sans-serif"],
+            },
+            boxShadow: { soft: "0 4px 20px -2px rgba(106, 128, 108, 0.15)" },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body { background: #222; height: 100vh; display: flex; justify-content: center; font-family: "Lato", sans-serif; }
+      #mobile-frame { width: 100%; max-width: 414px; height: 100%; background: #FAF9F6; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      
+      /* Animação do Endereço */
+      #address-wrapper { transition: all 0.4s ease-in-out; overflow: hidden; }
+      .address-closed { max-height: 0; opacity: 0; margin-top: 0; }
+      .address-open { max-height: 800px; opacity: 1; margin-top: 1.5rem; }
+
+      /* Botões Toggle */
+      .toggle-btn { transition: all 0.2s; border: 2px solid transparent; }
+      .toggle-btn.active-studio { background: white; border-color: #6A806C; color: #6A806C; box-shadow: 0 4px 10px rgba(106, 128, 108, 0.1); }
+      .toggle-btn.active-home { background: white; border-color: #A855F7; color: #A855F7; box-shadow: 0 4px 10px rgba(168, 85, 247, 0.1); }
+      .toggle-btn.inactive { background: #F3F4F6; color: #9CA3AF; border-color: transparent; }
+    </style>
+  </head>
+
+  <body>
+    <div id="mobile-frame">
+      
+      <header class="px-6 pt-10 pb-4 bg-white rounded-b-3xl shadow-soft sticky top-0 z-20">
+        <div class="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+            onclick="history.back()"
+          >
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+
+          <div class="text-right">
+            <p class="text-xs font-extrabold text-studio-green uppercase tracking-widest">Corpo & Alma</p>
+            <p class="text-[11px] text-gray-400 flex items-center justify-end gap-1">
+              <span class="inline-block w-1.5 h-1.5 bg-green-500 rounded-full"></span> Online
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h1 class="text-2xl font-serif text-gray-800">Novo Agendamento</h1>
+          <p class="text-xs text-gray-400 mt-1">Preencha os detalhes do atendimento.</p>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto no-scrollbar p-6 pb-28">
+        <form id="booking-form" class="space-y-6">
+          
+          <section class="bg-white rounded-3xl shadow-soft p-5 border border-white">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">1</div>
+                <h2 class="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Cliente</h2>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Nome Completo</label>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-gray-300 absolute left-4 top-1/2 -translate-y-1/2"></i>
+                        <input
+                            type="text"
+                            placeholder="Buscar ou digitar nome..."
+                            class="w-full pl-11 pr-4 py-3 rounded-2xl bg-paper border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700 transition-all"
+                        />
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-2 ml-1 flex items-center gap-1">
+                        <i data-lucide="sparkles" class="w-3 h-3"></i> Se já existir, vinculamos automaticamente.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase">WhatsApp (Opcional)</label>
+                    <div class="relative">
+                        <i data-lucide="phone" class="w-4 h-4 text-gray-300 absolute left-4 top-1/2 -translate-y-1/2"></i>
+                        <input
+                            type="tel"
+                            placeholder="(00) 00000-0000"
+                            class="w-full pl-11 pr-4 py-3 rounded-2xl bg-paper border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm transition-all"
+                        />
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-2 ml-1">Ajuda a localizar cadastros antigos 💚</p>
+                </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl shadow-soft p-5 border border-white">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">2</div>
+                <h2 class="text-xs font-extrabold text-gray-400 uppercase tracking-widest">O que e Onde?</h2>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Procedimento</label>
+                <div class="relative">
+                    <select
+                        id="service"
+                        class="w-full pl-4 pr-10 py-3 rounded-2xl bg-paper border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700 appearance-none transition-all"
+                        onchange="updateServiceInfo()"
+                    >
+                        <option value="" selected disabled>Selecione...</option>
+                        <option value="1">Massagem Relaxante (R$ 120)</option>
+                        <option value="2">Drenagem Linfática (R$ 150)</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                
+                <div id="service-feedback" class="hidden mt-3 p-3 bg-studio-light rounded-2xl flex items-center justify-between border border-studio-green/10">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-sm"><i data-lucide="clock" class="w-3 h-3"></i></div>
+                        <span class="text-xs font-bold text-gray-600">60 min</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-sm"><i data-lucide="tag" class="w-3 h-3"></i></div>
+                        <span class="text-xs font-bold text-gray-600">R$ 120,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-studio-green mb-2 uppercase">Local</label>
+                <div class="bg-paper p-1 rounded-2xl border border-gray-200 grid grid-cols-2 gap-2">
+                    <button
+                        type="button"
+                        id="btn-studio"
+                        class="toggle-btn active-studio py-3 rounded-xl flex flex-col items-center justify-center gap-1"
+                        onclick="toggleLocal('studio')"
+                    >
+                        <i data-lucide="building-2" class="w-5 h-5"></i>
+                        <span class="text-xs font-extrabold uppercase">No Estúdio</span>
+                    </button>
+                    
+                    <button
+                        type="button"
+                        id="btn-home"
+                        class="toggle-btn inactive py-3 rounded-xl flex flex-col items-center justify-center gap-1"
+                        onclick="toggleLocal('home')"
+                    >
+                        <i data-lucide="car" class="w-5 h-5"></i>
+                        <span class="text-xs font-extrabold uppercase">Em Domicílio</span>
+                    </button>
+                </div>
+
+                <div id="address-wrapper" class="address-closed">
+                    <div class="bg-purple-50 rounded-2xl border border-purple-100 p-4 relative">
+                        <div class="absolute -top-2 left-3/4 w-4 h-4 bg-purple-50 border-t border-l border-purple-100 transform rotate-45"></div>
+                        
+                        <div class="flex items-center gap-2 mb-3 text-purple-700">
+                            <i data-lucide="map-pin" class="w-4 h-4"></i>
+                            <span class="text-xs font-extrabold uppercase tracking-wide">Endereço da Cliente</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <div class="col-span-2">
+                                <input type="number" placeholder="CEP" class="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-dom/30 text-sm font-medium" />
+                            </div>
+                            <button type="button" class="bg-purple-200 text-purple-800 rounded-xl font-bold text-xs hover:bg-purple-300 transition">Buscar</button>
+                        </div>
+                        <p class="text-[10px] text-purple-400/80 mb-3 ml-1">Preenchemos o restante automaticamente 😉</p>
+                        
+                        <input type="text" class="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-dom/30 text-sm font-medium mb-2" placeholder="Rua / Avenida" />
+                        
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" class="w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-dom/30 text-sm font-medium" placeholder="Nº" />
+                            <input type="text" class="col-span-2 w-full px-4 py-3 rounded-xl bg-white border border-purple-200 focus:outline-none focus:ring-2 focus:ring-dom/30 text-sm font-medium" placeholder="Complemento" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </section>
+
+          <section class="bg-white rounded-3xl shadow-soft p-5 border border-white">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-6 h-6 rounded-full bg-studio-green text-white flex items-center justify-center text-xs font-bold">3</div>
+                <h2 class="text-xs font-extrabold text-gray-400 uppercase tracking-widest">Finalização</h2>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Valor Final</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-serif text-sm">R$</span>
+                        <input
+                            type="tel"
+                            placeholder="0,00"
+                            class="w-full pl-9 pr-3 py-3 rounded-2xl bg-paper border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-lg font-bold text-gray-800"
+                        />
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1 ml-1">Pode ajustar se precisar ✏️</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-extrabold text-studio-green mb-1.5 uppercase">Data</label>
+                    <input
+                        type="date"
+                        class="w-full px-3 py-3 rounded-2xl bg-paper border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-medium text-gray-700"
+                    />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold text-studio-green mb-2 uppercase">Horário</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button type="button" class="py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:border-studio-green hover:text-studio-green transition">09:00</button>
+                    <button type="button" class="py-2 rounded-xl bg-studio-green text-white text-xs font-bold shadow-md transform scale-105">10:00</button>
+                    <button type="button" class="py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:border-studio-green hover:text-studio-green transition">14:00</button>
+                    <button type="button" class="py-2 rounded-xl border border-gray-100 bg-gray-50 text-xs font-bold text-gray-300 cursor-not-allowed line-through">16:00</button>
+                </div>
+            </div>
+            
+            <div class="mt-5 pt-4 border-t border-gray-100">
+                <label class="block text-xs font-extrabold text-gray-400 mb-1.5 uppercase">Observações Internas</label>
+                <textarea rows="2" class="w-full px-4 py-3 rounded-2xl bg-paper border border-gray-200 focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm" placeholder="Ex: Cliente prefere pressão leve..."></textarea>
+            </div>
+          </section>
+
+          <button
+            type="submit"
+            class="w-full py-4 rounded-2xl bg-studio-green text-white font-extrabold shadow-soft hover:bg-studio-dark transition flex items-center justify-center gap-2 group mb-4"
+          >
+            <i data-lucide="check" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+            Confirmar Agendamento
+          </button>
+        </form>
+      </main>
+
+      <nav class="bg-white border-t border-gray-100 py-3 px-2 flex justify-around items-center z-40 fixed bottom-0 w-full max-w-[414px]">
+        <button class="flex flex-col items-center gap-1 text-studio-green w-16 opacity-50"><i data-lucide="calendar" class="w-6 h-6"></i><span class="text-[10px] font-medium">Agenda</span></button>
+        <button class="flex flex-col items-center gap-1 text-gray-300 w-16 opacity-50"><i data-lucide="users" class="w-6 h-6"></i><span class="text-[10px] font-medium">Clientes</span></button>
+        <button class="flex flex-col items-center gap-1 text-gray-300 w-16 opacity-50"><i data-lucide="dollar-sign" class="w-6 h-6"></i><span class="text-[10px] font-medium">Caixa</span></button>
+        <button class="flex flex-col items-center gap-1 text-gray-300 w-16 opacity-50"><i data-lucide="menu" class="w-6 h-6"></i><span class="text-[10px] font-medium">Menu</span></button>
+      </nav>
+    </div>
+
+    <script>
+      lucide.createIcons();
+
+      function toggleLocal(type) {
+        const btnStudio = document.getElementById("btn-studio");
+        const btnHome = document.getElementById("btn-home");
+        const addressWrapper = document.getElementById("address-wrapper");
+
+        if (type === 'studio') {
+            btnStudio.className = "toggle-btn active-studio py-3 rounded-xl flex flex-col items-center justify-center gap-1 w-full";
+            btnHome.className = "toggle-btn inactive py-3 rounded-xl flex flex-col items-center justify-center gap-1 w-full";
+            addressWrapper.classList.remove("address-open");
+            addressWrapper.classList.add("address-closed");
+        } else {
+            btnHome.className = "toggle-btn active-home py-3 rounded-xl flex flex-col items-center justify-center gap-1 w-full";
+            btnStudio.className = "toggle-btn inactive py-3 rounded-xl flex flex-col items-center justify-center gap-1 w-full";
+            addressWrapper.classList.remove("address-closed");
+            addressWrapper.classList.add("address-open");
+        }
+      }
+
+      function updateServiceInfo() {
+        document.getElementById("service-feedback").classList.remove("hidden");
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prancha de Decisão de Interface - Estúdio Corpo & Alma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'studio-bg': '#FAF9F6',
+                        'studio-green': '#6A806C',
+                        'studio-green-dark': '#556656',
+                        'studio-pink': '#CEAEB9',
+                        'studio-text': '#2D2D2D',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f3f4f6; }
+        
+        /* Device Frames */
+        .desktop-frame {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.15);
+            overflow: hidden;
+            height: 600px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .phone-frame {
+            width: 300px;
+            height: 600px;
+            background: white;
+            border-radius: 40px;
+            border: 10px solid #1f2937;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            margin: 0 auto;
+        }
+        
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 24px;
+            background: #1f2937;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+            z-index: 20;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="p-8 pb-32">
+
+    <div class="max-w-7xl mx-auto space-y-24">
+        
+        <!-- HEADER -->
+        <div class="text-center space-y-4">
+            <h1 class="text-4xl font-bold text-gray-900">Escolha a Identidade Visual</h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">Abaixo estão 3 caminhos para a V1. A Opção 3 foi customizada com o seu pedido (Web Google Calendar + Mobile Nativo).</p>
+        </div>
+
+        <!-- OPÇÃO 1: TECH SAAS -->
+        <section>
+            <div class="flex items-center gap-4 mb-8 border-b border-gray-200 pb-4">
+                <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">1</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Estilo "Tech SaaS"</h2>
+                    <p class="text-gray-500">Visual padrão de startups. Azul, limpo, funcional, mas genérico.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Desktop -->
+                <div class="lg:col-span-2 desktop-frame">
+                    <div class="h-14 border-b flex items-center px-4 justify-between bg-white">
+                        <span class="font-bold text-gray-700">Agendamentos</span>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 bg-gray-100 rounded text-sm">Hoje</button>
+                            <button class="px-3 py-1 bg-blue-600 text-white rounded text-sm">Novo +</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-50 p-4">
+                        <div class="bg-white rounded border h-full grid grid-cols-5 relative">
+                            <div class="border-r p-2 text-center"><span class="block text-xs text-gray-400">Seg</span><strong class="block">26</strong></div>
+                            <div class="border-r p-2 text-center bg-blue-50"><span class="block text-xs text-blue-600">Ter</span><strong class="block text-blue-700">27</strong></div>
+                            <div class="border-r p-2 text-center"><span class="block text-xs text-gray-400">Qua</span><strong class="block">28</strong></div>
+                            <div class="border-r p-2 text-center"><span class="block text-xs text-gray-400">Qui</span><strong class="block">29</strong></div>
+                            <div class="p-2 text-center"><span class="block text-xs text-gray-400">Sex</span><strong class="block">30</strong></div>
+                            
+                            <!-- Eventos -->
+                            <div class="absolute top-20 left-[20%] w-[20%] p-1">
+                                <div class="bg-blue-100 border-l-4 border-blue-500 p-2 text-xs rounded shadow-sm">
+                                    <strong>Ana Souza</strong><br>09:00 - 10:00
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Mobile -->
+                <div class="phone-frame">
+                    <div class="phone-notch"></div>
+                    <div class="h-full bg-gray-50 pt-10 overflow-y-auto">
+                        <div class="px-4 mb-4">
+                            <h3 class="font-bold text-xl mb-2">Hoje</h3>
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2">
+                                <div class="flex justify-between mb-1">
+                                    <span class="font-bold">Ana Souza</span>
+                                    <span class="text-blue-600 font-bold">09:00</span>
+                                </div>
+                                <div class="text-xs text-gray-500">Massagem Relaxante</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-2">
+                                <div class="flex justify-between mb-1">
+                                    <span class="font-bold">Mariana</span>
+                                    <span class="text-blue-600 font-bold">14:00</span>
+                                </div>
+                                <div class="text-xs text-gray-500">Drenagem</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- OPÇÃO 2: KANBAN BOARD -->
+        <section>
+            <div class="flex items-center gap-4 mb-8 border-b border-gray-200 pb-4">
+                <div class="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl">2</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Estilo "Kanban"</h2>
+                    <p class="text-gray-500">Visual de colunas. Bom para volume, mas perde a noção exata de horário.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Desktop -->
+                <div class="lg:col-span-2 desktop-frame bg-gray-100 p-4">
+                    <div class="grid grid-cols-4 gap-3 h-full">
+                        <div class="flex flex-col gap-2">
+                            <div class="font-bold text-gray-600 border-b pb-1">Seg 26</div>
+                            <div class="bg-white p-2 rounded shadow text-xs">09:00 - Bloqueio</div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <div class="font-bold text-purple-700 border-b-2 border-purple-500 pb-1">Ter 27</div>
+                            <div class="bg-white p-3 rounded shadow border-l-4 border-purple-500">
+                                <span class="bg-purple-100 text-purple-800 text-[10px] px-1 rounded">09:00</span>
+                                <div class="font-bold mt-1">Ana Souza</div>
+                            </div>
+                            <div class="bg-white p-3 rounded shadow border-l-4 border-orange-400">
+                                <span class="bg-orange-100 text-orange-800 text-[10px] px-1 rounded">14:00</span>
+                                <div class="font-bold mt-1">Mariana</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Mobile -->
+                <div class="phone-frame">
+                    <div class="phone-notch"></div>
+                    <div class="h-full bg-white pt-10 overflow-y-auto px-4">
+                        <h3 class="font-bold text-xl mb-4 text-purple-900">Terça-feira</h3>
+                        <div class="relative pl-6 border-l-2 border-purple-100 space-y-6">
+                            <div class="relative">
+                                <div class="absolute -left-[29px] bg-purple-500 w-3 h-3 rounded-full border-2 border-white"></div>
+                                <span class="text-xs text-gray-400 font-bold">09:00</span>
+                                <div class="bg-purple-50 p-3 rounded-lg mt-1">
+                                    <strong>Ana Souza</strong>
+                                </div>
+                            </div>
+                            <div class="relative">
+                                <div class="absolute -left-[29px] bg-orange-400 w-3 h-3 rounded-full border-2 border-white"></div>
+                                <span class="text-xs text-gray-400 font-bold">14:00</span>
+                                <div class="bg-orange-50 p-3 rounded-lg mt-1">
+                                    <strong>Mariana</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- OPÇÃO 3: O ESCOLHIDO (HUMANIZADO + GOOGLE CALENDAR) -->
+        <section class="bg-white p-8 rounded-3xl border-4 border-studio-green/20 shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 bg-studio-green text-white px-6 py-2 rounded-bl-2xl font-bold text-sm">SUA ESCOLHA</div>
+            
+            <div class="flex items-center gap-4 mb-8 border-b border-gray-100 pb-4">
+                <div class="w-12 h-12 bg-studio-green rounded-full flex items-center justify-center text-white font-bold text-xl">3</div>
+                <div>
+                    <h2 class="text-2xl font-bold text-studio-text font-serif">Estilo "Corpo & Alma" (Híbrido)</h2>
+                    <p class="text-gray-500">Desktop com grade completa (Google Calendar) + Mobile Nativo (Lista Limpa). Cores da marca.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                
+                <!-- DESKTOP: Google Calendar Style -->
+                <div class="lg:col-span-2 desktop-frame bg-white flex flex-col">
+                    <!-- Toolbar -->
+                    <div class="h-16 border-b border-gray-100 flex items-center px-6 justify-between shrink-0">
+                        <div class="flex items-center gap-4">
+                            <h3 class="text-xl font-bold text-studio-text font-serif">Janeiro 2026</h3>
+                            <div class="flex bg-stone-100 rounded-lg p-1">
+                                <button class="px-3 py-1 rounded-md text-xs font-medium text-gray-500 hover:bg-white hover:shadow-sm">Semana</button>
+                                <button class="px-3 py-1 rounded-md text-xs font-medium bg-white shadow-sm text-studio-green">Dia</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-gray-50 text-gray-500">&lt;</button>
+                            <button class="px-3 rounded border hover:bg-gray-50 text-sm font-medium text-gray-600">Hoje</button>
+                            <button class="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-gray-50 text-gray-500">&gt;</button>
+                        </div>
+                    </div>
+
+                    <!-- Grid Content -->
+                    <div class="flex flex-1 overflow-hidden">
+                        <!-- Sidebar Horas -->
+                        <div class="w-16 border-r border-gray-100 flex flex-col text-xs text-gray-400 pt-10 gap-14 items-center bg-stone-50/50">
+                            <span>08:00</span>
+                            <span>09:00</span>
+                            <span>10:00</span>
+                            <span>11:00</span>
+                            <span>12:00</span>
+                        </div>
+
+                        <!-- O Calendário em si -->
+                        <div class="flex-1 relative overflow-y-auto">
+                            <!-- Linhas de Grade -->
+                            <div class="absolute w-full top-14 border-t border-dashed border-gray-200"></div>
+                            <div class="absolute w-full top-28 border-t border-dashed border-gray-200"></div>
+                            <div class="absolute w-full top-42 border-t border-dashed border-gray-200"></div>
+                            <div class="absolute w-full top-56 border-t border-dashed border-gray-200"></div>
+
+                            <!-- Coluna do Dia Único (Visão Dia) -->
+                            <div class="h-full relative px-4 pt-2">
+                                <!-- Evento 1 -->
+                                <div class="absolute top-14 left-4 right-4 h-28 bg-studio-green/10 border-l-4 border-studio-green rounded-r-lg p-3 hover:shadow-lg transition-all cursor-pointer group">
+                                    <div class="flex justify-between items-start">
+                                        <span class="font-bold text-studio-text text-sm">Ana Souza</span>
+                                        <span class="text-[10px] bg-white px-2 py-0.5 rounded-full text-studio-green font-bold shadow-sm">09:00 - 11:00</span>
+                                    </div>
+                                    <div class="text-xs text-studio-green-dark mt-1">Drenagem Linfática Completa</div>
+                                    <div class="text-[10px] text-gray-500 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        R$ 150,00 • Confirmado
+                                    </div>
+                                </div>
+
+                                <!-- Linha Vermelha (Hora Atual) -->
+                                <div class="absolute top-32 w-full flex items-center">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full -ml-1.5"></div>
+                                    <div class="h-0.5 bg-red-500 flex-1 opacity-50"></div>
+                                </div>
+
+                                <!-- Evento 2 -->
+                                <div class="absolute top-56 left-4 right-4 h-14 bg-studio-pink/20 border-l-4 border-studio-pink rounded-r-lg p-2 hover:shadow-lg transition-all cursor-pointer">
+                                    <div class="flex justify-between items-start">
+                                        <span class="font-bold text-studio-text text-sm">Almoço</span>
+                                        <span class="text-[10px] text-gray-500">12:00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOBILE: Native App Style -->
+                <div class="phone-frame bg-studio-bg">
+                    <div class="phone-notch"></div>
+                    <div class="h-full pt-8 flex flex-col">
+                        
+                        <!-- Header Fixo -->
+                        <div class="px-6 pb-4 bg-white/80 backdrop-blur border-b border-stone-200">
+                            <div class="flex justify-between items-center mb-4">
+                                <h1 class="text-xl font-bold text-studio-green font-serif">Agenda</h1>
+                                <div class="w-8 h-8 bg-studio-pink/30 rounded-full flex items-center justify-center text-xs font-bold text-studio-green">JS</div>
+                            </div>
+                            
+                            <!-- Date Strip (Rolagem Horizontal) -->
+                            <div class="flex gap-3 overflow-x-auto no-scrollbar">
+                                <div class="flex flex-col items-center min-w-[3rem] p-2 rounded-xl bg-studio-green text-white shadow-lg shadow-green-100 transform scale-105">
+                                    <span class="text-[10px] uppercase">Ter</span>
+                                    <span class="text-lg font-bold">27</span>
+                                </div>
+                                <div class="flex flex-col items-center min-w-[3rem] p-2 rounded-xl bg-white border border-stone-100 text-gray-400">
+                                    <span class="text-[10px] uppercase">Qua</span>
+                                    <span class="text-lg font-bold">28</span>
+                                </div>
+                                <div class="flex flex-col items-center min-w-[3rem] p-2 rounded-xl bg-white border border-stone-100 text-gray-400">
+                                    <span class="text-[10px] uppercase">Qui</span>
+                                    <span class="text-lg font-bold">29</span>
+                                </div>
+                                <div class="flex flex-col items-center min-w-[3rem] p-2 rounded-xl bg-white border border-stone-100 text-gray-400">
+                                    <span class="text-[10px] uppercase">Sex</span>
+                                    <span class="text-lg font-bold">30</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Agendamentos (Scroll) -->
+                        <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-1">Manhã</div>
+                            
+                            <!-- Card 1 -->
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4 relative overflow-hidden group active:scale-95 transition-transform">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-studio-green"></div>
+                                <div class="flex flex-col items-center min-w-[3rem]">
+                                    <span class="text-sm font-bold text-gray-800">09:00</span>
+                                    <span class="text-[10px] text-gray-400">11:00</span>
+                                </div>
+                                <div class="h-8 w-[1px] bg-gray-100"></div>
+                                <div>
+                                    <h3 class="font-bold text-studio-text text-sm">Ana Souza</h3>
+                                    <p class="text-xs text-gray-500">Drenagem Linfática</p>
+                                </div>
+                                <div class="ml-auto">
+                                    <span class="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Tarde</div>
+
+                            <!-- Card 2 -->
+                            <div class="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4 relative overflow-hidden opacity-60">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-studio-pink"></div>
+                                <div class="flex flex-col items-center min-w-[3rem]">
+                                    <span class="text-sm font-bold text-gray-800">14:00</span>
+                                    <span class="text-[10px] text-gray-400">15:00</span>
+                                </div>
+                                <div class="h-8 w-[1px] bg-gray-100"></div>
+                                <div>
+                                    <h3 class="font-bold text-studio-text text-sm">Mariana</h3>
+                                    <p class="text-xs text-gray-500">Massagem Relax.</p>
+                                </div>
+                            </div>
+
+                            <!-- Card Vazio -->
+                            <div class="border-2 border-dashed border-stone-200 rounded-2xl p-4 flex items-center justify-center text-stone-400 text-xs gap-2 mt-4">
+                                <span>+</span> Livre das 15:00 às 18:00
+                            </div>
+                        </div>
+
+                        <!-- FAB -->
+                        <div class="absolute bottom-6 right-6">
+                            <button class="w-14 h-14 bg-studio-green text-white rounded-full shadow-xl shadow-green-200 flex items-center justify-center text-2xl pb-1 hover:scale-110 transition-transform">
+                                +
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+</body>
+</html>

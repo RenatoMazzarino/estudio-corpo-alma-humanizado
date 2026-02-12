@@ -20,4 +20,4 @@ Quando **não** usar:
 - Não substituir migrations por estes arquivos.
 
 ## Referências de UI
-- Decisões de layout e padrões de tela: `docs/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.
+- Decisões de layout e padrões de tela: `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.

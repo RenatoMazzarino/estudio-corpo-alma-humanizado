@@ -25,6 +25,18 @@ pnpm build
 ```
 Resultado: **tudo OK** (sem erro).
 
+4. Artefatos de referência (analisados por conteúdo)
+- Índice consolidado: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
+- HTML/HTM auditados:
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela Agenda.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/prancha-de-calendario.html`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Fomulário Agendamento Interno.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Atendimento.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Novo Cliente.htm`
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Telas de Lista de Clientes e Detalhes de Clientes.htm`
+- Referência visual complementar:
+  - `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
+
 ---
 
 ## 2) Resultado executivo (estado atual)
@@ -117,7 +129,7 @@ Resultado: **tudo OK** (sem erro).
 - Inventário/manual/readme atualizados para apontar integrações:
   - `README.md`
   - `MANUAL_RAPIDO.md`
-  - `docs/REPO_INVENTORY.md`
+  - `docs/legacy/agenda-v1-ui/diagnostics/REPO_INVENTORY.md`
 
 ---
 
