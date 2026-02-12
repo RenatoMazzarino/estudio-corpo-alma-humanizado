@@ -23,6 +23,7 @@ import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
 import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
+import { formatBrazilPhone } from "../../../src/shared/phone";
 
 interface Service {
   id: string;
@@ -89,18 +90,6 @@ interface InitialAppointment {
   priceOverride: number | null;
   displacementFee?: number | null;
   displacementDistanceKm?: number | null;
-}
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits
-      .replace(/^(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return digits
-    .replace(/^(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
 }
 
 function formatCep(value: string) {
@@ -247,7 +236,7 @@ export function AppointmentForm({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
   const [clientName, setClientName] = useState(initialAppointment?.clientName ?? "");
   const [clientPhone, setClientPhone] = useState(
-    initialAppointment?.clientPhone ? formatPhone(initialAppointment.clientPhone) : ""
+    initialAppointment?.clientPhone ? formatBrazilPhone(initialAppointment.clientPhone) : ""
   );
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasBlocks, setHasBlocks] = useState(false);
@@ -354,14 +343,14 @@ export function AppointmentForm({
     if (match && match.id !== selectedClientId) {
       setSelectedClientId(match.id);
       if (!clientPhone && match.phone) {
-        setClientPhone(formatPhone(match.phone));
+        setClientPhone(formatBrazilPhone(match.phone));
       }
     }
   }, [clientName, clients, selectedClientId, clientPhone]);
 
   const handleSelectClient = (client: { id: string; name: string; phone: string | null }) => {
     setClientName(client.name);
-    setClientPhone(client.phone ? formatPhone(client.phone) : "");
+    setClientPhone(client.phone ? formatBrazilPhone(client.phone) : "");
     setSelectedClientId(client.id);
   };
 
@@ -621,7 +610,7 @@ export function AppointmentForm({
   });
   const resolvedClientId = selectedClientId ?? exactClientMatch?.id ?? null;
   const resolvedClientPhone =
-    clientPhone || (exactClientMatch?.phone ? formatPhone(exactClientMatch.phone) : "");
+    clientPhone || (exactClientMatch?.phone ? formatBrazilPhone(exactClientMatch.phone) : "");
   const canHomeVisit = selectedService?.accepts_home_visit ?? false;
   const selectedAddress = useMemo(
     () => clientAddresses.find((address) => address.id === selectedAddressId) ?? null,
@@ -853,7 +842,7 @@ export function AppointmentForm({
                 type="tel"
                 placeholder="(00) 00000-0000"
                 value={resolvedClientPhone}
-                onChange={(event) => setClientPhone(formatPhone(event.target.value))}
+                onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
                 inputMode="numeric"
                 className={inputWithIconClass}
               />

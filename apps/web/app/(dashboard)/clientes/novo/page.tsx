@@ -8,6 +8,7 @@ import { ChevronLeft, Phone, Mail, Plus, Trash2 } from "lucide-react";
 import { AppHeader } from "../../../../components/ui/app-header";
 import { createClientAction, searchClientsByName } from "./actions";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
+import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 interface ClientSuggestion {
@@ -53,18 +54,6 @@ function formatCpf(value: string) {
     .replace(/^(\d{3})(\d)/, "$1.$2")
     .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
-}
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits
-      .replace(/^(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return digits
-    .replace(/^(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
 }
 
 function formatCep(value: string) {
@@ -404,7 +393,7 @@ export default function NewClientPage() {
                       setPhones((prev) =>
                         prev.map((item) =>
                           item.id === phone.id
-                            ? { ...item, number: formatPhone(event.target.value) }
+                            ? { ...item, number: formatBrazilPhone(event.target.value) }
                             : item
                         )
                       )
@@ -779,7 +768,7 @@ export default function NewClientPage() {
                 <input
                   name="guardian_phone"
                   value={guardianPhone}
-                  onChange={(event) => setGuardianPhone(formatPhone(event.target.value))}
+                  onChange={(event) => setGuardianPhone(formatBrazilPhone(event.target.value))}
                   placeholder="Telefone do responsável"
                   className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
                 />

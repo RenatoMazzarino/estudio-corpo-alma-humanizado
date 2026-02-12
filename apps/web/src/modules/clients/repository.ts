@@ -1,6 +1,7 @@
 import { createServiceClient } from "../../../lib/supabase/service";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { Database } from "../../../lib/supabase/types";
+import { normalizePhoneDigits, phonesMatch } from "../../shared/phone";
 
 export type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 export type ClientInsert = Database["public"]["Tables"]["clients"]["Insert"];
@@ -53,13 +54,56 @@ export async function updateClient(tenantId: string, id: string, payload: Client
 
 export async function findClientByNamePhone(tenantId: string, name: string, phone: string) {
   const supabase = createServiceClient();
-  return supabase
+  const normalizedPhone = normalizePhoneDigits(phone);
+
+  const { data: candidates, error: candidatesError } = await supabase
     .from("clients")
-    .select("id")
+    .select("id, phone")
     .eq("tenant_id", tenantId)
     .eq("name", name)
-    .eq("phone", phone)
-    .single();
+    .limit(50);
+
+  if (candidatesError) {
+    return { data: null, error: candidatesError };
+  }
+
+  const directMatch =
+    (candidates ?? []).find((candidate) => {
+      const candidateDigits = normalizePhoneDigits(candidate.phone);
+      return candidateDigits.length > 0 && phonesMatch(candidateDigits, normalizedPhone);
+    }) ?? null;
+
+  if (directMatch) {
+    return { data: { id: directMatch.id }, error: null };
+  }
+
+  const candidateIds = (candidates ?? []).map((candidate) => candidate.id);
+  if (candidateIds.length === 0) {
+    return { data: null, error: null };
+  }
+
+  const { data: phoneRows, error: phoneRowsError } = await supabase
+    .from("client_phones")
+    .select("client_id, number_raw, number_e164")
+    .eq("tenant_id", tenantId)
+    .in("client_id", candidateIds);
+
+  if (phoneRowsError) {
+    return { data: null, error: phoneRowsError };
+  }
+
+  const matchedPhoneRow =
+    (phoneRows ?? []).find((row) => {
+      const rawDigits = normalizePhoneDigits(row.number_raw);
+      const e164Digits = normalizePhoneDigits(row.number_e164);
+      return [rawDigits, e164Digits].some((value) => value.length > 0 && phonesMatch(value, normalizedPhone));
+    }) ?? null;
+
+  if (matchedPhoneRow) {
+    return { data: { id: matchedPhoneRow.client_id }, error: null };
+  }
+
+  return { data: null, error: null };
 }
 
 export async function deleteClient(tenantId: string, id: string) {
