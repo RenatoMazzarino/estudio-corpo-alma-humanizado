@@ -1,0 +1,15 @@
+{
+	"servers": {
+		"mercadopago-mcp-server": {
+			"url": "https://mcp.mercadopago.com/mcp",
+			"type": "http"
+		},
+		"com.vercel/vercel-mcp": {
+			"type": "http",
+			"url": "https://mcp.vercel.com",
+			"gallery": "https://api.mcp.github.com",
+			"version": "0.0.3"
+		}
+	},
+	"inputs": []
+}
