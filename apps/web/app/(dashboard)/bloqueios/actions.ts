@@ -20,13 +20,19 @@ const blockSchema = z.object({
   title: z.string().min(2),
   blockType: z.enum(["shift", "personal", "vacation", "administrative"]),
   fullDay: z.boolean(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   force: z.boolean().optional(),
 });
 
+const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
+
+const isValidDate = (value: Date) => !Number.isNaN(value.getTime());
+
 export async function getMonthOverview(monthStr: string) {
-  const base = new Date(`${monthStr}-01T00:00:00`);
+  const parsedMonth = monthSchema.safeParse(monthStr);
+  const safeMonth = parsedMonth.success ? parsedMonth.data : new Date().toISOString().slice(0, 7);
+  const base = parseISO(`${safeMonth}-01T00:00:00${BRAZIL_TZ_OFFSET}`);
   const start = startOfMonth(base).toISOString();
   const end = endOfMonth(base).toISOString();
 
@@ -63,7 +69,7 @@ export async function createAvailabilityBlock(
     : new Date(`${date}T${startTime}:00${BRAZIL_TZ_OFFSET}`);
   const blockEnd = fullDay ? dayEnd : new Date(`${date}T${endTime}:00${BRAZIL_TZ_OFFSET}`);
 
-  if (!blockStart || !blockEnd || blockEnd <= blockStart) {
+  if (!isValidDate(blockStart) || !isValidDate(blockEnd) || blockEnd <= blockStart) {
     return fail(new AppError("Horário inválido para bloqueio", "VALIDATION_ERROR", 400));
   }
 

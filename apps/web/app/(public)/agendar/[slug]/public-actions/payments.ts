@@ -1,5 +1,6 @@
 "use server";
 
+import crypto from "crypto";
 import { createServiceClient } from "../../../../../lib/supabase/service";
 import type { Json } from "../../../../../lib/supabase/types";
 import { AppError } from "../../../../../src/shared/errors/AppError";
@@ -33,6 +34,48 @@ const mapProviderStatusToInternal = (providerStatus: string | null | undefined):
   }
   return "pending";
 };
+
+const ensureValidPaymentContext = async ({
+  appointmentId,
+  tenantId,
+  amount,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  amount: number;
+}) => {
+  if (amount <= 0) {
+    return fail(new AppError("Valor de pagamento inválido.", "VALIDATION_ERROR", 400));
+  }
+
+  const supabase = createServiceClient();
+  const { data: appointment, error } = await supabase
+    .from("appointments")
+    .select("id, tenant_id")
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (error) {
+    return fail(
+      new AppError(
+        "Não foi possível validar o agendamento para pagamento.",
+        "SUPABASE_ERROR",
+        500,
+        error
+      )
+    );
+  }
+
+  if (!appointment) {
+    return fail(new AppError("Agendamento não encontrado para pagamento.", "NOT_FOUND", 404));
+  }
+
+  return ok(appointment);
+};
+
+const buildIdempotencyKey = (parts: string[]) =>
+  crypto.createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 64);
 
 const recalculateAppointmentPaymentStatus = async ({
   appointmentId,
@@ -136,6 +179,9 @@ export async function createCardPayment({
   identificationType?: string;
   identificationNumber?: string;
 }): Promise<ActionResult<CardPaymentResult>> {
+  const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
+  if (!contextResult.ok) return contextResult;
+
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!accessToken) {
     return fail(
@@ -164,10 +210,13 @@ export async function createCardPayment({
     };
   }
 
-  const idempotencyKey =
-    typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto
-      ? globalThis.crypto.randomUUID()
-      : undefined;
+  const idempotencyKey = buildIdempotencyKey([
+    "card",
+    appointmentId,
+    paymentMethodId,
+    Number(amount.toFixed(2)).toFixed(2),
+    token,
+  ]);
 
   let response: Response;
   try {
@@ -304,6 +353,9 @@ export async function createPixPayment({
   payerName: string;
   payerPhone: string;
 }): Promise<ActionResult<PixPaymentResult>> {
+  const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
+  if (!contextResult.ok) return contextResult;
+
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!accessToken) {
     return fail(
@@ -324,10 +376,11 @@ export async function createPixPayment({
     phone: splitPhone(phoneDigits),
   };
 
-  const idempotencyKey =
-    typeof globalThis.crypto !== "undefined" && "randomUUID" in globalThis.crypto
-      ? globalThis.crypto.randomUUID()
-      : undefined;
+  const idempotencyKey = buildIdempotencyKey([
+    "pix",
+    appointmentId,
+    Number(amount.toFixed(2)).toFixed(2),
+  ]);
 
   let response: Response;
   try {
