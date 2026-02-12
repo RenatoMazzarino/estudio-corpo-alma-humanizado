@@ -24,6 +24,8 @@
 - Branding: logos padronizados em `apps/web/public/brand/*` e aplicados nas telas/fluxos que já usam identidade visual do estúdio.
 - Pagamentos MP: webhook interno criado (`/api/mercadopago/webhook`) para atualizar status e refletir no pagamento do agendamento.
 - Agendamento online: busca de cliente por telefone com confirmação “Você é X?” + preenchimento automático.
+- Agendamento online/Clientes: normalização de telefone centralizada em utilitário compartilhado para reduzir duplicidade por formatação.
+- Agendamento online: voucher extraído para componente dedicado (`VoucherOverlay`) para reduzir acoplamento do fluxo.
 - Agenda: central de mensagens automáticas via arquivo MD (templates editáveis sem mexer no código).
 - TimerBubble: botão “X” para fechar contador flutuante.
 - Agendamento interno (/novo): header padronizado, retorno para o dia correto, override de preço e buffers pré/pós configuráveis.
@@ -84,6 +86,7 @@
 - Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
 - UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.
 - UI: modais do formulário abrem dentro do frame do app; ajustes de classes canônicas e avisos de schema.
+- Integrações: documentação técnica e operacional dedicada adicionada em `docs/integrations/*` e referenciada no README/Manual.
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
 - [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
@@ -104,6 +107,7 @@
 9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
 10. `20260211120000_backfill_client_phones.sql` — backfill de `clients.phone` para `client_phones` (sem duplicar).
 11. `20260212100000_displacement_fee_rules.sql` — adiciona `appointments.displacement_fee`/`displacement_distance_km`, remove `services.home_visit_fee` e recria RPCs `create_public_appointment`/`create_internal_appointment` com taxa de deslocamento.
+12. `20260212113000_normalize_client_phone_uniqueness.sql` — normaliza telefone, deduplica clientes por tenant+telefone, atualiza FKs e cria índice único por telefone normalizado.
 
 ## 4) Commits (hash + objetivo)
 - `e1b8aa3` — docs(ui): add agenda v1 html specs

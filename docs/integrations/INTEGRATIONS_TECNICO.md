@@ -1,0 +1,135 @@
+# Integrações Técnicas do Sistema
+
+Data de referência: 2026-02-12  
+Escopo: `apps/web` + banco Supabase + integrações externas.
+
+Este documento é técnico (arquitetura, endpoints, variáveis e segurança).  
+Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`.
+
+## 1) Supabase
+### Uso atual
+- Persistência principal (clientes, agenda, atendimento, pagamentos, settings).
+- RPCs de agendamento:
+  - `public.create_public_appointment(...)`
+  - `public.create_internal_appointment(...)`
+- Reconciliação de pagamento via webhook (updates em `appointment_payments` e `appointments`).
+
+### Arquivos-chave
+- `apps/web/lib/supabase/*.ts`
+- `apps/web/src/modules/**/repository.ts`
+- `supabase/migrations/*.sql`
+
+### Variáveis necessárias
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+### Migrations relevantes
+- `20260211130000_add_payment_metadata.sql`
+- `20260212100000_displacement_fee_rules.sql`
+- `20260212113000_normalize_client_phone_uniqueness.sql`
+
+---
+
+## 2) Google Maps Platform
+### Uso atual
+- Busca de endereço por texto:
+  - `POST /api/address-search`
+- Detalhamento de endereço por `placeId`:
+  - `POST /api/address-details`
+- Distância e taxa de deslocamento:
+  - `POST /api/displacement-fee`
+
+### Arquivos-chave
+- `apps/web/app/api/address-search/route.ts`
+- `apps/web/app/api/address-details/route.ts`
+- `apps/web/app/api/displacement-fee/route.ts`
+- `apps/web/src/shared/displacement/service.ts`
+- `apps/web/src/shared/displacement/rules.ts`
+
+### APIs GCP requeridas
+- `Routes API` (obrigatória)
+- `Distance Matrix API` (fallback/compatibilidade)
+
+### Variáveis necessárias
+- `GOOGLE_MAPS_API_KEY`
+- `DISPLACEMENT_ORIGIN_ADDRESS` (opcional; default em código)
+
+### Failover implementado
+- Em falha com Google, `/api/displacement-fee` retorna taxa mínima provisória (`source: "fallback_minimum"`), sem quebrar o fluxo público.
+
+---
+
+## 3) Mercado Pago (Checkout Transparente)
+### Uso atual
+- Geração de cobrança Pix/cartão no fluxo público.
+- Webhook de confirmação assíncrona:
+  - `POST /api/mercadopago/webhook`
+
+### Arquivos-chave
+- `apps/web/app/(public)/agendar/[slug]/public-actions/payments.ts`
+- `apps/web/app/api/mercadopago/webhook/route.ts`
+- `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
+
+### Variáveis necessárias
+- Server:
+  - `MERCADOPAGO_ACCESS_TOKEN`
+  - `MERCADOPAGO_CLIENT_ID`
+  - `MERCADOPAGO_CLIENT_SECRET`
+  - `MERCADOPAGO_WEBHOOK_SECRET`
+- Client:
+  - `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`
+- Compatibilidade:
+  - `MERCADOPAGO_PUBLIC_KEY` (mantida para leitura server-side quando aplicável)
+
+### Segurança
+- Validação HMAC da assinatura (`x-signature`) usando:
+  - `data.id` (query)
+  - `x-request-id` (header)
+  - `ts` (header `x-signature`)
+- Sem assinatura válida: `401`.
+
+---
+
+## 4) WhatsApp (mensageria assistida)
+### Uso atual
+- Deep links `wa.me`.
+- Compartilhamento de voucher via Web Share API + fallback para link.
+
+### Limitações
+- Anexo automático depende de suporte do app/device.
+- Não substitui API oficial de envio.
+
+---
+
+## 5) Domínios e ambientes
+### Estratégia atual
+- App interno: `app.corpoealmahumanizado.com.br`
+- Público: `public.corpoealmahumanizado.com.br`
+- Preview fixo: `dev.public.corpoealmahumanizado.com.br`
+
+### Estratégia de variáveis
+- Production: credenciais live (MP + Supabase prod).
+- Preview: credenciais de teste.
+- Local: `.env.local` com chaves de sandbox.
+
+---
+
+## 6) Checklist técnico de go-live
+1. Qualidade
+```powershell
+pnpm lint
+pnpm build
+```
+2. Banco
+- Migrations aplicadas em target environment.
+3. Infra externa
+- GCP APIs habilitadas e billing ativo.
+- Webhook MP configurado para URL do ambiente correto.
+4. Segurança
+- `MERCADOPAGO_WEBHOOK_SECRET` configurada e testada.
+5. Teste ponta a ponta
+- Agendar público.
+- Gerar Pix/cartão.
+- Receber webhook.
+- Atualizar `appointment_payments` e `appointments.payment_status`.

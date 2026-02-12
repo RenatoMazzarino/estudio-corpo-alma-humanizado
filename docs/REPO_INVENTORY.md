@@ -48,3 +48,14 @@
 - `start`: `next start`
 - `lint`: `eslint --max-warnings 0`
 - `check-types`: `next typegen && tsc --noEmit`
+
+## Integracoes ativas
+- **Supabase**: persistencia e RPCs de agendamento
+- **Google Maps Platform**: busca de endereco e calculo de deslocamento
+- **Mercado Pago (Checkout Transparente)**: Pix/cartao e webhook de confirmacao
+- **WhatsApp**: envio assistido por deep links/share
+
+Documentacao:
+- `docs/integrations/INTEGRATIONS_TECNICO.md`
+- `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
+- `docs/apis/API_GUIDE.md`

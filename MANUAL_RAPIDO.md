@@ -369,3 +369,29 @@ update tenants
 set slug = 'estudio-corpo-alma'
 where id = 'dccf4492-9576-479c-8594-2795bd6b81d7';
 ```
+
+## Integracoes do sistema (resumo)
+
+Documentacao oficial no repo:
+- Tecnico: `docs/integrations/INTEGRATIONS_TECNICO.md`
+- Operacional: `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
+- APIs internas: `docs/apis/API_GUIDE.md`
+
+Integracoes em uso:
+1. Supabase (banco + RPCs)
+2. Google Maps Platform (endereco e taxa de deslocamento)
+3. Mercado Pago Checkout Transparente (Pix/cartao + webhook)
+4. WhatsApp (links de envio assistido)
+
+Variaveis criticas na Vercel:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GOOGLE_MAPS_API_KEY`
+- `MERCADOPAGO_ACCESS_TOKEN`
+- `MERCADOPAGO_PUBLIC_KEY`
+- `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`
+- `MERCADOPAGO_CLIENT_ID`
+- `MERCADOPAGO_CLIENT_SECRET`
+- `MERCADOPAGO_WEBHOOK_SECRET`
+- `APP_TIMEZONE=America/Sao_Paulo`

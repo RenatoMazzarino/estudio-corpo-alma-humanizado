@@ -55,3 +55,15 @@ pnpm lint
 pnpm check-types
 pnpm build
 ```
+
+## Integrações
+
+- Visão técnica: `docs/integrations/INTEGRATIONS_TECNICO.md`
+- Guia operacional: `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
+- API interna do app: `docs/apis/API_GUIDE.md`
+
+Integrações ativas no produto:
+- Supabase (dados, RPCs e autenticação server-side)
+- Google Maps Platform (endereços e taxa de deslocamento)
+- Mercado Pago Checkout Transparente (Pix/cartão + webhook)
+- WhatsApp (mensageria assistida por deep links/share)
