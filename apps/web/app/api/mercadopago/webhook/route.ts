@@ -10,13 +10,47 @@ type SignatureParts = {
 
 type NotificationType = "payment" | "order" | "unknown";
 
+type MercadoPagoOrderPaymentMethod = {
+  id?: string;
+  type?: string;
+  installments?: number;
+  ticket_url?: string;
+  qr_code?: string;
+  qr_code_base64?: string;
+};
+
+type MercadoPagoOrderPayment = {
+  id?: string | number;
+  amount?: string | number;
+  status?: string;
+  status_detail?: string;
+  payment_method?: MercadoPagoOrderPaymentMethod | null;
+};
+
 type MercadoPagoOrder = {
+  id?: string;
+  status?: string;
+  status_detail?: string;
   external_reference?: string | null;
   transactions?: {
-    payments?: Array<{
-      id?: string | number;
-    }>;
+    payments?: MercadoPagoOrderPayment[] | null;
   } | null;
+};
+
+type MercadoPagoPayment = {
+  id: string | number;
+  status?: string;
+  status_detail?: string;
+  payment_method_id?: string;
+  payment_type_id?: string;
+  installments?: number;
+  card?: {
+    last_four_digits?: string;
+    brand?: string;
+  };
+  transaction_amount?: number;
+  date_approved?: string | null;
+  external_reference?: string | null;
 };
 
 const logWebhookError = (message: string, details?: unknown) => {
@@ -93,8 +127,14 @@ const resolveNotificationType = (
   request: Request,
   body: Record<string, unknown> | null
 ): NotificationType => {
-  const urlType = new URL(request.url).searchParams.get("type");
-  const bodyType = typeof body?.type === "string" ? body.type : null;
+  const url = new URL(request.url);
+  const urlType = url.searchParams.get("type") ?? url.searchParams.get("topic");
+  const bodyType =
+    typeof body?.type === "string"
+      ? body.type
+      : typeof body?.topic === "string"
+        ? body.topic
+        : null;
   const rawType = (urlType ?? bodyType ?? "").toLowerCase();
   if (rawType === "payment") return "payment";
   if (rawType === "order") return "order";
@@ -103,11 +143,36 @@ const resolveNotificationType = (
 
 const mapProviderStatusToInternal = (providerStatus: string | null | undefined) => {
   const normalized = (providerStatus ?? "").toLowerCase();
-  if (normalized === "approved") return "paid";
-  if (normalized === "rejected" || normalized === "cancelled" || normalized === "charged_back") {
+
+  if (
+    normalized === "approved" ||
+    normalized === "processed" ||
+    normalized === "accredited" ||
+    normalized === "partially_refunded"
+  ) {
+    return "paid";
+  }
+
+  if (
+    normalized === "rejected" ||
+    normalized === "cancelled" ||
+    normalized === "canceled" ||
+    normalized === "charged_back" ||
+    normalized === "failed" ||
+    normalized === "refunded"
+  ) {
     return "failed";
   }
   return "pending";
+};
+
+const parseNumericAmount = (value: unknown, fallback = 0) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
 };
 
 function getPaymentId(request: Request, body: Record<string, unknown> | null) {
@@ -171,8 +236,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, skipped: "unsupported_notification_type" });
   }
 
-  let paymentId = resourceId;
-  let appointmentIdFromOrder: string | null = null;
+  let providerRef: string | null = null;
+  let providerStatus: string = "pending";
+  let providerStatusDetail: string | null = null;
+  let paymentMethodId: string | null = null;
+  let paymentTypeId: string | null = null;
+  let installments: number | null = null;
+  let cardLast4: string | null = null;
+  let cardBrand: string | null = null;
+  let approvedAt: string | null = null;
+  let transactionAmount: number = 0;
+  let appointmentId: string | null = null;
+
+  const hydrateFromPayment = (payment: MercadoPagoPayment) => {
+    providerRef = String(payment.id);
+    providerStatus = payment.status ?? providerStatus;
+    providerStatusDetail =
+      typeof payment.status_detail === "string" ? payment.status_detail : providerStatusDetail;
+    paymentMethodId =
+      typeof payment.payment_method_id === "string" ? payment.payment_method_id : paymentMethodId;
+    paymentTypeId =
+      typeof payment.payment_type_id === "string" ? payment.payment_type_id : paymentTypeId;
+    installments = typeof payment.installments === "number" ? payment.installments : installments;
+    cardLast4 = payment.card?.last_four_digits ?? cardLast4;
+    cardBrand = payment.card?.brand ?? cardBrand;
+    approvedAt = payment.date_approved ?? approvedAt;
+    transactionAmount = parseNumericAmount(payment.transaction_amount, transactionAmount);
+    appointmentId = payment.external_reference ?? appointmentId;
+  };
 
   if (notificationType === "order") {
     const orderResponse = await fetch(`https://api.mercadopago.com/v1/orders/${resourceId}`, {
@@ -187,54 +278,73 @@ export async function POST(request: Request) {
     }
 
     const order = (await orderResponse.json()) as MercadoPagoOrder;
-    appointmentIdFromOrder =
-      typeof order.external_reference === "string" ? order.external_reference : null;
-    const firstPaymentId = order.transactions?.payments?.[0]?.id;
-    if (!firstPaymentId) {
+    appointmentId = typeof order.external_reference === "string" ? order.external_reference : null;
+    const firstPayment = order.transactions?.payments?.[0] ?? null;
+    if (!firstPayment) {
       return NextResponse.json({ ok: true, skipped: "order_without_payment" });
     }
-    paymentId = String(firstPaymentId);
+    if (!firstPayment.id) {
+      return NextResponse.json({ ok: true, skipped: "order_without_payment_id" });
+    }
+
+    providerRef = String(firstPayment.id);
+    providerStatus = firstPayment.status ?? order.status ?? "pending";
+    providerStatusDetail =
+      firstPayment.status_detail ?? order.status_detail ?? null;
+    paymentMethodId = firstPayment.payment_method?.id ?? null;
+    paymentTypeId = firstPayment.payment_method?.type ?? null;
+    installments =
+      typeof firstPayment.payment_method?.installments === "number"
+        ? firstPayment.payment_method.installments
+        : null;
+    transactionAmount = parseNumericAmount(firstPayment.amount, 0);
+
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${firstPayment.id}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (paymentResponse.ok) {
+      const payment = (await paymentResponse.json()) as MercadoPagoPayment;
+      hydrateFromPayment(payment);
+    }
+  } else {
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${resourceId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!paymentResponse.ok) {
+      return NextResponse.json({ ok: true, skipped: "payment_lookup_failed" });
+    }
+
+    const payment = (await paymentResponse.json()) as MercadoPagoPayment;
+    hydrateFromPayment(payment);
   }
 
-  const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!paymentResponse.ok) {
-    return NextResponse.json({ ok: true, skipped: "payment_lookup_failed" });
+  if (!providerRef) {
+    return NextResponse.json({ ok: true, skipped: "missing_provider_ref" });
   }
 
-  const payment = (await paymentResponse.json()) as {
-    id: string | number;
-    status?: string;
-    status_detail?: string;
-    payment_method_id?: string;
-    payment_type_id?: string;
-    installments?: number;
-    card?: {
-      last_four_digits?: string;
-      brand?: string;
-    };
-    transaction_amount?: number;
-    date_approved?: string | null;
-    external_reference?: string | null;
+  const normalizedPaymentPayload = {
+    source: notificationType,
+    resource_id: resourceId,
+    provider_ref: providerRef,
+    status: providerStatus,
+    status_detail: providerStatusDetail,
+    payment_method_id: paymentMethodId,
+    payment_type_id: paymentTypeId,
+    installments,
+    transaction_amount: transactionAmount || null,
+    approved_at: approvedAt,
+    card_last4: cardLast4,
+    card_brand: cardBrand,
   };
 
-  const providerRef = String(payment.id);
-  const providerStatus = payment.status ?? "pending";
   const status = mapProviderStatusToInternal(providerStatus);
-  const paymentMethodId =
-    typeof payment.payment_method_id === "string" ? payment.payment_method_id : null;
-  const paymentTypeId =
-    typeof payment.payment_type_id === "string" ? payment.payment_type_id : null;
-  const installments = typeof payment.installments === "number" ? payment.installments : null;
-  const cardLast4 = payment.card?.last_four_digits ?? null;
-  const cardBrand = payment.card?.brand ?? null;
-  const approvedAt = payment.date_approved ?? null;
-  const appointmentId = payment.external_reference ?? appointmentIdFromOrder ?? null;
   const method = paymentMethodId === "pix" || paymentTypeId === "bank_transfer" ? "pix" : "card";
 
   const supabase = createServiceClient();
@@ -245,13 +355,17 @@ export async function POST(request: Request) {
     .eq("provider_ref", providerRef)
     .maybeSingle();
   if (existingError) {
-    logWebhookError("failed to read existing payment", { error: existingError, paymentId });
+    logWebhookError("failed to read existing payment", {
+      error: existingError,
+      resourceId,
+      providerRef,
+    });
     return NextResponse.json({ ok: false, error: "Failed to read existing payment" }, { status: 500 });
   }
 
   const resolvedAppointmentId = existing?.appointment_id ?? appointmentId;
   const amount =
-    typeof payment.transaction_amount === "number" ? payment.transaction_amount : existing?.amount ?? 0;
+    transactionAmount > 0 ? transactionAmount : Number(existing?.amount ?? 0);
 
   let appointment:
     | { id: string; tenant_id: string; price: number | null; price_override: number | null }
@@ -282,14 +396,14 @@ export async function POST(request: Request) {
         installments,
         card_last4: cardLast4,
         card_brand: cardBrand,
-        raw_payload: payment,
+        raw_payload: normalizedPaymentPayload as Json,
       },
       { onConflict: "provider_ref,tenant_id" }
     );
     if (paymentUpsertError) {
       logWebhookError("failed to upsert payment", {
         error: paymentUpsertError,
-        paymentId,
+        resourceId,
         providerRef,
         resolvedAppointmentId,
         resolvedTenantId,
@@ -337,7 +451,7 @@ export async function POST(request: Request) {
   }
 
   if (appointment) {
-    const eventPayload = { webhook: body ?? null, payment } as unknown as Json;
+    const eventPayload = { webhook: body ?? null, payment: normalizedPaymentPayload } as unknown as Json;
     const { error: eventError } = await supabase.from("appointment_events").insert({
       appointment_id: appointment.id,
       tenant_id: appointment.tenant_id,
@@ -350,7 +464,6 @@ export async function POST(request: Request) {
         appointmentId: appointment.id,
         tenantId: appointment.tenant_id,
       });
-      return NextResponse.json({ ok: false, error: "Failed to register payment event" }, { status: 500 });
     }
   }
 

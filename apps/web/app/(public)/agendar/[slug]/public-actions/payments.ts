@@ -26,14 +26,81 @@ interface CardPaymentResult {
 
 type InternalPaymentStatus = "paid" | "pending" | "failed";
 
+type MercadoPagoOrderPaymentMethod = {
+  id?: string;
+  type?: string;
+  ticket_url?: string;
+  qr_code?: string;
+  qr_code_base64?: string;
+  installments?: number;
+};
+
+type MercadoPagoOrderPayment = {
+  id?: string | number;
+  amount?: string | number;
+  status?: string;
+  status_detail?: string;
+  payment_method?: MercadoPagoOrderPaymentMethod | null;
+};
+
+type MercadoPagoOrderResponse = {
+  id?: string;
+  status?: string;
+  status_detail?: string;
+  transactions?: {
+    payments?: MercadoPagoOrderPayment[] | null;
+  } | null;
+};
+
 const mapProviderStatusToInternal = (providerStatus: string | null | undefined): InternalPaymentStatus => {
   const normalized = (providerStatus ?? "").toLowerCase();
-  if (normalized === "approved") return "paid";
-  if (normalized === "rejected" || normalized === "cancelled" || normalized === "charged_back") {
+
+  if (
+    normalized === "approved" ||
+    normalized === "processed" ||
+    normalized === "accredited" ||
+    normalized === "partially_refunded"
+  ) {
+    return "paid";
+  }
+
+  if (
+    normalized === "rejected" ||
+    normalized === "cancelled" ||
+    normalized === "canceled" ||
+    normalized === "charged_back" ||
+    normalized === "failed" ||
+    normalized === "refunded"
+  ) {
     return "failed";
   }
+
   return "pending";
 };
+
+const parseNumericAmount = (value: unknown, fallback: number) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+};
+
+const parseApiPayload = (payloadText: string) => {
+  if (!payloadText) return null;
+  try {
+    return JSON.parse(payloadText) as Record<string, unknown>;
+  } catch {
+    return { message: payloadText };
+  }
+};
+
+const getPayloadMessage = (
+  payload: Record<string, unknown> | null,
+  fallback: string
+) =>
+  payload && typeof payload.message === "string" ? payload.message : fallback;
 
 const ensureValidPaymentContext = async ({
   appointmentId,
@@ -157,7 +224,6 @@ export async function createCardPayment({
   description,
   token,
   paymentMethodId,
-  issuerId,
   installments,
   payerEmail,
   payerName,
@@ -171,7 +237,6 @@ export async function createCardPayment({
   description: string;
   token: string;
   paymentMethodId: string;
-  issuerId: string;
   installments: number;
   payerEmail: string;
   payerName: string;
@@ -220,7 +285,7 @@ export async function createCardPayment({
 
   let response: Response;
   try {
-    response = await fetch("https://api.mercadopago.com/v1/payments", {
+    response = await fetch("https://api.mercadopago.com/v1/orders", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -228,17 +293,25 @@ export async function createCardPayment({
         ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
-        transaction_amount: Number(amount.toFixed(2)),
-        token,
-        description,
-        installments,
-        payment_method_id: paymentMethodId,
-        ...(issuerId ? { issuer_id: issuerId } : {}),
-        payer,
+        type: "online",
+        processing_mode: "automatic",
+        total_amount: amount.toFixed(2),
         external_reference: appointmentId,
-        ...(process.env.MERCADOPAGO_WEBHOOK_URL
-          ? { notification_url: process.env.MERCADOPAGO_WEBHOOK_URL }
-          : {}),
+        payer,
+        transactions: {
+          payments: [
+            {
+              amount: amount.toFixed(2),
+              description,
+              payment_method: {
+                id: paymentMethodId,
+                type: "credit_card",
+                token,
+                installments: Number.isFinite(installments) ? Math.max(1, installments) : 1,
+              },
+            },
+          ],
+        },
       }),
     });
   } catch (error) {
@@ -254,25 +327,19 @@ export async function createCardPayment({
   }
 
   const payloadText = await response.text();
-  let payload: Record<string, unknown> | null = null;
-  if (payloadText) {
-    try {
-      payload = JSON.parse(payloadText) as Record<string, unknown>;
-    } catch {
-      payload = { message: payloadText };
-    }
-  }
-
-  const payloadMessage =
-    payload && typeof payload.message === "string"
-      ? payload.message
-      : "Erro ao processar pagamento com cartão.";
+  const payload = parseApiPayload(payloadText);
+  const payloadMessage = getPayloadMessage(payload, "Erro ao processar pagamento com cartão.");
 
   if (!response.ok) {
     return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
   }
 
-  if (!payload || typeof payload.id === "undefined") {
+  const orderPayload = payload as MercadoPagoOrderResponse | null;
+  const orderId = orderPayload?.id ? String(orderPayload.id) : null;
+  const orderPayment = orderPayload?.transactions?.payments?.[0] ?? null;
+  const providerRef = orderPayment?.id ? String(orderPayment.id) : orderId;
+
+  if (!providerRef) {
     return fail(
       new AppError(
         "Resposta inválida do Mercado Pago ao processar cartão.",
@@ -283,22 +350,20 @@ export async function createCardPayment({
     );
   }
 
-  const status = typeof payload.status === "string" ? payload.status : "pending";
+  const status = orderPayment?.status ?? orderPayload?.status ?? "pending";
   const internalStatus = mapProviderStatusToInternal(status);
-  const statusDetail =
-    payload && typeof payload.status_detail === "string" ? payload.status_detail : null;
-  const transactionAmount =
-    typeof payload.transaction_amount === "number" ? payload.transaction_amount : amount;
-  const paymentMethod =
-    payload && typeof payload.payment_method_id === "string" ? payload.payment_method_id : null;
+  const statusDetail = orderPayment?.status_detail ?? orderPayload?.status_detail ?? null;
+  const transactionAmount = parseNumericAmount(orderPayment?.amount, amount);
+  const paymentMethod = orderPayment?.payment_method?.id ?? paymentMethodId;
   const installmentsValue =
-    payload && typeof payload.installments === "number" ? payload.installments : installments || null;
-  const card = payload?.card as { last_four_digits?: string; brand?: string } | undefined;
-  const cardLast4 = typeof card?.last_four_digits === "string" ? card.last_four_digits : null;
-  const cardBrand = typeof card?.brand === "string" ? card.brand : null;
+    typeof orderPayment?.payment_method?.installments === "number"
+      ? orderPayment.payment_method.installments
+      : installments || null;
+  const cardLast4 = null;
+  const cardBrand = null;
 
   const result: CardPaymentResult = {
-    id: String(payload.id),
+    id: providerRef,
     status,
     internal_status: internalStatus,
     status_detail: statusDetail,
@@ -384,7 +449,7 @@ export async function createPixPayment({
 
   let response: Response;
   try {
-    response = await fetch("https://api.mercadopago.com/v1/payments", {
+    response = await fetch("https://api.mercadopago.com/v1/orders", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -392,14 +457,23 @@ export async function createPixPayment({
         ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
-        transaction_amount: Number(amount.toFixed(2)),
-        description,
-        payment_method_id: "pix",
-        payer,
+        type: "online",
+        processing_mode: "automatic",
+        total_amount: amount.toFixed(2),
         external_reference: appointmentId,
-        ...(process.env.MERCADOPAGO_WEBHOOK_URL
-          ? { notification_url: process.env.MERCADOPAGO_WEBHOOK_URL }
-          : {}),
+        payer,
+        transactions: {
+          payments: [
+            {
+              amount: amount.toFixed(2),
+              description,
+              payment_method: {
+                id: "pix",
+                type: "bank_transfer",
+              },
+            },
+          ],
+        },
       }),
     });
   } catch (error) {
@@ -415,23 +489,19 @@ export async function createPixPayment({
   }
 
   const payloadText = await response.text();
-  let payload: Record<string, unknown> | null = null;
-  if (payloadText) {
-    try {
-      payload = JSON.parse(payloadText) as Record<string, unknown>;
-    } catch {
-      payload = { message: payloadText };
-    }
-  }
-
-  const payloadMessage =
-    payload && typeof payload.message === "string" ? payload.message : "Erro ao criar pagamento Pix.";
+  const payload = parseApiPayload(payloadText);
+  const payloadMessage = getPayloadMessage(payload, "Erro ao criar pagamento Pix.");
 
   if (!response.ok) {
     return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
   }
 
-  if (!payload || typeof payload.id === "undefined") {
+  const orderPayload = payload as MercadoPagoOrderResponse | null;
+  const orderId = orderPayload?.id ? String(orderPayload.id) : null;
+  const orderPayment = orderPayload?.transactions?.payments?.[0] ?? null;
+  const providerRef = orderPayment?.id ? String(orderPayment.id) : orderId;
+
+  if (!providerRef) {
     return fail(
       new AppError(
         "Resposta inválida do Mercado Pago ao criar Pix.",
@@ -442,27 +512,16 @@ export async function createPixPayment({
     );
   }
 
-  const pointOfInteraction = payload.point_of_interaction as
-    | { transaction_data?: Record<string, unknown> }
-    | undefined;
-  const transactionData = pointOfInteraction?.transaction_data;
-  const status = typeof payload.status === "string" ? payload.status : "pending";
+  const paymentMethod = orderPayment?.payment_method;
+  const status = orderPayment?.status ?? orderPayload?.status ?? "pending";
   const internalStatus = mapProviderStatusToInternal(status);
-  const ticketUrl =
-    transactionData && typeof transactionData.ticket_url === "string"
-      ? transactionData.ticket_url
-      : null;
-  const qrCode =
-    transactionData && typeof transactionData.qr_code === "string" ? transactionData.qr_code : null;
-  const qrCodeBase64 =
-    transactionData && typeof transactionData.qr_code_base64 === "string"
-      ? transactionData.qr_code_base64
-      : null;
-  const transactionAmount =
-    typeof payload.transaction_amount === "number" ? payload.transaction_amount : amount;
+  const ticketUrl = paymentMethod?.ticket_url ?? null;
+  const qrCode = paymentMethod?.qr_code ?? null;
+  const qrCodeBase64 = paymentMethod?.qr_code_base64 ?? null;
+  const transactionAmount = parseNumericAmount(orderPayment?.amount, amount);
 
   const result: PixPaymentResult = {
-    id: String(payload.id),
+    id: providerRef,
     status,
     ticket_url: ticketUrl,
     qr_code: qrCode,

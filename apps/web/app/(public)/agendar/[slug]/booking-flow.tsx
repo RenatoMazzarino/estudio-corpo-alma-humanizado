@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Script from "next/script";
-import html2canvas from "html2canvas";
+import { toBlob, toCanvas } from "html-to-image";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -725,7 +725,6 @@ export function BookingFlow({
               description: `Sinal ${selectedService.name}`,
               token: data.token,
               paymentMethodId: data.paymentMethodId,
-              issuerId: data.issuerId,
               installments: Number(data.installments) || 1,
               payerEmail: data.cardholderEmail || cardholderEmail,
               payerName: clientName,
@@ -746,10 +745,14 @@ export function BookingFlow({
             cardSubmitInFlightRef.current = false;
             return;
           }
-          setCardStatus("idle");
-          if (result.data.status === "approved") {
+          if (result.data.internal_status === "paid") {
+            setCardStatus("idle");
             setStep("SUCCESS");
+          } else if (result.data.internal_status === "failed") {
+            setCardStatus("error");
+            setCardError("Pagamento recusado. Tente novamente com outro cartão.");
           } else {
+            setCardStatus("idle");
             setCardError(
               "Pagamento em processamento. Você receberá a confirmação assim que for aprovado."
             );
@@ -872,10 +875,9 @@ export function BookingFlow({
     setPaymentMethod(method);
   };
 
-  const renderVoucherCanvas = async () => {
+  const renderVoucherImageBlob = async () => {
     if (!voucherRef.current) return null;
     setVoucherBusy(true);
-    let sandbox: HTMLDivElement | null = null;
     try {
       if (typeof document !== "undefined" && document.fonts?.ready) {
         await document.fonts.ready;
@@ -883,210 +885,41 @@ export function BookingFlow({
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
-      const source = voucherRef.current;
-      sandbox = document.createElement("div");
-      sandbox.style.position = "fixed";
-      sandbox.style.left = "-10000px";
-      sandbox.style.top = "0";
-      sandbox.style.width = "420px";
-      sandbox.style.padding = "20px";
-      sandbox.style.background = "#faf9f6";
-      sandbox.style.zIndex = "-1";
 
-      const captureNode = source.cloneNode(true) as HTMLElement;
-      captureNode.style.width = "380px";
-      captureNode.style.maxWidth = "380px";
-      captureNode.style.margin = "0";
-      captureNode.style.transform = "none";
-      captureNode.style.opacity = "1";
-      sandbox.appendChild(captureNode);
-      document.body.appendChild(sandbox);
-
-      const sourceElements = [source, ...Array.from(source.querySelectorAll<HTMLElement>("*"))];
-      const captureElements = [
-        captureNode,
-        ...Array.from(captureNode.querySelectorAll<HTMLElement>("*")),
-      ];
-
-      const resolveColor = (value: string) => {
-        if (!value) return value;
-        if (!/oklab|oklch|color-mix/i.test(value)) return value;
-        const helper = document.createElement("span");
-        helper.style.color = value;
-        document.body.appendChild(helper);
-        const resolved = window.getComputedStyle(helper).color;
-        helper.remove();
-        return resolved || "rgb(0, 0, 0)";
+      const node = voucherRef.current;
+      const rect = node.getBoundingClientRect();
+      const targetWidth = Math.max(380, Math.round(rect.width));
+      const pixelRatio = 2;
+      const options = {
+        backgroundColor: "#faf9f6",
+        cacheBust: true,
+        pixelRatio,
+        width: targetWidth,
+        canvasWidth: targetWidth * pixelRatio,
       };
 
-      const safeProps = [
-        "display",
-        "position",
-        "top",
-        "right",
-        "bottom",
-        "left",
-        "width",
-        "height",
-        "min-width",
-        "min-height",
-        "max-width",
-        "max-height",
-        "margin",
-        "margin-top",
-        "margin-right",
-        "margin-bottom",
-        "margin-left",
-        "padding",
-        "padding-top",
-        "padding-right",
-        "padding-bottom",
-        "padding-left",
-        "box-sizing",
-        "border",
-        "border-top",
-        "border-right",
-        "border-bottom",
-        "border-left",
-        "border-radius",
-        "background-color",
-        "background",
-        "background-position",
-        "background-repeat",
-        "background-size",
-        "opacity",
-        "color",
-        "font-family",
-        "font-size",
-        "font-style",
-        "font-weight",
-        "line-height",
-        "letter-spacing",
-        "text-align",
-        "text-transform",
-        "text-decoration",
-        "white-space",
-        "word-break",
-        "overflow",
-        "overflow-x",
-        "overflow-y",
-        "transform",
-        "transform-origin",
-        "box-shadow",
-        "flex",
-        "flex-grow",
-        "flex-shrink",
-        "flex-basis",
-        "flex-direction",
-        "align-items",
-        "justify-content",
-        "align-self",
-        "gap",
-        "row-gap",
-        "column-gap",
-        "object-fit",
-        "object-position",
-        "visibility",
-      ] as const;
+      const blob = await toBlob(node, options);
+      if (blob) return blob;
 
-      sourceElements.forEach((sourceEl, index) => {
-        const captureEl = captureElements[index];
-        if (!captureEl) return;
-
-        const computed = window.getComputedStyle(sourceEl);
-        captureEl.style.cssText = "";
-        captureEl.removeAttribute("class");
-        captureEl.style.setProperty("all", "initial");
-        captureEl.style.setProperty("box-sizing", "border-box");
-        safeProps.forEach((prop) => {
-          let value = computed.getPropertyValue(prop);
-          if (!value) return;
-          if (/oklab|oklch|color-mix/i.test(value)) {
-            if (prop.includes("shadow")) {
-              value = "none";
-            } else {
-              value = resolveColor(value);
-            }
-          }
-          if (prop === "background") {
-            value = computed.getPropertyValue("background-color");
-          }
-          captureEl.style.setProperty(prop, value);
-        });
-        captureEl.style.setProperty("background-image", "none");
-        captureEl.style.setProperty("filter", "none");
-        captureEl.style.setProperty("backdrop-filter", "none");
-        captureEl.style.setProperty("text-shadow", "none");
-        captureEl.style.setProperty("outline-color", resolveColor(computed.outlineColor));
-        captureEl.style.setProperty("border-color", resolveColor(computed.borderColor));
-
-        const postStyle = window.getComputedStyle(captureEl);
-        Array.from(postStyle).forEach((prop) => {
-          const value = postStyle.getPropertyValue(prop);
-          if (!/oklab|oklch|color-mix/i.test(value)) return;
-          if (prop.includes("color")) {
-            captureEl.style.setProperty(prop, resolveColor(value));
-            return;
-          }
-          if (prop.includes("shadow") || prop.includes("filter")) {
-            captureEl.style.setProperty(prop, "none");
-            return;
-          }
-          captureEl.style.removeProperty(prop);
-        });
-      });
-
-      const clonedImages = Array.from(captureNode.querySelectorAll("img"));
-      if (clonedImages.length > 0) {
-        await Promise.all(
-          clonedImages.map(
-            (img) =>
-              new Promise<void>((resolve) => {
-                if (img.complete) {
-                  resolve();
-                  return;
-                }
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-              })
-          )
-        );
-      }
-
-      return await html2canvas(captureNode, {
-        backgroundColor: "#faf9f6",
-        scale: 2,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0,
-      });
+      const canvas = await toCanvas(node, options);
+      return await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((value) => resolve(value), "image/png")
+      );
     } catch (error) {
-      console.error("Falha ao gerar canvas do voucher", error);
+      console.error("Falha ao gerar imagem do voucher", error);
       return null;
     } finally {
-      if (sandbox) {
-        sandbox.remove();
-      }
       setVoucherBusy(false);
     }
   };
 
   const handleDownloadVoucher = async () => {
-    const canvas = await renderVoucherCanvas();
-    if (!canvas) {
+    const blob = await renderVoucherImageBlob();
+    if (!blob) {
       window.alert("Não foi possível gerar a imagem do voucher.");
       return;
     }
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((value) => resolve(value), "image/png")
-    );
-    const fallbackDataUrl = !blob ? canvas.toDataURL("image/png") : null;
-    if (!blob && !fallbackDataUrl) {
-      window.alert("Não foi possível gerar a imagem do voucher.");
-      return;
-    }
-
-    const objectUrl = blob ? URL.createObjectURL(blob) : fallbackDataUrl!;
+    const objectUrl = URL.createObjectURL(blob);
     const isIOS = /iPad|iPhone|iPod/i.test(window.navigator.userAgent);
     try {
       if (isIOS) {
@@ -1103,18 +936,12 @@ export function BookingFlow({
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
       link.remove();
     } finally {
-      if (blob) {
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
-      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
     }
   };
 
   const handleShareVoucher = async () => {
-    const canvas = await renderVoucherCanvas();
-    if (!canvas) return;
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((value) => resolve(value), "image/png")
-    );
+    const blob = await renderVoucherImageBlob();
     if (!blob) return;
 
     const file = new File([blob], `voucher-${protocol || "agendamento"}.png`, {
