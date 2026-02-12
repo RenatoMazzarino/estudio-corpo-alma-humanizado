@@ -41,8 +41,10 @@ const buildSignatureManifest = (dataId: string, requestId: string, ts: string) =
 };
 
 const safeEqual = (left: string, right: string) => {
-  const leftBuffer = Buffer.from(left, "utf8");
-  const rightBuffer = Buffer.from(right, "utf8");
+  const normalizedLeft = left.trim().toLowerCase();
+  const normalizedRight = right.trim().toLowerCase();
+  const leftBuffer = Buffer.from(normalizedLeft, "utf8");
+  const rightBuffer = Buffer.from(normalizedRight, "utf8");
   if (leftBuffer.length !== rightBuffer.length) return false;
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 };
@@ -58,15 +60,22 @@ const verifyWebhookSignature = (request: Request, secret: string) => {
   const dataId = rawDataId ? rawDataId.toLowerCase() : "";
 
   if (!signature.ts || !signature.v1) return false;
-  const manifest = buildSignatureManifest(dataId, requestId, signature.ts);
-  if (!manifest) return false;
+  const manifests = new Set<string>();
+  const rawManifest = buildSignatureManifest(rawDataId, requestId, signature.ts);
+  const normalizedManifest = buildSignatureManifest(dataId, requestId, signature.ts);
+  const normalizedWithoutRequestId = buildSignatureManifest(dataId, "", signature.ts);
 
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(manifest)
-    .digest("hex");
+  if (rawManifest) manifests.add(rawManifest);
+  if (normalizedManifest) manifests.add(normalizedManifest);
+  if (normalizedWithoutRequestId) manifests.add(normalizedWithoutRequestId);
+  if (!manifests.size) return false;
 
-  return safeEqual(expected, signature.v1);
+  for (const manifest of manifests) {
+    const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+    if (safeEqual(expected, signature.v1)) return true;
+  }
+
+  return false;
 };
 
 const resolveNotificationType = (

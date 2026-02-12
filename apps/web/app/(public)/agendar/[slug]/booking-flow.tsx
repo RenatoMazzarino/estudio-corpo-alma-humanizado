@@ -205,6 +205,7 @@ export function BookingFlow({
   const [cardError, setCardError] = useState<string | null>(null);
   const [mpReady, setMpReady] = useState(false);
   const cardFormRef = useRef<CardFormInstance | null>(null);
+  const cardSubmitInFlightRef = useRef(false);
   const voucherRef = useRef<HTMLDivElement | null>(null);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [voucherBusy, setVoucherBusy] = useState(false);
@@ -694,10 +695,16 @@ export function BookingFlow({
         },
         onSubmit: async (event) => {
           event.preventDefault();
+          event.stopPropagation();
+          if (cardSubmitInFlightRef.current) {
+            return;
+          }
           if (!selectedService) return;
+          cardSubmitInFlightRef.current = true;
           const data = cardFormRef.current?.getCardFormData();
           if (!data?.token || !data.paymentMethodId) {
             setCardError("Preencha os dados do cartão para continuar.");
+            cardSubmitInFlightRef.current = false;
             return;
           }
           setCardStatus("loading");
@@ -706,6 +713,7 @@ export function BookingFlow({
           if (!ensuredId) {
             setCardStatus("error");
             setCardError("Não foi possível registrar o agendamento.");
+            cardSubmitInFlightRef.current = false;
             return;
           }
           let result;
@@ -728,12 +736,14 @@ export function BookingFlow({
           } catch {
             setCardStatus("error");
             setCardError("Falha ao processar pagamento com cartão. Tente novamente.");
+            cardSubmitInFlightRef.current = false;
             return;
           }
 
           if (!result.ok) {
             setCardStatus("error");
             setCardError(result.error.message);
+            cardSubmitInFlightRef.current = false;
             return;
           }
           setCardStatus("idle");
@@ -744,6 +754,7 @@ export function BookingFlow({
               "Pagamento em processamento. Você receberá a confirmação assim que for aprovado."
             );
           }
+          cardSubmitInFlightRef.current = false;
         },
       },
     });
@@ -755,6 +766,7 @@ export function BookingFlow({
         // ignore SDK teardown errors
       }
       cardFormRef.current = null;
+      cardSubmitInFlightRef.current = false;
     };
   }, [
     appointmentId,
@@ -849,6 +861,7 @@ export function BookingFlow({
         // ignore SDK teardown errors
       }
       cardFormRef.current = null;
+      cardSubmitInFlightRef.current = false;
       setCardError(null);
       setCardStatus("idle");
     }
