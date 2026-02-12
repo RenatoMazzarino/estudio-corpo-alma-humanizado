@@ -134,24 +134,25 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const signatureCheck = verifyWebhookSignature(request, webhookSecret);
   if (!signatureCheck.valid) {
-    const isPreviewOrDev = process.env.VERCEL_ENV !== "production";
-    if (isPreviewOrDev) {
-      console.warn("[mercadopago-webhook] bypassed invalid signature in preview/dev", {
+    const isLiveNotification = body?.live_mode === true;
+    if (!isLiveNotification) {
+      console.warn("[mercadopago-webhook] bypassed invalid signature for test/sandbox notification", {
         reason: signatureCheck.reason,
+        env: process.env.VERCEL_ENV ?? "unknown",
         liveMode: body?.live_mode ?? null,
       });
     } else {
-    console.warn("[mercadopago-webhook] invalid signature", {
-      reason: signatureCheck.reason,
-      requestId: request.headers.get("x-request-id") ?? null,
-      path: new URL(request.url).pathname,
-      queryDataId: new URL(request.url).searchParams.get("data.id"),
-      hasSignature: Boolean(request.headers.get("x-signature")),
-    });
-    return NextResponse.json(
-      { ok: false, error: "Invalid webhook signature", reason: signatureCheck.reason },
-      { status: 401 }
-    );
+      console.warn("[mercadopago-webhook] invalid signature", {
+        reason: signatureCheck.reason,
+        requestId: request.headers.get("x-request-id") ?? null,
+        path: new URL(request.url).pathname,
+        queryDataId: new URL(request.url).searchParams.get("data.id"),
+        hasSignature: Boolean(request.headers.get("x-signature")),
+      });
+      return NextResponse.json(
+        { ok: false, error: "Invalid webhook signature", reason: signatureCheck.reason },
+        { status: 401 }
+      );
     }
   }
   const notificationType = resolveNotificationType(request, body);
