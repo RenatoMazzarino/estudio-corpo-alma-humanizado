@@ -58,7 +58,8 @@ export function VoucherOverlay({
           <div
             ref={voucherRef}
             data-voucher-capture="true"
-            className="w-full max-w-95 mx-auto bg-transparent relative drop-shadow-2xl"
+            className="w-full max-w-95 mx-auto bg-transparent relative"
+            style={{ boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}
           >
             <div className="bg-studio-green rounded-t-4xl p-8 pb-10 text-center relative overflow-hidden">
               <div

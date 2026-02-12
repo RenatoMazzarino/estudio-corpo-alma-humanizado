@@ -875,6 +875,7 @@ export function BookingFlow({
   const renderVoucherCanvas = async () => {
     if (!voucherRef.current) return null;
     setVoucherBusy(true);
+    let sandbox: HTMLDivElement | null = null;
     try {
       if (typeof document !== "undefined" && document.fonts?.ready) {
         await document.fonts.ready;
@@ -882,64 +883,210 @@ export function BookingFlow({
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
-      const canvas = await html2canvas(voucherRef.current, {
+      const source = voucherRef.current;
+      sandbox = document.createElement("div");
+      sandbox.style.position = "fixed";
+      sandbox.style.left = "-10000px";
+      sandbox.style.top = "0";
+      sandbox.style.width = "420px";
+      sandbox.style.padding = "20px";
+      sandbox.style.background = "#faf9f6";
+      sandbox.style.zIndex = "-1";
+
+      const captureNode = source.cloneNode(true) as HTMLElement;
+      captureNode.style.width = "380px";
+      captureNode.style.maxWidth = "380px";
+      captureNode.style.margin = "0";
+      captureNode.style.transform = "none";
+      captureNode.style.opacity = "1";
+      sandbox.appendChild(captureNode);
+      document.body.appendChild(sandbox);
+
+      const sourceElements = [source, ...Array.from(source.querySelectorAll<HTMLElement>("*"))];
+      const captureElements = [
+        captureNode,
+        ...Array.from(captureNode.querySelectorAll<HTMLElement>("*")),
+      ];
+
+      const resolveColor = (value: string) => {
+        if (!value) return value;
+        if (!/oklab|oklch|color-mix/i.test(value)) return value;
+        const helper = document.createElement("span");
+        helper.style.color = value;
+        document.body.appendChild(helper);
+        const resolved = window.getComputedStyle(helper).color;
+        helper.remove();
+        return resolved || "rgb(0, 0, 0)";
+      };
+
+      const safeProps = [
+        "display",
+        "position",
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "width",
+        "height",
+        "min-width",
+        "min-height",
+        "max-width",
+        "max-height",
+        "margin",
+        "margin-top",
+        "margin-right",
+        "margin-bottom",
+        "margin-left",
+        "padding",
+        "padding-top",
+        "padding-right",
+        "padding-bottom",
+        "padding-left",
+        "box-sizing",
+        "border",
+        "border-top",
+        "border-right",
+        "border-bottom",
+        "border-left",
+        "border-radius",
+        "background-color",
+        "background",
+        "background-position",
+        "background-repeat",
+        "background-size",
+        "opacity",
+        "color",
+        "font-family",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "line-height",
+        "letter-spacing",
+        "text-align",
+        "text-transform",
+        "text-decoration",
+        "white-space",
+        "word-break",
+        "overflow",
+        "overflow-x",
+        "overflow-y",
+        "transform",
+        "transform-origin",
+        "box-shadow",
+        "flex",
+        "flex-grow",
+        "flex-shrink",
+        "flex-basis",
+        "flex-direction",
+        "align-items",
+        "justify-content",
+        "align-self",
+        "gap",
+        "row-gap",
+        "column-gap",
+        "object-fit",
+        "object-position",
+        "visibility",
+      ] as const;
+
+      sourceElements.forEach((sourceEl, index) => {
+        const captureEl = captureElements[index];
+        if (!captureEl) return;
+
+        const computed = window.getComputedStyle(sourceEl);
+        captureEl.style.cssText = "";
+        captureEl.removeAttribute("class");
+        captureEl.style.setProperty("all", "initial");
+        captureEl.style.setProperty("box-sizing", "border-box");
+        safeProps.forEach((prop) => {
+          let value = computed.getPropertyValue(prop);
+          if (!value) return;
+          if (/oklab|oklch|color-mix/i.test(value)) {
+            if (prop.includes("shadow")) {
+              value = "none";
+            } else {
+              value = resolveColor(value);
+            }
+          }
+          if (prop === "background") {
+            value = computed.getPropertyValue("background-color");
+          }
+          captureEl.style.setProperty(prop, value);
+        });
+        captureEl.style.setProperty("background-image", "none");
+        captureEl.style.setProperty("filter", "none");
+        captureEl.style.setProperty("backdrop-filter", "none");
+        captureEl.style.setProperty("text-shadow", "none");
+        captureEl.style.setProperty("outline-color", resolveColor(computed.outlineColor));
+        captureEl.style.setProperty("border-color", resolveColor(computed.borderColor));
+
+        const postStyle = window.getComputedStyle(captureEl);
+        Array.from(postStyle).forEach((prop) => {
+          const value = postStyle.getPropertyValue(prop);
+          if (!/oklab|oklch|color-mix/i.test(value)) return;
+          if (prop.includes("color")) {
+            captureEl.style.setProperty(prop, resolveColor(value));
+            return;
+          }
+          if (prop.includes("shadow") || prop.includes("filter")) {
+            captureEl.style.setProperty(prop, "none");
+            return;
+          }
+          captureEl.style.removeProperty(prop);
+        });
+      });
+
+      const clonedImages = Array.from(captureNode.querySelectorAll("img"));
+      if (clonedImages.length > 0) {
+        await Promise.all(
+          clonedImages.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if (img.complete) {
+                  resolve();
+                  return;
+                }
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              })
+          )
+        );
+      }
+
+      return await html2canvas(captureNode, {
         backgroundColor: "#faf9f6",
         scale: 2,
         useCORS: true,
         scrollX: 0,
-        scrollY: -window.scrollY,
-        onclone: (doc) => {
-          const clone = doc.querySelector("[data-voucher-capture='true']") as HTMLElement | null;
-          if (!clone) return;
-
-          const normalizeColor = (value: string) => {
-            if (!value) return value;
-            if (!/oklab|color-mix/i.test(value)) return value;
-            const helper = doc.createElement("div");
-            helper.style.color = value;
-            doc.body.appendChild(helper);
-            const resolved = doc.defaultView?.getComputedStyle(helper).color;
-            helper.remove();
-            return resolved || value;
-          };
-
-          const normalizeShadow = (value: string) => {
-            if (!value) return value;
-            return /oklab|color-mix/i.test(value) ? "none" : value;
-          };
-
-          const elements = [clone, ...Array.from(clone.querySelectorAll<HTMLElement>("*"))];
-          elements.forEach((el) => {
-            const style = doc.defaultView?.getComputedStyle(el);
-            if (!style) return;
-            el.style.setProperty("background-color", normalizeColor(style.backgroundColor));
-            el.style.setProperty("color", normalizeColor(style.color));
-            el.style.setProperty("border-color", normalizeColor(style.borderColor));
-            el.style.setProperty("box-shadow", normalizeShadow(style.boxShadow));
-            el.style.setProperty("font-family", style.fontFamily);
-            el.style.setProperty("font-size", style.fontSize);
-            el.style.setProperty("font-weight", style.fontWeight);
-            el.style.setProperty("border-radius", style.borderRadius);
-          });
-        },
+        scrollY: 0,
       });
-      return canvas;
-    } catch {
+    } catch (error) {
+      console.error("Falha ao gerar canvas do voucher", error);
       return null;
     } finally {
+      if (sandbox) {
+        sandbox.remove();
+      }
       setVoucherBusy(false);
     }
   };
 
   const handleDownloadVoucher = async () => {
     const canvas = await renderVoucherCanvas();
-    if (!canvas) return;
+    if (!canvas) {
+      window.alert("Não foi possível gerar a imagem do voucher.");
+      return;
+    }
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob((value) => resolve(value), "image/png")
     );
-    if (!blob) return;
+    const fallbackDataUrl = !blob ? canvas.toDataURL("image/png") : null;
+    if (!blob && !fallbackDataUrl) {
+      window.alert("Não foi possível gerar a imagem do voucher.");
+      return;
+    }
 
-    const objectUrl = URL.createObjectURL(blob);
+    const objectUrl = blob ? URL.createObjectURL(blob) : fallbackDataUrl!;
     const isIOS = /iPad|iPhone|iPod/i.test(window.navigator.userAgent);
     try {
       if (isIOS) {
@@ -953,10 +1100,12 @@ export function BookingFlow({
       link.rel = "noopener";
       link.style.display = "none";
       document.body.appendChild(link);
-      link.click();
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
       link.remove();
     } finally {
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      if (blob) {
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      }
     }
   };
 

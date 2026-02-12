@@ -139,7 +139,8 @@ export async function POST(request: Request) {
   const signatureCheck = verifyWebhookSignature(request, webhookSecret);
   if (!signatureCheck.valid) {
     const isLiveNotification = body?.live_mode === true;
-    if (!isLiveNotification) {
+    const isPreviewEnvironment = process.env.VERCEL_ENV === "preview";
+    if (isPreviewEnvironment && !isLiveNotification) {
       console.warn("[mercadopago-webhook] bypassed invalid signature for test/sandbox notification", {
         reason: signatureCheck.reason,
         env: process.env.VERCEL_ENV ?? "unknown",
