@@ -30,7 +30,6 @@ interface Service {
   price: number;
   duration_minutes: number;
   accepts_home_visit?: boolean | null;
-  home_visit_fee?: number | null;
   custom_buffer_minutes?: number | null;
   description?: string | null;
 }
@@ -63,6 +62,12 @@ interface AddressSearchResult {
   placeId: string;
 }
 
+interface DisplacementEstimate {
+  distanceKm: number;
+  fee: number;
+  rule: "urban" | "road";
+}
+
 interface InitialAppointment {
   id: string;
   serviceId: string | null;
@@ -82,6 +87,8 @@ interface InitialAppointment {
   addressEstado: string | null;
   internalNotes: string | null;
   priceOverride: number | null;
+  displacementFee?: number | null;
+  displacementDistanceKm?: number | null;
 }
 
 function formatPhone(value: string) {
@@ -99,6 +106,25 @@ function formatPhone(value: string) {
 function formatCep(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 8);
   return digits.replace(/^(\d{5})(\d)/, "$1-$2");
+}
+
+function parseDecimalText(value: string): number | null {
+  if (!value) return null;
+  const cleaned = value.trim().replace(/[^\d.,-]/g, "");
+  if (!cleaned) return null;
+
+  let normalized = cleaned;
+  if (cleaned.includes(",") && cleaned.includes(".")) {
+    normalized =
+      cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
+        ? cleaned.replace(/\./g, "").replace(",", ".")
+        : cleaned.replace(/,/g, "");
+  } else if (cleaned.includes(",")) {
+    normalized = cleaned.replace(",", ".");
+  }
+
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function buildAddressQuery(payload: {
@@ -262,6 +288,14 @@ export function AppointmentForm({
   const [cidade, setCidade] = useState(initialAppointment?.addressCidade ?? "");
   const [estado, setEstado] = useState(initialAppointment?.addressEstado ?? "");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [displacementEstimate, setDisplacementEstimate] = useState<DisplacementEstimate | null>(null);
+  const [displacementStatus, setDisplacementStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [displacementError, setDisplacementError] = useState<string | null>(null);
+  const [manualDisplacementFee, setManualDisplacementFee] = useState(
+    initialAppointment?.displacementFee != null
+      ? initialAppointment.displacementFee.toFixed(2).replace(".", ",")
+      : ""
+  );
   const [internalNotes, setInternalNotes] = useState(initialAppointment?.internalNotes ?? "");
   const selectedService = useMemo(
     () => services.find((service) => service.id === selectedServiceId) ?? null,
@@ -289,6 +323,9 @@ export function AppointmentForm({
       setCidade("");
       setEstado("");
       setCepStatus("idle");
+      setDisplacementEstimate(null);
+      setDisplacementStatus("idle");
+      setDisplacementError(null);
     }
     previousClientIdRef.current = selectedClientId ?? null;
   }, [selectedClientId]);
@@ -338,19 +375,35 @@ export function AppointmentForm({
       setDisplayedPrice(service.price.toFixed(2));
       if (!service.accepts_home_visit) {
         setIsHomeVisit(false);
+        setDisplacementEstimate(null);
+        setDisplacementStatus("idle");
+        setDisplacementError(null);
+        setManualDisplacementFee("");
       }
     } else {
       setDisplayedPrice("");
       setIsHomeVisit(false);
+      setDisplacementEstimate(null);
+      setDisplacementStatus("idle");
+      setDisplacementError(null);
+      setManualDisplacementFee("");
     }
   };
+
+  const parsedManualDisplacementFee = useMemo(
+    () => parseDecimalText(manualDisplacementFee),
+    [manualDisplacementFee]
+  );
+  const effectiveDisplacementFee = isHomeVisit
+    ? Math.max(0, parsedManualDisplacementFee ?? displacementEstimate?.fee ?? 0)
+    : 0;
 
   useEffect(() => {
     if (!selectedService) return;
     const basePrice = Number(selectedService.price || 0);
-    const fee = isHomeVisit ? Number(selectedService.home_visit_fee || 0) : 0;
+    const fee = effectiveDisplacementFee;
     setDisplayedPrice((basePrice + fee).toFixed(2));
-  }, [selectedService, isHomeVisit]);
+  }, [selectedService, effectiveDisplacementFee]);
 
   useEffect(() => {
     async function fetchSlots() {
@@ -424,6 +477,10 @@ export function AppointmentForm({
     setAddressSearchResults([]);
     setAddressSearchLoading(false);
     setAddressSearchError(null);
+    setDisplacementEstimate(null);
+    setDisplacementStatus("idle");
+    setDisplacementError(null);
+    setManualDisplacementFee("");
   }, [isHomeVisit]);
 
   useEffect(() => {
@@ -570,6 +627,90 @@ export function AppointmentForm({
     () => clientAddresses.find((address) => address.id === selectedAddressId) ?? null,
     [clientAddresses, selectedAddressId]
   );
+  const displacementInput = useMemo(() => {
+    if (!isHomeVisit) return null;
+    if (addressMode === "existing" && selectedAddress) {
+      return {
+        cep: selectedAddress.address_cep ?? "",
+        logradouro: selectedAddress.address_logradouro ?? "",
+        numero: selectedAddress.address_numero ?? "",
+        complemento: selectedAddress.address_complemento ?? "",
+        bairro: selectedAddress.address_bairro ?? "",
+        cidade: selectedAddress.address_cidade ?? "",
+        estado: selectedAddress.address_estado ?? "",
+      };
+    }
+    if (addressMode === "new" && addressConfirmed) {
+      return { cep, logradouro, numero, complemento, bairro, cidade, estado };
+    }
+    return null;
+  }, [addressConfirmed, addressMode, bairro, cep, cidade, complemento, estado, isHomeVisit, logradouro, numero, selectedAddress]);
+
+  useEffect(() => {
+    if (!displacementInput) {
+      setDisplacementEstimate(null);
+      setDisplacementStatus("idle");
+      setDisplacementError(null);
+      setManualDisplacementFee("");
+      return;
+    }
+
+    if (!displacementInput.logradouro || !displacementInput.cidade || !displacementInput.estado) {
+      setDisplacementEstimate(null);
+      setDisplacementStatus("idle");
+      setDisplacementError(null);
+      setManualDisplacementFee("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setDisplacementStatus("loading");
+      setDisplacementError(null);
+      try {
+        const response = await fetch("/api/displacement-fee", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(displacementInput),
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as
+          | DisplacementEstimate
+          | {
+              error?: string;
+            };
+
+        if (!response.ok) {
+          const errorPayload = payload as { error?: string };
+          throw new Error(errorPayload.error || "Não foi possível calcular a taxa de deslocamento.");
+        }
+        if (
+          !("fee" in payload) ||
+          typeof payload.fee !== "number" ||
+          typeof payload.distanceKm !== "number"
+        ) {
+          throw new Error("Não foi possível calcular a taxa de deslocamento.");
+        }
+        setDisplacementEstimate(payload);
+        setDisplacementStatus("idle");
+        setManualDisplacementFee(payload.fee.toFixed(2).replace(".", ","));
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setDisplacementEstimate(null);
+        setDisplacementStatus("error");
+        setDisplacementError(
+          error instanceof Error ? error.message : "Não foi possível calcular a taxa de deslocamento."
+        );
+        setManualDisplacementFee("");
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [displacementInput]);
+
   const finalPrice = priceOverride ? priceOverride : displayedPrice;
   const formAction = isEditing ? updateAppointment : createAppointment;
   const applyAddressFields = (payload: {
@@ -645,6 +786,16 @@ export function AppointmentForm({
       <input type="hidden" name="clientId" value={resolvedClientId ?? ""} />
       <input type="hidden" name="client_address_id" value={isHomeVisit ? (selectedAddressId ?? "") : ""} />
       <input type="hidden" name="address_label" value={isHomeVisit ? addressLabel : ""} />
+      <input
+        type="hidden"
+        name="displacement_fee"
+        value={isHomeVisit ? String(effectiveDisplacementFee) : ""}
+      />
+      <input
+        type="hidden"
+        name="displacement_distance_km"
+        value={isHomeVisit ? String(displacementEstimate?.distanceKm ?? "") : ""}
+      />
       {!isEditing && <input ref={sendMessageInputRef} type="hidden" name="send_created_message" value="" />}
       {!isEditing && (
         <input ref={sendMessageTextInputRef} type="hidden" name="send_created_message_text" value="" />
@@ -763,7 +914,12 @@ export function AppointmentForm({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setIsHomeVisit(false)}
+              onClick={() => {
+                setIsHomeVisit(false);
+                setDisplacementEstimate(null);
+                setDisplacementStatus("idle");
+                setDisplacementError(null);
+              }}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 !isHomeVisit
                   ? "border-studio-green bg-green-50 text-studio-green"
@@ -776,7 +932,12 @@ export function AppointmentForm({
 
             <button
               type="button"
-              onClick={() => setIsHomeVisit(true)}
+              onClick={() => {
+                setIsHomeVisit(true);
+                setDisplacementEstimate(null);
+                setDisplacementStatus("idle");
+                setDisplacementError(null);
+              }}
               disabled={!canHomeVisit}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 isHomeVisit
@@ -1064,6 +1225,67 @@ export function AppointmentForm({
                   )}
                 </div>
               )}
+
+              <div className="rounded-2xl border border-stone-100 bg-white p-4">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1">
+                  Taxa recomendada de deslocamento
+                </p>
+                {displacementStatus === "loading" && (
+                  <p className="text-sm font-semibold text-studio-text">
+                    Calculando taxa de deslocamento...
+                  </p>
+                )}
+                {displacementStatus !== "loading" && displacementEstimate && (
+                  <div className="space-y-1">
+                    <p className="text-base font-bold text-purple-700">
+                      R$ {displacementEstimate.fee.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Distância estimada: {displacementEstimate.distanceKm.toFixed(2)} km (
+                      {displacementEstimate.rule === "urban" ? "regra urbana" : "regra rodoviária"}).
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      Taxa recomendada para o endereço selecionado. Você pode ajustar ou zerar abaixo.
+                    </p>
+                  </div>
+                )}
+                {displacementStatus === "error" && (
+                  <p className="text-xs text-red-500">{displacementError}</p>
+                )}
+                {displacementStatus === "idle" && !displacementEstimate && (
+                  <p className="text-xs text-gray-500">
+                    Informe/selecione um endereço para calcular a taxa recomendada.
+                  </p>
+                )}
+                <div className="pt-2">
+                  <label className={labelClass}>Taxa aplicada (editável)</label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
+                        R$
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={manualDisplacementFee}
+                        onChange={(event) => setManualDisplacementFee(event.target.value)}
+                        placeholder={displacementEstimate?.fee.toFixed(2).replace(".", ",") ?? "0,00"}
+                        className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setManualDisplacementFee("0,00")}
+                      className="px-3 py-3 rounded-xl border border-purple-200 bg-white text-[10px] font-extrabold uppercase tracking-wide text-purple-700 hover:bg-purple-100"
+                    >
+                      Zerar
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    Em agendamento interno, essa taxa é recomendada e pode ser alterada pela equipe.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -47,6 +47,8 @@ export type Database = {
           client_address_id: string | null
           client_id: string | null
           created_at: string
+          displacement_distance_km: number | null
+          displacement_fee: number | null
           finished_at: string | null
           id: string
           is_home_visit: boolean | null
@@ -74,6 +76,8 @@ export type Database = {
           client_address_id?: string | null
           client_id?: string | null
           created_at?: string
+          displacement_distance_km?: number | null
+          displacement_fee?: number | null
           finished_at?: string | null
           id?: string
           is_home_visit?: boolean | null
@@ -101,6 +105,8 @@ export type Database = {
           client_address_id?: string | null
           client_id?: string | null
           created_at?: string
+          displacement_distance_km?: number | null
+          displacement_fee?: number | null
           finished_at?: string | null
           id?: string
           is_home_visit?: boolean | null
@@ -1195,7 +1201,6 @@ export type Database = {
           custom_buffer_minutes: number | null
           description: string | null
           duration_minutes: number
-          home_visit_fee: number | null
           id: string
           name: string
           price: number
@@ -1209,7 +1214,6 @@ export type Database = {
           custom_buffer_minutes?: number | null
           description?: string | null
           duration_minutes: number
-          home_visit_fee?: number | null
           id?: string
           name: string
           price: number
@@ -1223,7 +1227,6 @@ export type Database = {
           custom_buffer_minutes?: number | null
           description?: string | null
           duration_minutes?: number
-          home_visit_fee?: number | null
           id?: string
           name?: string
           price?: number
@@ -1371,6 +1374,7 @@ export type Database = {
           client_name: string
           client_phone?: string
           is_home_visit?: boolean
+          p_address_label?: string
           p_address_bairro?: string
           p_address_cep?: string
           p_address_cidade?: string
@@ -1378,7 +1382,12 @@ export type Database = {
           p_address_estado?: string
           p_address_logradouro?: string
           p_address_numero?: string
+          p_client_address_id?: string
+          p_client_id?: string
+          p_displacement_distance_km?: number
+          p_displacement_fee?: number
           p_internal_notes?: string
+          p_price_override?: number
           p_start_time: string
           p_tenant_id: string
           service_id: string
@@ -1397,6 +1406,8 @@ export type Database = {
           p_address_estado?: string
           p_address_logradouro?: string
           p_address_numero?: string
+          p_displacement_distance_km?: number
+          p_displacement_fee?: number
           p_start_time: string
           service_id: string
           tenant_slug: string

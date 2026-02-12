@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Clock, Banknote, MapPin, AlignLeft, ChevronLeft } from "lucide-react";
+import { Sparkles, Clock, Banknote, AlignLeft, ChevronLeft } from "lucide-react";
 import { upsertService } from "../app/actions";
 import { Service } from "../types/service";
 
@@ -153,17 +153,13 @@ export function ServiceForm({
             </div>
 
             {acceptsHomeVisit && (
-              <div className="animate-in slide-in-from-top-2 fade-in">
-                <label className="text-xs font-bold text-purple-400 uppercase ml-1">Taxa de Deslocamento (+R$)</label>
-                <div className="relative mt-1">
-                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" size={18} />
-                   <input 
-                      name="home_visit_fee" 
-                      type="number" step="0.01"
-                      defaultValue={service?.home_visit_fee || 0}
-                      className="w-full bg-white border-purple-200 border rounded-xl py-3 pl-11 pr-4 text-purple-900 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                   />
-                </div>
+              <div className="animate-in slide-in-from-top-2 fade-in rounded-xl border border-purple-100 bg-white px-4 py-3">
+                <p className="text-xs font-bold text-purple-500 uppercase tracking-wide">
+                  Taxa de deslocamento automática
+                </p>
+                <p className="text-xs text-purple-700 mt-1">
+                  O valor será calculado com base no endereço do cliente no momento do agendamento.
+                </p>
               </div>
             )}
           </div>

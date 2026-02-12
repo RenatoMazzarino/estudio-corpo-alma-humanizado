@@ -18,6 +18,8 @@ interface PublicAppointmentInput {
   addressBairro?: string;
   addressCidade?: string;
   addressEstado?: string;
+  displacementFee?: number;
+  displacementDistanceKm?: number;
 }
 
 export async function submitPublicAppointment(

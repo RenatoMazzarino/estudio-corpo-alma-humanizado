@@ -85,6 +85,8 @@ export default async function NewAppointment(props: PageProps) {
         addressEstado: appointment.address_estado ?? null,
         internalNotes: appointment.internal_notes ?? null,
         priceOverride: appointment.price_override ?? null,
+        displacementFee: appointment.displacement_fee ?? null,
+        displacementDistanceKm: appointment.displacement_distance_km ?? null,
       }
     : null;
   const messageTemplates = getAutoMessageTemplates();

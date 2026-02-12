@@ -134,6 +134,8 @@ export interface AppointmentDetails {
   status: string | null;
   payment_status?: string | null;
   price: number | null;
+  displacement_fee?: number | null;
+  displacement_distance_km?: number | null;
   is_home_visit?: boolean | null;
   service_duration_minutes?: number | null;
   total_duration_minutes?: number | null;

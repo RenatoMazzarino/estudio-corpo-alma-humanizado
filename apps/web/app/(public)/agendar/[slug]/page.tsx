@@ -13,7 +13,6 @@ interface PublicService {
   price: number;
   duration_minutes: number;
   accepts_home_visit: boolean;
-  home_visit_fee: number;
   description: string;
   custom_buffer_minutes: number;
 }
@@ -39,42 +38,27 @@ export default async function PublicBookingPage(props: PageProps) {
     price: service.price,
     duration_minutes: service.duration_minutes,
     accepts_home_visit: service.accepts_home_visit ?? false,
-    home_visit_fee: service.home_visit_fee ?? 0,
     description: service.description ?? "",
     custom_buffer_minutes: service.custom_buffer_minutes ?? 0,
   }));
 
   return (
-    <div className="min-h-screen bg-stone-50 flex justify-center">
-      <div className="w-full max-w-103.5 bg-studio-bg h-screen shadow-2xl relative border-x border-stone-200">
-        <div className="h-full overflow-y-auto">
-          <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 px-6 py-5 flex items-center gap-3 sticky top-0 z-10">
-            <div className="w-10 h-10 bg-studio-green/10 text-studio-green rounded-2xl flex items-center justify-center font-bold">
-              {tenant.name.charAt(0)}
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">{tenant.name}</h1>
-              <p className="text-xs text-gray-500">Agendamento Online</p>
+    <div className="app-viewport flex justify-center items-stretch bg-neutral-900">
+      <div id="app-frame" className="app-frame bg-studio-bg relative shadow-2xl overflow-hidden">
+        {services.length > 0 ? (
+          <BookingFlow
+            tenant={tenant}
+            services={services}
+            signalPercentage={settings?.signal_percentage ?? 30}
+            whatsappNumber={whatsappNumber}
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center px-6">
+            <div className="bg-white border border-stone-100 rounded-2xl p-6 text-center text-sm text-stone-500 shadow-sm">
+              Nenhum serviço cadastrado no momento.
             </div>
           </div>
-
-          <div className="px-6 py-6">
-            {services.length > 0 ? (
-              <BookingFlow
-                tenant={tenant}
-                services={services}
-                signalPercentage={settings?.signal_percentage ?? 30}
-                whatsappNumber={whatsappNumber}
-              />
-            ) : (
-              <div className="bg-white border border-stone-100 rounded-2xl p-6 text-center text-sm text-stone-500 shadow-sm">
-                Nenhum serviço cadastrado no momento.
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 text-center text-xs text-gray-400">Powered by Studio</div>
-        </div>
+        )}
       </div>
     </div>
   );

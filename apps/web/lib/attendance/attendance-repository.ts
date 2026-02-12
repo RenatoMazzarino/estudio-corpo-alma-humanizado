@@ -46,10 +46,10 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   const { data: appointmentData, error: appointmentError } = await supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+      `id, service_name, start_time, finished_at, status, payment_status, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
-       clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
-       services ( duration_minutes, price, home_visit_fee )`
+        clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
+       services ( duration_minutes, price )`
     )
     .eq("id", appointmentId)
     .eq("tenant_id", tenantId)
@@ -58,10 +58,9 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   if (appointmentError || !appointmentData) return null;
 
   const appointment = normalizeClient(appointmentData) as unknown as AppointmentDetails & {
-    services?: { duration_minutes: number | null; price: number | null; home_visit_fee: number | null } | null | Array<{
+    services?: { duration_minutes: number | null; price: number | null } | null | Array<{
       duration_minutes: number | null;
       price: number | null;
-      home_visit_fee: number | null;
     }>;
   };
   const serviceRecord = Array.isArray(appointment.services) ? appointment.services[0] ?? null : appointment.services ?? null;
@@ -165,11 +164,15 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
 
   let checkout = checkoutData as CheckoutRow | null;
   if (!checkout) {
-    const servicePrice = coerceNumber(serviceRecord?.price, coerceNumber(appointment.price, 0));
-    const homeFee = appointment.is_home_visit
-      ? coerceNumber(serviceRecord?.home_visit_fee, 0)
+    const displacementFee = appointment.is_home_visit
+      ? coerceNumber(appointment.displacement_fee, 0)
       : 0;
-    const subtotal = Math.max(0, servicePrice + homeFee);
+    const totalFromAppointment = coerceNumber(appointment.price, 0);
+    const servicePriceFromAppointment = Math.max(totalFromAppointment - displacementFee, 0);
+    const servicePrice = totalFromAppointment > 0
+      ? servicePriceFromAppointment
+      : coerceNumber(serviceRecord?.price, 0);
+    const subtotal = Math.max(0, servicePrice + displacementFee);
     const { data: insertedCheckout } = await supabase
       .from("appointment_checkout")
       .insert({
@@ -193,7 +196,14 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   let checkoutItems = (checkoutItemsData ?? []) as CheckoutItem[];
   if (checkoutItems.length === 0) {
     const serviceLabel = appointment.service_name;
-    const servicePrice = coerceNumber(serviceRecord?.price, coerceNumber(appointment.price, 0));
+    const displacementFee = appointment.is_home_visit
+      ? coerceNumber(appointment.displacement_fee, 0)
+      : 0;
+    const totalFromAppointment = coerceNumber(appointment.price, 0);
+    const servicePriceFromAppointment = Math.max(totalFromAppointment - displacementFee, 0);
+    const servicePrice = totalFromAppointment > 0
+      ? servicePriceFromAppointment
+      : coerceNumber(serviceRecord?.price, 0);
     const items: CheckoutItemInsert[] = [
       {
         appointment_id: appointmentId,
@@ -208,15 +218,14 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     ];
 
     if (appointment.is_home_visit) {
-      const homeFee = coerceNumber(serviceRecord?.home_visit_fee, 0);
-      if (homeFee > 0) {
+      if (displacementFee > 0) {
         items.push({
           appointment_id: appointmentId,
           tenant_id: tenantId,
           type: "fee",
           label: "Taxa deslocamento",
           qty: 1,
-          amount: homeFee,
+          amount: displacementFee,
           sort_order: 2,
           metadata: null,
         });

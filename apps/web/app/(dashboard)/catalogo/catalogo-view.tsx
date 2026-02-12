@@ -70,7 +70,7 @@ export function CatalogoView({ initialServices, defaultBufferBefore, defaultBuff
                 </p> 
                 <div className="flex items-center gap-3 text-xs text-stone-400">
                   <span className="flex items-center gap-1"><Clock size={12}/> {service.duration_minutes}min</span>
-                  {service.accepts_home_visit && <span className="text-purple-600 font-medium">+R${service.home_visit_fee} (Dom)</span>}
+                  {service.accepts_home_visit && <span className="text-purple-600 font-medium">Domicílio disponível</span>}
                 </div>
               </div>
 

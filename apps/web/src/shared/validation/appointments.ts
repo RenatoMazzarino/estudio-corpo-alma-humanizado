@@ -44,6 +44,8 @@ export const createInternalAppointmentSchema = z.object({
   isHomeVisit: z.boolean().optional(),
   internalNotes: z.string().optional().nullable(),
   priceOverride: z.number().optional().nullable(),
+  displacementFee: z.number().nonnegative().optional().nullable(),
+  displacementDistanceKm: z.number().nonnegative().optional().nullable(),
   serviceId: z.string().uuid(),
   date: z.string().min(10),
   time: z.string().min(4),
@@ -79,6 +81,8 @@ export const publicBookingSchema = z.object({
   addressBairro: z.string().optional().default(""),
   addressCidade: z.string().optional().default(""),
   addressEstado: z.string().optional().default(""),
+  displacementFee: z.number().nonnegative().optional().nullable(),
+  displacementDistanceKm: z.number().nonnegative().optional().nullable(),
   isHomeVisit: z.boolean().optional(),
 });
 

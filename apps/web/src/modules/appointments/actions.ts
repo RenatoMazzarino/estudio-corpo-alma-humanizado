@@ -30,6 +30,7 @@ import { getTransactionByAppointmentId, insertTransaction } from "../finance/rep
 import { insertNotificationJob } from "../notifications/repository";
 import { getTenantBySlug } from "../settings/repository";
 import { BRAZIL_TZ_OFFSET } from "../../shared/timezone";
+import { estimateDisplacementFromAddress } from "../../shared/displacement/service";
 import {
   deleteAvailabilityBlocksInRange,
   insertAvailabilityBlocks,
@@ -45,6 +46,25 @@ const resolveBuffer = (...values: Array<number | null | undefined>) => {
   const positive = values.find((value) => typeof value === "number" && value > 0);
   if (positive !== undefined) return positive;
   return 0;
+};
+
+const parseDecimalInput = (value: string | null) => {
+  if (!value) return null;
+  const cleaned = value.trim().replace(/[^\d.,-]/g, "");
+  if (!cleaned) return null;
+
+  let normalized = cleaned;
+  if (cleaned.includes(",") && cleaned.includes(".")) {
+    normalized =
+      cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
+        ? cleaned.replace(/\./g, "").replace(",", ".")
+        : cleaned.replace(/,/g, "");
+  } else if (cleaned.includes(",")) {
+    normalized = cleaned.replace(",", ".");
+  }
+
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
 };
 
 export async function startAppointment(id: string): Promise<ActionResult<{ id: string }>> {
@@ -213,12 +233,15 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const addressLabel = (formData.get("address_label") as string | null) || null;
   const internalNotes = (formData.get("internalNotes") as string | null) || null;
   const rawPriceOverride = (formData.get("price_override") as string | null) || null;
+  const rawDisplacementFee = (formData.get("displacement_fee") as string | null) || null;
+  const rawDisplacementDistanceKm =
+    (formData.get("displacement_distance_km") as string | null) || null;
   const sendCreatedMessage = formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
 
-  const priceOverride = rawPriceOverride
-    ? Number(rawPriceOverride.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""))
-    : null;
+  const priceOverride = parseDecimalInput(rawPriceOverride);
+  const displacementFee = parseDecimalInput(rawDisplacementFee);
+  const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
 
   const parsed = createInternalAppointmentSchema.safeParse({
     clientId,
@@ -235,7 +258,9 @@ export async function createAppointment(formData: FormData): Promise<void> {
     clientAddressId,
     isHomeVisit,
     internalNotes,
-    priceOverride: Number.isNaN(priceOverride ?? NaN) ? null : priceOverride,
+    priceOverride,
+    displacementFee,
+    displacementDistanceKm,
     serviceId,
     date,
     time,
@@ -257,6 +282,68 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   const supabase = createServiceClient();
+
+  let displacementFeeValue = Math.max(0, parsed.data.displacementFee ?? 0);
+  let displacementDistanceKmValue = parsed.data.displacementDistanceKm ?? null;
+
+  if (parsed.data.isHomeVisit) {
+    let displacementAddress = {
+      cep: parsed.data.addressCep,
+      logradouro: parsed.data.addressLogradouro,
+      numero: parsed.data.addressNumero,
+      complemento: parsed.data.addressComplemento,
+      bairro: parsed.data.addressBairro,
+      cidade: parsed.data.addressCidade,
+      estado: parsed.data.addressEstado,
+    };
+
+    if (parsed.data.clientAddressId) {
+      const { data: addressData } = await supabase
+        .from("client_addresses")
+        .select(
+          "address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
+        )
+        .eq("id", parsed.data.clientAddressId)
+        .maybeSingle();
+
+      if (addressData) {
+        displacementAddress = {
+          cep: addressData.address_cep,
+          logradouro: addressData.address_logradouro,
+          numero: addressData.address_numero,
+          complemento: addressData.address_complemento,
+          bairro: addressData.address_bairro,
+          cidade: addressData.address_cidade,
+          estado: addressData.address_estado,
+        };
+      }
+    }
+
+    try {
+      const estimate = await estimateDisplacementFromAddress(displacementAddress);
+      displacementDistanceKmValue = estimate.distanceKm;
+      displacementFeeValue =
+        parsed.data.displacementFee !== null && parsed.data.displacementFee !== undefined
+          ? Math.max(0, parsed.data.displacementFee)
+          : estimate.fee;
+    } catch (error) {
+      if (parsed.data.displacementFee === null || parsed.data.displacementFee === undefined) {
+        throw new AppError(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível calcular a taxa de deslocamento para o endereço informado.",
+          "VALIDATION_ERROR",
+          422
+        );
+      }
+      displacementFeeValue = Math.max(0, parsed.data.displacementFee);
+      displacementDistanceKmValue = parsed.data.displacementDistanceKm ?? null;
+    }
+  } else {
+    displacementFeeValue = 0;
+    displacementDistanceKmValue = null;
+  }
+
   const { data: appointmentId, error: appointmentError } = (await supabase.rpc(
     "create_internal_appointment",
     {
@@ -278,6 +365,8 @@ export async function createAppointment(formData: FormData): Promise<void> {
       p_client_id: resolvedClientId ?? undefined,
       p_client_address_id: parsed.data.clientAddressId ?? undefined,
       p_price_override: parsed.data.priceOverride ?? undefined,
+      p_displacement_fee: displacementFeeValue,
+      p_displacement_distance_km: displacementDistanceKmValue ?? undefined,
     }
   )) as { data: string | null; error: PostgrestError | null };
 
@@ -357,12 +446,14 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
   const addressLabel = (formData.get("address_label") as string | null) || null;
   const internalNotes = (formData.get("internalNotes") as string | null) || null;
   const rawPriceOverride = (formData.get("price_override") as string | null) || null;
+  const rawDisplacementFee = (formData.get("displacement_fee") as string | null) || null;
+  const rawDisplacementDistanceKm =
+    (formData.get("displacement_distance_km") as string | null) || null;
   const returnTo = (formData.get("returnTo") as string | null) || null;
 
-  const parsedPriceOverride = rawPriceOverride
-    ? Number(rawPriceOverride.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, ""))
-    : null;
-  const priceOverride = Number.isNaN(parsedPriceOverride ?? NaN) ? null : parsedPriceOverride;
+  const priceOverride = parseDecimalInput(rawPriceOverride);
+  const displacementFee = parseDecimalInput(rawDisplacementFee);
+  const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
 
   const parsed = createInternalAppointmentSchema
     .extend({ appointmentId: z.string().uuid() })
@@ -383,6 +474,8 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
       isHomeVisit,
       internalNotes,
       priceOverride,
+      displacementFee,
+      displacementDistanceKm,
       serviceId,
       date,
       time,
@@ -400,7 +493,7 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
     supabase
       .from("services")
       .select(
-        "id, name, price, duration_minutes, home_visit_fee, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes"
+        "id, name, price, duration_minutes, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes"
       )
       .eq("tenant_id", tenantId)
       .eq("id", parsed.data.serviceId)
@@ -636,7 +729,57 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
     throw new AppError("Horário bloqueado para este agendamento", "CONFLICT", 409);
   }
 
-  const basePrice = (service.price ?? 0) + (parsed.data.isHomeVisit ? service.home_visit_fee ?? 0 : 0);
+  let displacementFeeValue = Math.max(0, parsed.data.displacementFee ?? 0);
+  let displacementDistanceKmValue = parsed.data.displacementDistanceKm ?? null;
+
+  if (parsed.data.isHomeVisit) {
+    const canEstimateDisplacement =
+      !!resolvedAddress.address_logradouro &&
+      !!resolvedAddress.address_cidade &&
+      !!resolvedAddress.address_estado;
+
+    if (canEstimateDisplacement) {
+      try {
+        const estimate = await estimateDisplacementFromAddress({
+          cep: resolvedAddress.address_cep,
+          logradouro: resolvedAddress.address_logradouro,
+          numero: resolvedAddress.address_numero,
+          complemento: resolvedAddress.address_complemento,
+          bairro: resolvedAddress.address_bairro,
+          cidade: resolvedAddress.address_cidade,
+          estado: resolvedAddress.address_estado,
+        });
+        displacementDistanceKmValue = estimate.distanceKm;
+        displacementFeeValue =
+          parsed.data.displacementFee !== null && parsed.data.displacementFee !== undefined
+            ? Math.max(0, parsed.data.displacementFee)
+            : estimate.fee;
+      } catch (error) {
+        if (parsed.data.displacementFee === null || parsed.data.displacementFee === undefined) {
+          throw new AppError(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível calcular a taxa de deslocamento para o endereço informado.",
+            "VALIDATION_ERROR",
+            422
+          );
+        }
+        displacementFeeValue = Math.max(0, parsed.data.displacementFee);
+        displacementDistanceKmValue = parsed.data.displacementDistanceKm ?? null;
+      }
+    } else if (parsed.data.displacementFee === null || parsed.data.displacementFee === undefined) {
+      throw new AppError(
+        "Endereço incompleto para calcular taxa de deslocamento.",
+        "VALIDATION_ERROR",
+        422
+      );
+    }
+  } else {
+    displacementFeeValue = 0;
+    displacementDistanceKmValue = null;
+  }
+
+  const basePrice = (service.price ?? 0) + (parsed.data.isHomeVisit ? displacementFeeValue : 0);
   const finalPrice = parsed.data.priceOverride ?? basePrice;
 
   const { error: updateError } = await updateAppointment(tenantId, parsed.data.appointmentId, {
@@ -649,6 +792,8 @@ export async function updateInternalAppointment(formData: FormData): Promise<voi
     price: finalPrice,
     price_override: parsed.data.priceOverride ?? null,
     is_home_visit: parsed.data.isHomeVisit ?? false,
+    displacement_fee: parsed.data.isHomeVisit ? displacementFeeValue : 0,
+    displacement_distance_km: parsed.data.isHomeVisit ? displacementDistanceKmValue : null,
     total_duration_minutes: durationMinutes + safeBufferBefore + safeBufferAfter,
     address_cep: resolvedAddress.address_cep,
     address_logradouro: resolvedAddress.address_logradouro,
@@ -685,6 +830,8 @@ export async function submitPublicAppointment(data: {
   addressBairro?: string;
   addressCidade?: string;
   addressEstado?: string;
+  displacementFee?: number | null;
+  displacementDistanceKm?: number | null;
 }): Promise<ActionResult<{ appointmentId: string | null }>> {
   const parsed = publicBookingSchema.safeParse(data);
   if (!parsed.success) {
@@ -692,6 +839,30 @@ export async function submitPublicAppointment(data: {
   }
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
+  let displacementFee = 0;
+  let displacementDistanceKm: number | null = null;
+
+  if (parsed.data.isHomeVisit) {
+    try {
+      const estimate = await estimateDisplacementFromAddress({
+        cep: parsed.data.addressCep,
+        logradouro: parsed.data.addressLogradouro,
+        numero: parsed.data.addressNumero,
+        complemento: parsed.data.addressComplemento,
+        bairro: parsed.data.addressBairro,
+        cidade: parsed.data.addressCidade,
+        estado: parsed.data.addressEstado,
+      });
+      displacementFee = estimate.fee;
+      displacementDistanceKm = estimate.distanceKm;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível calcular a taxa de deslocamento para esse endereço.";
+      return fail(new AppError(message, "VALIDATION_ERROR", 422));
+    }
+  }
 
   const supabase = await createClient();
   const { data: appointmentId, error } = await supabase.rpc("create_public_appointment", {
@@ -708,6 +879,8 @@ export async function submitPublicAppointment(data: {
     p_address_cidade: parsed.data.addressCidade || undefined,
     p_address_estado: parsed.data.addressEstado || undefined,
     is_home_visit: parsed.data.isHomeVisit || false,
+    p_displacement_fee: displacementFee,
+    p_displacement_distance_km: displacementDistanceKm ?? undefined,
   });
 
   const mappedError = mapSupabaseError(error);
