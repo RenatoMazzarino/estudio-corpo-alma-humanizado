@@ -23,6 +23,8 @@
 - Serviços/DB: removida taxa fixa de domicílio por serviço (`services.home_visit_fee`) para centralizar a regra em cálculo dinâmico.
 - Branding: logos padronizados em `apps/web/public/brand/*` e aplicados nas telas/fluxos que já usam identidade visual do estúdio.
 - Pagamentos MP: webhook interno criado (`/api/mercadopago/webhook`) para atualizar status e refletir no pagamento do agendamento.
+- Pagamentos MP: hardening do checkout transparente (Pix + cartão) com mapeamento de status do provedor para status interno (`paid/pending/failed`) e recálculo do `appointments.payment_status` por soma real dos pagamentos confirmados.
+- Pagamentos MP: webhook validado por assinatura secreta (`x-signature`) com comparação segura, suporte a notificações `payment` e `order`, e tratamento idempotente/robusto de persistência.
 - Agendamento online: busca de cliente por telefone com confirmação “Você é X?” + preenchimento automático.
 - Agendamento online/Clientes: normalização de telefone centralizada em utilitário compartilhado para reduzir duplicidade por formatação.
 - Agendamento online: voucher extraído para componente dedicado (`VoucherOverlay`) para reduzir acoplamento do fluxo.
@@ -75,6 +77,8 @@
 - DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
 - DB: `availability_blocks` com `block_type` e `is_full_day` para suportar bloqueios inteligentes.
 - DB: `appointments` com `displacement_fee` e `displacement_distance_km`; RPCs pública/interna atualizadas para receber taxa/distância calculadas.
+- DB: reconciliação local/online pós-ajustes em migrations aplicadas (correções forward-only) para eliminar drift de schema/RPC/policies em produção.
+- DB: ambiente de teste configurado com `signal_percentage = 1` para validar cobrança real em produção/prévia com tickets baixos.
 - Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
 - APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
 - Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
@@ -108,6 +112,9 @@
 10. `20260211120000_backfill_client_phones.sql` — backfill de `clients.phone` para `client_phones` (sem duplicar).
 11. `20260212100000_displacement_fee_rules.sql` — adiciona `appointments.displacement_fee`/`displacement_distance_km`, remove `services.home_visit_fee` e recria RPCs `create_public_appointment`/`create_internal_appointment` com taxa de deslocamento.
 12. `20260212113000_normalize_client_phone_uniqueness.sql` — normaliza telefone, deduplica clientes por tenant+telefone, atualiza FKs e cria índice único por telefone normalizado.
+13. `20260212191500_set_signal_percentage_for_testing.sql` — define `settings.signal_percentage = 1` para testes controlados de pagamento em ambiente real.
+14. `20260212203000_reconcile_remote_schema_and_rpcs.sql` — reconcilia drift remoto (constraints/FK `business_hours`), reaplica deduplicação robusta de clientes e republica RPCs pública/interna na versão final.
+15. `20260212210000_harden_and_align_legacy_drift.sql` — remove políticas legadas permissivas, normaliza FK com `ON DELETE CASCADE` e alinha colunas legadas não destrutivas em `clients`.
 
 ## 4) Commits (hash + objetivo)
 - `e1b8aa3` — docs(ui): add agenda v1 html specs
@@ -414,6 +421,7 @@ Comandos executados na raiz:
 - Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
 - Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste adicional).
 - Configurar `GOOGLE_MAPS_API_KEY` nas variáveis de ambiente da Vercel (produção).
+- Configurar `MERCADOPAGO_WEBHOOK_SECRET` em Preview/Production e validar eventos `payment`/`order` no painel do Mercado Pago.
 
 ## 13) Gestão de Disponibilidade Inteligente (novo módulo)
 - **Posicionamento:** Gestão de Agenda foi incorporada diretamente na visão **Mês** da Agenda (sem rota própria), removendo `/bloqueios` e concentrando tudo no card do calendário.
@@ -439,9 +447,11 @@ Comandos executados na raiz:
 - **Pagamento Pix integrado (MP):** criação de pagamento via API `v1/payments` com idempotência, retorno de `ticket_url`, `qr_code` e `qr_code_base64` para exibição/uso no checkout público.
 - **Env do MP:** integração usa `MERCADOPAGO_ACCESS_TOKEN` (obrigatório) e `MERCADOPAGO_WEBHOOK_URL` (opcional).
 - **Webhook MP:** rota pública `/api/mercadopago/webhook` consulta o pagamento no MP e atualiza `appointment_payments` + `appointments.payment_status`.
+- **Webhook MP (hardening):** valida assinatura via HMAC SHA-256 com comparação em tempo constante, trata `payment` e `order`, e recalcula status financeiro por agregado de pagamentos `paid`.
 - **Taxa de deslocamento automática:** API interna `/api/displacement-fee` usa Google Maps (Routes API) e aplica regra urbana/rodoviária; UI pública exibe taxa calculada e distância.
 - **Fallback operacional de deslocamento:** se Google Maps falhar, a API retorna taxa mínima provisória (R$ 15,00) para não quebrar o fluxo público.
 - **Taxa no fluxo interno:** taxa de deslocamento vira recomendação editável no formulário interno (pode alterar ou zerar).
 - **Taxa por serviço removida:** `services.home_visit_fee` removido de UI, repository e migration; preço de domicílio passa a vir do cálculo por endereço.
 - **Tailwind v4 (ajustes canônicos):** normalização aplicada na tela pública de agendamento (`booking-flow`) para classes sugeridas pelo IntelliSense.
 - **Voucher sobreposto:** visual final em overlay sobre tela escurecida (sem card sólido externo), com ações de baixar imagem e compartilhar.
+- **Reconciliação de banco concluída:** validação final com `pnpm supabase db diff --schema public` e `pnpm supabase db diff --linked --schema public` retornando *No schema changes found*.
