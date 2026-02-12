@@ -708,21 +708,29 @@ export function BookingFlow({
             setCardError("Não foi possível registrar o agendamento.");
             return;
           }
-          const result = await createCardPayment({
-            appointmentId: ensuredId,
-            tenantId: tenant.id,
-            amount: signalAmount,
-            description: `Sinal ${selectedService.name}`,
-            token: data.token,
-            paymentMethodId: data.paymentMethodId,
-            issuerId: data.issuerId,
-            installments: Number(data.installments) || 1,
-            payerEmail: data.cardholderEmail || cardholderEmail,
-            payerName: clientName,
-            payerPhone: clientPhone,
-            identificationType: data.identificationType,
-            identificationNumber: data.identificationNumber,
-          });
+          let result;
+          try {
+            result = await createCardPayment({
+              appointmentId: ensuredId,
+              tenantId: tenant.id,
+              amount: signalAmount,
+              description: `Sinal ${selectedService.name}`,
+              token: data.token,
+              paymentMethodId: data.paymentMethodId,
+              issuerId: data.issuerId,
+              installments: Number(data.installments) || 1,
+              payerEmail: data.cardholderEmail || cardholderEmail,
+              payerName: clientName,
+              payerPhone: clientPhone,
+              identificationType: data.identificationType,
+              identificationNumber: data.identificationNumber,
+            });
+          } catch {
+            setCardStatus("error");
+            setCardError("Falha ao processar pagamento com cartão. Tente novamente.");
+            return;
+          }
+
           if (!result.ok) {
             setCardStatus("error");
             setCardError(result.error.message);
