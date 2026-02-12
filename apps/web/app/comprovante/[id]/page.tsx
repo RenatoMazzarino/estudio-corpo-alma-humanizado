@@ -98,7 +98,7 @@ export default async function ComprovantePage(props: PageProps) {
     derivedStatus = appointmentStatus;
   }
 
-  if (!appointmentData || derivedStatus === "pending") {
+  if (derivedStatus === "pending") {
     return <ReceiptNotFound />;
   }
 

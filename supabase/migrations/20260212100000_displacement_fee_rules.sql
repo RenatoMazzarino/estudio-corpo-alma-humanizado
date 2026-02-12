@@ -4,14 +4,32 @@ ALTER TABLE public.appointments
   ADD COLUMN IF NOT EXISTS displacement_fee numeric(10,2),
   ADD COLUMN IF NOT EXISTS displacement_distance_km numeric(10,2);
 
-UPDATE public.appointments a
-SET displacement_fee = CASE
-  WHEN a.displacement_fee IS NOT NULL THEN a.displacement_fee
-  WHEN a.is_home_visit THEN COALESCE(s.home_visit_fee, 0)
-  ELSE 0
-END
-FROM public.services s
-WHERE a.service_id = s.id;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'services'
+      AND column_name = 'home_visit_fee'
+  ) THEN
+    UPDATE public.appointments a
+    SET displacement_fee = CASE
+      WHEN a.displacement_fee IS NOT NULL THEN a.displacement_fee
+      WHEN a.is_home_visit THEN COALESCE(s.home_visit_fee, 0)
+      ELSE 0
+    END
+    FROM public.services s
+    WHERE a.service_id = s.id;
+  ELSE
+    UPDATE public.appointments
+    SET displacement_fee = CASE
+      WHEN displacement_fee IS NOT NULL THEN displacement_fee
+      WHEN is_home_visit THEN 0
+      ELSE 0
+    END;
+  END IF;
+END $$;
 
 UPDATE public.appointments
 SET displacement_fee = 0

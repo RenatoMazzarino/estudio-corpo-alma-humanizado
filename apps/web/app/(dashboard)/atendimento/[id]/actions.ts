@@ -433,13 +433,16 @@ export async function saveEvolution(payload: {
       eventType: "evolution_published",
     });
 
-    await supabase
+    const { error: attendanceError } = await supabase
       .from("appointment_attendances")
       .update({
         checkout_status: "available",
         session_status: "in_progress",
       })
       .eq("appointment_id", parsed.data.appointmentId);
+
+    const mappedAttendanceError = mapSupabaseError(attendanceError);
+    if (mappedAttendanceError) return fail(mappedAttendanceError);
   }
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
@@ -456,10 +459,13 @@ export async function setCheckoutItems(payload: {
   }
 
   const supabase = createServiceClient();
-  await supabase
+  const { error: deleteError } = await supabase
     .from("appointment_checkout_items")
     .delete()
     .eq("appointment_id", parsed.data.appointmentId);
+
+  const mappedDeleteError = mapSupabaseError(deleteError);
+  if (mappedDeleteError) return fail(mappedDeleteError);
 
   const items = parsed.data.items.map((item, index) => ({
     appointment_id: parsed.data.appointmentId,
@@ -593,10 +599,13 @@ export async function confirmCheckout(payload: { appointmentId: string }): Promi
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  await supabase
+  const { error: attendanceError } = await supabase
     .from("appointment_attendances")
     .update({ checkout_status: "done", post_status: "available", current_stage: "post" })
     .eq("appointment_id", parsed.data.appointmentId);
+
+  const mappedAttendanceError = mapSupabaseError(attendanceError);
+  if (mappedAttendanceError) return fail(mappedAttendanceError);
 
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
@@ -833,12 +842,15 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
   if (mapped) return fail(mapped);
 
   const actualDurationMinutes = actualSeconds > 0 ? Math.round(actualSeconds / 60) : null;
-  await supabase
+  const { error: postError } = await supabase
     .from("appointment_post")
     .update({ kpi_total_seconds: actualSeconds, updated_at: new Date().toISOString() })
     .eq("appointment_id", parsed.data.appointmentId);
 
-  await updateAppointmentReturning(
+  const mappedPostError = mapSupabaseError(postError);
+  if (mappedPostError) return fail(mappedPostError);
+
+  const { error: appointmentError } = await updateAppointmentReturning(
     FIXED_TENANT_ID,
     parsed.data.appointmentId,
     {
@@ -848,6 +860,9 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
     },
     "id"
   );
+
+  const mappedAppointmentError = mapSupabaseError(appointmentError);
+  if (mappedAppointmentError) return fail(mappedAppointmentError);
 
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
