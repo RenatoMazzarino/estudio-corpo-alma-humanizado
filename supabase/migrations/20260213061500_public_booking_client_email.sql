@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION public.create_public_appointment(
   is_home_visit boolean DEFAULT false,
   p_displacement_fee numeric DEFAULT 0,
   p_displacement_distance_km numeric DEFAULT NULL,
-  p_client_email text
+  p_client_email text DEFAULT NULL
 ) RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
