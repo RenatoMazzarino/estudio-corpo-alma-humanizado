@@ -124,6 +124,25 @@ type CardFormOptions = {
   };
 };
 
+const cardProcessingStages = [
+  {
+    title: "Validando transação",
+    description: "Conferindo os dados do cartão com segurança.",
+  },
+  {
+    title: "Analisando pagamento",
+    description: "Enviando a autorização para o Mercado Pago.",
+  },
+  {
+    title: "Confirmando horário",
+    description: "Garantindo seu horário enquanto o pagamento é processado.",
+  },
+  {
+    title: "Finalizando confirmação",
+    description: "Quase pronto. Estamos concluindo tudo para você.",
+  },
+] as const;
+
 type MercadoPagoConstructor = new (
   publicKey: string,
   options?: { locale?: string }
@@ -215,6 +234,7 @@ export function BookingFlow({
   const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardAwaitingConfirmation, setCardAwaitingConfirmation] = useState(false);
+  const [cardProcessingStageIndex, setCardProcessingStageIndex] = useState(0);
   const [mpReady, setMpReady] = useState(false);
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const cardFormRef = useRef<CardFormInstance | null>(null);
@@ -310,6 +330,13 @@ export function BookingFlow({
   const displacementReady = !requiresAddress
     ? true
     : displacementStatus !== "loading" && Boolean(displacementEstimate);
+  const showCardProcessingOverlay =
+    step === "PAYMENT" &&
+    paymentMethod === "card" &&
+    (cardStatus === "loading" || cardAwaitingConfirmation);
+  const currentCardProcessingStage =
+    cardProcessingStages[Math.min(cardProcessingStageIndex, cardProcessingStages.length - 1)] ??
+    cardProcessingStages[0];
 
   const progressIndex = progressSteps.indexOf(step);
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
@@ -700,6 +727,24 @@ export function BookingFlow({
       setPixStatus("idle");
     }
   }, [paymentMethod]);
+
+  useEffect(() => {
+    if (!showCardProcessingOverlay) {
+      setCardProcessingStageIndex(0);
+      return;
+    }
+
+    setCardProcessingStageIndex(0);
+    const interval = window.setInterval(() => {
+      setCardProcessingStageIndex((current) =>
+        Math.min(current + 1, cardProcessingStages.length - 1)
+      );
+    }, 1700);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [showCardProcessingOverlay]);
 
   useEffect(() => {
     if (step !== "PAYMENT" || paymentMethod !== "pix") {
@@ -2244,6 +2289,65 @@ export function BookingFlow({
           </section>
         )}
       </main>
+
+      {showCardProcessingOverlay && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center px-6">
+          <div className="absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]" />
+          <div className="relative w-full max-w-sm rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-studio-green/10">
+              <div className="h-7 w-7 rounded-full border-[3px] border-studio-green/30 border-t-studio-green animate-spin" />
+            </div>
+            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-studio-green">
+              Processando pagamento
+            </p>
+            <h3 className="mt-2 text-center text-xl font-serif text-studio-text">
+              {currentCardProcessingStage.title}
+            </h3>
+            <p className="mt-1 text-center text-xs text-gray-500">
+              {currentCardProcessingStage.description}
+            </p>
+
+            <div className="mt-5 space-y-2">
+              {cardProcessingStages.map((stage, index) => {
+                const isDone = index < cardProcessingStageIndex;
+                const isActive = index === cardProcessingStageIndex;
+                return (
+                  <div key={stage.title} className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${
+                        isDone
+                          ? "border-studio-green bg-studio-green"
+                          : isActive
+                            ? "border-studio-green bg-studio-green/20"
+                            : "border-stone-300 bg-stone-100"
+                      }`}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 className="h-3 w-3 text-white" />
+                      ) : isActive ? (
+                        <Sparkles className="h-2.5 w-2.5 text-studio-green animate-pulse" />
+                      ) : null}
+                    </span>
+                    <span
+                      className={`text-xs ${
+                        isDone || isActive ? "text-studio-text font-semibold" : "text-gray-400"
+                      }`}
+                    >
+                      {stage.title}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {cardAwaitingConfirmation && (
+              <p className="mt-4 text-center text-[11px] text-gray-500">
+                Aguardando confirmação da operadora. Não feche esta tela.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <VoucherOverlay
         open={isVoucherOpen}
