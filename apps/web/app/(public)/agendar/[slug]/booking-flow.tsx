@@ -21,6 +21,7 @@ import {
   Copy,
   CreditCard,
   MapPin,
+  Phone,
   QrCode,
   Sparkles,
 } from "lucide-react";
@@ -212,6 +213,7 @@ export function BookingFlow({
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardAwaitingConfirmation, setCardAwaitingConfirmation] = useState(false);
   const [mpReady, setMpReady] = useState(false);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const cardFormRef = useRef<CardFormInstance | null>(null);
   const cardSubmitInFlightRef = useRef(false);
   const voucherRef = useRef<HTMLDivElement | null>(null);
@@ -265,6 +267,19 @@ export function BookingFlow({
   const mapsQuery = [logradouro, numero, complemento, bairro, cidade, estado, cep]
     .filter((value) => value && value.trim().length > 0)
     .join(", ");
+  const suggestedClientFirstName = useMemo(() => {
+    const name = suggestedClient?.name?.trim();
+    if (!name) return "cliente";
+    return name.split(/\s+/)[0] ?? "cliente";
+  }, [suggestedClient?.name]);
+  const suggestedClientInitials = useMemo(() => {
+    const name = suggestedClient?.name?.trim();
+    if (!name) return "CL";
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "CL";
+    const [first, second] = parts;
+    return `${first?.[0] ?? ""}${second?.[0] ?? first?.[1] ?? ""}`.toUpperCase();
+  }, [suggestedClient?.name]);
 
   const hasSuggestedAddress = Boolean(
     suggestedClient?.address_logradouro || suggestedClient?.address_cep
@@ -355,6 +370,7 @@ export function BookingFlow({
     if (!isPhoneValid) {
       setClientLookupStatus("idle");
       setSuggestedClient(null);
+      setClientName("");
       return;
     }
 
@@ -382,8 +398,12 @@ export function BookingFlow({
           address_cidade: result.data.client.address_cidade ?? null,
           address_estado: result.data.client.address_estado ?? null,
         });
+        setClientName(result.data.client.name ?? "Cliente");
+        setClientEmail((current) => result.data.client?.email ?? current);
         setClientLookupStatus("found");
       } else {
+        setClientName("Cliente");
+        setSuggestedClient(null);
         setClientLookupStatus("not_found");
       }
     }, 400);
@@ -391,20 +411,14 @@ export function BookingFlow({
     return () => window.clearTimeout(timer);
   }, [formattedPhoneDigits, isPhoneValid, tenant.id]);
 
-  const handleConfirmSuggestedClient = () => {
-    if (!suggestedClient) return;
-    setClientName(suggestedClient.name ?? "");
-    setClientEmail(suggestedClient.email ?? "");
-    setClientLookupStatus("confirmed");
-    setUseSuggestedAddress(null);
-  };
-
-  const handleDeclineSuggestedClient = () => {
-    setSuggestedClient(null);
-    setClientLookupStatus("declined");
+  const handleSwitchAccount = () => {
+    setClientPhone("");
     setClientName("");
     setClientEmail("");
+    setSuggestedClient(null);
+    setClientLookupStatus("idle");
     setUseSuggestedAddress(null);
+    window.setTimeout(() => phoneInputRef.current?.focus(), 0);
   };
 
   const applySuggestedAddress = () => {
@@ -1168,7 +1182,7 @@ export function BookingFlow({
 
   const isNextDisabled = useMemo(() => {
     if (step === "IDENT") {
-      return !isPhoneValid || !clientName.trim() || !isEmailValid || clientLookupStatus === "found";
+      return !isPhoneValid || !clientName.trim() || !isEmailValid;
     }
     if (step === "SERVICE") {
       return !selectedService;
@@ -1187,7 +1201,6 @@ export function BookingFlow({
     addressComplete,
     isEmailValid,
     displacementReady,
-    clientLookupStatus,
     clientName,
     date,
     isPhoneValid,
@@ -1295,111 +1308,84 @@ export function BookingFlow({
               <h2 className="text-3xl font-serif text-studio-text mt-2">Quem é você?</h2>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 transition focus-within:border-studio-green focus-within:ring-4 focus-within:ring-studio-green/10">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                   Seu WhatsApp
                 </label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  className="w-full bg-transparent border-b-2 border-gray-200 py-4 text-center text-2xl font-serif text-studio-text outline-none transition focus:border-studio-green"
-                  placeholder="(00) 00000-0000"
-                  value={clientPhone}
-                  onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
-                />
-                <p className="text-xs text-gray-400 mt-2 text-center">
-                  Vamos buscar seu cadastro pelo número.
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-studio-green" />
+                  <input
+                    ref={phoneInputRef}
+                    type="tel"
+                    inputMode="numeric"
+                    className="w-full bg-transparent text-lg font-bold text-studio-text placeholder:text-gray-300 outline-none"
+                    placeholder="(00) 00000-0000"
+                    value={clientPhone}
+                    onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-gray-500">
+                  Vamos identificar seu cadastro automaticamente por este número.
                 </p>
               </div>
-
-              <div className="bg-white p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
-                <span className="text-lg">💡</span>
-                <p className="text-xs text-gray-400 leading-relaxed text-left">
-                  Já é cliente? Digite seu WhatsApp e preencheremos tudo para você.
-                </p>
-              </div>
-
-              {clientLookupStatus === "loading" && (
-                <p className="text-xs text-gray-400 text-center">Verificando cadastro...</p>
-              )}
 
               {clientLookupStatus === "found" && suggestedClient && (
-                <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-soft flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-gray-400">Você é</p>
-                    <p className="text-sm font-bold text-gray-800">{suggestedClient.name}</p>
+                <>
+                  <div className="relative overflow-hidden rounded-2xl border border-studio-green/30 bg-green-50 p-4 shadow-soft animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-studio-green/15 to-transparent" />
+                    <div className="relative z-10 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-studio-green text-sm font-bold text-white">
+                          {suggestedClientInitials}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-studio-green">
+                            Olá
+                          </p>
+                          <p className="truncate text-base font-bold text-studio-text">
+                            {suggestedClient.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="rounded-full bg-white p-1.5 text-studio-green shadow-sm">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  <div className="text-center">
                     <button
                       type="button"
-                      onClick={handleConfirmSuggestedClient}
-                      className="px-3 py-1.5 rounded-full bg-studio-green text-white text-[11px] font-bold"
+                      onClick={handleSwitchAccount}
+                      className="text-xs font-bold text-gray-400 underline decoration-dotted underline-offset-2 hover:text-studio-text transition"
                     >
-                      Sim
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDeclineSuggestedClient}
-                      className="px-3 py-1.5 rounded-full border border-stone-200 text-[11px] font-bold text-gray-500"
-                    >
-                      Não
+                      Não é {suggestedClientFirstName}? Trocar conta
                     </button>
                   </div>
-                </div>
+                </>
               )}
 
-              {clientLookupStatus === "confirmed" && (
-                <div className="bg-green-50 text-studio-green text-xs font-bold p-3 rounded-xl text-center">
-                  👋 Cadastro confirmado. Bem-vindo(a) de volta!
+              {isPhoneValid && (
+                <div>
+                  <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                    Seu Email
+                  </label>
+                  <input
+                    type="email"
+                    inputMode="email"
+                    className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                    placeholder="voce@exemplo.com"
+                    value={clientEmail}
+                    onChange={(event) => setClientEmail(event.target.value)}
+                  />
+                  {clientEmail && !isEmailValid && (
+                    <p className="mt-2 text-center text-xs text-red-500">
+                      Informe um email válido para confirmar o agendamento.
+                    </p>
+                  )}
                 </div>
               )}
-              {clientLookupStatus === "not_found" && (
-                <div className="bg-stone-50 text-gray-400 text-xs font-bold p-3 rounded-xl text-center">
-                  ✨ Criando novo cadastro para você.
-                </div>
-              )}
-              {clientLookupStatus === "declined" && (
-                <div className="bg-stone-50 text-gray-400 text-xs font-bold p-3 rounded-xl text-center">
-                  Tudo bem! Informe seus dados abaixo.
-                </div>
-              )}
-
-              {clientLookupStatus !== "found" && isPhoneValid && (
-                <div className="space-y-4 transition-opacity duration-500">
-                  <div>
-                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                      Seu Nome
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full bg-transparent border-b-2 border-gray-200 py-4 text-center text-2xl font-serif text-studio-text outline-none transition focus:border-studio-green"
-                      placeholder="Como te chamamos?"
-                      value={clientName}
-                      onChange={(event) => setClientName(event.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                      Seu Email
-                    </label>
-                    <input
-                      type="email"
-                      inputMode="email"
-                      className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
-                      placeholder="voce@exemplo.com"
-                      value={clientEmail}
-                      onChange={(event) => setClientEmail(event.target.value)}
-                    />
-                    {clientEmail && !isEmailValid && (
-                      <p className="mt-2 text-center text-xs text-red-500">
-                        Informe um email válido para confirmar o agendamento.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
             </div>
           </section>
         )}
