@@ -51,6 +51,7 @@ import {
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
 import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
 import { applyAutoMessageTemplate } from "../src/shared/auto-messages.utils";
+import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 import {
   getDurationHeight,
   getOffsetForTime,
@@ -327,7 +328,7 @@ export function MobileAgenda({
     }
     if (createdToastShown.current) return;
     createdToastShown.current = true;
-    showToast("Agendamento criado com sucesso.", "success");
+    showToast(feedbackById("booking_created", { durationMs: 1800 }));
     const params = new URLSearchParams(searchParams.toString());
     params.delete("created");
     router.replace(`/?${params.toString()}`, { scroll: false });
@@ -340,7 +341,7 @@ export function MobileAgenda({
         const data = await getAttendance(appointmentId);
         setDetailsData(data ?? null);
       } catch {
-        showToast("Não foi possível carregar os detalhes.", "error");
+        showToast(feedbackById("agenda_details_load_failed"));
         setDetailsData(null);
       } finally {
         setDetailsLoading(false);
@@ -592,7 +593,7 @@ export function MobileAgenda({
     if (!detailsData) return;
     const phone = detailsData.appointment.clients?.phone ?? null;
     if (!phone) {
-      showToast("Sem telefone de WhatsApp cadastrado.", "error");
+      showToast(feedbackById("whatsapp_missing_phone"));
       return;
     }
     setDetailsActionPending(true);
@@ -605,11 +606,11 @@ export function MobileAgenda({
       payload: { message },
     });
     if (!result?.ok) {
-      showToast(result.error?.message ?? "Não foi possível registrar a mensagem.", "error");
+      showToast(feedbackFromError(result?.error, "whatsapp"));
       setDetailsActionPending(false);
       return;
     }
-    showToast("Mensagem registrada.", "success");
+    showToast(feedbackById("message_recorded"));
     await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
@@ -619,7 +620,7 @@ export function MobileAgenda({
     if (!detailsData) return;
     const phone = detailsData.appointment.clients?.phone ?? null;
     if (!phone) {
-      showToast("Sem telefone de WhatsApp cadastrado.", "error");
+      showToast(feedbackById("whatsapp_missing_phone"));
       return;
     }
     setDetailsActionPending(true);
@@ -627,11 +628,11 @@ export function MobileAgenda({
     openWhatsapp(phone, message);
     const result = await sendReminder24h({ appointmentId: detailsData.appointment.id, message });
     if (!result.ok) {
-      showToast(result.error.message, "error");
+      showToast(feedbackFromError(result.error, "whatsapp"));
       setDetailsActionPending(false);
       return;
     }
-    showToast("Lembrete 24h registrado.", "success");
+    showToast(feedbackById("reminder_recorded"));
     await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
@@ -642,11 +643,11 @@ export function MobileAgenda({
     setDetailsActionPending(true);
     const result = await confirmPre({ appointmentId: detailsData.appointment.id, channel: "manual" });
     if (!result.ok) {
-      showToast(result.error.message, "error");
+      showToast(feedbackFromError(result.error, "attendance"));
       setDetailsActionPending(false);
       return;
     }
-    showToast("Cliente confirmado.", "success");
+    showToast(feedbackById("client_confirmed"));
     await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
@@ -657,11 +658,11 @@ export function MobileAgenda({
     setDetailsActionPending(true);
     const result = await cancelAppointment(detailsData.appointment.id);
     if (!result.ok) {
-      showToast(result.error.message, "error");
+      showToast(feedbackFromError(result.error, "attendance"));
       setDetailsActionPending(false);
       return;
     }
-    showToast("Agendamento cancelado.", "success");
+    showToast(feedbackById("appointment_cancelled"));
     setDetailsOpen(false);
     setDetailsAppointmentId(null);
     setDetailsData(null);
@@ -677,7 +678,7 @@ export function MobileAgenda({
   }) => {
     if (!detailsData) return;
     if (!payload.amount || payload.amount <= 0) {
-      showToast("Valor de pagamento inválido.", "error");
+      showToast(feedbackById("payment_invalid_amount"));
       return;
     }
     setDetailsActionPending(true);
@@ -687,11 +688,16 @@ export function MobileAgenda({
       amount: payload.amount,
     });
     if (!result.ok) {
-      showToast(result.error.message ?? "Não foi possível registrar o pagamento.", "error");
+      showToast(feedbackFromError(result.error, "attendance"));
       setDetailsActionPending(false);
       return;
     }
-    showToast(payload.type === "signal" ? "Sinal registrado." : "Pagamento integral registrado.", "success");
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: payload.type === "signal" ? "Sinal registrado." : "Pagamento integral registrado.",
+      })
+    );
     await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
@@ -1303,9 +1309,9 @@ export function MobileAgenda({
                   setIsActionPending(true);
                   const result = await cancelAppointment(actionSheet.id);
                   if (!result.ok) {
-                    showToast(result.error.message, "error");
+                    showToast(feedbackFromError(result.error, "agenda"));
                   } else {
-                    showToast("Agendamento excluído.", "success");
+                    showToast(feedbackById("appointment_deleted"));
                     setActionSheet(null);
                     router.refresh();
                   }
@@ -1370,6 +1376,7 @@ export function MobileAgenda({
         onConfirmClient={handleConfirmClient}
         onCancelAppointment={handleCancelAppointment}
         onRecordPayment={handleRecordPayment}
+        onNotify={(feedback) => showToast(feedback)}
       />
 
       <FloatingActionMenu

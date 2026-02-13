@@ -20,9 +20,11 @@ import { createPortal } from "react-dom";
 import { createAppointment, getClientAddresses, updateAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { Toast, useToast } from "../../../components/ui/toast";
 import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
 import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
+import { feedbackById } from "../../../src/shared/feedback/user-feedback";
 import { formatBrazilPhone } from "../../../src/shared/phone";
 
 interface Service {
@@ -286,6 +288,7 @@ export function AppointmentForm({
       : ""
   );
   const [internalNotes, setInternalNotes] = useState(initialAppointment?.internalNotes ?? "");
+  const { toast, showToast } = useToast();
   const selectedService = useMemo(
     () => services.find((service) => service.id === selectedServiceId) ?? null,
     [selectedServiceId, services]
@@ -731,7 +734,7 @@ export function AppointmentForm({
     const phone = resolvedClientPhone || clientPhone;
     const digits = phone.replace(/\D/g, "");
     if (!digits) {
-      window.alert("Sem telefone de WhatsApp cadastrado.");
+      showToast(feedbackById("whatsapp_missing_phone"));
       return false;
     }
     const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
@@ -770,6 +773,7 @@ export function AppointmentForm({
 
   return (
     <form ref={formRef} action={formAction} className="space-y-6">
+      <Toast toast={toast} />
       {isEditing && <input type="hidden" name="appointmentId" value={initialAppointment?.id ?? ""} />}
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <input type="hidden" name="clientId" value={resolvedClientId ?? ""} />

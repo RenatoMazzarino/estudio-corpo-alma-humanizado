@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Sparkles, Clock, Banknote, AlignLeft, ChevronLeft } from "lucide-react";
 import { upsertService } from "../app/actions";
+import { Toast, useToast } from "./ui/toast";
+import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 import { Service } from "../types/service";
 
 interface ServiceFormProps {
@@ -22,6 +24,7 @@ export function ServiceForm({
 }: ServiceFormProps) {
   const [acceptsHomeVisit, setAcceptsHomeVisit] = useState(service?.accepts_home_visit ?? false);
   const [loading, setLoading] = useState(false);
+  const { toast, showToast } = useToast();
 
   return (
     <form 
@@ -29,13 +32,22 @@ export function ServiceForm({
         setLoading(true);
         const result = await upsertService(formData);
         if (!result.ok) {
-          alert(result.error.message);
+          showToast(feedbackFromError(result.error, "agenda"));
+          setLoading(false);
+          return;
         }
+        showToast(
+          feedbackById("generic_saved", {
+            tone: "success",
+            message: service ? "Serviço atualizado." : "Serviço criado.",
+          })
+        );
         setLoading(false);
         if (onSuccess) onSuccess();
       }}
       className="flex flex-col h-full bg-white"
     >
+      <Toast toast={toast} />
       <input type="hidden" name="id" value={service?.id || ""} />
 
       <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">

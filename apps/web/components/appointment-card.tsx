@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { MapPin, Clock, CheckCircle2, Play, Square, Timer, Trash2 } from "lucide-react";
 import { startAppointment, finishAppointment, cancelAppointment } from "../app/actions"; // Importamos o cancelAppointment
 import { format } from "date-fns";
+import { Toast, useToast } from "./ui/toast";
+import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 
 // Interface dos dados
 interface AppointmentCardProps {
@@ -23,6 +25,7 @@ interface AppointmentCardProps {
 
 export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [elapsedTime, setElapsedTime] = useState("00:00");
+  const { toast, showToast } = useToast();
   const isOngoing = appointment.status === "in_progress";
   const isDone = appointment.status === "completed";
 
@@ -57,16 +60,20 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   }, [isOngoing, appointment.started_at]);
 
   if (isDone) return (
-    <div className="bg-stone-50 p-5 rounded-3xl border border-stone-100 opacity-60 grayscale transition-all">
-       <div className="flex justify-between items-start mb-3">
-          <h3 className="font-bold text-gray-800 line-through">{appointment.clients?.name}</h3>
-          <span className="bg-gray-200 text-gray-500 text-[10px] font-bold px-2 py-1 rounded-full">CONCLUÍDO</span>
-       </div>
-    </div>
+    <>
+      <div className="bg-stone-50 p-5 rounded-3xl border border-stone-100 opacity-60 grayscale transition-all">
+         <div className="flex justify-between items-start mb-3">
+            <h3 className="font-bold text-gray-800 line-through">{appointment.clients?.name}</h3>
+            <span className="bg-gray-200 text-gray-500 text-[10px] font-bold px-2 py-1 rounded-full">CONCLUÍDO</span>
+         </div>
+      </div>
+      <Toast toast={toast} />
+    </>
   );
 
   return (
-    <div className={`
+    <>
+      <div className={`
       relative p-5 rounded-3xl transition-all duration-300 border
       ${isOngoing 
         ? "bg-white shadow-xl shadow-green-100 border-studio-green scale-[1.02]" 
@@ -106,8 +113,10 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                     if(confirm("Tem certeza que deseja cancelar este agendamento?")) {
                       const result = await cancelAppointment(appointment.id);
                       if (!result.ok) {
-                        alert(result.error.message);
+                        showToast(feedbackFromError(result.error, "agenda"));
+                        return;
                       }
+                      showToast(feedbackById("appointment_cancelled"));
                     }
                   }}
                   className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition"
@@ -149,8 +158,10 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               onClick={async () => {
                 const result = await finishAppointment(appointment.id);
                 if (!result.ok) {
-                  alert(result.error.message);
+                  showToast(feedbackFromError(result.error, "agenda"));
+                  return;
                 }
+                showToast(feedbackById("generic_saved", { tone: "success", message: "Atendimento finalizado." }));
               }}
               className="bg-red-50 text-red-600 border border-red-100 text-xs font-bold px-6 py-2.5 rounded-full hover:bg-red-100 transition flex items-center gap-2"
             >
@@ -161,8 +172,10 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               onClick={async () => {
                 const result = await startAppointment(appointment.id);
                 if (!result.ok) {
-                  alert(result.error.message);
+                  showToast(feedbackFromError(result.error, "agenda"));
+                  return;
                 }
+                showToast(feedbackById("generic_saved", { tone: "success", message: "Atendimento iniciado." }));
               }}
               className="bg-studio-text text-white text-xs font-medium px-6 py-2.5 rounded-full hover:bg-black transition shadow-lg shadow-gray-200 flex items-center gap-2"
             >
@@ -170,6 +183,8 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             </button>
           )}
       </div>
-    </div>
+      </div>
+      <Toast toast={toast} />
+    </>
   );
 }

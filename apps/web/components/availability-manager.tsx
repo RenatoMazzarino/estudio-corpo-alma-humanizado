@@ -16,7 +16,6 @@ import { ptBR } from "date-fns/locale";
 import {
   AlertCircle,
   Calendar,
-  CheckCircle2,
   Coffee,
   Sparkles,
   Shield,
@@ -26,8 +25,9 @@ import {
 } from "lucide-react";
 import { createShiftBlocks, clearMonthBlocks } from "../app/(dashboard)/admin/escala/actions";
 import { createAvailabilityBlock, deleteAvailabilityBlock, getMonthOverview } from "../app/(dashboard)/bloqueios/actions";
-import { useToast } from "./ui/toast";
+import { Toast, useToast } from "./ui/toast";
 import { MonthCalendar } from "./agenda/month-calendar";
+import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 
 type BlockType = "shift" | "personal" | "vacation" | "administrative";
 
@@ -106,7 +106,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [overview, setOverview] = useState<MonthOverview>({ blocks: [], appointments: [] });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [scaleType, setScaleType] = useState<"even" | "odd">("even");
   const [pendingScaleConfirm, setPendingScaleConfirm] = useState<null | { type: "even" | "odd"; appointments: number }>(null);
   const [isScaleModalOpen, setIsScaleModalOpen] = useState(false);
@@ -126,7 +125,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   const [isScaleDragging, setIsScaleDragging] = useState(false);
   const [scaleMonthOverview, setScaleMonthOverview] = useState<MonthOverview | null>(null);
   const [isScaleOverviewLoading, setIsScaleOverviewLoading] = useState(false);
-  const { showToast } = useToast();
+  const { toast, showToast } = useToast();
   const blockSheetRef = useRef<HTMLDivElement | null>(null);
   const scaleSheetRef = useRef<HTMLDivElement | null>(null);
   const blockDragStartRef = useRef<number | null>(null);
@@ -235,7 +234,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
 
   const runCreateScale = async (type: "even" | "odd", monthStr: string, force?: boolean) => {
     setLoading(true);
-    setMessage(null);
     try {
       const result = await createShiftBlocks(type, monthStr, force);
       if (!result.ok) throw result.error;
@@ -243,23 +241,22 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         setPendingScaleConfirm({ type, appointments: result.data.conflicts.appointments });
         return;
       }
-      setMessage({
-        type: "success",
-        text: `Escala aplicada para dias ${type === "even" ? "pares" : "ímpares"} em ${format(
-          parseISO(`${monthStr}-01`),
-          "MMMM/yyyy",
-          { locale: ptBR }
-        )}.`,
-      });
+      showToast(
+        feedbackById("generic_saved", {
+          tone: "success",
+          message: `Escala aplicada para dias ${type === "even" ? "pares" : "ímpares"} em ${format(
+            parseISO(`${monthStr}-01`),
+            "MMMM/yyyy",
+            { locale: ptBR }
+          )}.`,
+        })
+      );
       setSelectedMonth(monthStr);
       const data = await getMonthOverview(monthStr);
       setOverview(data);
       setIsScaleModalOpen(false);
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: `Erro ao aplicar escala: ${error instanceof Error ? error.message : "Desconhecido"}`,
-      });
+      showToast(feedbackFromError(error, "agenda"));
     } finally {
       setLoading(false);
     }
@@ -268,11 +265,10 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   const handleClearScale = async (monthStr: string, keepOpen = false) => {
     if (!confirm("Tem certeza? Isso apagará a escala (plantões) deste mês.")) return;
     setLoading(true);
-    setMessage(null);
     try {
       const result = await clearMonthBlocks(monthStr);
       if (!result.ok) throw result.error;
-      setMessage({ type: "success", text: "Escala removida com sucesso!" });
+      showToast(feedbackById("generic_saved", { tone: "success", message: "Escala removida com sucesso." }));
       const data = await getMonthOverview(monthStr);
       if (monthStr === selectedMonth) {
         setOverview(data);
@@ -282,10 +278,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         setIsScaleModalOpen(false);
       }
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: `Erro ao limpar escala: ${error instanceof Error ? error.message : "Desconhecido"}`,
-      });
+      showToast(feedbackFromError(error, "agenda"));
     } finally {
       setLoading(false);
     }
@@ -394,7 +387,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
     };
 
     setLoading(true);
-    setMessage(null);
     try {
       const result = await createAvailabilityBlock(payload);
       if (!result.ok) throw result.error;
@@ -402,15 +394,12 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         setPendingBlockConfirm({ payload, appointments: result.data.conflicts.appointments });
         return;
       }
-      showToast("Bloqueio registrado.", "success");
+      showToast(feedbackById("generic_saved", { tone: "success", message: "Bloqueio registrado." }));
       setIsModalOpen(false);
       const data = await getMonthOverview(selectedMonth);
       setOverview(data);
     } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "Erro ao criar bloqueio.",
-        "error"
-      );
+      showToast(feedbackFromError(error, "agenda"));
     } finally {
       setLoading(false);
     }
@@ -419,18 +408,14 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   const handleDeleteBlock = async (id: string) => {
     if (!confirm("Remover este bloqueio?")) return;
     setLoading(true);
-    setMessage(null);
     try {
       const result = await deleteAvailabilityBlock(id);
       if (!result.ok) throw result.error;
-      showToast("Bloqueio removido.", "success");
+      showToast(feedbackById("generic_saved", { tone: "success", message: "Bloqueio removido." }));
       const data = await getMonthOverview(selectedMonth);
       setOverview(data);
     } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "Erro ao remover bloqueio.",
-        "error"
-      );
+      showToast(feedbackFromError(error, "agenda"));
     } finally {
       setLoading(false);
     }
@@ -438,6 +423,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
 
   return (
     <div className="space-y-5">
+      <Toast toast={toast} />
 
       <MonthCalendar
         currentMonth={currentMonthDate}
@@ -552,18 +538,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
           </div>
         }
       />
-
-      {message && (
-        <div
-          className={`p-4 rounded-xl text-sm flex items-center gap-2 ${
-            message.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-          }`}
-        >
-          {message.type === "success" && <CheckCircle2 size={16} />}
-          {message.type === "error" && <AlertCircle size={16} />}
-          {message.text}
-        </div>
-      )}
 
       {isModalOpen &&
         portalTarget &&
@@ -940,4 +914,3 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
     </div>
   );
 });
-

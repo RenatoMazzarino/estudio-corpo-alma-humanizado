@@ -20,6 +20,7 @@ import type { AttendanceOverview, AppointmentMessage, MessageType } from "../../
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
+import { feedbackById, type UserFeedback } from "../../src/shared/feedback/user-feedback";
 
 interface AppointmentDetailsSheetProps {
   open: boolean;
@@ -36,6 +37,7 @@ interface AppointmentDetailsSheetProps {
   onConfirmClient: () => void;
   onCancelAppointment: () => void;
   onRecordPayment?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
+  onNotify?: (feedback: UserFeedback) => void;
 }
 
 const messageByType = (messages: AppointmentMessage[], type: MessageType) =>
@@ -108,6 +110,7 @@ export function AppointmentDetailsSheet({
   onConfirmClient,
   onCancelAppointment,
   onRecordPayment,
+  onNotify,
 }: AppointmentDetailsSheetProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -253,7 +256,7 @@ export function AppointmentDetailsSheet({
     const phone = appointment?.clients?.phone ?? "";
     const digits = phone.replace(/\D/g, "");
     if (!digits) {
-      window.alert("Sem telefone de WhatsApp cadastrado.");
+      onNotify?.(feedbackById("whatsapp_missing_phone"));
       return;
     }
     const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
