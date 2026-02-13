@@ -44,6 +44,10 @@ type MercadoPagoPayment = {
   payment_method_id?: string;
   payment_type_id?: string;
   installments?: number;
+  order?: {
+    id?: string | number;
+    type?: string;
+  };
   card?: {
     last_four_digits?: string;
     brand?: string;
@@ -253,6 +257,7 @@ export async function POST(request: Request) {
   let approvedAt: string | null = null;
   let transactionAmount: number = 0;
   let appointmentId: string | null = null;
+  let orderIdFromPayment: string | null = null;
 
   const hydrateFromPayment = (payment: MercadoPagoPayment) => {
     providerRef = String(payment.id);
@@ -269,6 +274,7 @@ export async function POST(request: Request) {
     approvedAt = payment.date_approved ?? approvedAt;
     transactionAmount = parseNumericAmount(payment.transaction_amount, transactionAmount);
     appointmentId = payment.external_reference ?? appointmentId;
+    orderIdFromPayment = payment.order?.id ? String(payment.order.id) : orderIdFromPayment;
   };
 
   if (notificationType === "order") {
@@ -333,6 +339,21 @@ export async function POST(request: Request) {
 
   if (!providerRef) {
     return NextResponse.json({ ok: true, skipped: "missing_provider_ref" });
+  }
+
+  if (!appointmentId && orderIdFromPayment) {
+    const orderLookup = await fetch(`https://api.mercadopago.com/v1/orders/${orderIdFromPayment}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (orderLookup.ok) {
+      const order = (await orderLookup.json()) as MercadoPagoOrder;
+      if (typeof order.external_reference === "string" && order.external_reference.length > 0) {
+        appointmentId = order.external_reference;
+      }
+    }
   }
 
   const normalizedPaymentPayload = {
@@ -416,6 +437,16 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({ ok: false, error: "Failed to upsert payment" }, { status: 500 });
     }
+  } else {
+    logWebhookError("skipped payment upsert because appointment mapping was not resolved", {
+      notificationType,
+      resourceId,
+      providerRef,
+      appointmentId,
+      orderIdFromPayment,
+      existingAppointmentId: existing?.appointment_id ?? null,
+      existingTenantId: existing?.tenant_id ?? null,
+    });
   }
 
   if (appointment) {
