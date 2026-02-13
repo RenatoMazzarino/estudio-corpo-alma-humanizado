@@ -540,6 +540,7 @@ export async function createPixPayment({
   payerEmail,
   payerName,
   payerPhone,
+  attempt,
 }: {
   appointmentId: string;
   tenantId: string;
@@ -547,6 +548,7 @@ export async function createPixPayment({
   payerEmail: string;
   payerName: string;
   payerPhone: string;
+  attempt?: number;
 }): Promise<ActionResult<PixPaymentResult>> {
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
@@ -574,10 +576,14 @@ export async function createPixPayment({
     phone: splitPhone(phoneDigits),
   };
 
+  const normalizedAttempt =
+    Number.isFinite(attempt) && Number(attempt) >= 0 ? Math.floor(Number(attempt)) : 0;
+
   const idempotencyKey = buildIdempotencyKey([
     "pix",
     appointmentId,
     Number(amount.toFixed(2)).toFixed(2),
+    String(normalizedAttempt),
   ]);
 
   let response: Response;
@@ -765,10 +771,11 @@ async function getPaymentStatusByMethod({
   const supabase = createServiceClient();
   const { data: payments, error } = await supabase
     .from("appointment_payments")
-    .select("status")
+    .select("status, created_at")
     .eq("appointment_id", appointmentId)
     .eq("tenant_id", tenantId)
-    .eq("method", method);
+    .eq("method", method)
+    .order("created_at", { ascending: false });
 
   if (error) {
     return fail(
@@ -783,11 +790,13 @@ async function getPaymentStatusByMethod({
   if (statuses.includes("paid")) {
     return ok({ internal_status: "paid" });
   }
-  if (statuses.includes("pending")) {
-    return ok({ internal_status: "pending" });
-  }
-  if (statuses.includes("failed")) {
+
+  const latestStatus = statuses[0] ?? null;
+  if (latestStatus === "failed") {
     return ok({ internal_status: "failed" });
+  }
+  if (latestStatus === "pending") {
+    return ok({ internal_status: "pending" });
   }
 
   return ok({ internal_status: "pending" });

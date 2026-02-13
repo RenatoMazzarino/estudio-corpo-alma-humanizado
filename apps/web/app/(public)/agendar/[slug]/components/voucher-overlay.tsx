@@ -61,11 +61,12 @@ export function VoucherOverlay({
   const bookingId = protocol || `AGD-${dayPart || "00"}${monthPart || "00"}${yearPart.slice(-2) || "00"}`;
   const barcodePattern = [1, 2, 1, 3, 1, 4, 2, 1, 3, 1, 2, 1];
   const colors = {
+    overlayBackdrop: "rgba(0, 0, 0, 0.68)",
     studioText: "#2C3333",
     dom: "#C0A4B0",
     black30: "rgba(0, 0, 0, 0.3)",
     white12: "rgba(255, 255, 255, 0.12)",
-    notchCutout: "rgba(0, 0, 0, 0.75)",
+    notchCutout: "rgba(0, 0, 0, 0.68)",
     studioGreen25: "rgba(93, 110, 86, 0.25)",
     studioText80: "rgba(44, 51, 51, 0.8)",
     studioText70: "rgba(44, 51, 51, 0.7)",
@@ -77,7 +78,7 @@ export function VoucherOverlay({
     <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div
         className="absolute inset-0 backdrop-blur-[1px]"
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.75)" }}
+        style={{ backgroundColor: colors.overlayBackdrop }}
         onClick={onClose}
       />
       <div className="relative z-10 w-full max-w-[468px]">
@@ -95,7 +96,7 @@ export function VoucherOverlay({
             ref={voucherRef}
             data-voucher-capture="true"
             className="w-full max-w-[420px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden"
-            style={{ boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}
+            style={{ boxShadow: "0 16px 34px rgba(0, 0, 0, 0.18)" }}
           >
             <div className="bg-studio-green px-7 pt-4 pb-5 text-center relative overflow-hidden">
               <svg

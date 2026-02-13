@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Script from "next/script";
-import { toBlob, toCanvas } from "html-to-image";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -38,6 +37,19 @@ import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { VoucherOverlay } from "./components/voucher-overlay";
+import { formatCep, formatCountdown } from "./booking-flow-formatters";
+import {
+  downloadVoucherBlob,
+  renderVoucherImageBlob,
+  shareVoucherBlob,
+} from "./voucher-export";
+import {
+  cardProcessingStages,
+  footerSteps,
+  minimumMercadoPagoAmount,
+  progressSteps,
+  stepLabels,
+} from "./booking-flow-config";
 
 interface Service {
   id: string;
@@ -124,25 +136,6 @@ type CardFormOptions = {
   };
 };
 
-const cardProcessingStages = [
-  {
-    title: "Arrumando a maca",
-    description: "Estamos preparando seu momento de cuidado com carinho.",
-  },
-  {
-    title: "Esquentando o ambiente",
-    description: "Deixando tudo confortável enquanto o pagamento é validado.",
-  },
-  {
-    title: "Separando seus óleos",
-    description: "Seu atendimento está sendo confirmado com segurança.",
-  },
-  {
-    title: "Seu horário está quase pronto",
-    description: "Finalizando os últimos detalhes do seu agendamento.",
-  },
-] as const;
-
 type MercadoPagoConstructor = new (
   publicKey: string,
   options?: { locale?: string }
@@ -155,19 +148,6 @@ declare global {
     MercadoPago?: MercadoPagoConstructor;
   }
 }
-
-const progressSteps: Step[] = ["IDENT", "SERVICE", "DATETIME", "LOCATION", "CONFIRM"];
-
-const footerSteps: Step[] = ["IDENT", "SERVICE", "DATETIME", "LOCATION", "CONFIRM"];
-
-const stepLabels: Partial<Record<Step, string>> = {
-  IDENT: "Passo 1 de 5",
-  SERVICE: "Passo 2 de 5",
-  DATETIME: "Passo 3 de 5",
-  LOCATION: "Passo 4 de 5",
-  CONFIRM: "Passo 5 de 5",
-};
-const minimumMercadoPagoAmount = 1;
 
 export function BookingFlow({
   tenant,
@@ -229,6 +209,7 @@ export function BookingFlow({
   } | null>(null);
   const [pixStatus, setPixStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pixError, setPixError] = useState<string | null>(null);
+  const [pixAttempt, setPixAttempt] = useState(0);
   const [pixNowMs, setPixNowMs] = useState(() => Date.now());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -239,6 +220,7 @@ export function BookingFlow({
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const cardFormRef = useRef<CardFormInstance | null>(null);
   const cardSubmitInFlightRef = useRef(false);
+  const pixAutoRefreshByPaymentRef = useRef<string | null>(null);
   const voucherRef = useRef<HTMLDivElement | null>(null);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [voucherBusy, setVoucherBusy] = useState(false);
@@ -338,7 +320,7 @@ export function BookingFlow({
     cardProcessingStages[Math.min(cardProcessingStageIndex, cardProcessingStages.length - 1)] ??
     cardProcessingStages[0];
 
-  const progressIndex = progressSteps.indexOf(step);
+  const progressIndex = progressSteps.indexOf(step as (typeof progressSteps)[number]);
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
   const showNextButton = step !== "PAYMENT";
 
@@ -679,12 +661,18 @@ export function BookingFlow({
     }
   };
 
-  const handleCreatePix = useCallback(async () => {
+  const handleCreatePix = useCallback(async (options?: { attempt?: number }) => {
     if (!selectedService) return;
     const ensuredId = appointmentId ?? (await ensureAppointment());
     if (!ensuredId) return;
+    const normalizedAttempt =
+      Number.isFinite(options?.attempt) && Number(options?.attempt) >= 0
+        ? Math.floor(Number(options?.attempt))
+        : pixAttempt;
     setPixStatus("loading");
-    setPixError(null);
+    setPixError((current) =>
+      current?.toLowerCase().includes("expirou") ? current : null
+    );
     try {
       const result = await createPixPayment({
         appointmentId: ensuredId,
@@ -693,13 +681,16 @@ export function BookingFlow({
         payerEmail: normalizedClientEmail,
         payerName: clientName,
         payerPhone: clientPhone,
+        attempt: normalizedAttempt,
       });
       if (!result.ok) {
         setPixStatus("error");
         setPixError(result.error.message);
         return;
       }
+      pixAutoRefreshByPaymentRef.current = null;
       setPixPayment(result.data);
+      setPixNowMs(Date.now());
       setPixStatus("idle");
     } catch {
       setPixStatus("error");
@@ -712,6 +703,7 @@ export function BookingFlow({
     ensureAppointment,
     normalizedClientEmail,
     payableSignalAmount,
+    pixAttempt,
     selectedService,
     tenant.id,
   ]);
@@ -723,6 +715,7 @@ export function BookingFlow({
       setCardAwaitingConfirmation(false);
     }
     if (paymentMethod === "card") {
+      setPixPayment(null);
       setPixError(null);
       setPixStatus("idle");
     }
@@ -753,8 +746,30 @@ export function BookingFlow({
     if (pixPayment || pixStatus !== "idle") {
       return;
     }
-    void handleCreatePix();
-  }, [handleCreatePix, paymentMethod, pixPayment, pixStatus, step]);
+    void handleCreatePix({ attempt: pixAttempt });
+  }, [handleCreatePix, paymentMethod, pixAttempt, pixPayment, pixStatus, step]);
+
+  useEffect(() => {
+    if (
+      step !== "PAYMENT" ||
+      paymentMethod !== "pix" ||
+      !pixPayment ||
+      !pixQrExpired ||
+      pixStatus === "loading"
+    ) {
+      return;
+    }
+
+    if (pixAutoRefreshByPaymentRef.current === pixPayment.id) {
+      return;
+    }
+
+    pixAutoRefreshByPaymentRef.current = pixPayment.id;
+    const nextAttempt = pixAttempt + 1;
+    setPixAttempt(nextAttempt);
+    setPixError("QR Code expirou. Gerando um novo Pix automaticamente...");
+    void handleCreatePix({ attempt: nextAttempt });
+  }, [handleCreatePix, paymentMethod, pixAttempt, pixPayment, pixQrExpired, pixStatus, step]);
 
   useEffect(() => {
     if (step !== "PAYMENT" || paymentMethod !== "pix" || !pixPayment) {
@@ -1079,101 +1094,37 @@ export function BookingFlow({
     setPaymentMethod(method);
   };
 
-  const renderVoucherImageBlob = async () => {
+  const buildVoucherBlob = useCallback(async () => {
     if (!voucherRef.current) return null;
     setVoucherBusy(true);
     try {
-      if (typeof document !== "undefined" && document.fonts?.ready) {
-        await document.fonts.ready;
-      }
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-
-      const node = voucherRef.current;
-      const rect = node.getBoundingClientRect();
-      const measuredWidth = node.scrollWidth > 0 ? node.scrollWidth : Math.round(rect.width);
-      const measuredHeight = node.scrollHeight > 0 ? node.scrollHeight : Math.round(rect.height);
-      const targetWidth = Math.max(380, measuredWidth);
-      const targetHeight = Math.max(620, measuredHeight);
-      const pixelRatio = 2;
-      const options = {
-        cacheBust: true,
-        pixelRatio,
-        width: targetWidth,
-        height: targetHeight,
-        canvasWidth: targetWidth * pixelRatio,
-        canvasHeight: targetHeight * pixelRatio,
-      };
-
-      const blob = await toBlob(node, options);
-      if (blob) return blob;
-
-      const canvas = await toCanvas(node, options);
-      return await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((value) => resolve(value), "image/png")
-      );
+      return await renderVoucherImageBlob(voucherRef.current);
     } catch (error) {
       console.error("Falha ao gerar imagem do voucher", error);
       return null;
     } finally {
       setVoucherBusy(false);
     }
-  };
+  }, []);
 
-  const handleDownloadVoucher = async () => {
-    const blob = await renderVoucherImageBlob();
+  const handleDownloadVoucher = useCallback(async () => {
+    const blob = await buildVoucherBlob();
     if (!blob) {
       window.alert("Não foi possível gerar a imagem do voucher.");
       return;
     }
-    const objectUrl = URL.createObjectURL(blob);
-    const isIOS = /iPad|iPhone|iPod/i.test(window.navigator.userAgent);
-    try {
-      if (isIOS) {
-        window.open(objectUrl, "_blank", "noopener,noreferrer");
-        return;
-      }
+    downloadVoucherBlob(blob, `voucher-${protocol || "agendamento"}.png`, window.navigator.userAgent);
+  }, [buildVoucherBlob, protocol]);
 
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = `voucher-${protocol || "agendamento"}.png`;
-      link.rel = "noopener";
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-      link.remove();
-    } finally {
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
-    }
-  };
-
-  const handleShareVoucher = async () => {
-    const blob = await renderVoucherImageBlob();
+  const handleShareVoucher = useCallback(async () => {
+    const blob = await buildVoucherBlob();
     if (!blob) return;
-
-    const file = new File([blob], `voucher-${protocol || "agendamento"}.png`, {
-      type: "image/png",
-    });
-
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: "Voucher do Agendamento",
-          text: "Segue o voucher do seu agendamento.",
-        });
-        return;
-      } catch {
-        // fallback below
-      }
-    }
-
-    const message = encodeURIComponent(
+    await shareVoucherBlob(
+      blob,
+      `voucher-${protocol || "agendamento"}.png`,
       "Segue o voucher do seu agendamento. Baixe a imagem e envie pelo WhatsApp."
     );
-    window.open(`https://wa.me/?text=${message}`, "_blank");
-  };
+  }, [buildVoucherBlob, protocol]);
 
   const handleSelectDay = (day: Date) => {
     const iso = format(day, "yyyy-MM-dd");
@@ -1216,6 +1167,8 @@ export function BookingFlow({
     setPixPayment(null);
     setPixStatus("idle");
     setPixError(null);
+    setPixAttempt(0);
+    pixAutoRefreshByPaymentRef.current = null;
     setPaymentMethod(null);
     setCardStatus("idle");
     setCardError(null);
@@ -1228,7 +1181,7 @@ export function BookingFlow({
       setStep("PAYMENT");
       return;
     }
-    const currentIndex = footerSteps.indexOf(step);
+    const currentIndex = footerSteps.indexOf(step as (typeof footerSteps)[number]);
     if (currentIndex >= 0 && currentIndex < footerSteps.length - 1) {
       const nextStep = footerSteps[currentIndex + 1];
       if (nextStep) {
@@ -1246,7 +1199,7 @@ export function BookingFlow({
       setStep("CONFIRM");
       return;
     }
-    const currentIndex = footerSteps.indexOf(step);
+    const currentIndex = footerSteps.indexOf(step as (typeof footerSteps)[number]);
     if (currentIndex > 0) {
       const previousStep = footerSteps[currentIndex - 1];
       if (previousStep) {
@@ -2136,8 +2089,7 @@ export function BookingFlow({
                   {pixError && <p className="text-xs text-red-500">{pixError}</p>}
                   {pixQrExpired && (
                     <p className="text-xs text-amber-700">
-                      Este QR Code expirou. Volte uma etapa e entre novamente no pagamento para gerar
-                      outro.
+                      Este QR Code expirou. Estamos gerando um novo automaticamente.
                     </p>
                   )}
 
@@ -2451,22 +2403,3 @@ export function BookingFlow({
     </div>
   );
 }
-
-const formatCountdown = (milliseconds: number) => {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  const twoDigits = (value: number) => value.toString().padStart(2, "0");
-
-  if (hours > 0) {
-    return `${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}`;
-  }
-  return `${twoDigits(minutes)}:${twoDigits(seconds)}`;
-};
-
-const formatCep = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
-};
