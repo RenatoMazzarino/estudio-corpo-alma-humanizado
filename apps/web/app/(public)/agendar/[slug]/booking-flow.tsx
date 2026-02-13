@@ -30,6 +30,7 @@ import {
   createCardPayment,
   createPixPayment,
   getCardPaymentStatus,
+  getPixPaymentStatus,
 } from "./public-actions/payments";
 import { getAvailableSlots } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
@@ -82,11 +83,11 @@ type DisplacementEstimate = {
 type CardFormData = {
   token: string;
   paymentMethodId: string;
-  issuerId: string;
+  issuerId?: string;
   installments: string | number;
-  identificationType: string;
-  identificationNumber: string;
-  cardholderEmail: string;
+  identificationType?: string;
+  identificationNumber?: string;
+  cardholderEmail?: string;
 };
 
 type CardFormInstance = {
@@ -164,6 +165,7 @@ export function BookingFlow({
   const [monthAvailability, setMonthAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingMonth, setIsLoadingMonth] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [cep, setCep] = useState("");
   const [logradouro, setLogradouro] = useState("");
@@ -217,6 +219,7 @@ export function BookingFlow({
   const [voucherBusy, setVoucherBusy] = useState(false);
   const [suggestedClient, setSuggestedClient] = useState<{
     name: string | null;
+    email: string | null;
     address_cep: string | null;
     address_logradouro: string | null;
     address_numero: string | null;
@@ -228,6 +231,8 @@ export function BookingFlow({
 
   const formattedPhoneDigits = clientPhone.replace(/\D/g, "");
   const isPhoneValid = formattedPhoneDigits.length === 10 || formattedPhoneDigits.length === 11;
+  const normalizedClientEmail = clientEmail.trim().toLowerCase();
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClientEmail);
 
   const totalPrice = useMemo(() => {
     if (!selectedService) return 0;
@@ -244,11 +249,6 @@ export function BookingFlow({
     Math.max(signalAmount, minimumMercadoPagoAmount).toFixed(2)
   );
   const signalAmountWasAdjusted = payableSignalAmount > signalAmount;
-  const cardholderEmail = useMemo(() => {
-    const digits = clientPhone.replace(/\D/g, "");
-    return `cliente+${digits || "anon"}@corpoealmahumanizado.com.br`;
-  }, [clientPhone]);
-
   const whatsappLink = useMemo(() => {
     if (!whatsappNumber) return null;
     const digits = whatsappNumber.replace(/\D/g, "");
@@ -373,6 +373,7 @@ export function BookingFlow({
       if (result.data.client) {
         setSuggestedClient({
           name: result.data.client.name ?? null,
+          email: result.data.client.email ?? null,
           address_cep: result.data.client.address_cep ?? null,
           address_logradouro: result.data.client.address_logradouro ?? null,
           address_numero: result.data.client.address_numero ?? null,
@@ -393,6 +394,7 @@ export function BookingFlow({
   const handleConfirmSuggestedClient = () => {
     if (!suggestedClient) return;
     setClientName(suggestedClient.name ?? "");
+    setClientEmail(suggestedClient.email ?? "");
     setClientLookupStatus("confirmed");
     setUseSuggestedAddress(null);
   };
@@ -401,6 +403,7 @@ export function BookingFlow({
     setSuggestedClient(null);
     setClientLookupStatus("declined");
     setClientName("");
+    setClientEmail("");
     setUseSuggestedAddress(null);
   };
 
@@ -547,7 +550,7 @@ export function BookingFlow({
 
   const ensureAppointment = useCallback(async () => {
     if (appointmentId) return appointmentId;
-    if (!selectedService || !date || !selectedTime || !clientName) return null;
+    if (!selectedService || !date || !selectedTime || !clientName || !isEmailValid) return null;
 
     setIsSubmitting(true);
     try {
@@ -558,6 +561,7 @@ export function BookingFlow({
         time: selectedTime,
         clientName,
         clientPhone,
+        clientEmail: normalizedClientEmail,
         isHomeVisit,
         addressCep: cep,
         addressLogradouro: logradouro,
@@ -588,6 +592,7 @@ export function BookingFlow({
     cep,
     cidade,
     clientName,
+    normalizedClientEmail,
     clientPhone,
     complemento,
     date,
@@ -600,6 +605,7 @@ export function BookingFlow({
     selectedService,
     selectedTime,
     tenant.slug,
+    isEmailValid,
   ]);
 
   const handleCopyPix = async () => {
@@ -615,7 +621,7 @@ export function BookingFlow({
     }
   };
 
-  const handleCreatePix = async () => {
+  const handleCreatePix = useCallback(async () => {
     if (!selectedService) return;
     const ensuredId = appointmentId ?? (await ensureAppointment());
     if (!ensuredId) return;
@@ -626,6 +632,7 @@ export function BookingFlow({
         appointmentId: ensuredId,
         tenantId: tenant.id,
         amount: payableSignalAmount,
+        payerEmail: normalizedClientEmail,
         payerName: clientName,
         payerPhone: clientPhone,
       });
@@ -640,7 +647,16 @@ export function BookingFlow({
       setPixStatus("error");
       setPixError("Erro ao gerar Pix. Tente novamente.");
     }
-  };
+  }, [
+    appointmentId,
+    clientName,
+    clientPhone,
+    ensureAppointment,
+    normalizedClientEmail,
+    payableSignalAmount,
+    selectedService,
+    tenant.id,
+  ]);
 
   useEffect(() => {
     if (paymentMethod === "pix") {
@@ -653,6 +669,51 @@ export function BookingFlow({
       setPixStatus("idle");
     }
   }, [paymentMethod]);
+
+  useEffect(() => {
+    if (step !== "PAYMENT" || paymentMethod !== "pix") {
+      return;
+    }
+    if (pixPayment || pixStatus !== "idle") {
+      return;
+    }
+    void handleCreatePix();
+  }, [handleCreatePix, paymentMethod, pixPayment, pixStatus, step]);
+
+  useEffect(() => {
+    if (step !== "PAYMENT" || paymentMethod !== "pix" || !appointmentId || !pixPayment) {
+      return;
+    }
+
+    let active = true;
+    const poll = async () => {
+      const result = await getPixPaymentStatus({
+        appointmentId,
+        tenantId: tenant.id,
+      });
+      if (!active || !result.ok) return;
+
+      if (result.data.internal_status === "paid") {
+        setPixError(null);
+        setStep("SUCCESS");
+        return;
+      }
+      if (result.data.internal_status === "failed") {
+        setPixStatus("error");
+        setPixError("O Pix não foi aprovado. Gere um novo QR Code para tentar novamente.");
+      }
+    };
+
+    void poll();
+    const interval = window.setInterval(() => {
+      void poll();
+    }, 4000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [appointmentId, paymentMethod, pixPayment, step, tenant.id]);
 
   useEffect(() => {
     if (
@@ -778,7 +839,7 @@ export function BookingFlow({
               token: data.token,
               paymentMethodId: data.paymentMethodId,
               installments: Number(data.installments) || 1,
-              payerEmail: data.cardholderEmail || cardholderEmail,
+              payerEmail: data.cardholderEmail || normalizedClientEmail,
               payerName: clientName,
               payerPhone: clientPhone,
               identificationType: data.identificationType,
@@ -835,11 +896,11 @@ export function BookingFlow({
     };
   }, [
     appointmentId,
-    cardholderEmail,
     clientName,
     clientPhone,
     mercadoPagoPublicKey,
     ensureAppointment,
+    normalizedClientEmail,
     mpReady,
     paymentMethod,
     selectedService,
@@ -907,14 +968,6 @@ export function BookingFlow({
     setActiveMonth(next);
     setDate(format(next, "yyyy-MM-01"));
     setSelectedTime("");
-  };
-
-  const handleFinalizePix = async () => {
-    if (!appointmentId) {
-      const ensuredId = await ensureAppointment();
-      if (!ensuredId) return;
-    }
-    setStep("SUCCESS");
   };
 
   const handleSelectPayment = (method: PaymentMethod) => {
@@ -1058,6 +1111,7 @@ export function BookingFlow({
     setSelectedTime("");
     setMonthAvailability({});
     setClientName("");
+    setClientEmail("");
     setClientPhone("");
     setUseSuggestedAddress(null);
     setAddressMode(null);
@@ -1114,7 +1168,7 @@ export function BookingFlow({
 
   const isNextDisabled = useMemo(() => {
     if (step === "IDENT") {
-      return !isPhoneValid || !clientName.trim() || clientLookupStatus === "found";
+      return !isPhoneValid || !clientName.trim() || !isEmailValid || clientLookupStatus === "found";
     }
     if (step === "SERVICE") {
       return !selectedService;
@@ -1126,17 +1180,19 @@ export function BookingFlow({
       return !addressComplete || !displacementReady;
     }
     if (step === "CONFIRM") {
-      return isSubmitting;
+      return isSubmitting || !paymentMethod;
     }
     return false;
   }, [
     addressComplete,
+    isEmailValid,
     displacementReady,
     clientLookupStatus,
     clientName,
     date,
     isPhoneValid,
     isSubmitting,
+    paymentMethod,
     selectedService,
     selectedTime,
     step,
@@ -1310,17 +1366,37 @@ export function BookingFlow({
               )}
 
               {clientLookupStatus !== "found" && isPhoneValid && (
-                <div className="transition-opacity duration-500">
-                  <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                    Seu Nome
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-transparent border-b-2 border-gray-200 py-4 text-center text-2xl font-serif text-studio-text outline-none transition focus:border-studio-green"
-                    placeholder="Como te chamamos?"
-                    value={clientName}
-                    onChange={(event) => setClientName(event.target.value)}
-                  />
+                <div className="space-y-4 transition-opacity duration-500">
+                  <div>
+                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                      Seu Nome
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-transparent border-b-2 border-gray-200 py-4 text-center text-2xl font-serif text-studio-text outline-none transition focus:border-studio-green"
+                      placeholder="Como te chamamos?"
+                      value={clientName}
+                      onChange={(event) => setClientName(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                      Seu Email
+                    </label>
+                    <input
+                      type="email"
+                      inputMode="email"
+                      className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                      placeholder="voce@exemplo.com"
+                      value={clientEmail}
+                      onChange={(event) => setClientEmail(event.target.value)}
+                    />
+                    {clientEmail && !isEmailValid && (
+                      <p className="mt-2 text-center text-xs text-red-500">
+                        Informe um email válido para confirmar o agendamento.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1860,6 +1936,39 @@ export function BookingFlow({
                 </span>
               </div>
 
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                  Forma de pagamento
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPayment("pix")}
+                    className={`py-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                      paymentMethod === "pix"
+                        ? "bg-green-50 border-studio-green text-studio-green"
+                        : "bg-white border-stone-200 text-gray-500"
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4" /> PIX
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPayment("card")}
+                    className={`py-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                      paymentMethod === "card"
+                        ? "bg-green-50 border-studio-green text-studio-green"
+                        : "bg-white border-stone-200 text-gray-500"
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" /> Cartão
+                  </button>
+                </div>
+                {!paymentMethod && (
+                  <p className="mt-2 text-xs text-gray-400">Selecione Pix ou Cartão para continuar.</p>
+                )}
+              </div>
+
               <p className="text-[10px] text-center text-gray-400">
                 Protocolo: {protocol || "AGD-000"}
               </p>
@@ -1889,38 +1998,12 @@ export function BookingFlow({
                   Valor mínimo do Mercado Pago: R$ 1,00. O sinal foi ajustado para esse mínimo.
                 </p>
               )}
-              <p className="text-xs text-gray-400 mb-4">Selecione o método:</p>
-
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <button
-                  type="button"
-                  onClick={() => handleSelectPayment("pix")}
-                  className={`py-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                    paymentMethod === "pix"
-                      ? "bg-green-50 border-studio-green text-studio-green"
-                      : "bg-white border-stone-200 text-gray-500"
-                  }`}
-                >
-                  <QrCode className="w-4 h-4" /> PIX
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectPayment("card")}
-                  className={`py-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                    paymentMethod === "card"
-                      ? "bg-green-50 border-studio-green text-studio-green"
-                      : "bg-white border-stone-200 text-gray-500"
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4" /> Cartão
-                </button>
-              </div>
-
-              {!paymentMethod && (
-                <div className="bg-stone-50 border border-dashed border-gray-200 rounded-2xl p-6 text-center text-xs text-gray-400">
-                  Escolha Pix ou Cartão para continuar.
-                </div>
-              )}
+              <p className="text-xs text-gray-400 mb-4">
+                Método selecionado:{" "}
+                <span className="font-bold text-studio-text">
+                  {paymentMethod === "pix" ? "Pix" : "Cartão"}
+                </span>
+              </p>
 
               {paymentMethod === "pix" && (
                 <div className="space-y-4">
@@ -1961,7 +2044,7 @@ export function BookingFlow({
                     className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl"
                     disabled={pixStatus === "loading"}
                   >
-                    {pixStatus === "loading" ? "Gerando Pix..." : "Gerar Pix"}
+                    {pixStatus === "loading" ? "Gerando Pix..." : "Gerar novo Pix"}
                   </button>
 
                   <button
@@ -1971,14 +2054,9 @@ export function BookingFlow({
                   >
                     <Copy className="w-4 h-4" /> Copiar chave Pix
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={handleFinalizePix}
-                    className="w-full bg-studio-green-dark text-white font-bold py-3 rounded-2xl"
-                  >
-                    Já fiz o Pix! Finalizar
-                  </button>
+                  <p className="text-[11px] text-center text-gray-500">
+                    Assim que o Pix for aprovado, esta tela avança automaticamente.
+                  </p>
                 </div>
               )}
 
@@ -2042,7 +2120,7 @@ export function BookingFlow({
                       name="cardholderEmail"
                       type="email"
                       readOnly
-                      value={cardholderEmail}
+                      value={normalizedClientEmail}
                       className="hidden"
                     />
                     <button

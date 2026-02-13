@@ -24,7 +24,7 @@ interface CardPaymentResult {
   transaction_amount: number;
 }
 
-interface CardPaymentStatusResult {
+interface PaymentStatusResult {
   internal_status: "paid" | "pending" | "failed";
 }
 
@@ -514,12 +514,14 @@ export async function createPixPayment({
   appointmentId,
   tenantId,
   amount,
+  payerEmail,
   payerName,
   payerPhone,
 }: {
   appointmentId: string;
   tenantId: string;
   amount: number;
+  payerEmail: string;
   payerName: string;
   payerPhone: string;
 }): Promise<ActionResult<PixPaymentResult>> {
@@ -543,7 +545,7 @@ export async function createPixPayment({
   const { firstName, lastName } = splitName(payerName);
   const phoneDigits = normalizePhoneValue(payerPhone);
   const payer = {
-    email: resolvePayerEmail({ providedEmail: null, phoneDigits }),
+    email: resolvePayerEmail({ providedEmail: payerEmail, phoneDigits }),
     first_name: firstName,
     last_name: lastName,
     phone: splitPhone(phoneDigits),
@@ -687,14 +689,44 @@ export async function getCardPaymentStatus({
 }: {
   appointmentId: string;
   tenantId: string;
-}): Promise<ActionResult<CardPaymentStatusResult>> {
+}): Promise<ActionResult<PaymentStatusResult>> {
+  return getPaymentStatusByMethod({
+    appointmentId,
+    tenantId,
+    method: "card",
+  });
+}
+
+export async function getPixPaymentStatus({
+  appointmentId,
+  tenantId,
+}: {
+  appointmentId: string;
+  tenantId: string;
+}): Promise<ActionResult<PaymentStatusResult>> {
+  return getPaymentStatusByMethod({
+    appointmentId,
+    tenantId,
+    method: "pix",
+  });
+}
+
+async function getPaymentStatusByMethod({
+  appointmentId,
+  tenantId,
+  method,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  method: "card" | "pix";
+}): Promise<ActionResult<PaymentStatusResult>> {
   const supabase = createServiceClient();
   const { data: payments, error } = await supabase
     .from("appointment_payments")
     .select("status")
     .eq("appointment_id", appointmentId)
     .eq("tenant_id", tenantId)
-    .eq("method", "card");
+    .eq("method", method);
 
   if (error) {
     return fail(
