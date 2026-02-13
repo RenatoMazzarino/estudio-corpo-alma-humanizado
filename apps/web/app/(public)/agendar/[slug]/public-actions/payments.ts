@@ -29,6 +29,7 @@ type InternalPaymentStatus = "paid" | "pending" | "failed";
 type MercadoPagoOrderPaymentMethod = {
   id?: string;
   type?: string;
+  issuer_id?: string | number;
   ticket_url?: string;
   qr_code?: string;
   qr_code_base64?: string;
@@ -96,11 +97,43 @@ const parseApiPayload = (payloadText: string) => {
   }
 };
 
+const getPayloadCauseMessage = (payload: Record<string, unknown> | null) => {
+  if (!payload) return null;
+  const cause = payload.cause;
+  if (!Array.isArray(cause)) return null;
+  const parts = cause
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const causeItem = item as Record<string, unknown>;
+      if (typeof causeItem.description === "string" && causeItem.description.trim().length > 0) {
+        return causeItem.description.trim();
+      }
+      if (typeof causeItem.code === "string" && causeItem.code.trim().length > 0) {
+        return causeItem.code.trim();
+      }
+      return null;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+
+  return parts.length > 0 ? parts.join(" | ") : null;
+};
+
 const getPayloadMessage = (
   payload: Record<string, unknown> | null,
   fallback: string
-) =>
-  payload && typeof payload.message === "string" ? payload.message : fallback;
+) => {
+  if (!payload) return fallback;
+  const directMessage =
+    typeof payload.message === "string" && payload.message.trim().length > 0
+      ? payload.message.trim()
+      : null;
+  const errorMessage =
+    typeof payload.error === "string" && payload.error.trim().length > 0
+      ? payload.error.trim()
+      : null;
+  const causeMessage = getPayloadCauseMessage(payload);
+  return directMessage ?? errorMessage ?? causeMessage ?? fallback;
+};
 
 const ensureValidPaymentContext = async ({
   appointmentId,
@@ -224,6 +257,7 @@ export async function createCardPayment({
   description,
   token,
   paymentMethodId,
+  issuerId,
   installments,
   payerEmail,
   payerName,
@@ -237,6 +271,7 @@ export async function createCardPayment({
   description: string;
   token: string;
   paymentMethodId: string;
+  issuerId?: string;
   installments: number;
   payerEmail: string;
   payerName: string;
@@ -282,6 +317,8 @@ export async function createCardPayment({
     Number(amount.toFixed(2)).toFixed(2),
     token,
   ]);
+  const normalizedInstallments = Number.isFinite(installments) ? Math.max(1, installments) : 1;
+  const normalizedIssuerId = issuerId?.trim() ? issuerId.trim() : null;
 
   let response: Response;
   try {
@@ -307,7 +344,8 @@ export async function createCardPayment({
                 id: paymentMethodId,
                 type: "credit_card",
                 token,
-                installments: Number.isFinite(installments) ? Math.max(1, installments) : 1,
+                installments: normalizedInstallments,
+                ...(normalizedIssuerId ? { issuer_id: normalizedIssuerId } : {}),
               },
             },
           ],
@@ -331,6 +369,12 @@ export async function createCardPayment({
   const payloadMessage = getPayloadMessage(payload, "Erro ao processar pagamento com cartão.");
 
   if (!response.ok) {
+    console.error("[create-card-payment] Mercado Pago error", {
+      appointmentId,
+      tenantId,
+      status: response.status,
+      payload,
+    });
     return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
   }
 
@@ -358,7 +402,7 @@ export async function createCardPayment({
   const installmentsValue =
     typeof orderPayment?.payment_method?.installments === "number"
       ? orderPayment.payment_method.installments
-      : installments || null;
+      : normalizedInstallments || null;
   const cardLast4 = null;
   const cardBrand = null;
 

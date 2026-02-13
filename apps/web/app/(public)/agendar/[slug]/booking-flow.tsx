@@ -725,6 +725,7 @@ export function BookingFlow({
               description: `Sinal ${selectedService.name}`,
               token: data.token,
               paymentMethodId: data.paymentMethodId,
+              issuerId: data.issuerId,
               installments: Number(data.installments) || 1,
               payerEmail: data.cardholderEmail || cardholderEmail,
               payerName: clientName,
@@ -732,9 +733,14 @@ export function BookingFlow({
               identificationType: data.identificationType,
               identificationNumber: data.identificationNumber,
             });
-          } catch {
+          } catch (error) {
+            console.error("[booking-flow] card payment submit failed", error);
             setCardStatus("error");
-            setCardError("Falha ao processar pagamento com cartão. Tente novamente.");
+            setCardError(
+              error instanceof Error && error.message
+                ? error.message
+                : "Falha ao processar pagamento com cartão. Tente novamente."
+            );
             cardSubmitInFlightRef.current = false;
             return;
           }
