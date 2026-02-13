@@ -73,7 +73,7 @@ export function VoucherOverlay({
     dom: "#C0A4B0",
     black30: "rgba(0, 0, 0, 0.3)",
     white12: "rgba(255, 255, 255, 0.12)",
-    notchCutout: "rgba(0, 0, 0, 0.58)",
+    notchCutout: "rgba(0, 0, 0, 0.75)",
     studioGreen25: "rgba(93, 110, 86, 0.25)",
     studioText80: "rgba(44, 51, 51, 0.8)",
     studioText70: "rgba(44, 51, 51, 0.7)",
@@ -88,7 +88,7 @@ export function VoucherOverlay({
         style={{ backgroundColor: "rgba(0, 0, 0, 0.75)" }}
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-[460px]">
+      <div className="relative z-10 w-full max-w-[468px]">
         <div className="absolute right-2 top-2 z-20">
           <button
             type="button"
@@ -102,10 +102,10 @@ export function VoucherOverlay({
           <div
             ref={voucherRef}
             data-voucher-capture="true"
-            className="w-full max-w-[404px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden"
+            className="w-full max-w-[420px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden"
             style={{ boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}
           >
-            <div className="bg-studio-green px-7 pt-5 pb-6 text-center relative overflow-hidden">
+            <div className="bg-studio-green px-7 pt-4 pb-5 text-center relative overflow-hidden">
               <svg
                 className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
                 style={{ color: colors.white12 }}
@@ -119,12 +119,12 @@ export function VoucherOverlay({
                 <Image
                   src="/brand/logo-white.png"
                   alt="Ícone Estúdio Corpo & Alma Humanizado"
-                  width={42}
-                  height={42}
-                  className="h-10 w-10 object-contain mb-2"
+                  width={58}
+                  height={58}
+                  className="h-14 w-14 object-contain mb-2"
                 />
                 <h3
-                  className="font-serif text-[24px] text-white leading-[1.15] mb-1"
+                  className="font-serif text-[26px] text-white leading-[1.12] mb-1"
                   style={{ fontFamily: "var(--font-serif), serif" }}
                 >
                   Estúdio Corpo & Alma
@@ -132,13 +132,13 @@ export function VoucherOverlay({
                   Humanizado
                 </h3>
                 <p
-                  className="font-serif italic text-[14px] text-white/85 leading-tight mb-2"
+                  className="font-serif italic text-[12px] text-white/85 leading-tight mb-2"
                   style={{ fontFamily: "var(--font-serif), serif" }}
                 >
                   Toque que alivia, cuidado que transforma.
                 </p>
                 <p
-                  className="font-signature text-[40px] -rotate-2 leading-none"
+                  className="font-signature text-[38px] -rotate-2 leading-none"
                   style={{ color: colors.dom }}
                 >
                   Voucher de Serviço
@@ -153,18 +153,18 @@ export function VoucherOverlay({
               />
               <div
                 className="absolute -left-4 -top-4 w-8 h-8 rounded-full"
-                style={{ backgroundColor: colors.notchCutout, backdropFilter: "blur(1px)" }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
               <div
                 className="absolute -right-4 -top-4 w-8 h-8 rounded-full"
-                style={{ backgroundColor: colors.notchCutout, backdropFilter: "blur(1px)" }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
             </div>
 
-            <div className="voucher-paper-texture px-6 py-6 pb-5 text-center text-studio-text">
+            <div className="voucher-paper-texture px-6 py-5 pb-4 text-center text-studio-text">
               <div className="flex items-center justify-center gap-2.5 mb-1">
                 <span
-                  className="font-serif text-4xl font-bold leading-none"
+                  className="font-serif text-[52px] font-semibold leading-none"
                   style={{ fontFamily: "var(--font-serif), serif" }}
                 >
                   {dayAndMonth}
@@ -174,18 +174,18 @@ export function VoucherOverlay({
                   style={{ backgroundColor: "rgba(44, 51, 51, 0.3)" }}
                 />
                 <span
-                  className="font-serif text-4xl font-bold leading-none"
+                  className="font-serif text-[52px] font-semibold leading-none"
                   style={{ fontFamily: "var(--font-serif), serif" }}
                 >
                   {selectedTime}
                 </span>
               </div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] mb-5 truncate px-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] mb-4 truncate px-2">
                 CLIENTE: {clientName || "CLIENTE"}
               </p>
 
               <div
-                className="border rounded-xl p-4 mb-5"
+                className="border rounded-xl p-4 mb-4"
                 style={{
                   borderColor: colors.studioGreen25,
                   backgroundColor: "rgba(255, 255, 255, 0.5)",
@@ -195,7 +195,7 @@ export function VoucherOverlay({
                   Procedimento
                 </p>
                 <h3
-                  className="font-serif text-[36px] text-studio-green leading-[1.05] mb-2 break-words"
+                  className="font-serif text-[56px] text-studio-green leading-[1.02] mb-2 break-words"
                   style={{ fontFamily: "var(--font-serif), serif" }}
                 >
                   {selectedServiceName}
@@ -221,11 +221,11 @@ export function VoucherOverlay({
               />
               <div
                 className="absolute -left-4 -top-4 w-8 h-8 rounded-full"
-                style={{ backgroundColor: colors.notchCutout, backdropFilter: "blur(1px)" }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
               <div
                 className="absolute -right-4 -top-4 w-8 h-8 rounded-full"
-                style={{ backgroundColor: colors.notchCutout, backdropFilter: "blur(1px)" }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
             </div>
 
