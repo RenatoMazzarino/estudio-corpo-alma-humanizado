@@ -9,6 +9,7 @@ interface ClientLookupResult {
   id: string;
   name: string;
   phone: string | null;
+  email: string | null;
   address_cep: string | null;
   address_logradouro: string | null;
   address_numero: string | null;
@@ -51,14 +52,14 @@ export async function lookupClientByPhone({
     ? await supabase
         .from("clients")
         .select(
-          "id, name, phone, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
+          "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
         )
         .eq("tenant_id", tenantId)
         .or(phoneFilters)
     : await supabase
         .from("clients")
         .select(
-          "id, name, phone, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
+          "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
         )
         .eq("tenant_id", tenantId);
 
@@ -86,7 +87,7 @@ export async function lookupClientByPhone({
     const { data: fallbackClients, error: fallbackError } = await supabase
       .from("clients")
       .select(
-        "id, name, phone, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
+        "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
       )
       .eq("tenant_id", tenantId)
       .not("phone", "is", null)
@@ -120,7 +121,7 @@ export async function lookupClientByPhone({
     const { data: extraClients, error: extraError } = await supabase
       .from("clients")
       .select(
-        "id, name, phone, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
+        "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
       )
       .eq("tenant_id", tenantId)
       .in("id", missingIds);
@@ -139,8 +140,39 @@ export async function lookupClientByPhone({
     phonesByClient.set(phoneEntry.client_id, list);
   });
 
+  const { data: clientEmails, error: emailsError } = await supabase
+    .from("client_emails")
+    .select("client_id, email, is_primary, created_at")
+    .eq("tenant_id", tenantId)
+    .in("client_id", Array.from(candidateIds));
+
+  if (emailsError) {
+    return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, emailsError));
+  }
+
+  const emailByClient = new Map<string, string>();
+  (clientEmails ?? [])
+    .sort((a, b) => {
+      if (a.is_primary === b.is_primary) {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return a.is_primary ? -1 : 1;
+    })
+    .forEach((entry) => {
+      if (!entry.email) return;
+      if (emailByClient.has(entry.client_id)) return;
+      emailByClient.set(entry.client_id, entry.email);
+    });
+
   const candidates = Array.from(candidateIds)
-    .map((id) => clientMap.get(id))
+    .map((id) => {
+      const client = clientMap.get(id);
+      if (!client) return null;
+      return {
+        ...client,
+        email: client.email ?? emailByClient.get(id) ?? null,
+      };
+    })
     .filter(Boolean) as ClientLookupResult[];
 
   const matchedClient =
@@ -162,7 +194,7 @@ export async function lookupClientByPhone({
   const { data: fallbackClients, error: fallbackClientsError } = await supabase
     .from("clients")
     .select(
-      "id, name, phone, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
+      "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
     )
     .eq("tenant_id", tenantId)
     .not("phone", "is", null)

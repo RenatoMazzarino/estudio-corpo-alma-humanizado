@@ -821,6 +821,7 @@ export async function submitPublicAppointment(data: {
   date: string;
   time: string;
   clientName: string;
+  clientEmail: string;
   clientPhone: string;
   isHomeVisit?: boolean;
   addressCep?: string;
@@ -871,6 +872,7 @@ export async function submitPublicAppointment(data: {
     p_start_time: startDateTime.toISOString(),
     client_name: parsed.data.clientName,
     client_phone: parsed.data.clientPhone,
+    p_client_email: parsed.data.clientEmail || undefined,
     p_address_cep: parsed.data.addressCep || undefined,
     p_address_logradouro: parsed.data.addressLogradouro || undefined,
     p_address_numero: parsed.data.addressNumero || undefined,

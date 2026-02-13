@@ -57,6 +57,7 @@ export const publicBookingSchema = z.object({
   date: z.string().min(10),
   time: z.string().min(4),
   clientName: z.string().min(1),
+  clientEmail: z.string().email("Email inválido"),
   clientPhone: z
     .string()
     .optional()

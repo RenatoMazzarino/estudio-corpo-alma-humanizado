@@ -10,6 +10,7 @@ interface PublicAppointmentInput {
   time: string;
   clientName: string;
   clientPhone: string;
+  clientEmail: string;
   isHomeVisit?: boolean;
   addressCep?: string;
   addressLogradouro?: string;
