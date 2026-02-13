@@ -111,6 +111,25 @@ const usesUnsupportedOrdersTestCredential = (token: string) => token.toUpperCase
 const ordersCredentialsMessage =
   "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação e valide em sandbox com usuários/cartões de teste.";
 const minimumTransactionAmount = 1;
+const defaultMercadoPagoTestPayerEmail = "test@testuser.com";
+
+const shouldUseMercadoPagoTestPayerEmail = () => {
+  return process.env.VERCEL_ENV !== "production";
+};
+
+const resolvePayerEmail = ({
+  providedEmail,
+  phoneDigits,
+}: {
+  providedEmail?: string | null;
+  phoneDigits: string;
+}) => {
+  if (shouldUseMercadoPagoTestPayerEmail()) {
+    return defaultMercadoPagoTestPayerEmail;
+  }
+  const normalized = providedEmail?.trim();
+  return normalized && normalized.length > 0 ? normalized : buildPayerEmail(phoneDigits);
+};
 
 const getPayloadCauseMessage = (payload: Record<string, unknown> | null) => {
   if (!payload) return null;
@@ -343,7 +362,7 @@ export async function createCardPayment({
   const phoneDigits = normalizePhoneValue(payerPhone);
 
   const payer: Record<string, unknown> = {
-    email: payerEmail || buildPayerEmail(phoneDigits),
+    email: resolvePayerEmail({ providedEmail: payerEmail, phoneDigits }),
     first_name: firstName,
     last_name: lastName,
     phone: splitPhone(phoneDigits),
@@ -532,7 +551,7 @@ export async function createPixPayment({
   const { firstName, lastName } = splitName(payerName);
   const phoneDigits = normalizePhoneValue(payerPhone);
   const payer = {
-    email: buildPayerEmail(phoneDigits),
+    email: resolvePayerEmail({ providedEmail: null, phoneDigits }),
     first_name: firstName,
     last_name: lastName,
     phone: splitPhone(phoneDigits),
