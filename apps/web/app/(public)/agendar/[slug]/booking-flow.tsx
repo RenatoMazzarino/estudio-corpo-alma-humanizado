@@ -205,9 +205,12 @@ export function BookingFlow({
     qr_code: string | null;
     qr_code_base64: string | null;
     transaction_amount: number;
+    created_at: string;
+    expires_at: string;
   } | null>(null);
   const [pixStatus, setPixStatus] = useState<"idle" | "loading" | "error">("idle");
   const [pixError, setPixError] = useState<string | null>(null);
+  const [pixNowMs, setPixNowMs] = useState(() => Date.now());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
   const [cardError, setCardError] = useState<string | null>(null);
@@ -280,6 +283,18 @@ export function BookingFlow({
     const [first, second] = parts;
     return `${first?.[0] ?? ""}${second?.[0] ?? first?.[1] ?? ""}`.toUpperCase();
   }, [suggestedClient?.name]);
+  const pixCreatedAtMs = pixPayment?.created_at ? Date.parse(pixPayment.created_at) : Number.NaN;
+  const pixExpiresAtMs = pixPayment?.expires_at ? Date.parse(pixPayment.expires_at) : Number.NaN;
+  const pixTotalMs =
+    Number.isFinite(pixCreatedAtMs) && Number.isFinite(pixExpiresAtMs) && pixExpiresAtMs > pixCreatedAtMs
+      ? pixExpiresAtMs - pixCreatedAtMs
+      : 24 * 60 * 60 * 1000;
+  const pixRemainingMs = Number.isFinite(pixExpiresAtMs)
+    ? Math.max(0, pixExpiresAtMs - pixNowMs)
+    : pixTotalMs;
+  const pixProgressPct = Math.max(0, Math.min(100, (pixRemainingMs / pixTotalMs) * 100));
+  const pixQrExpired = pixRemainingMs <= 0;
+  const pixRemainingLabel = formatCountdown(pixRemainingMs);
 
   const hasSuggestedAddress = Boolean(
     suggestedClient?.address_logradouro || suggestedClient?.address_cep
@@ -697,6 +712,19 @@ export function BookingFlow({
   }, [handleCreatePix, paymentMethod, pixPayment, pixStatus, step]);
 
   useEffect(() => {
+    if (step !== "PAYMENT" || paymentMethod !== "pix" || !pixPayment) {
+      return;
+    }
+    setPixNowMs(Date.now());
+    const interval = window.setInterval(() => {
+      setPixNowMs(Date.now());
+    }, 1000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [paymentMethod, pixPayment, step]);
+
+  useEffect(() => {
     if (step !== "PAYMENT" || paymentMethod !== "pix" || !appointmentId || !pixPayment) {
       return;
     }
@@ -716,7 +744,7 @@ export function BookingFlow({
       }
       if (result.data.internal_status === "failed") {
         setPixStatus("error");
-        setPixError("O Pix não foi aprovado. Gere um novo QR Code para tentar novamente.");
+        setPixError("O Pix não foi aprovado. Volte e gere um novo pagamento.");
       }
     };
 
@@ -2038,6 +2066,20 @@ export function BookingFlow({
                       {pixStatus === "loading" ? "Gerando Pix..." : "Aguardando Pagamento"}
                     </p>
                     <p className="text-xs text-gray-400">QR Code do Mercado Pago</p>
+                    {pixPayment && (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between text-[11px] text-gray-500">
+                          <span>Tempo máximo para pagamento</span>
+                          <span className="font-bold text-studio-text">{pixRemainingLabel}</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+                          <div
+                            className="h-full bg-studio-green transition-[width] duration-1000"
+                            style={{ width: `${pixProgressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {pixPayment?.qr_code && (
@@ -2047,20 +2089,18 @@ export function BookingFlow({
                   )}
 
                   {pixError && <p className="text-xs text-red-500">{pixError}</p>}
-
-                  <button
-                    type="button"
-                    onClick={handleCreatePix}
-                    className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl"
-                    disabled={pixStatus === "loading"}
-                  >
-                    {pixStatus === "loading" ? "Gerando Pix..." : "Gerar novo Pix"}
-                  </button>
+                  {pixQrExpired && (
+                    <p className="text-xs text-amber-700">
+                      Este QR Code expirou. Volte uma etapa e entre novamente no pagamento para gerar
+                      outro.
+                    </p>
+                  )}
 
                   <button
                     type="button"
                     onClick={handleCopyPix}
-                    className="w-full border-2 border-dashed border-studio-green text-studio-green font-bold py-3 rounded-2xl flex items-center justify-center gap-2"
+                    disabled={!pixPayment?.qr_code || pixStatus === "loading" || pixQrExpired}
+                    className="w-full border-2 border-dashed border-studio-green text-studio-green font-bold py-3 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40"
                   >
                     <Copy className="w-4 h-4" /> Copiar chave Pix
                   </button>
@@ -2310,6 +2350,20 @@ export function BookingFlow({
     </div>
   );
 }
+
+const formatCountdown = (milliseconds: number) => {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const twoDigits = (value: number) => value.toString().padStart(2, "0");
+
+  if (hours > 0) {
+    return `${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}`;
+  }
+  return `${twoDigits(minutes)}:${twoDigits(seconds)}`;
+};
 
 const formatCep = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 8);

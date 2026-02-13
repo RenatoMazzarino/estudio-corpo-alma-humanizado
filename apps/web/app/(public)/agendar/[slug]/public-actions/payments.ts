@@ -14,6 +14,8 @@ interface PixPaymentResult {
   qr_code: string | null;
   qr_code_base64: string | null;
   transaction_amount: number;
+  created_at: string;
+  expires_at: string;
 }
 
 interface CardPaymentResult {
@@ -36,6 +38,9 @@ type MercadoPagoOrderPaymentMethod = {
   ticket_url?: string;
   qr_code?: string;
   qr_code_base64?: string;
+  date_of_expiration?: string;
+  expiration_date?: string;
+  expiration_time?: string;
   installments?: number;
 };
 
@@ -44,6 +49,10 @@ type MercadoPagoOrderPayment = {
   amount?: string | number;
   status?: string;
   status_detail?: string;
+  date_of_expiration?: string;
+  expiration_date?: string;
+  created_date?: string;
+  date_created?: string;
   payment_method?: MercadoPagoOrderPaymentMethod | null;
 };
 
@@ -51,6 +60,10 @@ type MercadoPagoOrderResponse = {
   id?: string;
   status?: string;
   status_detail?: string;
+  created_date?: string;
+  date_created?: string;
+  date_of_expiration?: string;
+  expiration_date?: string;
   transactions?: {
     payments?: MercadoPagoOrderPayment[] | null;
   } | null;
@@ -91,6 +104,15 @@ const parseNumericAmount = (value: unknown, fallback: number) => {
   return fallback;
 };
 
+const parseIsoDate = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const timestamp = Date.parse(trimmed);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp).toISOString();
+};
+
 const parseApiPayload = (payloadText: string) => {
   if (!payloadText) return null;
   try {
@@ -111,6 +133,7 @@ const usesUnsupportedOrdersTestCredential = (token: string) => token.toUpperCase
 const ordersCredentialsMessage =
   "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação.";
 const minimumTransactionAmount = 1;
+const defaultPixTtlMs = 24 * 60 * 60 * 1000;
 
 const resolvePayerEmail = ({
   providedEmail,
@@ -643,6 +666,23 @@ export async function createPixPayment({
   const qrCode = paymentMethod?.qr_code ?? null;
   const qrCodeBase64 = paymentMethod?.qr_code_base64 ?? null;
   const transactionAmount = parseNumericAmount(orderPayment?.amount, amount);
+  const createdAt =
+    parseIsoDate(orderPayment?.created_date) ??
+    parseIsoDate(orderPayment?.date_created) ??
+    parseIsoDate(orderPayload?.created_date) ??
+    parseIsoDate(orderPayload?.date_created) ??
+    new Date().toISOString();
+  const providerExpiresAt =
+    parseIsoDate(paymentMethod?.date_of_expiration) ??
+    parseIsoDate(paymentMethod?.expiration_date) ??
+    parseIsoDate(paymentMethod?.expiration_time) ??
+    parseIsoDate(orderPayment?.date_of_expiration) ??
+    parseIsoDate(orderPayment?.expiration_date) ??
+    parseIsoDate(orderPayload?.date_of_expiration) ??
+    parseIsoDate(orderPayload?.expiration_date);
+  const expiresAt =
+    providerExpiresAt ??
+    new Date(new Date(createdAt).getTime() + defaultPixTtlMs).toISOString();
 
   const result: PixPaymentResult = {
     id: providerRef,
@@ -651,6 +691,8 @@ export async function createPixPayment({
     qr_code: qrCode,
     qr_code_base64: qrCodeBase64,
     transaction_amount: transactionAmount,
+    created_at: createdAt,
+    expires_at: expiresAt,
   };
 
   const supabase = createServiceClient();
