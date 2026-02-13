@@ -103,6 +103,11 @@ const normalizeMercadoPagoToken = (value: string | undefined | null) => {
   return trimmed.replace(/^Bearer\s+/i, "");
 };
 
+const usesUnsupportedOrdersTestCredential = (token: string) => token.toUpperCase().startsWith("TEST-");
+
+const ordersCredentialsMessage =
+  "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação e valide em sandbox com usuários/cartões de teste.";
+
 const getPayloadCauseMessage = (payload: Record<string, unknown> | null) => {
   if (!payload) return null;
   const cause = payload.cause;
@@ -321,6 +326,9 @@ export async function createCardPayment({
       )
     );
   }
+  if (usesUnsupportedOrdersTestCredential(accessToken)) {
+    return fail(new AppError(ordersCredentialsMessage, "CONFIG_ERROR", 500));
+  }
 
   const { firstName, lastName } = splitName(payerName);
   const phoneDigits = normalizePhoneValue(payerPhone);
@@ -405,8 +413,7 @@ export async function createCardPayment({
       payload,
       payloadText: payloadText.slice(0, 2000),
     });
-    const unauthorizedMessage =
-      "Falha de autenticação com Mercado Pago (401). Verifique no Vercel Preview se MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY (ou NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY) são credenciais de TESTE da mesma aplicação e sem prefixo 'Bearer'.";
+    const unauthorizedMessage = `Falha de autenticação com Mercado Pago (401). ${ordersCredentialsMessage}`;
     return fail(
       new AppError(
         response.status === 401 ? `${unauthorizedMessage} Detalhe: ${payloadMessage}` : payloadMessage,
@@ -514,6 +521,9 @@ export async function createPixPayment({
       )
     );
   }
+  if (usesUnsupportedOrdersTestCredential(accessToken)) {
+    return fail(new AppError(ordersCredentialsMessage, "CONFIG_ERROR", 500));
+  }
 
   const { firstName, lastName } = splitName(payerName);
   const phoneDigits = normalizePhoneValue(payerPhone);
@@ -583,8 +593,7 @@ export async function createPixPayment({
       payload,
       payloadText: payloadText.slice(0, 2000),
     });
-    const unauthorizedMessage =
-      "Falha de autenticação com Mercado Pago (401). Verifique no Vercel Preview se MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY (ou NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY) são credenciais de TESTE da mesma aplicação e sem prefixo 'Bearer'.";
+    const unauthorizedMessage = `Falha de autenticação com Mercado Pago (401). ${ordersCredentialsMessage}`;
     return fail(
       new AppError(
         response.status === 401 ? `${unauthorizedMessage} Detalhe: ${payloadMessage}` : payloadMessage,

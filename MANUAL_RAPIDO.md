@@ -387,6 +387,8 @@ Regra fixa do Mercado Pago neste projeto:
 - Modelo oficial: **Checkout Transparente** (implementado com Orders API + webhook).
 - **Nao usar Checkout Pro** neste repositorio.
 - Se aparecer "Checkout API/Orders" na documentacao do Mercado Pago, para este projeto isso deve ser tratado como fluxo do Checkout Transparente.
+- A Orders API nao aceita `MERCADOPAGO_ACCESS_TOKEN` no formato `TEST-`.
+- Em dev/preview, usar credenciais de producao da mesma aplicacao e validar com usuarios/cartoes de teste.
 - Em dev com Vercel Authentication ativa, webhook do MP precisa de callback com `?x-vercel-protection-bypass=<VERCEL_AUTOMATION_BYPASS_SECRET>`.
 - Em producao, webhook deve usar URL sem bypass e responder server-to-server.
 - Em sandbox, Pix e validado por request de teste na Orders API (nao por compra real no checkout).

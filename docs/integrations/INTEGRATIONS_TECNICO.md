@@ -129,8 +129,8 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 
 ### Estratégia de variáveis
 - Production: credenciais live (MP + Supabase prod).
-- Preview: credenciais de teste.
-- Local: `.env.local` com chaves de sandbox.
+- Preview: credenciais de producao da aplicacao MP (Orders API nao aceita token `TEST-`) e cenarios sandbox com usuarios/cartoes de teste.
+- Local: `.env.local` com credenciais de producao da aplicacao MP e apenas cenarios de teste.
 - Slug publico canonico (todos os ambientes): `estudio-corpo-alma`.
 
 ### Teste de Pix em desenvolvimento (sandbox)

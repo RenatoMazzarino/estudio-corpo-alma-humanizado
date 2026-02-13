@@ -83,7 +83,8 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - Supabase de produção.
 
 2. Preview (Vercel Preview)
-- Credenciais MP de teste.
+- Credenciais MP de producao da mesma aplicacao (Orders API nao aceita `TEST-`).
+- Para sandbox em preview, usar usuarios/cartoes de teste no fluxo.
 - Webhook MP apontando para:
   - sem proteção Vercel:
 `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
@@ -100,7 +101,7 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 
 3. Local
 - `.env.local` em `apps/web/.env.local`.
-- Chaves de teste (nunca usar produção localmente).
+- Para Orders API, usar credenciais de producao da aplicacao e executar apenas cenarios de teste (usuarios/cartoes de teste).
 
 ## 5) Fluxo operacional do pagamento (resumo)
 
