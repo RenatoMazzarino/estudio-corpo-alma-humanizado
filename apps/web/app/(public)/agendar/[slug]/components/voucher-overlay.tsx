@@ -88,7 +88,7 @@ export function VoucherOverlay({
         style={{ backgroundColor: "rgba(0, 0, 0, 0.75)" }}
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-[430px]">
+      <div className="relative z-10 w-full max-w-[460px]">
         <div className="absolute right-2 top-2 z-20">
           <button
             type="button"
@@ -102,10 +102,10 @@ export function VoucherOverlay({
           <div
             ref={voucherRef}
             data-voucher-capture="true"
-            className="w-full max-w-[380px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden"
+            className="w-full max-w-[404px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden"
             style={{ boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}
           >
-            <div className="bg-studio-green px-8 py-7 pb-9 text-center relative overflow-hidden">
+            <div className="bg-studio-green px-7 pt-5 pb-6 text-center relative overflow-hidden">
               <svg
                 className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
                 style={{ color: colors.white12 }}
@@ -117,19 +117,28 @@ export function VoucherOverlay({
               </svg>
               <div className="relative z-10 flex flex-col items-center">
                 <Image
-                  src="/brand/logo-horizontal.png"
-                  alt="Estúdio Corpo & Alma Humanizado"
-                  width={170}
-                  height={55}
-                  className="h-11 w-auto object-contain mb-3"
+                  src="/brand/logo-white.png"
+                  alt="Ícone Estúdio Corpo & Alma Humanizado"
+                  width={42}
+                  height={42}
+                  className="h-10 w-10 object-contain mb-2"
                 />
-                <h3 className="font-serif text-[39px] sm:text-[45px] text-white leading-[1.1] mb-2">
+                <h3
+                  className="font-serif text-[24px] text-white leading-[1.15] mb-1"
+                  style={{ fontFamily: "var(--font-serif), serif" }}
+                >
                   Estúdio Corpo & Alma
                   <br />
                   Humanizado
-                </h3>                
+                </h3>
                 <p
-                  className="font-signature text-[52px] -rotate-2 leading-none"
+                  className="font-serif italic text-[14px] text-white/85 leading-tight mb-2"
+                  style={{ fontFamily: "var(--font-serif), serif" }}
+                >
+                  Toque que alivia, cuidado que transforma.
+                </p>
+                <p
+                  className="font-signature text-[40px] -rotate-2 leading-none"
                   style={{ color: colors.dom }}
                 >
                   Voucher de Serviço
@@ -152,21 +161,31 @@ export function VoucherOverlay({
               />
             </div>
 
-            <div className="voucher-paper-texture px-6 py-8 pb-7 text-center text-studio-text">
-              <div className="flex items-center justify-center gap-3 mb-1">
-                <span className="font-serif text-5xl font-bold leading-none">{dayAndMonth}</span>
+            <div className="voucher-paper-texture px-6 py-6 pb-5 text-center text-studio-text">
+              <div className="flex items-center justify-center gap-2.5 mb-1">
                 <span
-                  className="h-8 w-[2px]"
+                  className="font-serif text-4xl font-bold leading-none"
+                  style={{ fontFamily: "var(--font-serif), serif" }}
+                >
+                  {dayAndMonth}
+                </span>
+                <span
+                  className="h-7 w-[2px]"
                   style={{ backgroundColor: "rgba(44, 51, 51, 0.3)" }}
                 />
-                <span className="font-serif text-5xl font-bold leading-none">{selectedTime}</span>
+                <span
+                  className="font-serif text-4xl font-bold leading-none"
+                  style={{ fontFamily: "var(--font-serif), serif" }}
+                >
+                  {selectedTime}
+                </span>
               </div>
-              <p className="text-[24px] font-bold uppercase tracking-[0.09em] mb-7 truncate px-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] mb-5 truncate px-2">
                 CLIENTE: {clientName || "CLIENTE"}
               </p>
 
               <div
-                className="border rounded-xl p-5 mb-7"
+                className="border rounded-xl p-4 mb-5"
                 style={{
                   borderColor: colors.studioGreen25,
                   backgroundColor: "rgba(255, 255, 255, 0.5)",
@@ -175,7 +194,10 @@ export function VoucherOverlay({
                 <p className="text-xs font-bold uppercase tracking-[0.2em] mb-2 text-studio-green">
                   Procedimento
                 </p>
-                <h3 className="font-serif text-[48px] text-studio-green leading-[1.05] mb-2 break-words">
+                <h3
+                  className="font-serif text-[36px] text-studio-green leading-[1.05] mb-2 break-words"
+                  style={{ fontFamily: "var(--font-serif), serif" }}
+                >
                   {selectedServiceName}
                 </h3>
                 <p className="text-sm" style={{ color: colors.studioText70 }}>
@@ -207,10 +229,10 @@ export function VoucherOverlay({
               />
             </div>
 
-            <div className="voucher-paper-texture px-6 py-6 rounded-b-[14px] flex items-end justify-between gap-4">
+            <div className="voucher-paper-texture px-6 py-4 rounded-b-[14px] flex items-end justify-between gap-4">
               <div className="text-left min-w-0">
                 <p
-                  className="font-signature text-[64px] mb-1 ml-[-5px] leading-none"
+                  className="font-signature text-[58px] mb-1 ml-[-5px] leading-none"
                   style={{ color: colors.studioText, transform: "rotate(-3deg)" }}
                 >
                   Janaina Santos
