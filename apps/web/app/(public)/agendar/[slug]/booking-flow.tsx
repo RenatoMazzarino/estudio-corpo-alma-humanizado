@@ -126,20 +126,20 @@ type CardFormOptions = {
 
 const cardProcessingStages = [
   {
-    title: "Validando transação",
-    description: "Conferindo os dados do cartão com segurança.",
+    title: "Arrumando a maca",
+    description: "Estamos preparando seu momento de cuidado com carinho.",
   },
   {
-    title: "Analisando pagamento",
-    description: "Enviando a autorização para o Mercado Pago.",
+    title: "Esquentando o ambiente",
+    description: "Deixando tudo confortável enquanto o pagamento é validado.",
   },
   {
-    title: "Confirmando horário",
-    description: "Garantindo seu horário enquanto o pagamento é processado.",
+    title: "Separando seus óleos",
+    description: "Seu atendimento está sendo confirmado com segurança.",
   },
   {
-    title: "Finalizando confirmação",
-    description: "Quase pronto. Estamos concluindo tudo para você.",
+    title: "Seu horário está quase pronto",
+    description: "Finalizando os últimos detalhes do seu agendamento.",
   },
 ] as const;
 
