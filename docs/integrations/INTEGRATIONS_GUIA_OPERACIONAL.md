@@ -21,6 +21,7 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - Criticidade: alta.
 - Regra fixa: este projeto usa somente Checkout Transparente.
 - Fora de escopo: Checkout Pro.
+- Eventos de webhook usados no sistema: `payment` e `order` (somente).
 
 4. WhatsApp
 - Função: mensagens assistidas (deep link e compartilhamento de voucher).
@@ -74,6 +75,9 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - Credenciais MP de produção.
 - Webhook MP apontando para:
 `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- Eventos selecionados no painel MP:
+  - `Pagamentos`
+  - `Order (Mercado Pago)`
 - O endpoint precisa responder sem bloqueio de autenticação (teste rápido com `GET` retornando `200`).
 - Segredo do webhook em `MERCADOPAGO_WEBHOOK_SECRET`.
 - Supabase de produção.
@@ -82,6 +86,9 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - Credenciais MP de teste.
 - Webhook MP apontando para:
 `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- Eventos selecionados no painel MP:
+  - `Pagamentos`
+  - `Order (Mercado Pago)`
 - O endpoint de preview precisa estar sem bloqueio de autenticação para chamadas de servidor para servidor.
 - Importante: evitar URL com query de bypass (`x-vercel-protection-bypass`) no callback do MP.
 - Motivo: o Mercado Pago envia `?data.id=...&type=...` na notificação e pode invalidar a query existente.
@@ -147,3 +154,4 @@ pnpm supabase db push             # remoto linkado
 - Não misturar credencial de produção em Preview/Local.
 - Não misturar segredo de webhook de produção em Preview.
 - Sempre validar ambiente ativo antes de teste de pagamento.
+- Não habilitar tópicos extras de webhook no MP sem necessidade real (gera ruído e risco operacional).

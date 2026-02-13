@@ -10,6 +10,32 @@ Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 - Implementação: `Orders API` + notificações de webhook (`payment` e `order`).
 - `Checkout Pro` não deve ser usado para este fluxo.
 
+## Configuração exata no painel Mercado Pago (dev e prod)
+1. URL de produção:
+- `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+
+2. URL de desenvolvimento (preview online):
+- `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+
+3. Eventos que devem ficar selecionados:
+- `Pagamentos`
+- `Order (Mercado Pago)`
+
+4. Eventos que devem ficar desmarcados para este projeto:
+- Vinculação de aplicações
+- Alertas de fraude
+- Reclamações
+- Card Updater
+- Contestações
+- Envios (Mercado Pago)
+- Outros eventos
+- Planos e assinaturas
+- Integrações Point
+- Delivery (proximity marketplace)
+- Wallet Connect
+- Pedidos comerciais
+- Self Service
+
 ## Estado validado nesta data
 - Callback de produção configurado no MP:
   - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
@@ -26,6 +52,14 @@ Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 - O MP envia notificações com query (`?data.id=...&type=...`).
 - Quando a URL já depende de query para bypass de proteção, a chamada pode chegar inválida.
 - Resultado: autenticação falha e o webhook não entrega.
+
+## Sobre `Protection Bypass for Automation` (Vercel)
+- O recurso existe para permitir acesso automático em deployments protegidos.
+- Funciona por header `x-vercel-protection-bypass` (recomendado) ou query param com o mesmo nome.
+- Em webhook de terceiro (como MP), normalmente não há controle de header; por isso sobra apenas query param na URL.
+- Neste projeto, o uso por query no callback do MP já gerou `401` em cenário real e aumentou instabilidade.
+- Decisão operacional: para webhook MP, preferir endpoint público sem bloqueio de autenticação.
+- Usar bypass apenas como contingência temporária e sempre com simulação validada (`200/201`) antes de produção.
 
 ## Regra operacional obrigatória
 1. Webhook (produção e preview) deve estar acessível sem autenticação para chamadas server-to-server.
