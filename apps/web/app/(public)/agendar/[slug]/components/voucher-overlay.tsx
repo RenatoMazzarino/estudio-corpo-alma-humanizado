@@ -73,8 +73,7 @@ export function VoucherOverlay({
     dom: "#C0A4B0",
     black30: "rgba(0, 0, 0, 0.3)",
     white12: "rgba(255, 255, 255, 0.12)",
-    notchFill: "rgba(250, 249, 246, 0.22)",
-    notchBorder: "rgba(44, 51, 51, 0.18)",
+    notchCutout: "rgba(250, 249, 246, 0.98)",
     studioGreen25: "rgba(93, 110, 86, 0.25)",
     studioText80: "rgba(44, 51, 51, 0.8)",
     studioText70: "rgba(44, 51, 51, 0.7)",
@@ -145,17 +144,11 @@ export function VoucherOverlay({
               />
               <div
                 className="absolute -left-4 -top-4 w-8 h-8 rounded-full"
-                style={{
-                  backgroundColor: colors.notchFill,
-                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
-                }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
               <div
                 className="absolute -right-4 -top-4 w-8 h-8 rounded-full"
-                style={{
-                  backgroundColor: colors.notchFill,
-                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
-                }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
             </div>
 
@@ -206,17 +199,11 @@ export function VoucherOverlay({
               />
               <div
                 className="absolute -left-4 -top-4 w-8 h-8 rounded-full"
-                style={{
-                  backgroundColor: colors.notchFill,
-                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
-                }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
               <div
                 className="absolute -right-4 -top-4 w-8 h-8 rounded-full"
-                style={{
-                  backgroundColor: colors.notchFill,
-                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
-                }}
+                style={{ backgroundColor: colors.notchCutout }}
               />
             </div>
 

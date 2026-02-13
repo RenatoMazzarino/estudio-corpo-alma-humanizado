@@ -888,8 +888,10 @@ export function BookingFlow({
 
       const node = voucherRef.current;
       const rect = node.getBoundingClientRect();
-      const targetWidth = Math.max(380, Math.round(rect.width));
-      const targetHeight = Math.max(620, Math.round(rect.height));
+      const measuredWidth = node.scrollWidth > 0 ? node.scrollWidth : Math.round(rect.width);
+      const measuredHeight = node.scrollHeight > 0 ? node.scrollHeight : Math.round(rect.height);
+      const targetWidth = Math.max(380, measuredWidth);
+      const targetHeight = Math.max(620, measuredHeight);
       const pixelRatio = 2;
       const options = {
         cacheBust: true,
