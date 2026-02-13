@@ -29,7 +29,6 @@ type InternalPaymentStatus = "paid" | "pending" | "failed";
 type MercadoPagoOrderPaymentMethod = {
   id?: string;
   type?: string;
-  issuer_id?: string | number;
   ticket_url?: string;
   qr_code?: string;
   qr_code_base64?: string;
@@ -288,10 +287,8 @@ export async function createCardPayment({
   appointmentId,
   tenantId,
   amount,
-  description,
   token,
   paymentMethodId,
-  issuerId,
   installments,
   payerEmail,
   payerName,
@@ -302,10 +299,8 @@ export async function createCardPayment({
   appointmentId: string;
   tenantId: string;
   amount: number;
-  description: string;
   token: string;
   paymentMethodId: string;
-  issuerId?: string;
   installments: number;
   payerEmail: string;
   payerName: string;
@@ -355,7 +350,6 @@ export async function createCardPayment({
     token,
   ]);
   const normalizedInstallments = Number.isFinite(installments) ? Math.max(1, installments) : 1;
-  const normalizedIssuerId = issuerId?.trim() ? issuerId.trim() : null;
 
   let response: Response;
   try {
@@ -376,13 +370,11 @@ export async function createCardPayment({
           payments: [
             {
               amount: amount.toFixed(2),
-              description,
               payment_method: {
                 id: paymentMethodId,
                 type: "credit_card",
                 token,
                 installments: normalizedInstallments,
-                ...(normalizedIssuerId ? { issuer_id: normalizedIssuerId } : {}),
               },
             },
           ],
@@ -497,14 +489,12 @@ export async function createPixPayment({
   appointmentId,
   tenantId,
   amount,
-  description,
   payerName,
   payerPhone,
 }: {
   appointmentId: string;
   tenantId: string;
   amount: number;
-  description: string;
   payerName: string;
   payerPhone: string;
 }): Promise<ActionResult<PixPaymentResult>> {
@@ -559,7 +549,6 @@ export async function createPixPayment({
           payments: [
             {
               amount: amount.toFixed(2),
-              description,
               payment_method: {
                 id: "pix",
                 type: "bank_transfer",

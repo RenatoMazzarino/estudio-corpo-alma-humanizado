@@ -617,7 +617,6 @@ export function BookingFlow({
         appointmentId: ensuredId,
         tenantId: tenant.id,
         amount: signalAmount,
-        description: `Sinal ${selectedService.name}`,
         payerName: clientName,
         payerPhone: clientPhone,
       });
@@ -722,10 +721,8 @@ export function BookingFlow({
               appointmentId: ensuredId,
               tenantId: tenant.id,
               amount: signalAmount,
-              description: `Sinal ${selectedService.name}`,
               token: data.token,
               paymentMethodId: data.paymentMethodId,
-              issuerId: data.issuerId,
               installments: Number(data.installments) || 1,
               payerEmail: data.cardholderEmail || cardholderEmail,
               payerName: clientName,
