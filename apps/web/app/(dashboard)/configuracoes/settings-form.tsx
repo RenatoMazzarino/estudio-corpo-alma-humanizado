@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { saveBusinessHours, saveSettings } from "./actions";
+import { Toast, useToast } from "../../../components/ui/toast";
+import { feedbackById, feedbackFromError } from "../../../src/shared/feedback/user-feedback";
 
 interface BusinessHourItem {
   day_of_week: number;
@@ -27,14 +28,19 @@ export function SettingsForm({
   signalPercentage,
   publicBaseUrl,
 }: SettingsFormProps) {
-  const [message, setMessage] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
 
   return (
     <div className="space-y-6">
+      <Toast toast={toast} />
       <form
         action={async (formData) => {
           const result = await saveBusinessHours(formData);
-          setMessage(result.ok ? "Horários atualizados." : result.error.message);
+          if (!result.ok) {
+            showToast(feedbackFromError(result.error, "generic"));
+            return;
+          }
+          showToast(feedbackById("generic_saved", { tone: "success", message: "Horarios atualizados." }));
         }}
         className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4"
       >
@@ -72,7 +78,11 @@ export function SettingsForm({
       <form
         action={async (formData) => {
           const result = await saveSettings(formData);
-          setMessage(result.ok ? "Configurações atualizadas." : result.error.message);
+          if (!result.ok) {
+            showToast(feedbackFromError(result.error, "generic"));
+            return;
+          }
+          showToast(feedbackById("generic_saved", { tone: "success", message: "Configuracoes atualizadas." }));
         }}
         className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4"
       >
@@ -121,8 +131,6 @@ export function SettingsForm({
         </div>
         <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar configurações</button>
       </form>
-
-      {message && <div className="text-xs text-gray-500">{message}</div>}
     </div>
   );
 }
