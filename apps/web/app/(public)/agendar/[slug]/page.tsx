@@ -21,6 +21,7 @@ export default async function PublicBookingPage(props: PageProps) {
   const params = await props.params;
   const mercadoPagoPublicKey =
     process.env.MERCADOPAGO_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? null;
+  const mercadoPagoTestMode = process.env.VERCEL_ENV !== "production";
 
   // 1. Validar Tenant pelo Slug
   const { data: tenant } = await getTenantBySlug(params.slug);
@@ -54,6 +55,7 @@ export default async function PublicBookingPage(props: PageProps) {
             signalPercentage={settings?.signal_percentage ?? 30}
             whatsappNumber={whatsappNumber}
             mercadoPagoPublicKey={mercadoPagoPublicKey}
+            mercadoPagoTestMode={mercadoPagoTestMode}
           />
         ) : (
           <div className="h-full flex items-center justify-center px-6">
