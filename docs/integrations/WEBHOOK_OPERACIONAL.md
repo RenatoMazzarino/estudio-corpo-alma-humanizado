@@ -58,8 +58,19 @@ Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 - Funciona por header `x-vercel-protection-bypass` (recomendado) ou query param com o mesmo nome.
 - Em webhook de terceiro (como MP), normalmente não há controle de header; por isso sobra apenas query param na URL.
 - Neste projeto, o uso por query no callback do MP já gerou `401` em cenário real e aumentou instabilidade.
+- Evidência observada: a notificação do MP chegou com `?data.id=...` concatenado na própria query do bypass, invalidando o token.
 - Decisão operacional: para webhook MP, preferir endpoint público sem bloqueio de autenticação.
 - Usar bypass apenas como contingência temporária e sempre com simulação validada (`200/201`) antes de produção.
+
+## Decisão prática por ambiente (sem ambiguidade)
+1. Dev (preview online)
+- Se `dev.public.../webhook` estiver com proteção e retornar `401`, o teste MP **não** é confiável.
+- Ação correta: deixar o endpoint de webhook acessível sem autenticação para chamadas server-to-server.
+- Só depois disso validar o fluxo MP em dev.
+
+2. Produção
+- Mesmo critério: endpoint de webhook público e assinatura validada no backend.
+- Não depender de bypass por query como arquitetura definitiva.
 
 ## Regra operacional obrigatória
 1. Webhook (produção e preview) deve estar acessível sem autenticação para chamadas server-to-server.
