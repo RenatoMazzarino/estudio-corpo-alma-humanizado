@@ -403,6 +403,7 @@ export async function createCardPayment({
       tenantId,
       status: response.status,
       payload,
+      payloadText: payloadText.slice(0, 2000),
     });
     const unauthorizedMessage =
       "Falha de autenticação com Mercado Pago (401). Verifique no Vercel Preview se MERCADOPAGO_ACCESS_TOKEN e NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY são credenciais de TESTE da mesma aplicação e sem prefixo 'Bearer'.";
@@ -575,6 +576,13 @@ export async function createPixPayment({
   const payloadMessage = getPayloadMessage(payload, "Erro ao criar pagamento Pix.");
 
   if (!response.ok) {
+    console.error("[create-pix-payment] Mercado Pago error", {
+      appointmentId,
+      tenantId,
+      status: response.status,
+      payload,
+      payloadText: payloadText.slice(0, 2000),
+    });
     const unauthorizedMessage =
       "Falha de autenticação com Mercado Pago (401). Verifique no Vercel Preview se MERCADOPAGO_ACCESS_TOKEN e NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY são credenciais de TESTE da mesma aplicação e sem prefixo 'Bearer'.";
     return fail(
