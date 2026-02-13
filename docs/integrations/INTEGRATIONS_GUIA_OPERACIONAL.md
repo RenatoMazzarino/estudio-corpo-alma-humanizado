@@ -71,8 +71,10 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 2. Preview (Vercel Preview)
 - Credenciais MP de teste.
 - Webhook MP apontando para:
-`https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook?x-vercel-protection-bypass=<token-de-automacao>`
-- Se o projeto estiver com Vercel Authentication ativo em preview, o parâmetro de bypass é obrigatório para evitar `401` no Mercado Pago.
+`https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- O endpoint de preview precisa estar sem bloqueio de autenticação para chamadas de servidor para servidor.
+- Importante: evitar URL com query de bypass (`x-vercel-protection-bypass`) no callback do MP.
+- Motivo: o Mercado Pago envia `?data.id=...&type=...` na notificação e pode invalidar a query existente.
 - Segredo do webhook de teste em `MERCADOPAGO_WEBHOOK_SECRET`.
 - Supabase de preview/teste.
 
@@ -119,7 +121,7 @@ pnpm supabase db push             # remoto linkado
 2. Webhook 401
 - Verificar `MERCADOPAGO_WEBHOOK_SECRET` no ambiente correto.
 - Verificar URL configurada no painel MP para o mesmo ambiente (preview/prod).
-- Em preview protegido, confirmar presença de `x-vercel-protection-bypass=<token-de-automacao>` na URL configurada.
+- Em preview, confirmar que o endpoint de webhook está público (sem Vercel Authentication para esse caminho/domínio).
 
 3. Pix gerado, mas status não atualiza
 - Verificar logs da rota `/api/mercadopago/webhook`.

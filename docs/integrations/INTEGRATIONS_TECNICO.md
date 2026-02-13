@@ -112,9 +112,9 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 - Preview fixo: `dev.public.corpoealmahumanizado.com.br`
 
 ### Observação de webhook em preview
-- Se Vercel Authentication estiver ativa em preview, a URL configurada no Mercado Pago precisa incluir
-  `?x-vercel-protection-bypass=<token-de-automacao>`.
-- Sem bypass, o Mercado Pago recebe `401` e não entrega atualização de status.
+- O endpoint de webhook do preview precisa estar público (sem Vercel Authentication no caminho/domínio do webhook).
+- Não usar callback do MP com query de bypass na URL (`x-vercel-protection-bypass`).
+- Motivo: o MP adiciona `?data.id=...&type=...` na notificação e pode invalidar query pré-existente.
 
 ### Estratégia de variáveis
 - Production: credenciais live (MP + Supabase prod).
