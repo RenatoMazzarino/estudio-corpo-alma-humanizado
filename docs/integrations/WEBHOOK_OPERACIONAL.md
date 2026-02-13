@@ -15,7 +15,10 @@ Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
 
 2. URL de desenvolvimento (preview online):
-- `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- sem proteção Vercel:
+  - `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- com Vercel Authentication ativa:
+  - `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook?x-vercel-protection-bypass=<VERCEL_AUTOMATION_BYPASS_SECRET>`
 
 3. Eventos que devem ficar selecionados:
 - `Pagamentos`
@@ -37,44 +40,39 @@ Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 - Self Service
 
 ## Estado validado nesta data
-- Callback de produção configurado no MP:
-  - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
-- Resultado de teste HTTP em produção:
-  - `404` (endpoint indisponível no deploy atual do domínio)
-- Callback de preview com proteção Vercel:
-  - retornou `401` em simulação MP quando o callback depende de query de bypass.
+- Simulação no painel do MP para `payment` em dev: `200 - OK`.
+- Simulação no painel do MP para `order` em dev: `200 - OK`.
+- Conclusão prática: callback de dev com bypass por query funcionou no painel do MP.
 
 ## Causa prática
 1. Produção:
-- O domínio de produção está apontando para deploy antigo (sem rota de webhook disponível).
+- Qualquer `404/401` indica problema de domínio/deploy/proteção no endpoint real da rota.
+- Necessário validar o domínio final após cada deploy.
 
 2. Preview protegido:
-- O MP envia notificações com query (`?data.id=...&type=...`).
-- Quando a URL já depende de query para bypass de proteção, a chamada pode chegar inválida.
-- Resultado: autenticação falha e o webhook não entrega.
+- Sem bypass, o MP recebe `401` porque webhook é chamada server-to-server e não faz login na Vercel.
+- Com bypass correto no callback, o webhook consegue acessar o endpoint protegido.
 
 ## Sobre `Protection Bypass for Automation` (Vercel)
 - O recurso existe para permitir acesso automático em deployments protegidos.
 - Funciona por header `x-vercel-protection-bypass` (recomendado) ou query param com o mesmo nome.
 - Em webhook de terceiro (como MP), normalmente não há controle de header; por isso sobra apenas query param na URL.
-- Neste projeto, o uso por query no callback do MP já gerou `401` em cenário real e aumentou instabilidade.
-- Evidência observada: a notificação do MP chegou com `?data.id=...` concatenado na própria query do bypass, invalidando o token.
-- Decisão operacional: para webhook MP, preferir endpoint público sem bloqueio de autenticação.
-- Usar bypass apenas como contingência temporária e sempre com simulação validada (`200/201`) antes de produção.
+- Em dev protegido, o bypass por query é o caminho operacional para webhook do MP.
+- Em produção, o recomendado é não depender de bypass e manter webhook público com assinatura válida no backend.
 
 ## Decisão prática por ambiente (sem ambiguidade)
 1. Dev (preview online)
-- Se `dev.public.../webhook` estiver com proteção e retornar `401`, o teste MP **não** é confiável.
-- Ação correta: deixar o endpoint de webhook acessível sem autenticação para chamadas server-to-server.
-- Só depois disso validar o fluxo MP em dev.
+- Se houver Vercel Authentication ativa, usar callback com `?x-vercel-protection-bypass=<secret>`.
+- Confirmar simulação `payment` e `order` no painel MP com retorno `200/201`.
 
 2. Produção
-- Mesmo critério: endpoint de webhook público e assinatura validada no backend.
-- Não depender de bypass por query como arquitetura definitiva.
+- Usar callback sem bypass.
+- Garantir endpoint público para chamadas server-to-server.
+- Manter validação de assinatura (`x-signature`) ativa no backend.
 
 ## Regra operacional obrigatória
-1. Webhook (produção e preview) deve estar acessível sem autenticação para chamadas server-to-server.
-2. Não usar callback MP dependente de query de bypass como solução definitiva.
+1. Produção: webhook acessível sem autenticação extra.
+2. Dev protegido: callback com bypass por query é permitido e esperado.
 3. Sempre validar:
 - `GET /api/mercadopago/webhook` retorna `200` no domínio do ambiente.
 - Simulação de webhook MP retorna `200/201`.
@@ -82,6 +80,6 @@ Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 ## Checklist de liberação
 1. Confirmar domínio correto no projeto Vercel correto.
 2. Garantir deploy ativo com rota `/api/mercadopago/webhook`.
-3. Configurar callback no painel MP com URL pública do ambiente.
+3. Configurar callback no painel MP com URL correta do ambiente (em dev protegido, incluir bypass por query).
 4. Simular webhook `payment` e `order`.
 5. Verificar atualização em `appointment_payments` e `appointments.payment_status`.

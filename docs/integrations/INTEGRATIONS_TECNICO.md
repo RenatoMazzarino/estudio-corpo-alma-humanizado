@@ -117,16 +117,27 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 - Público: `public.corpoealmahumanizado.com.br`
 - Preview fixo: `dev.public.corpoealmahumanizado.com.br`
 
-### Observação de webhook em preview
-- O endpoint de webhook do preview precisa estar público (sem Vercel Authentication no caminho/domínio do webhook).
-- Não usar callback do MP com query de bypass na URL (`x-vercel-protection-bypass`).
-- Motivo: o MP adiciona `?data.id=...&type=...` na notificação e pode invalidar query pré-existente.
+### Observação de webhook por ambiente
+- Produção:
+  - usar callback sem bypass: `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+  - endpoint deve responder sem autenticação extra para chamada server-to-server.
+- Preview/Dev:
+  - se o domínio estiver protegido por Vercel Authentication, usar callback com bypass por query:
+    - `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook?x-vercel-protection-bypass=<VERCEL_AUTOMATION_BYPASS_SECRET>`
+  - motivo: webhook do MP não permite envio customizado do header de bypass; na prática o query param resolve o acesso em ambiente protegido.
+  - sempre validar no painel do MP (simulação `payment` e `order`) com resposta `200/201`.
 
 ### Estratégia de variáveis
 - Production: credenciais live (MP + Supabase prod).
 - Preview: credenciais de teste.
 - Local: `.env.local` com chaves de sandbox.
 - Slug publico canonico (todos os ambientes): `estudio-corpo-alma`.
+
+### Teste de Pix em desenvolvimento (sandbox)
+- No modelo `Checkout Transparente` com `Orders API`, o teste de Pix em sandbox não é compra real no checkout.
+- A validação oficial de Pix em dev é por request de teste no endpoint `POST /v1/orders` com payload predefinido.
+- Referência oficial: `https://www.mercadopago.com/developers/pt/docs/checkout-api-orders/integration-test/pix`.
+- Para cartão, o fluxo E2E completo continua via checkout com cartão de teste.
 
 ---
 
@@ -141,11 +152,12 @@ pnpm build
 3. Infra externa
 - GCP APIs habilitadas e billing ativo.
 - Webhook MP configurado para URL do ambiente correto.
- - Endpoint do webhook respondendo `200` sem bloqueio de autenticação para o ambiente alvo.
+ - Produção: endpoint do webhook respondendo `200` sem bloqueio de autenticação.
+ - Preview protegido: callback com `x-vercel-protection-bypass` e simulação MP respondendo `200/201`.
 4. Segurança
 - `MERCADOPAGO_WEBHOOK_SECRET` configurada e testada.
 5. Teste ponta a ponta
 - Agendar público.
-- Gerar Pix/cartão.
+- Gerar cartão (E2E em sandbox) e Pix (teste via API de Orders em sandbox).
 - Receber webhook.
 - Atualizar `appointment_payments` e `appointments.payment_status`.

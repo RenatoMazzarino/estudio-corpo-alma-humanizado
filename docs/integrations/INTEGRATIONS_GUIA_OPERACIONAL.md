@@ -85,13 +85,16 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 2. Preview (Vercel Preview)
 - Credenciais MP de teste.
 - Webhook MP apontando para:
+  - sem proteção Vercel:
 `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+  - com Vercel Authentication ativa:
+`https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook?x-vercel-protection-bypass=<VERCEL_AUTOMATION_BYPASS_SECRET>`
 - Eventos selecionados no painel MP:
   - `Pagamentos`
   - `Order (Mercado Pago)`
-- O endpoint de preview precisa estar sem bloqueio de autenticação para chamadas de servidor para servidor.
-- Importante: evitar URL com query de bypass (`x-vercel-protection-bypass`) no callback do MP.
-- Motivo: o Mercado Pago envia `?data.id=...&type=...` na notificação e pode invalidar a query existente.
+- O endpoint de preview precisa aceitar chamada server-to-server do MP.
+- Se preview estiver protegido, o callback com `x-vercel-protection-bypass` e obrigatorio para evitar `401`.
+- Validar no painel do MP com simulacao de `payment` e `order` retornando `200/201`.
 - Segredo do webhook de teste em `MERCADOPAGO_WEBHOOK_SECRET`.
 - Supabase de preview/teste.
 
@@ -124,7 +127,8 @@ pnpm supabase db push             # remoto linkado
 ```
 
 3. Smoke test funcional
-- Agendamento público com Pix.
+- Agendamento público com cartão (E2E de sandbox).
+- Pix em sandbox validado por request de teste da Orders API (nao compra real no checkout).
 - Recebimento de webhook.
 - Status financeiro atualizado.
 - Voucher abre e exporta imagem.
@@ -138,12 +142,14 @@ pnpm supabase db push             # remoto linkado
 2. Webhook 401
 - Verificar `MERCADOPAGO_WEBHOOK_SECRET` no ambiente correto.
 - Verificar URL configurada no painel MP para o mesmo ambiente (preview/prod).
-- Em preview, confirmar que o endpoint de webhook está público (sem Vercel Authentication para esse caminho/domínio).
+- Em preview protegido, confirmar callback com `?x-vercel-protection-bypass=<secret>`.
+- Em producao, nao usar bypass no callback.
 
 3. Pix gerado, mas status não atualiza
 - Verificar logs da rota `/api/mercadopago/webhook`.
 - Confirmar assinatura válida no header.
-- Confirmar disponibilidade do endpoint público (sem bloqueio de auth/firewall).
+- Em sandbox, lembrar que Pix e validado oficialmente por request de teste em `POST /v1/orders`.
+- Confirmar disponibilidade do endpoint (publico em producao, ou bypass valido no preview protegido).
 
 4. Cliente duplicado por telefone
 - Aplicar migration de normalização e unicidade:
