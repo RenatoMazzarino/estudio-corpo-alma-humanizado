@@ -120,7 +120,7 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 - Production: credenciais live (MP + Supabase prod).
 - Preview: credenciais de teste.
 - Local: `.env.local` com chaves de sandbox.
-- Local (opcional): `LOCAL_PUBLIC_BOOKING_SLUG` para mapear `demo-local` para slug real de tenant.
+- Slug publico canonico (todos os ambientes): `estudio-corpo-alma`.
 
 ---
 

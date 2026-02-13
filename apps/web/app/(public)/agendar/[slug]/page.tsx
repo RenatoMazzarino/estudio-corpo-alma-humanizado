@@ -19,19 +19,11 @@ interface PublicService {
 
 export default async function PublicBookingPage(props: PageProps) {
   const params = await props.params;
-  const localAliasSlug = process.env.LOCAL_PUBLIC_BOOKING_SLUG?.trim();
   const mercadoPagoPublicKey =
     process.env.MERCADOPAGO_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? null;
 
   // 1. Validar Tenant pelo Slug
-  let { data: tenant } = await getTenantBySlug(params.slug);
-
-  // Fallback opcional para ambiente local:
-  // permite mapear "demo-local" para outro slug apenas quando necessário.
-  if (!tenant && params.slug === "demo-local" && localAliasSlug && localAliasSlug !== params.slug) {
-    const fallbackResult = await getTenantBySlug(localAliasSlug);
-    tenant = fallbackResult.data;
-  }
+  const { data: tenant } = await getTenantBySlug(params.slug);
 
   if (!tenant) notFound();
 

@@ -339,7 +339,7 @@ https://public.corpoealmahumanizado.com.br/agendar/estudio-corpo-alma
 
 ### Dominios em local (dev)
 ```
-http://localhost:3000/agendar/demo-local
+http://localhost:3000/agendar/estudio-corpo-alma
 ```
 
 ### Alterar o slug (local e online)
@@ -359,11 +359,11 @@ where id = 'dccf4492-9576-479c-8594-2795bd6b81d7';
 2) Rode:
 ```sql
 update tenants
-set slug = 'demo-local'
+set slug = 'estudio-corpo-alma'
 where id = 'dccf4492-9576-479c-8594-2795bd6b81d7';
 ```
 
-Se quiser voltar o slug local para o padrao:
+Se quiser forcar novamente o slug canonico:
 ```sql
 update tenants
 set slug = 'estudio-corpo-alma'
