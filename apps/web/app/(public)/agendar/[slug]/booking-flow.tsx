@@ -1261,13 +1261,13 @@ export function BookingFlow({
 
       <header className="flex items-center justify-between px-6 py-4 bg-studio-bg/95 backdrop-blur-sm z-10">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 px-3 rounded-2xl bg-white shadow-soft border border-stone-100 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-white shadow-soft border border-stone-100 flex items-center justify-center shrink-0">
             <Image
-              src="/brand/logo-horizontal.png"
-              alt="Estúdio Corpo & Alma Humanizado"
-              width={132}
-              height={43}
-              className="h-6 w-auto object-contain"
+              src="/brand/logo.png"
+              alt="Ícone Estúdio Corpo & Alma Humanizado"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
               priority
             />
           </div>
