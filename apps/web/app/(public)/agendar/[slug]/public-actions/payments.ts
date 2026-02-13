@@ -97,6 +97,12 @@ const parseApiPayload = (payloadText: string) => {
   }
 };
 
+const normalizeMercadoPagoToken = (value: string | undefined | null) => {
+  if (!value) return "";
+  const trimmed = value.trim().replace(/^["']|["']$/g, "");
+  return trimmed.replace(/^Bearer\s+/i, "");
+};
+
 const getPayloadCauseMessage = (payload: Record<string, unknown> | null) => {
   if (!payload) return null;
   const cause = payload.cause;
@@ -118,6 +124,28 @@ const getPayloadCauseMessage = (payload: Record<string, unknown> | null) => {
   return parts.length > 0 ? parts.join(" | ") : null;
 };
 
+const getPayloadErrorsMessage = (payload: Record<string, unknown> | null) => {
+  if (!payload) return null;
+  const errors = payload.errors;
+  if (!Array.isArray(errors)) return null;
+  const parts = errors
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const errorItem = entry as Record<string, unknown>;
+      const message =
+        typeof errorItem.message === "string" && errorItem.message.trim().length > 0
+          ? errorItem.message.trim()
+          : null;
+      const code =
+        typeof errorItem.code === "string" && errorItem.code.trim().length > 0
+          ? errorItem.code.trim()
+          : null;
+      return message ?? code;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+  return parts.length > 0 ? parts.join(" | ") : null;
+};
+
 const getPayloadMessage = (
   payload: Record<string, unknown> | null,
   fallback: string
@@ -131,8 +159,9 @@ const getPayloadMessage = (
     typeof payload.error === "string" && payload.error.trim().length > 0
       ? payload.error.trim()
       : null;
+  const errorsMessage = getPayloadErrorsMessage(payload);
   const causeMessage = getPayloadCauseMessage(payload);
-  return directMessage ?? errorMessage ?? causeMessage ?? fallback;
+  return directMessage ?? errorMessage ?? errorsMessage ?? causeMessage ?? fallback;
 };
 
 const ensureValidPaymentContext = async ({
@@ -282,7 +311,7 @@ export async function createCardPayment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
   if (!accessToken) {
     return fail(
       new AppError(
@@ -375,7 +404,16 @@ export async function createCardPayment({
       status: response.status,
       payload,
     });
-    return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
+    const unauthorizedMessage =
+      "Falha de autenticação com Mercado Pago (401). Verifique no Vercel Preview se MERCADOPAGO_ACCESS_TOKEN e NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY são credenciais de TESTE da mesma aplicação e sem prefixo 'Bearer'.";
+    return fail(
+      new AppError(
+        response.status === 401 ? `${unauthorizedMessage} Detalhe: ${payloadMessage}` : payloadMessage,
+        "SUPABASE_ERROR",
+        response.status,
+        payload
+      )
+    );
   }
 
   const orderPayload = payload as MercadoPagoOrderResponse | null;
@@ -465,7 +503,7 @@ export async function createPixPayment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
   if (!accessToken) {
     return fail(
       new AppError(
@@ -537,7 +575,16 @@ export async function createPixPayment({
   const payloadMessage = getPayloadMessage(payload, "Erro ao criar pagamento Pix.");
 
   if (!response.ok) {
-    return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
+    const unauthorizedMessage =
+      "Falha de autenticação com Mercado Pago (401). Verifique no Vercel Preview se MERCADOPAGO_ACCESS_TOKEN e NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY são credenciais de TESTE da mesma aplicação e sem prefixo 'Bearer'.";
+    return fail(
+      new AppError(
+        response.status === 401 ? `${unauthorizedMessage} Detalhe: ${payloadMessage}` : payloadMessage,
+        "SUPABASE_ERROR",
+        response.status,
+        payload
+      )
+    );
   }
 
   const orderPayload = payload as MercadoPagoOrderResponse | null;

@@ -70,6 +70,12 @@ const parseSignatureHeader = (value: string | null): SignatureParts => {
   }, {});
 };
 
+const normalizeMercadoPagoToken = (value: string | undefined | null) => {
+  if (!value) return "";
+  const trimmed = value.trim().replace(/^["']|["']$/g, "");
+  return trimmed.replace(/^Bearer\s+/i, "");
+};
+
 const buildSignatureManifest = (dataId: string, requestId: string, ts: string) => {
   const parts: string[] = [];
   if (dataId) parts.push(`id:${dataId}`);
@@ -192,7 +198,7 @@ function getPaymentId(request: Request, body: Record<string, unknown> | null) {
 }
 
 export async function POST(request: Request) {
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
   const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
   if (!accessToken) {
     return NextResponse.json({ ok: false, error: "Missing Mercado Pago token" }, { status: 500 });
