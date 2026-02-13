@@ -50,7 +50,6 @@ import {
 } from "../app/(dashboard)/atendimento/[id]/actions";
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
 import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
-import type { AutoMessageTemplates } from "../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../src/shared/auto-messages.utils";
 import {
   getDurationHeight,
@@ -58,73 +57,14 @@ import {
   getTimeRangeMinutes,
   type TimeGridConfig,
 } from "../src/modules/agenda/time-grid";
-
-interface AppointmentClient {
-  id: string;
-  name: string;
-  initials: string | null;
-  phone?: string | null;
-  health_tags?: string[] | null;
-  endereco_completo?: string | null;
-}
-
-interface Appointment {
-  id: string;
-  service_name: string;
-  start_time: string;
-  finished_at: string | null;
-  clients: AppointmentClient | null;
-  status: string;
-  payment_status?: string | null;
-  is_home_visit?: boolean | null;
-  total_duration_minutes?: number | null;
-  service_duration_minutes?: number | null;
-  buffer_before_minutes?: number | null;
-  buffer_after_minutes?: number | null;
-  price?: number | null;
-}
-
-interface AvailabilityBlock {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  block_type?: string | null;
-  is_full_day?: boolean | null;
-}
-
-interface MobileAgendaProps {
-  appointments: Appointment[];
-  blocks: AvailabilityBlock[];
-  signalPercentage?: number;
-  publicBaseUrl?: string;
-  messageTemplates: AutoMessageTemplates;
-}
-
-type AgendaView = "day" | "week" | "month";
-
-type DayItem = {
-  id: string;
-  type: "appointment" | "block";
-  start_time: string;
-  finished_at: string | null;
-  service_duration_minutes: number | null;
-  buffer_before_minutes: number | null;
-  buffer_after_minutes: number | null;
-  clientName: string;
-  serviceName: string;
-  status: string;
-  payment_status?: string | null;
-  is_home_visit: boolean | null;
-  total_duration_minutes: number | null;
-  price?: number | null;
-  phone?: string | null;
-  address?: string | null;
-  block_type?: string | null;
-  is_full_day?: boolean | null;
-};
-
-const hiddenAppointmentStatuses = new Set(["canceled_by_client", "canceled_by_studio", "no_show"]);
+import {
+  hiddenAppointmentStatuses,
+  type AgendaView,
+  type Appointment,
+  type AvailabilityBlock,
+  type DayItem,
+  type MobileAgendaProps,
+} from "./agenda/mobile-agenda.types";
 
 export function MobileAgenda({
   appointments,
