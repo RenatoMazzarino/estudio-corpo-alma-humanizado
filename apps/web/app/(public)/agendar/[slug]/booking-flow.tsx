@@ -383,6 +383,8 @@ export function BookingFlow({
         return;
       }
       if (!result.ok) {
+        setClientName("");
+        setSuggestedClient(null);
         setClientLookupStatus("not_found");
         return;
       }
@@ -399,10 +401,10 @@ export function BookingFlow({
           address_estado: result.data.client.address_estado ?? null,
         });
         setClientName(result.data.client.name ?? "Cliente");
-        setClientEmail((current) => result.data.client?.email ?? current);
+        setClientEmail(result.data.client.email ?? "");
         setClientLookupStatus("found");
       } else {
-        setClientName("Cliente");
+        setClientName("");
         setSuggestedClient(null);
         setClientLookupStatus("not_found");
       }
@@ -1364,6 +1366,28 @@ export function BookingFlow({
                     </button>
                   </div>
                 </>
+              )}
+
+              {clientLookupStatus === "not_found" && isPhoneValid && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Não encontramos cadastro com esse WhatsApp. Para criar seu cadastro, precisamos do
+                  nome completo e do email.
+                </div>
+              )}
+
+              {clientLookupStatus === "not_found" && isPhoneValid && (
+                <div>
+                  <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                    Nome completo
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                    placeholder="Digite seu nome completo"
+                    value={clientName}
+                    onChange={(event) => setClientName(event.target.value)}
+                  />
+                </div>
               )}
 
               {isPhoneValid && (
