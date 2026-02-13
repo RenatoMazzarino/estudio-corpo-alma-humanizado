@@ -1290,13 +1290,13 @@ export function BookingFlow({
         {step === "WELCOME" && (
           <section className="flex-1 flex flex-col justify-between px-6 pb-10 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="pt-8 text-center">
-              <div className="w-20 h-20 bg-white rounded-full mx-auto mb-8 flex items-center justify-center shadow-soft">
+              <div className="mx-auto mb-8 flex items-center justify-center">
                 <Image
                   src="/brand/logo.png"
                   alt="Estúdio Corpo & Alma Humanizado"
-                  width={36}
-                  height={36}
-                  className="h-9 w-9 object-contain"
+                  width={132}
+                  height={132}
+                  className="h-[132px] w-[132px] object-contain"
                   priority
                 />
               </div>
