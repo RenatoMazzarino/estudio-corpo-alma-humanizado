@@ -184,7 +184,6 @@ export async function lookupClientByPhone({
           phoneMatchesAny(phoneEntry.number_e164, patterns)
       )
     ) ||
-    candidates[0] ||
     null;
 
   if (matchedClient) {
