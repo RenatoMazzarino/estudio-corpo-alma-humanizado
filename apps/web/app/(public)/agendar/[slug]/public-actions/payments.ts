@@ -106,6 +106,7 @@ const usesUnsupportedOrdersTestCredential = (token: string) => token.toUpperCase
 
 const ordersCredentialsMessage =
   "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação e valide em sandbox com usuários/cartões de teste.";
+const minimumTransactionAmount = 1;
 
 const getPayloadCauseMessage = (payload: Record<string, unknown> | null) => {
   if (!payload) return null;
@@ -179,6 +180,15 @@ const ensureValidPaymentContext = async ({
 }) => {
   if (amount <= 0) {
     return fail(new AppError("Valor de pagamento inválido.", "VALIDATION_ERROR", 400));
+  }
+  if (amount < minimumTransactionAmount) {
+    return fail(
+      new AppError(
+        "Valor mínimo para pagamento no Mercado Pago é R$ 1,00. Ajuste o sinal ou o valor do serviço.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
   }
 
   const supabase = createServiceClient();

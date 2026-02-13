@@ -142,6 +142,7 @@ const stepLabels: Partial<Record<Step, string>> = {
   LOCATION: "Passo 4 de 5",
   CONFIRM: "Passo 5 de 5",
 };
+const minimumMercadoPagoAmount = 1;
 
 export function BookingFlow({
   tenant,
@@ -234,7 +235,10 @@ export function BookingFlow({
     ? Math.min(Math.max(Number(signalPercentage), 0), 100)
     : 30;
   const signalAmount = Number((totalPrice * (normalizedSignalPercentage / 100)).toFixed(2));
-  void signalAmount;
+  const payableSignalAmount = Number(
+    Math.max(signalAmount, minimumMercadoPagoAmount).toFixed(2)
+  );
+  const signalAmountWasAdjusted = payableSignalAmount > signalAmount;
   const cardholderEmail = useMemo(() => {
     const digits = clientPhone.replace(/\D/g, "");
     return `cliente+${digits || "anon"}@corpoealmahumanizado.com.br`;
@@ -616,7 +620,7 @@ export function BookingFlow({
       const result = await createPixPayment({
         appointmentId: ensuredId,
         tenantId: tenant.id,
-        amount: signalAmount,
+        amount: payableSignalAmount,
         payerName: clientName,
         payerPhone: clientPhone,
       });
@@ -672,7 +676,7 @@ export function BookingFlow({
     cardFormRef.current = null;
     const mp = new window.MercadoPago(publicKey, { locale: "pt-BR" });
     cardFormRef.current = mp.cardForm({
-      amount: signalAmount.toFixed(2),
+      amount: payableSignalAmount.toFixed(2),
       iframe: true,
       form: {
         id: "mp-card-form",
@@ -720,7 +724,7 @@ export function BookingFlow({
             result = await createCardPayment({
               appointmentId: ensuredId,
               tenantId: tenant.id,
-              amount: signalAmount,
+              amount: payableSignalAmount,
               token: data.token,
               paymentMethodId: data.paymentMethodId,
               installments: Number(data.installments) || 1,
@@ -784,7 +788,7 @@ export function BookingFlow({
     mpReady,
     paymentMethod,
     selectedService,
-    signalAmount,
+    payableSignalAmount,
     step,
     tenant.id,
   ]);
@@ -1822,9 +1826,14 @@ export function BookingFlow({
               <div className="flex justify-between items-center mb-6">
                 <span className="text-sm font-bold text-gray-500">Total a pagar</span>
                 <span className="text-2xl font-serif font-bold text-studio-text">
-                  R$ {signalAmount.toFixed(2)}
+                  R$ {payableSignalAmount.toFixed(2)}
                 </span>
               </div>
+              {signalAmountWasAdjusted && (
+                <p className="text-[11px] text-amber-700 mb-4">
+                  Valor mínimo do Mercado Pago: R$ 1,00. O sinal foi ajustado para esse mínimo.
+                </p>
+              )}
               <p className="text-xs text-gray-400 mb-4">Selecione o método:</p>
 
               <div className="grid grid-cols-2 gap-3 mb-6">
