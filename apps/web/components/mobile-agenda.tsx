@@ -157,7 +157,7 @@ export function MobileAgenda({
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchMode, setSearchMode] = useState<"preview" | "full">("preview");
+  const [searchMode, setSearchMode] = useState<"quick" | "full">("quick");
   const [searchResults, setSearchResults] = useState<SearchResults>({ appointments: [], clients: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
@@ -343,7 +343,7 @@ export function MobileAgenda({
 
   useEffect(() => {
     if (!isSearchOpen) {
-      setSearchMode("preview");
+      setSearchMode("quick");
       setSearchResults({ appointments: [], clients: [] });
       return;
     }
@@ -796,7 +796,7 @@ export function MobileAgenda({
                     icon={<Search className="w-4 h-4" />}
                     aria-label="Buscar"
                     onClick={() => {
-                      setSearchMode("preview");
+                      setSearchMode("quick");
                       setIsSearchOpen(true);
                     }}
                   />
