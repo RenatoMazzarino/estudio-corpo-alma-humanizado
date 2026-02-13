@@ -8,9 +8,11 @@ import { Plus, ChevronRight, Clock, MapPin, ChevronLeft } from "lucide-react";
 
 interface CatalogoViewProps {
   initialServices: Service[];
+  defaultBufferBefore: number | null;
+  defaultBufferAfter: number | null;
 }
 
-export function CatalogoView({ initialServices }: CatalogoViewProps) {
+export function CatalogoView({ initialServices, defaultBufferBefore, defaultBufferAfter }: CatalogoViewProps) {
   // Estado que controla qual "tela" estamos vendo
   // null = vendo lista; 'new' = criando; Service = editando
   const [activeScreen, setActiveScreen] = useState<Service | 'new' | null>(null);
@@ -56,7 +58,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
               className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm flex items-center gap-4 active:scale-[0.99] transition-transform cursor-pointer group hover:border-studio-green/30"
             >
               {/* Ícone / "Foto" */}
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${service.accepts_home_visit ? 'bg-purple-50 text-purple-600' : 'bg-studio-green/10 text-studio-green'}`}>
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${service.accepts_home_visit ? 'bg-dom/20 text-dom-strong' : 'bg-studio-green/10 text-studio-green'}`}>
                  {service.accepts_home_visit ? <MapPin size={24} /> : <span className="text-xl font-bold">{service.name.charAt(0)}</span>}
               </div>
 
@@ -68,7 +70,7 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
                 </p> 
                 <div className="flex items-center gap-3 text-xs text-stone-400">
                   <span className="flex items-center gap-1"><Clock size={12}/> {service.duration_minutes}min</span>
-                  {service.accepts_home_visit && <span className="text-purple-600 font-medium">+R${service.home_visit_fee} (Dom)</span>}
+                  {service.accepts_home_visit && <span className="text-dom-strong font-medium">Domicílio disponível</span>}
                 </div>
               </div>
 
@@ -87,6 +89,8 @@ export function CatalogoView({ initialServices }: CatalogoViewProps) {
         {activeScreen && (
           <ServiceForm 
             service={activeScreen === 'new' ? undefined : activeScreen}
+            defaultBufferBefore={defaultBufferBefore}
+            defaultBufferAfter={defaultBufferAfter}
             onSuccess={() => setActiveScreen(null)}
             onCancel={() => setActiveScreen(null)}
           />

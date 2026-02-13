@@ -14,7 +14,7 @@ export async function listPublicServices(tenantId: string) {
   const supabase = createPublicClient();
   return supabase
     .from("services")
-    .select("id, name, price, duration_minutes, accepts_home_visit, home_visit_fee, description, custom_buffer_minutes")
+    .select("id, name, price, duration_minutes, accepts_home_visit, description, custom_buffer_minutes")
     .eq("tenant_id", tenantId)
     .order("name");
 }

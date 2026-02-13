@@ -1,10 +1,20 @@
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Wallet, TrendingUp, AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { listCompletedAppointmentsInRange } from "../../../src/modules/appointments/repository";
 import { listTransactionsInRange } from "../../../src/modules/finance/repository";
+import { FloatingActionMenu } from "../../../components/ui/floating-action-menu";
 
 // Interface dos dados
 interface Appointment {
@@ -197,12 +207,29 @@ export default async function CaixaPage({ searchParams }: PageProps) {
             );
           })
         ) : (
-           <div className="text-center py-10 opacity-50 flex flex-col items-center">
-             <Wallet size={32} className="text-gray-300 mb-2" />
-             <p className="text-sm text-gray-400">Nenhum valor entrou hoje.</p>
-           </div>
+          <div className="text-center py-10 opacity-50 flex flex-col items-center">
+            <Wallet size={32} className="text-gray-300 mb-2" />
+            <p className="text-sm text-gray-400">Nenhum valor entrou hoje.</p>
+          </div>
         )}
       </div>
+
+      <FloatingActionMenu
+        actions={[
+          {
+            label: "Conta a pagar",
+            icon: <ArrowDownCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
+          },
+          {
+            label: "Conta a receber",
+            icon: <ArrowUpCircle className="w-5 h-5" />,
+            disabled: true,
+            helper: "Em dev",
+          },
+        ]}
+      />
     </div>
   );
 }

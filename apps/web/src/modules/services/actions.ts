@@ -15,7 +15,8 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
   const price = formData.get("price");
   const duration_minutes = formData.get("duration_minutes");
   const accepts_home_visit = formData.get("accepts_home_visit") === "on";
-  const home_visit_fee = formData.get("home_visit_fee") ?? "0";
+  const buffer_before_minutes = formData.get("buffer_before_minutes") ?? "";
+  const buffer_after_minutes = formData.get("buffer_after_minutes") ?? "";
   const custom_buffer_minutes = formData.get("custom_buffer_minutes") ?? "0";
   const description = (formData.get("description") as string | null) || null;
 
@@ -25,7 +26,8 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
     price,
     duration_minutes,
     accepts_home_visit,
-    home_visit_fee,
+    buffer_before_minutes,
+    buffer_after_minutes,
     custom_buffer_minutes,
     description,
   });
@@ -40,7 +42,8 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
     price: parsed.data.price,
     duration_minutes: parsed.data.duration_minutes,
     accepts_home_visit: parsed.data.accepts_home_visit,
-    home_visit_fee: parsed.data.home_visit_fee,
+    buffer_before_minutes: parsed.data.buffer_before_minutes ?? null,
+    buffer_after_minutes: parsed.data.buffer_after_minutes ?? null,
     custom_buffer_minutes: parsed.data.custom_buffer_minutes ?? 0,
     tenant_id: FIXED_TENANT_ID,
   };

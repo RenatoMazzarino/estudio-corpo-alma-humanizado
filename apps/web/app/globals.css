@@ -1,33 +1,99 @@
+@import url("https://fonts.cdnfonts.com/css/qalisha-signature-script");
 @import "tailwindcss";
 
 @theme {
   /* Paleta Oficial Estúdio Corpo & Alma */
   --color-studio-bg: #FAF9F6;
   
-  /* Verde Sálvia */
-  --color-studio-green: #6A806C;
-  --color-studio-green-dark: #556656;
+  /* Verde Oficial */
+  --color-studio-green: #5D6E56;
+  --color-studio-green-dark: #495744;
+  --color-studio-light: #F3F6F4;
+  --color-studio-accent: #D4A373;
   
-  /* Rosa Antigo (Lotus) */
-  --color-studio-pink: #CEAEB9;
+  /* Violeta Oficial (domicílio) */
+  --color-studio-pink: #C0A4B0;
+  --color-dom: #C0A4B0;
+  --color-dom-strong: #8F7483;
   
   /* Texto Principal */
-  --color-studio-text: #2D2D2D;
+  --color-studio-text: #2C3333;
+  --color-text-muted: #868E96;
+  --color-main: #2C3333;
+  --color-muted: #868E96;
+  --color-line: rgba(44, 51, 51, 0.06);
+
+  /* Estados */
+  --color-ok: #16A34A;
+  --color-warn: #F59E0B;
+  --color-danger: #DC2626;
+
+  /* Tipografia */
+  --font-sans: var(--font-lato);
+  --font-serif: var(--font-playfair);
+  --font-signature: "Qalisha Signature Script";
+
+  /* Sombras */
+  --shadow-soft: 0 4px 20px -2px rgba(93, 110, 86, 0.15);
+  --shadow-float: 0 18px 35px -15px rgba(0, 0, 0, 0.25);
 }
 
 /* Configurações Globais */
 body {
   background-color: var(--color-studio-bg);
   color: var(--color-studio-text);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-viewport {
+  height: 100svh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-frame {
+  width: min(412px, 100vw);
+  min-height: 100svh;
+  height: 100dvh;
+}
+
+.safe-top {
+  padding-top: calc(env(safe-area-inset-top) + var(--safe-top-offset, 0px));
+}
+
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--safe-bottom-offset, 0px));
+}
+
+.safe-top-8 {
+  --safe-top-offset: 2rem;
+}
+
+.safe-top-6 {
+  --safe-top-offset: 1.5rem;
+}
+
+.safe-bottom-24 {
+  --safe-bottom-offset: 6rem;
+}
+
+.safe-bottom-6 {
+  --safe-bottom-offset: 1.5rem;
 }
 
 /* --- ESTILO CALENDÁRIO DESKTOP --- */
 
 /* Remove a barra de título padrão feia */
 .rbc-toolbar-label {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans), sans-serif;
   font-weight: 700;
   font-size: 1.2rem;
   color: var(--color-studio-text);
@@ -80,4 +146,11 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.voucher-paper-texture {
+  background-color: #fdfbf7;
+  background-image: radial-gradient(circle at 20px 20px, rgba(44, 51, 51, 0.05) 5px, transparent 6px),
+    radial-gradient(circle at 50px 50px, rgba(44, 51, 51, 0.03) 3px, transparent 4px);
+  background-size: 80px 80px;
 }

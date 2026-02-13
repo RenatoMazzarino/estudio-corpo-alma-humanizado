@@ -1,0 +1,30 @@
+# Docs Index
+
+Este diretório foi organizado em duas camadas:
+
+## 1) Documentação ativa (uso atual do produto/repo)
+
+- `README.md` (raiz): setup e visão geral.
+- `MANUAL_RAPIDO.md`: comandos operacionais (dev, build, migrations, deploy).
+- `docs/apis/API_GUIDE.md`: APIs internas do app.
+- `docs/integrations/INTEGRATIONS_TECNICO.md`: arquitetura e requisitos técnicos das integrações.
+- `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: operação de produção.
+- `docs/ui-system/*`: design system e padrões canônicos de UI.
+- `docs/sql/README.md`: orientação para snapshots SQL de auditoria.
+
+## 2) Legado da branch Agenda V1 UI (histórico fechado)
+
+Todo o material de planejamento, referência visual, auditorias e rascunhos dessa fase foi consolidado em:
+
+- `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
+
+Inclui:
+- HTMLs/HTMs de referência visual usados na execução.
+- PDF de auditoria visual.
+- planos e reports da fase.
+- diagnósticos técnicos (audit logs, migration plan, db diff, route map, repo inventory).
+
+## Regra de manutenção
+
+- Novas branches não devem usar arquivos de legado como fonte primária.
+- Para decisões novas, usar a documentação ativa e criar novos artefatos fora de `docs/legacy/`.

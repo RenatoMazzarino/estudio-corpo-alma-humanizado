@@ -19,5 +19,19 @@
     }
   ],
   "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "terminal.integrated.defaultProfile.windows": "PowerShell 7 (NVM 24.13.0)",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell 7 (NVM 24.13.0)": {
+      "path": "pwsh.exe",
+      "args": [
+        "-NoExit",
+        "-Command",
+        "& \"$env:LOCALAPPDATA\\nvm\\nvm.exe\" use 24.13.0"
+      ]
+    },
+    "PowerShell 7": {
+      "path": "pwsh.exe"
+    }
+  }
 }

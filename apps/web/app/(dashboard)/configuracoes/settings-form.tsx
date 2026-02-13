@@ -12,13 +12,21 @@ interface BusinessHourItem {
 
 interface SettingsFormProps {
   businessHours: BusinessHourItem[];
-  defaultStudioBuffer: number;
-  defaultHomeBuffer: number;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
+  signalPercentage: number;
+  publicBaseUrl: string;
 }
 
 const dayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-export function SettingsForm({ businessHours, defaultStudioBuffer, defaultHomeBuffer }: SettingsFormProps) {
+export function SettingsForm({
+  businessHours,
+  bufferBeforeMinutes,
+  bufferAfterMinutes,
+  signalPercentage,
+  publicBaseUrl,
+}: SettingsFormProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -71,25 +79,47 @@ export function SettingsForm({ businessHours, defaultStudioBuffer, defaultHomeBu
         <h2 className="text-sm font-bold text-gray-700">Buffers de Atendimento</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Estúdio (min)</label>
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Antes (min)</label>
             <input
               type="number"
-              name="default_studio_buffer"
-              defaultValue={defaultStudioBuffer}
+              name="buffer_before_minutes"
+              defaultValue={bufferBeforeMinutes}
               className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Domicílio (min)</label>
+            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Depois (min)</label>
             <input
               type="number"
-              name="default_home_buffer"
-              defaultValue={defaultHomeBuffer}
+              name="buffer_after_minutes"
+              defaultValue={bufferAfterMinutes}
               className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
             />
           </div>
         </div>
-        <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar buffers</button>
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Percentual do sinal (%)</label>
+          <input
+            type="number"
+            name="signal_percentage"
+            min={0}
+            max={100}
+            step={1}
+            defaultValue={signalPercentage}
+            className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase ml-1">URL pública (para links no WhatsApp)</label>
+          <input
+            type="text"
+            name="public_base_url"
+            defaultValue={publicBaseUrl}
+            placeholder="https://seu-dominio.com"
+            className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
+          />
+        </div>
+        <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar configurações</button>
       </form>
 
       {message && <div className="text-xs text-gray-500">{message}</div>}

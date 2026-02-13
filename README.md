@@ -2,9 +2,10 @@
 
 ## Requisitos
 
-- Node.js 20.11.1+ (use `.nvmrc`).
-- pnpm 9 (via `corepack enable`).
-- Docker + Supabase CLI (instalado via `pnpm install`).
+- Node.js 24.13.0+ (use `.nvmrc`).
+- pnpm 10.29.1 (via `corepack enable`).
+- Turbo 2.8.3 (devDependency no root).
+- Docker + Supabase CLI 2.75.0 (instalado via `pnpm install`).
 - `SUPABASE_SERVICE_ROLE_KEY` para operações administrativas server-side (RLS habilitado).
 - VS Code: use o TypeScript do workspace (evita erro de JSX).
 
@@ -40,6 +41,12 @@ pnpm install
 
 ---
 
+## Padrão de layout (UI)
+
+- Todas as telas seguem 3 partes: **Header / Content / Navigation**.
+- `AppShell` controla frame + scroll único; `ModulePage` organiza header e conteúdo.
+- Decisão documentada em `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md` e `docs/ui-system/README.md`.
+
 ## Scripts úteis
 
 ```sh
@@ -48,3 +55,20 @@ pnpm lint
 pnpm check-types
 pnpm build
 ```
+
+## Integrações
+
+- Visão técnica: `docs/integrations/INTEGRATIONS_TECNICO.md`
+- Guia operacional: `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
+- API interna do app: `docs/apis/API_GUIDE.md`
+
+Integrações ativas no produto:
+- Supabase (dados, RPCs e autenticação server-side)
+- Google Maps Platform (endereços e taxa de deslocamento)
+- Mercado Pago Checkout Transparente (Pix/cartão + webhook)
+- WhatsApp (mensageria assistida por deep links/share)
+
+## Documentação
+
+- Índice de docs: `docs/README.md`
+- Arquivo legado da fase Agenda V1 UI: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`

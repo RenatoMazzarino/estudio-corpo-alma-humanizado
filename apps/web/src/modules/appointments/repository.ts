@@ -11,12 +11,48 @@ export async function listAppointmentsInRange(tenantId: string, start: string, e
   return supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes,
-       clients ( id, name, initials, phone, health_tags, endereco_completo )`
+      `id, service_id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
+       clients ( id, name, initials, phone, health_tags, endereco_completo ),
+       services ( duration_minutes, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes )`
     )
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
     .lte("start_time", end);
+}
+
+export async function searchAppointments(tenantId: string, query: string, start: string, end: string) {
+  const supabase = createServiceClient();
+  const safeQuery = query.replace(/[%_,]/g, "").trim();
+  if (!safeQuery) {
+    return listAppointmentsInRange(tenantId, start, end);
+  }
+
+  const { data: clientRows } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .or(`name.ilike.%${safeQuery}%,phone.ilike.%${safeQuery}%`)
+    .limit(50);
+
+  const clientIds = (clientRows ?? []).map((row) => row.id).filter(Boolean);
+
+  const baseQuery = supabase
+    .from("appointments")
+    .select(
+      `id, service_id, service_name, start_time, finished_at, status, payment_status, price, is_home_visit, total_duration_minutes,
+       clients ( id, name, initials, phone, health_tags, endereco_completo ),
+       services ( duration_minutes, buffer_before_minutes, buffer_after_minutes, custom_buffer_minutes )`
+    )
+    .eq("tenant_id", tenantId)
+    .gte("start_time", start)
+    .lte("start_time", end);
+
+  if (clientIds.length > 0) {
+    const clientIdFilter = clientIds.map((id) => `"${id}"`).join(",");
+    return baseQuery.or(`service_name.ilike.%${safeQuery}%,client_id.in.(${clientIdFilter})`);
+  }
+
+  return baseQuery.ilike("service_name", `%${safeQuery}%`);
 }
 
 export async function listCompletedAppointmentsInRange(tenantId: string, start: string, end: string) {
@@ -41,10 +77,29 @@ export async function listAppointmentsForClient(tenantId: string, clientId: stri
   const supabase = createServiceClient();
   return supabase
     .from("appointments")
-    .select("id, start_time, service_name, price, status")
+    .select("id, start_time, service_name, price, price_override, status, is_home_visit")
     .eq("client_id", clientId)
     .eq("tenant_id", tenantId)
     .order("start_time", { ascending: false });
+}
+
+export type AppointmentForClientRow = Pick<AppointmentRow, "id" | "client_id" | "start_time" | "status">;
+
+export async function listAppointmentsForClients(
+  tenantId: string,
+  clientIds: string[]
+): Promise<{ data: AppointmentForClientRow[]; error: PostgrestError | null }> {
+  const supabase = createServiceClient();
+  if (clientIds.length === 0) {
+    return { data: [], error: null };
+  }
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("id, client_id, start_time, status")
+    .eq("tenant_id", tenantId)
+    .in("client_id", clientIds)
+    .order("start_time", { ascending: false });
+  return { data: (data as AppointmentForClientRow[] | null) ?? [], error };
 }
 
 export async function updateAppointment(tenantId: string, id: string, update: AppointmentUpdate) {
@@ -83,7 +138,7 @@ export async function listAvailabilityBlocksInRange(tenantId: string, start: str
   const supabase = createServiceClient();
   return supabase
     .from("availability_blocks")
-    .select("id, title, start_time, end_time, reason")
+    .select("id, title, start_time, end_time, reason, block_type, is_full_day")
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
     .lte("start_time", end);
@@ -94,7 +149,7 @@ export async function getAppointmentById(tenantId: string, id: string) {
   return supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, price, is_home_visit, total_duration_minutes, actual_duration_minutes,
+      `id, client_id, service_id, client_address_id, service_name, start_time, finished_at, status, price, price_override, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
        clients ( id, name, initials, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
        services ( duration_minutes )`
@@ -111,12 +166,28 @@ export async function insertAvailabilityBlocks(
   return supabase.from("availability_blocks").insert(payload);
 }
 
-export async function deleteAvailabilityBlocksInRange(tenantId: string, start: string, end: string) {
+export async function deleteAvailabilityBlocksInRange(
+  tenantId: string,
+  start: string,
+  end: string,
+  blockType?: string
+) {
   const supabase = createServiceClient();
-  return supabase
+  let query = supabase
     .from("availability_blocks")
     .delete()
     .eq("tenant_id", tenantId)
     .gte("start_time", start)
     .lte("end_time", end);
+
+  if (blockType) {
+    query = query.eq("block_type", blockType);
+  }
+
+  return query;
+}
+
+export async function deleteAvailabilityBlockById(tenantId: string, id: string) {
+  const supabase = createServiceClient();
+  return supabase.from("availability_blocks").delete().eq("tenant_id", tenantId).eq("id", id);
 }

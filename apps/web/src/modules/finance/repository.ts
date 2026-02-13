@@ -17,7 +17,7 @@ export async function listTransactionsInRange(tenantId: string, start: string, e
 
 export async function insertTransaction(payload: TransactionInsert) {
   const supabase = createServiceClient();
-  return supabase.from("transactions").insert(payload);
+  return supabase.from("transactions").insert(payload).select("id");
 }
 
 export async function getTransactionByAppointmentId(tenantId: string, appointmentId: string) {

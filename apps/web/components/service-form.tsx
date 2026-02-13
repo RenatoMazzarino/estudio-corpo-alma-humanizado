@@ -1,17 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Clock, Banknote, MapPin, AlignLeft, ChevronLeft } from "lucide-react";
+import { Sparkles, Clock, Banknote, AlignLeft, ChevronLeft } from "lucide-react";
 import { upsertService } from "../app/actions";
 import { Service } from "../types/service";
 
 interface ServiceFormProps {
   service?: Service;
+  defaultBufferBefore?: number | null;
+  defaultBufferAfter?: number | null;
   onSuccess?: () => void;
   onCancel?: () => void; // Novo botão cancelar
 }
 
-export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) {
+export function ServiceForm({
+  service,
+  defaultBufferBefore,
+  defaultBufferAfter,
+  onSuccess,
+  onCancel,
+}: ServiceFormProps) {
   const [acceptsHomeVisit, setAcceptsHomeVisit] = useState(service?.accepts_home_visit ?? false);
   const [loading, setLoading] = useState(false);
 
@@ -59,7 +67,7 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
           </div>
         </div>
 
-        {/* Descrição (Atenção: Este campo NÃO existe no banco, mas mantive visualmente conforme pedido, no submit será ignorado) */}
+        {/* Descrição */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-stone-400 uppercase ml-1">Descrição</label>
           <div className="relative">
@@ -105,34 +113,53 @@ export function ServiceForm({ service, onSuccess, onCancel }: ServiceFormProps) 
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-stone-400 uppercase ml-1">Buffer antes (min)</label>
+            <input
+              name="buffer_before_minutes"
+              type="number"
+              defaultValue={service ? service.buffer_before_minutes ?? "" : defaultBufferBefore ?? ""}
+              className="w-full bg-stone-50 border-stone-200 border rounded-xl py-3 px-4 text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              placeholder="Ex: 30"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-stone-400 uppercase ml-1">Buffer depois (min)</label>
+            <input
+              name="buffer_after_minutes"
+              type="number"
+              defaultValue={service ? service.buffer_after_minutes ?? "" : defaultBufferAfter ?? ""}
+              className="w-full bg-stone-50 border-stone-200 border rounded-xl py-3 px-4 text-stone-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+              placeholder="Ex: 30"
+            />
+          </div>
+        </div>
+
         {/* Seção Domiciliar */}
         <div className="pt-4 border-t border-stone-100">
-          <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100 space-y-4">
+          <div className="bg-dom/15 p-4 rounded-2xl border border-dom/35 space-y-4">
             <div className="flex items-center gap-3">
               <input 
                 type="checkbox" 
                 id="accepts_home_visit" name="accepts_home_visit"
                 defaultChecked={acceptsHomeVisit}
                 onChange={(e) => setAcceptsHomeVisit(e.target.checked)}
-                className="w-5 h-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                className="w-5 h-5 text-dom-strong rounded border-gray-300 focus:ring-dom"
               />
-              <label htmlFor="accepts_home_visit" className="text-sm font-bold text-purple-900">
+              <label htmlFor="accepts_home_visit" className="text-sm font-bold text-dom-strong">
                 Atendimento Domiciliar?
               </label>
             </div>
 
             {acceptsHomeVisit && (
-              <div className="animate-in slide-in-from-top-2 fade-in">
-                <label className="text-xs font-bold text-purple-400 uppercase ml-1">Taxa de Deslocamento (+R$)</label>
-                <div className="relative mt-1">
-                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" size={18} />
-                   <input 
-                      name="home_visit_fee" 
-                      type="number" step="0.01"
-                      defaultValue={service?.home_visit_fee || 0}
-                      className="w-full bg-white border-purple-200 border rounded-xl py-3 pl-11 pr-4 text-purple-900 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                   />
-                </div>
+              <div className="animate-in slide-in-from-top-2 fade-in rounded-xl border border-dom/35 bg-white px-4 py-3">
+                <p className="text-xs font-bold text-dom-strong/80 uppercase tracking-wide">
+                  Taxa de deslocamento automática
+                </p>
+                <p className="text-xs text-dom-strong mt-1">
+                  O valor será calculado com base no endereço do cliente no momento do agendamento.
+                </p>
               </div>
             )}
           </div>

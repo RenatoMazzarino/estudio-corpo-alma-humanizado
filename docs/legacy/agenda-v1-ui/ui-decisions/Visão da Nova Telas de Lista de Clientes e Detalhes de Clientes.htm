@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Clientes — Corpo & Alma (UI referência)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              studio: {
+                green: "#6A806C",
+                dark: "#4e5f50",
+                light: "#F3F6F4",
+                accent: "#D4A373",
+              },
+              paper: "#FAF9F6",
+              text: { main: "#2C3333", muted: "#868E96" },
+              dom: "#A855F7",
+              danger: "#DC2626",
+              line: "rgba(44,51,51,0.06)",
+            },
+            fontFamily: {
+              serif: ['"Playfair Display"', "serif"],
+              sans: ['"Lato"', "sans-serif"],
+            },
+            boxShadow: {
+              soft: "0 4px 20px -2px rgba(106, 128, 108, 0.15)",
+              lift: "0 10px 30px rgba(0,0,0,0.08)",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        background: #222;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        font-family: "Lato", sans-serif;
+      }
+      #mobile-frame {
+        width: 100%;
+        max-width: 414px;
+        height: 100%;
+        background: #FAF9F6;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+
+      /* Safe areas (iOS) */
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+      /* Transição de telas */
+      .screen {
+        position: absolute;
+        inset: 0;
+        background: #FAF9F6;
+        display: flex;
+        flex-direction: column;
+        transition: transform 260ms ease, opacity 260ms ease;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 0;
+        transform: translateX(6%);
+      }
+      .screen.active {
+        pointer-events: auto;
+        opacity: 1;
+        z-index: 10;
+        transform: translateX(0);
+      }
+      .screen.hidden-left { transform: translateX(-8%); opacity: 0; }
+      .screen.hidden-right { transform: translateX(10%); opacity: 0; }
+
+      /* Alphabet Index (visual) */
+      .alpha-nav {
+        position: absolute;
+        right: 6px;
+        top: 160px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        z-index: 30;
+        user-select: none;
+      }
+      .alpha-char {
+        font-size: 9px;
+        font-weight: 900;
+        color: #6A806C;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(243, 246, 244, 0.7);
+        border: 1px solid rgba(106, 128, 108, 0.15);
+        backdrop-filter: blur(6px);
+      }
+
+      /* micro */
+      .tap { -webkit-tap-highlight-color: transparent; }
+    </style>
+  </head>
+
+  <body>
+    <div id="mobile-frame">
+
+      <!-- =========================
+           TELA: LISTA
+      ========================== -->
+      <div id="screen-list" class="screen active">
+        <header class="safe-top px-6 pt-8 pb-4 bg-white rounded-b-3xl shadow-soft z-20 sticky top-0">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <p class="text-[11px] font-extrabold text-studio-green uppercase tracking-[0.24em] mb-1">Gestão</p>
+              <h1 class="text-2xl font-serif text-gray-800 leading-tight">Meus Clientes</h1>
+            </div>
+
+            <button class="tap w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm" title="Novo cliente">
+              <i data-lucide="user-plus" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <!-- Search -->
+          <div class="relative mb-3">
+            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2"></i>
+            <input
+              id="search"
+              type="text"
+              placeholder="Buscar por nome..."
+              class="w-full pl-11 pr-4 py-3 rounded-2xl bg-paper border border-transparent focus:border-studio-green/30 focus:ring-2 focus:ring-studio-green/15 text-sm font-semibold text-gray-700 transition"
+              oninput="filterList(this.value)"
+            />
+          </div>
+
+          <!-- Chips (filtros rápidos) -->
+          <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button class="tap px-3 py-2 rounded-xl bg-studio-green text-white text-[11px] font-extrabold tracking-wide shadow-sm whitespace-nowrap" onclick="setQuickFilter('all')">
+              Todos
+            </button>
+            <button class="tap px-3 py-2 rounded-xl bg-paper text-gray-700 text-[11px] font-extrabold tracking-wide border border-line whitespace-nowrap" onclick="setQuickFilter('vip')">
+              VIP
+            </button>
+            <button class="tap px-3 py-2 rounded-xl bg-paper text-gray-700 text-[11px] font-extrabold tracking-wide border border-line whitespace-nowrap" onclick="setQuickFilter('alert')">
+              Atenção
+            </button>
+            <button class="tap px-3 py-2 rounded-xl bg-paper text-gray-700 text-[11px] font-extrabold tracking-wide border border-line whitespace-nowrap" onclick="setQuickFilter('new')">
+              Novos
+            </button>
+          </div>
+        </header>
+
+        <!-- Índice lateral (visual) -->
+        <div class="alpha-nav" aria-hidden="true">
+          <span class="alpha-char">A</span>
+          <span class="alpha-char">B</span>
+          <span class="alpha-char">C</span>
+          <span class="alpha-char">D</span>
+          <span class="alpha-char">E</span>
+          <span class="alpha-char">F</span>
+        </div>
+
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-24">
+
+          <!-- Seção A -->
+          <section class="px-6 pt-4" data-section="A">
+            <div class="sticky top-[112px] z-10 bg-paper/90 backdrop-blur py-2">
+              <h3 class="text-[11px] font-extrabold text-studio-green uppercase tracking-[0.20em]">A</h3>
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-sm border border-white overflow-hidden">
+              <!-- Item -->
+              <button
+                class="tap client-row w-full text-left flex items-center gap-4 px-4 py-4 hover:bg-gray-50 transition active:scale-[0.995]"
+                onclick="openDetails({ name: 'Ana Clara Souza', initials: 'AC', since: 'Ago/2023', phone: '(11) 99888-7766', vip: false, alert: false, last: '15 Jan', visits: 12, absences: 0 })"
+                data-name="Ana Clara Souza"
+                data-tags=""
+              >
+                <div class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold text-sm">AC</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h4 class="font-extrabold text-gray-800 text-sm truncate">Ana Clara Souza</h4>
+                  </div>
+                  <p class="text-[11px] text-gray-400 font-semibold">Última visita: 15 Jan</p>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+              </button>
+
+              <div class="h-px bg-line mx-4"></div>
+
+              <!-- Item -->
+              <button
+                class="tap client-row w-full text-left flex items-center gap-4 px-4 py-4 hover:bg-gray-50 transition active:scale-[0.995]"
+                onclick="openDetails({ name: 'Amanda Lima', initials: 'AL', since: 'Fev/2024', phone: '(11) 97777-1122', vip: true, alert: false, last: '20 Dez', visits: 4, absences: 1 })"
+                data-name="Amanda Lima"
+                data-tags="vip"
+              >
+                <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-serif font-bold text-sm">AL</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h4 class="font-extrabold text-gray-800 text-sm truncate">Amanda Lima</h4>
+                    <span class="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 text-[10px] font-extrabold border border-purple-100">VIP</span>
+                  </div>
+                  <p class="text-[11px] text-gray-400 font-semibold">Última visita: 20 Dez</p>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+              </button>
+            </div>
+          </section>
+
+          <!-- Seção B -->
+          <section class="px-6 pt-4" data-section="B">
+            <div class="sticky top-[112px] z-10 bg-paper/90 backdrop-blur py-2">
+              <h3 class="text-[11px] font-extrabold text-studio-green uppercase tracking-[0.20em]">B</h3>
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-sm border border-white overflow-hidden">
+              <button
+                class="tap client-row w-full text-left flex items-center gap-4 px-4 py-4 hover:bg-gray-50 transition active:scale-[0.995]"
+                onclick="openDetails({ name: 'Bianca Silva', initials: 'BS', since: 'Jan/2026', phone: '(11) 96666-2200', vip: false, alert: false, last: 'Novo cadastro', visits: 0, absences: 0 })"
+                data-name="Bianca Silva"
+                data-tags="new"
+              >
+                <div class="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold text-sm">BS</div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-extrabold text-gray-800 text-sm truncate">Bianca Silva</h4>
+                  <p class="text-[11px] text-gray-400 font-semibold">Novo cadastro</p>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+              </button>
+            </div>
+          </section>
+
+          <!-- Seção C -->
+          <section class="px-6 pt-4" data-section="C">
+            <div class="sticky top-[112px] z-10 bg-paper/90 backdrop-blur py-2">
+              <h3 class="text-[11px] font-extrabold text-studio-green uppercase tracking-[0.20em]">C</h3>
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-sm border border-white overflow-hidden">
+              <button
+                class="tap client-row w-full text-left flex items-center gap-4 px-4 py-4 hover:bg-gray-50 transition active:scale-[0.995]"
+                onclick="openDetails({ name: 'Carla Perez', initials: 'CP', since: 'Out/2022', phone: '(11) 95555-1313', vip: false, alert: true, last: '15 Jan', visits: 20, absences: 0 })"
+                data-name="Carla Perez"
+                data-tags="alert"
+              >
+                <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center font-serif font-bold text-sm">CP</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h4 class="font-extrabold text-gray-800 text-sm truncate">Carla Perez</h4>
+                    <span class="px-2 py-0.5 rounded-lg bg-red-50 text-red-600 text-[10px] font-extrabold border border-red-100">Atenção</span>
+                  </div>
+                  <p class="text-[11px] text-orange-500 font-bold">⚠️ Alergia / cuidado especial</p>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+              </button>
+            </div>
+          </section>
+
+          <div class="h-14"></div>
+        </main>
+
+        <!-- Bottom nav (padrão do app) -->
+        <nav class="safe-bottom bg-white border-t border-line py-3 px-2 flex justify-around items-center z-40 fixed bottom-0 w-full max-w-[414px]">
+          <button class="tap flex flex-col items-center gap-1 text-gray-300 hover:text-studio-green w-16 transition" title="Agenda">
+            <i data-lucide="calendar" class="w-6 h-6"></i>
+            <span class="text-[10px] font-semibold">Agenda</span>
+          </button>
+          <button class="tap flex flex-col items-center gap-1 text-studio-green w-16" title="Clientes">
+            <i data-lucide="users" class="w-6 h-6"></i>
+            <span class="text-[10px] font-extrabold">Clientes</span>
+          </button>
+          <button class="tap flex flex-col items-center gap-1 text-gray-300 hover:text-studio-green w-16 transition" title="Caixa">
+            <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+            <span class="text-[10px] font-semibold">Caixa</span>
+          </button>
+          <button class="tap flex flex-col items-center gap-1 text-gray-300 hover:text-studio-green w-16 transition" title="Menu">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+            <span class="text-[10px] font-semibold">Menu</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- =========================
+           TELA: DETALHES
+      ========================== -->
+      <div id="screen-details" class="screen hidden-right">
+
+        <!-- Top bar (back + edit) -->
+        <div class="safe-top absolute top-0 left-0 w-full px-6 pt-8 flex justify-between items-center z-40 pointer-events-none">
+          <button onclick="closeDetails()" class="tap pointer-events-auto w-10 h-10 rounded-full bg-white/85 backdrop-blur text-gray-700 flex items-center justify-center shadow-sm hover:bg-white transition" title="Voltar">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+
+          <button class="tap pointer-events-auto w-10 h-10 rounded-full bg-white/85 backdrop-blur text-gray-700 flex items-center justify-center shadow-sm hover:bg-white transition" title="Editar cliente">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 bg-paper">
+          <!-- Hero -->
+          <section class="relative bg-white rounded-b-[2.5rem] shadow-soft overflow-hidden">
+            <div class="absolute inset-0">
+              <div class="absolute top-0 left-0 w-full h-36 bg-gradient-to-b from-studio-light to-white"></div>
+              <div class="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-studio-light/60 blur-2xl"></div>
+              <div class="absolute -left-12 top-10 w-52 h-52 rounded-full bg-studio-light/40 blur-2xl"></div>
+            </div>
+
+            <div class="relative safe-top pt-20 px-6 pb-6 flex flex-col items-center text-center">
+              <div class="w-24 h-24 rounded-full bg-white p-1 shadow-lift mb-3">
+                <div id="detail-avatar" class="w-full h-full rounded-full bg-studio-green text-white flex items-center justify-center text-3xl font-serif font-bold">AC</div>
+              </div>
+
+              <h1 id="detail-name" class="text-2xl font-serif font-bold text-gray-800 leading-tight">Ana Clara Souza</h1>
+              <p id="detail-since" class="text-sm text-gray-400 font-semibold mt-1">Cliente desde Ago/2023</p>
+
+              <!-- Tags -->
+              <div id="detail-tags" class="mt-3 flex flex-wrap gap-2 justify-center"></div>
+
+              <!-- Ações rápidas -->
+              <div class="mt-5 flex gap-5">
+                <!-- Whats (ícone oficial em SVG) -->
+                <button class="tap flex flex-col items-center gap-1 group" title="WhatsApp">
+                  <div class="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
+                    <svg class="w-6 h-6" viewBox="0 0 32 32" aria-hidden="true">
+                      <path fill="#25D366" d="M19.11 17.29c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.66.15-.2.3-.76.97-.93 1.17-.17.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.5-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.66-1.6-.91-2.19-.24-.58-.49-.5-.66-.5h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.48.71.31 1.27.49 1.7.62.71.23 1.36.2 1.88.12.57-.08 1.76-.72 2.01-1.41.25-.69.25-1.28.17-1.41-.07-.13-.27-.2-.57-.35z"/>
+                      <path fill="#25D366" d="M26.67 5.33A13.3 13.3 0 0 0 16 0C8.82 0 3 5.82 3 13c0 2.3.61 4.55 1.77 6.52L3 32l12.7-1.66A12.9 12.9 0 0 0 16 26c7.18 0 13-5.82 13-13 0-3.47-1.35-6.73-3.33-7.67zM16 24c-2.12 0-4.2-.63-5.97-1.81l-.43-.27-7.53.99.99-7.35-.28-.46A10.8 10.8 0 0 1 5 13C5 6.93 9.93 2 16 2s11 4.93 11 11-4.93 11-11 11z"/>
+                    </svg>
+                  </div>
+                  <span class="text-[10px] font-extrabold text-gray-500">Whats</span>
+                </button>
+
+                <button class="tap flex flex-col items-center gap-1 group" title="Ligar">
+                  <div class="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
+                    <i data-lucide="phone" class="w-5 h-5 text-gray-700"></i>
+                  </div>
+                  <span class="text-[10px] font-extrabold text-gray-500">Ligar</span>
+                </button>
+
+                <button class="tap flex flex-col items-center gap-1 group" title="Mapa">
+                  <div class="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
+                    <i data-lucide="map-pin" class="w-5 h-5 text-gray-700"></i>
+                  </div>
+                  <span class="text-[10px] font-extrabold text-gray-500">Mapa</span>
+                </button>
+
+                <button class="tap flex flex-col items-center gap-1 group" title="Novo agendamento">
+                  <div class="w-12 h-12 rounded-2xl bg-studio-green text-white shadow-lift flex items-center justify-center group-active:scale-95 transition">
+                    <i data-lucide="calendar-plus" class="w-5 h-5"></i>
+                  </div>
+                  <span class="text-[10px] font-extrabold text-gray-500">Agendar</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Stats bar -->
+          <section class="px-6 -mt-6 relative z-10">
+            <div class="bg-white rounded-2xl shadow-sm border border-white px-4 py-3 flex justify-around">
+              <div class="text-center">
+                <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Visitas</p>
+                <p id="detail-visits" class="text-lg font-black text-studio-green tabular-nums">12</p>
+              </div>
+              <div class="w-px bg-line"></div>
+              <div class="text-center">
+                <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Faltas</p>
+                <p id="detail-absences" class="text-lg font-black text-gray-500 tabular-nums">0</p>
+              </div>
+              <div class="w-px bg-line"></div>
+              <div class="text-center">
+                <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Última</p>
+                <p id="detail-last" class="text-lg font-black text-gray-800 tabular-nums">15 Jan</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Conteúdo -->
+          <section class="px-6 pt-5 pb-4 space-y-5">
+            <!-- Contato -->
+            <div>
+              <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 pl-1">Contato</h3>
+              <div class="bg-white rounded-3xl border border-white shadow-sm overflow-hidden">
+                <div class="px-5 py-4 flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-studio-light flex items-center justify-center text-studio-green">
+                    <i data-lucide="phone" class="w-4 h-4"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Telefone</p>
+                    <p id="detail-phone" class="text-sm font-extrabold text-gray-800 truncate">(11) 99888-7766</p>
+                  </div>
+                </div>
+                <div class="h-px bg-line mx-5"></div>
+                <div class="px-5 py-4 flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-full bg-paper border border-line flex items-center justify-center text-gray-700">
+                    <i data-lucide="mail" class="w-4 h-4"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Email</p>
+                    <p class="text-sm font-extrabold text-gray-800 truncate">cliente@email.com</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Endereço -->
+            <div>
+              <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 pl-1">Endereço</h3>
+              <div class="bg-white rounded-3xl border border-white shadow-sm p-5">
+                <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Principal</p>
+                <p class="text-sm font-extrabold text-gray-800 mt-1">Rua das Acácias, 120</p>
+                <p class="text-xs text-gray-400 font-semibold mt-1">Apto 42 • Centro</p>
+
+                <button class="tap mt-4 w-full py-3 rounded-2xl bg-paper border border-line text-gray-700 font-extrabold text-xs flex items-center justify-center gap-2 hover:bg-white transition">
+                  <i data-lucide="map" class="w-4 h-4"></i>
+                  Abrir no mapa
+                </button>
+              </div>
+            </div>
+
+            <!-- Saúde & Preferências -->
+            <div>
+              <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 pl-1">Saúde & Preferências</h3>
+              <div class="bg-white rounded-3xl border border-white shadow-sm p-5">
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-3 py-1 rounded-xl bg-red-50 text-red-600 text-[11px] font-extrabold border border-red-100">Alergia a Óleo</span>
+                  <span class="px-3 py-1 rounded-xl bg-orange-50 text-orange-600 text-[11px] font-extrabold border border-orange-100">Lombar sensível</span>
+                  <span class="px-3 py-1 rounded-xl bg-blue-50 text-blue-600 text-[11px] font-extrabold border border-blue-100">Pressão forte</span>
+                </div>
+                <div class="mt-4 bg-paper rounded-2xl p-4 border border-line">
+                  <p class="text-xs text-gray-600 italic leading-relaxed">
+                    “Cliente relatou dor no ombro direito na última sessão. Focar no relaxamento muscular dessa região.”
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Histórico -->
+            <div>
+              <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 pl-1">Histórico recente</h3>
+              <div class="space-y-3">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-white flex gap-4">
+                  <div class="min-w-[54px] text-center">
+                    <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Jan</p>
+                    <p class="text-lg font-black text-gray-800">15</p>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="font-extrabold text-gray-800 text-sm">Massagem Relaxante</h4>
+                    <p class="text-xs text-gray-500 font-semibold mt-0.5">No estúdio • R$ 120,00</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="px-2 py-1 rounded-xl bg-studio-light text-studio-green text-[10px] font-extrabold border border-studio-green/10">Concluído</span>
+                  </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-white flex gap-4">
+                  <div class="min-w-[54px] text-center">
+                    <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Dez</p>
+                    <p class="text-lg font-black text-gray-800">20</p>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="font-extrabold text-gray-800 text-sm">Drenagem Linfática</h4>
+                    <p class="text-xs text-gray-500 font-semibold mt-0.5">Domiciliar • R$ 150,00</p>
+                  </div>
+                  <div class="text-right">
+                    <span class="px-2 py-1 rounded-xl bg-purple-50 text-purple-600 text-[10px] font-extrabold border border-purple-100">Domicílio</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="h-10"></div>
+          </section>
+        </main>
+
+        <!-- Bottom nav (padrão do app) -->
+        <nav class="safe-bottom bg-white border-t border-line py-3 px-2 flex justify-around items-center z-40 fixed bottom-0 w-full max-w-[414px]">
+          <button class="tap flex flex-col items-center gap-1 text-gray-300 hover:text-studio-green w-16 transition" title="Agenda">
+            <i data-lucide="calendar" class="w-6 h-6"></i>
+            <span class="text-[10px] font-semibold">Agenda</span>
+          </button>
+          <button class="tap flex flex-col items-center gap-1 text-studio-green w-16" title="Clientes">
+            <i data-lucide="users" class="w-6 h-6"></i>
+            <span class="text-[10px] font-extrabold">Clientes</span>
+          </button>
+          <button class="tap flex flex-col items-center gap-1 text-gray-300 hover:text-studio-green w-16 transition" title="Caixa">
+            <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+            <span class="text-[10px] font-semibold">Caixa</span>
+          </button>
+          <button class="tap flex flex-col items-center gap-1 text-gray-300 hover:text-studio-green w-16 transition" title="Menu">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+            <span class="text-[10px] font-semibold">Menu</span>
+          </button>
+        </nav>
+      </div>
+
+    </div>
+
+    <script>
+      lucide.createIcons();
+
+      let quickFilter = "all";
+
+      function setQuickFilter(v) {
+        quickFilter = v;
+        // marca visual (demo) – deixa “Todos” como ativo ao resetar
+        const chips = document.querySelectorAll("#screen-list header .no-scrollbar button");
+        chips.forEach((b, idx) => {
+          const isActive =
+            (v === "all" && idx === 0) ||
+            (v === "vip" && idx === 1) ||
+            (v === "alert" && idx === 2) ||
+            (v === "new" && idx === 3);
+
+          b.className = isActive
+            ? "tap px-3 py-2 rounded-xl bg-studio-green text-white text-[11px] font-extrabold tracking-wide shadow-sm whitespace-nowrap"
+            : "tap px-3 py-2 rounded-xl bg-paper text-gray-700 text-[11px] font-extrabold tracking-wide border border-line whitespace-nowrap";
+        });
+        filterList(document.getElementById("search").value || "");
+      }
+
+      function filterList(q) {
+        const query = (q || "").trim().toLowerCase();
+        const rows = document.querySelectorAll(".client-row");
+        rows.forEach((row) => {
+          const name = (row.getAttribute("data-name") || "").toLowerCase();
+          const tags = (row.getAttribute("data-tags") || "").toLowerCase();
+
+          const byText = !query || name.includes(query);
+          const byFilter =
+            quickFilter === "all" ||
+            (quickFilter === "vip" && tags.includes("vip")) ||
+            (quickFilter === "alert" && tags.includes("alert")) ||
+            (quickFilter === "new" && tags.includes("new"));
+
+          row.style.display = byText && byFilter ? "flex" : "none";
+          // também esconde o divisor logo abaixo, quando necessário
+          const divider = row.nextElementSibling;
+          if (divider && divider.classList.contains("h-px")) {
+            divider.style.display = row.style.display === "none" ? "none" : "block";
+          }
+        });
+      }
+
+      function openDetails(data) {
+        // preenche detalhes
+        document.getElementById("detail-name").textContent = data.name;
+        document.getElementById("detail-avatar").textContent = data.initials || "?";
+        document.getElementById("detail-since").textContent = "Cliente desde " + (data.since || "—");
+        document.getElementById("detail-phone").textContent = data.phone || "—";
+        document.getElementById("detail-visits").textContent = String(data.visits ?? 0);
+        document.getElementById("detail-absences").textContent = String(data.absences ?? 0);
+        document.getElementById("detail-last").textContent = String(data.last ?? "—");
+
+        // tags
+        const tags = document.getElementById("detail-tags");
+        tags.innerHTML = "";
+        if (data.vip) tags.innerHTML += `<span class="px-3 py-1 rounded-xl bg-purple-50 text-purple-600 text-[11px] font-extrabold border border-purple-100">VIP</span>`;
+        if (data.alert) tags.innerHTML += `<span class="px-3 py-1 rounded-xl bg-red-50 text-red-600 text-[11px] font-extrabold border border-red-100">Atenção</span>`;
+        if (!data.vip && !data.alert) tags.innerHTML += `<span class="px-3 py-1 rounded-xl bg-paper text-gray-600 text-[11px] font-extrabold border border-line">Perfil padrão</span>`;
+
+        // transição de telas
+        const list = document.getElementById("screen-list");
+        const details = document.getElementById("screen-details");
+
+        list.classList.remove("active");
+        list.classList.add("hidden-left");
+
+        details.classList.remove("hidden-right");
+        details.classList.add("active");
+
+        // garante ícones lucide renderizados (alguns podem aparecer após innerHTML)
+        lucide.createIcons();
+      }
+
+      function closeDetails() {
+        const list = document.getElementById("screen-list");
+        const details = document.getElementById("screen-details");
+
+        details.classList.remove("active");
+        details.classList.add("hidden-right");
+
+        list.classList.remove("hidden-left");
+        list.classList.add("active");
+      }
+    </script>
+  </body>
+</html>

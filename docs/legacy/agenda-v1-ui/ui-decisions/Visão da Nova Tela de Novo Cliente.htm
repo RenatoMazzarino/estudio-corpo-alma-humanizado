@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Novo Cliente — Corpo & Alma (UI referência)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              studio: {
+                green: "#6A806C",
+                dark: "#4e5f50",
+                light: "#F3F6F4",
+                accent: "#D4A373",
+              },
+              paper: "#FAF9F6",
+              text: { main: "#2C3333", muted: "#868E96" },
+              dom: "#A855F7",
+              danger: "#DC2626",
+              line: "rgba(44,51,51,0.06)",
+              warn: "#F59E0B",
+              ok: "#16A34A",
+            },
+            fontFamily: {
+              serif: ['"Playfair Display"', "serif"],
+              sans: ['"Lato"', "sans-serif"],
+            },
+            boxShadow: {
+              soft: "0 4px 20px -2px rgba(106, 128, 108, 0.15)",
+              lift: "0 10px 30px rgba(0,0,0,0.08)",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        background: #222;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        font-family: "Lato", sans-serif;
+      }
+      #mobile-frame {
+        width: 100%;
+        max-width: 414px;
+        height: 100%;
+        background: #FAF9F6;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      .tap { -webkit-tap-highlight-color: transparent; }
+
+      /* Sticky section headers */
+      .section-title {
+        position: sticky;
+        top: 118px; /* abaixo do header */
+        z-index: 10;
+        background: rgba(250, 249, 246, 0.92);
+        backdrop-filter: blur(8px);
+        padding-top: 10px;
+        padding-bottom: 10px;
+      }
+
+      /* Input baseline (visual) */
+      .field {
+        width: 100%;
+        border-radius: 16px;
+        background: #FAF9F6;
+        border: 1px solid rgba(44,51,51,0.08);
+        padding: 12px 14px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #2C3333;
+        outline: none;
+        transition: box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
+      }
+      .field::placeholder { color: rgba(134, 142, 150, 0.9); font-weight: 600; }
+      .field:focus {
+        border-color: rgba(106, 128, 108, 0.35);
+        box-shadow: 0 0 0 4px rgba(106, 128, 108, 0.12);
+        background: #fff;
+      }
+      .field[aria-invalid="true"] {
+        border-color: rgba(220, 38, 38, 0.45);
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.10);
+        background: #fff;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        border: 1px solid rgba(44,51,51,0.08);
+        background: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        color: #2C3333;
+        cursor: pointer;
+        user-select: none;
+      }
+      .chip.active {
+        border-color: rgba(106, 128, 108, 0.22);
+        background: rgba(243, 246, 244, 0.9);
+        color: #4e5f50;
+      }
+
+      /* Toast */
+      #toast {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 86px;
+        width: calc(100% - 40px);
+        max-width: 374px;
+        z-index: 60;
+        display: none;
+      }
+      .toast-inner {
+        background: rgba(255,255,255,0.92);
+        border: 1px solid rgba(44,51,51,0.08);
+        backdrop-filter: blur(10px);
+        border-radius: 18px;
+        padding: 12px 14px;
+        box-shadow: 0 18px 50px rgba(0,0,0,0.12);
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="mobile-frame">
+
+      <!-- HEADER -->
+      <header class="safe-top px-6 pt-8 pb-4 bg-white rounded-b-3xl shadow-soft z-20 sticky top-0">
+        <div class="flex items-center justify-between mb-3">
+          <button class="tap w-10 h-10 rounded-full bg-paper border border-line text-gray-700 flex items-center justify-center hover:bg-white transition" title="Voltar">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+
+          <div class="text-center">
+            <p class="text-[11px] font-extrabold text-studio-green uppercase tracking-[0.24em] mb-1">Cadastro</p>
+            <h1 class="text-2xl font-serif text-gray-800 leading-tight">Novo Cliente</h1>
+          </div>
+
+          <button onclick="resetForm()" class="tap w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm" title="Limpar">
+            <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- “Saúde do cadastro” (resumo compact) -->
+        <div class="flex items-center justify-between gap-3 bg-paper border border-line rounded-2xl px-4 py-3">
+          <div class="min-w-0">
+            <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em]">Obrigatórios</p>
+            <p class="text-sm font-black text-gray-800">
+              <span id="reqCount">0</span>/<span id="reqTotal">4</span> preenchidos
+              <span class="text-gray-400 font-semibold">•</span>
+              <span id="reqStatus" class="text-gray-500 font-extrabold">Em andamento</span>
+            </p>
+          </div>
+
+          <div class="w-10 h-10 rounded-2xl bg-white border border-line flex items-center justify-center">
+            <i id="reqIcon" data-lucide="clipboard-list" class="w-5 h-5 text-gray-600"></i>
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <main class="flex-1 overflow-y-auto no-scrollbar pb-28">
+
+        <!-- HERO: Identidade do cliente -->
+        <section class="px-6 pt-5">
+          <div class="bg-white rounded-3xl border border-white shadow-sm p-5">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-2xl bg-studio-light border border-studio-green/10 flex items-center justify-center">
+                <div id="avatar" class="w-11 h-11 rounded-xl bg-studio-green text-white flex items-center justify-center text-xl font-serif font-bold">?</div>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em]">Identificação</p>
+                <p id="heroName" class="text-base font-black text-gray-800 truncate">Nome do cliente</p>
+                <p id="heroMeta" class="text-xs text-gray-400 font-semibold mt-0.5">Telefone • Cidade</p>
+              </div>
+
+              <button onclick="toggleVip()" class="tap px-3 py-2 rounded-2xl bg-paper border border-line text-gray-700 font-extrabold text-[11px] hover:bg-white transition" title="Marcar VIP">
+                <span class="inline-flex items-center gap-2">
+                  <i data-lucide="star" class="w-4 h-4"></i>
+                  VIP
+                </span>
+              </button>
+            </div>
+
+            <div id="vipBanner" class="hidden mt-4 bg-purple-50 border border-purple-100 text-purple-700 rounded-2xl px-4 py-3">
+              <div class="flex items-start gap-3">
+                <i data-lucide="sparkles" class="w-5 h-5 mt-0.5"></i>
+                <div>
+                  <p class="text-xs font-extrabold uppercase tracking-widest">Cliente VIP</p>
+                  <p class="text-xs font-semibold opacity-90 mt-1">
+                    Use este campo para orientar atendimento, benefícios, ou observações comerciais.
+                  </p>
+                  <textarea id="vipNotes" class="mt-3 w-full field h-24 resize-none" placeholder="Ex.: preferência de horários, pacote contratado, observações..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DADOS BÁSICOS -->
+        <section class="px-6 pt-4">
+          <div class="section-title">
+            <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] pl-1">Dados básicos</h3>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
+            <div>
+              <label class="flex items-center justify-between text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2">
+                Nome completo <span class="text-danger">Obrigatório</span>
+              </label>
+              <input id="name" class="field" placeholder="Ex.: Ana Clara Souza" oninput="onNameChange(this.value)" autocomplete="name" />
+              <p id="err-name" class="hidden text-xs font-bold text-danger mt-2">Preencha o nome completo.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="flex items-center justify-between text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2">
+                  Telefone <span class="text-danger">Obrigatório</span>
+                </label>
+                <input id="phone" inputmode="tel" class="field" placeholder="(11) 99999-9999" oninput="maskPhone(this)" autocomplete="tel" />
+                <p id="err-phone" class="hidden text-xs font-bold text-danger mt-2">Telefone inválido.</p>
+              </div>
+
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">
+                  WhatsApp
+                </label>
+                <label class="tap flex items-center gap-3 bg-paper border border-line rounded-2xl px-4 py-3 cursor-pointer select-none">
+                  <input id="isWhatsapp" type="checkbox" class="accent-studio-green w-4 h-4" checked onchange="syncHero()" />
+                  <span class="text-sm font-extrabold text-gray-800">Mesmo número</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">
+                  Data de nascimento
+                </label>
+                <input id="birth" type="date" class="field" onchange="syncHero()" />
+              </div>
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">
+                  CPF (opcional)
+                </label>
+                <input id="cpf" inputmode="numeric" class="field" placeholder="000.000.000-00" oninput="maskCPF(this)" />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">
+                Email (opcional)
+              </label>
+              <input id="email" type="email" class="field" placeholder="cliente@email.com" oninput="syncHero()" autocomplete="email" />
+            </div>
+          </div>
+        </section>
+
+        <!-- ENDEREÇO -->
+        <section class="px-6 pt-4">
+          <div class="section-title">
+            <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] pl-1">Endereço</h3>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
+            <div class="flex items-start gap-3 bg-paper border border-line rounded-2xl px-4 py-3">
+              <i data-lucide="info" class="w-5 h-5 text-gray-600 mt-0.5"></i>
+              <p class="text-xs text-gray-600 font-semibold leading-relaxed">
+                Cadastre o endereço completo para atendimentos domiciliares e logística. Você pode deixar em branco e completar depois.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div class="col-span-2">
+                <label class="flex items-center justify-between text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2">
+                  CEP <span class="text-gray-400">(opcional)</span>
+                </label>
+                <input id="cep" inputmode="numeric" class="field" placeholder="00000-000" oninput="maskCEP(this)" />
+              </div>
+              <div class="flex items-end">
+                <button class="tap w-full h-[46px] rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs border border-studio-green/10 hover:bg-white transition flex items-center justify-center gap-2">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                  Buscar
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Logradouro</label>
+              <input id="street" class="field" placeholder="Rua / Avenida" oninput="syncHero()" />
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Número</label>
+                <input id="number" class="field" placeholder="120" />
+              </div>
+              <div class="col-span-2">
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Complemento</label>
+                <input id="complement" class="field" placeholder="Apto, bloco, casa..." />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Bairro</label>
+                <input id="district" class="field" placeholder="Centro" />
+              </div>
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Cidade</label>
+                <input id="city" class="field" placeholder="São Paulo" oninput="syncHero()" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">UF</label>
+                <select id="state" class="field" onchange="syncHero()">
+                  <option value="">Selecione</option>
+                  <option>SP</option><option>RJ</option><option>MG</option><option>PR</option><option>SC</option><option>RS</option>
+                  <option>BA</option><option>PE</option><option>CE</option><option>DF</option><option>GO</option><option>ES</option>
+                  <option>PA</option><option>AM</option><option>MT</option><option>MS</option><option>PB</option><option>RN</option>
+                  <option>AL</option><option>SE</option><option>PI</option><option>MA</option><option>RO</option><option>RR</option>
+                  <option>AP</option><option>TO</option><option>AC</option>
+                </select>
+              </div>
+
+              <div class="flex items-end">
+                <button class="tap w-full h-[46px] rounded-2xl bg-paper border border-line text-gray-700 font-extrabold text-xs hover:bg-white transition flex items-center justify-center gap-2" title="Pré-visualizar no mapa">
+                  <i data-lucide="map" class="w-4 h-4"></i>
+                  Mapa
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SAÚDE & CUIDADOS -->
+        <section class="px-6 pt-4">
+          <div class="section-title">
+            <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] pl-1">Saúde & Cuidados</h3>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
+            <div class="flex items-start gap-3 bg-paper border border-line rounded-2xl px-4 py-3">
+              <i data-lucide="shield-alert" class="w-5 h-5 text-gray-600 mt-0.5"></i>
+              <p class="text-xs text-gray-600 font-semibold leading-relaxed">
+                Campos pensados para produção: alergias, contraindicações, observações clínicas e preferências.
+              </p>
+            </div>
+
+            <!-- Chips de alerta -->
+            <div>
+              <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2">Sinalizações rápidas</p>
+              <div class="flex flex-wrap gap-2">
+                <span class="chip" onclick="toggleChip(this)">Gestante</span>
+                <span class="chip" onclick="toggleChip(this)">Alergia a óleo</span>
+                <span class="chip" onclick="toggleChip(this)">Lombar sensível</span>
+                <span class="chip" onclick="toggleChip(this)">Pressão forte</span>
+                <span class="chip" onclick="toggleChip(this)">Pressão leve</span>
+                <span class="chip" onclick="toggleChip(this)">Pós-operatório</span>
+                <span class="chip" onclick="toggleChip(this)">Varizes</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Contraindicações / Atenções</label>
+              <textarea id="contra" class="field h-28 resize-none" placeholder="Ex.: evitar pressão profunda em X região, alergia a essência Y, histórico de dor..."></textarea>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Preferências de atendimento</label>
+              <textarea id="prefs" class="field h-24 resize-none" placeholder="Ex.: prefere música baixa, ambiente mais quente, óleo neutro, foco em ombros..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- RELACIONAMENTO & MARKETING -->
+        <section class="px-6 pt-4">
+          <div class="section-title">
+            <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] pl-1">Relacionamento</h3>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Origem do cliente</label>
+                <select id="source" class="field">
+                  <option value="">Selecione</option>
+                  <option>Instagram</option>
+                  <option>Indicação</option>
+                  <option>Google</option>
+                  <option>Retorno</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Preferência de contato</label>
+                <select id="contactPref" class="field">
+                  <option value="">Selecione</option>
+                  <option>WhatsApp</option>
+                  <option>Ligação</option>
+                  <option>Email</option>
+                  <option>Não contatar</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="tap flex items-center gap-3 bg-paper border border-line rounded-2xl px-4 py-3 cursor-pointer select-none">
+              <input id="allowMarketing" type="checkbox" class="accent-studio-green w-4 h-4" />
+              <div class="min-w-0">
+                <p class="text-sm font-extrabold text-gray-800">Permite receber mensagens</p>
+                <p class="text-xs text-gray-500 font-semibold mt-0.5">Campanhas, lembretes, novidades (futuro: automação WhatsApp)</p>
+              </div>
+            </label>
+
+            <div>
+              <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Observações internas (não vai para o cliente)</label>
+              <textarea id="internalNotes" class="field h-24 resize-none" placeholder="Ex.: cliente pontual, preferir agendar pela manhã..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- DOCUMENTOS / RESPONSÁVEL (para casos especiais) -->
+        <section class="px-6 pt-4">
+          <div class="section-title">
+            <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-[0.22em] pl-1">Dados complementares</h3>
+          </div>
+
+          <div class="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
+            <div class="flex items-start gap-3 bg-paper border border-line rounded-2xl px-4 py-3">
+              <i data-lucide="file-text" class="w-5 h-5 text-gray-600 mt-0.5"></i>
+              <p class="text-xs text-gray-600 font-semibold leading-relaxed">
+                Estrutura pronta para produção: responsável (se menor), documentos, e consentimentos.
+              </p>
+            </div>
+
+            <label class="tap flex items-center gap-3 bg-paper border border-line rounded-2xl px-4 py-3 cursor-pointer select-none">
+              <input id="isMinor" type="checkbox" class="accent-studio-green w-4 h-4" onchange="toggleGuardian()" />
+              <div class="min-w-0">
+                <p class="text-sm font-extrabold text-gray-800">Cliente menor de idade</p>
+                <p class="text-xs text-gray-500 font-semibold mt-0.5">Habilita campos do responsável</p>
+              </div>
+            </label>
+
+            <div id="guardianBox" class="hidden bg-white border border-line rounded-2xl p-4">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="col-span-2">
+                  <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Nome do responsável</label>
+                  <input id="guardianName" class="field" placeholder="Nome completo" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Telefone</label>
+                  <input id="guardianPhone" inputmode="tel" class="field" placeholder="(11) 99999-9999" oninput="maskPhone(this)" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">CPF</label>
+                  <input id="guardianCpf" inputmode="numeric" class="field" placeholder="000.000.000-00" oninput="maskCPF(this)" />
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Consentimento</label>
+                <select id="consent" class="field">
+                  <option value="">Selecione</option>
+                  <option>Assinado</option>
+                  <option>Pendente</option>
+                  <option>Não aplicável</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.22em] mb-2 block">Canal de cadastro</label>
+                <select id="createdFrom" class="field">
+                  <option>App</option>
+                  <option>Instagram</option>
+                  <option>WhatsApp</option>
+                  <option>Telefone</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="h-10"></div>
+      </main>
+
+      <!-- BOTTOM ACTION BAR -->
+      <footer class="safe-bottom fixed bottom-0 w-full max-w-[414px] z-40">
+        <div class="bg-white border-t border-line px-4 py-3 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] rounded-t-3xl">
+          <div class="flex items-center gap-3">
+            <button onclick="saveDraft()" class="tap w-14 h-14 rounded-2xl bg-paper border border-line text-gray-700 flex items-center justify-center hover:bg-white transition" title="Salvar rascunho">
+              <i data-lucide="bookmark" class="w-6 h-6"></i>
+            </button>
+
+            <button onclick="submitForm()" class="tap flex-1 h-14 rounded-2xl bg-studio-green text-white font-black shadow-lift active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm tracking-wide uppercase">
+              <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+              Salvar Cliente
+            </button>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between text-[11px] font-extrabold">
+            <div class="flex items-center gap-2 text-gray-500">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+              <span>Dados salvos com segurança</span>
+            </div>
+            <button onclick="showToast('Dica: você pode salvar como rascunho e completar depois.', 'info')" class="tap text-studio-green">
+              Ajuda
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      <!-- TOAST -->
+      <div id="toast" role="status" aria-live="polite">
+        <div class="toast-inner">
+          <div id="toastIcon" class="mt-0.5"></div>
+          <div class="flex-1">
+            <p id="toastTitle" class="text-sm font-black text-gray-800">Mensagem</p>
+            <p id="toastMsg" class="text-xs font-semibold text-gray-600 mt-1 leading-relaxed"></p>
+          </div>
+          <button class="tap ml-2 text-gray-400 hover:text-gray-600" onclick="hideToast()" title="Fechar">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      lucide.createIcons();
+
+      // ---- UI State ----
+      let isVip = false;
+
+      const REQUIRED_FIELDS = ["name", "phone"];
+
+      function onNameChange(v) {
+        const name = (v || "").trim();
+        document.getElementById("heroName").textContent = name || "Nome do cliente";
+
+        const initials = name
+          ? name.split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()
+          : "?";
+        document.getElementById("avatar").textContent = initials;
+
+        validateLive();
+        syncHero();
+      }
+
+      function maskPhone(input) {
+        let v = (input.value || "").replace(/\D/g, "").slice(0, 11);
+        if (v.length <= 10) {
+          // (11) 9999-9999
+          v = v.replace(/^(\d{2})(\d)/, "($1) $2");
+          v = v.replace(/(\d{4})(\d)/, "$1-$2");
+        } else {
+          // (11) 99999-9999
+          v = v.replace(/^(\d{2})(\d)/, "($1) $2");
+          v = v.replace(/(\d{5})(\d)/, "$1-$2");
+        }
+        input.value = v;
+        validateLive();
+        syncHero();
+      }
+
+      function maskCPF(input) {
+        let v = (input.value || "").replace(/\D/g, "").slice(0, 11);
+        v = v.replace(/(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        input.value = v;
+      }
+
+      function maskCEP(input) {
+        let v = (input.value || "").replace(/\D/g, "").slice(0, 8);
+        if (v.length > 5) v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+        input.value = v;
+      }
+
+      function syncHero() {
+        const phone = (document.getElementById("phone").value || "").trim();
+        const city = (document.getElementById("city").value || "").trim();
+        const state = (document.getElementById("state").value || "").trim();
+        const email = (document.getElementById("email").value || "").trim();
+
+        const parts = [];
+        if (phone) parts.push(phone);
+        if (city || state) parts.push([city, state].filter(Boolean).join(" / "));
+        if (!phone && email) parts.push(email);
+
+        document.getElementById("heroMeta").textContent = parts.length ? parts.join(" • ") : "Telefone • Cidade";
+
+        updateRequiredStatus();
+      }
+
+      function toggleVip() {
+        isVip = !isVip;
+        const box = document.getElementById("vipBanner");
+        box.classList.toggle("hidden", !isVip);
+        showToast(isVip ? "Cliente marcado como VIP." : "VIP removido.", "info");
+      }
+
+      function toggleGuardian() {
+        const on = document.getElementById("isMinor").checked;
+        document.getElementById("guardianBox").classList.toggle("hidden", !on);
+      }
+
+      function toggleChip(el) {
+        el.classList.toggle("active");
+      }
+
+      // ---- Validation (demo robusta p/ referência) ----
+      function validateLive() {
+        const name = (document.getElementById("name").value || "").trim();
+        const phone = (document.getElementById("phone").value || "").replace(/\D/g, "");
+
+        const nameOk = name.length >= 3;
+        const phoneOk = phone.length === 10 || phone.length === 11;
+
+        setFieldValidity("name", nameOk, "err-name");
+        setFieldValidity("phone", phoneOk, "err-phone");
+
+        updateRequiredStatus();
+      }
+
+      function setFieldValidity(id, ok, errId) {
+        const el = document.getElementById(id);
+        const err = document.getElementById(errId);
+        el.setAttribute("aria-invalid", ok ? "false" : "true");
+        err.classList.toggle("hidden", ok);
+      }
+
+      function updateRequiredStatus() {
+        const name = (document.getElementById("name").value || "").trim();
+        const phone = (document.getElementById("phone").value || "").replace(/\D/g, "");
+
+        const filled = [
+          name.length >= 3,
+          phone.length === 10 || phone.length === 11,
+        ].filter(Boolean).length;
+
+        document.getElementById("reqCount").textContent = String(filled);
+        document.getElementById("reqTotal").textContent = String(REQUIRED_FIELDS.length);
+
+        const statusEl = document.getElementById("reqStatus");
+        const iconEl = document.getElementById("reqIcon");
+
+        if (filled === 0) {
+          statusEl.textContent = "Em andamento";
+          statusEl.className = "text-gray-500 font-extrabold";
+          iconEl.setAttribute("data-lucide", "clipboard-list");
+        } else if (filled < REQUIRED_FIELDS.length) {
+          statusEl.textContent = "Quase lá";
+          statusEl.className = "text-warn font-extrabold";
+          iconEl.setAttribute("data-lucide", "clipboard-check");
+        } else {
+          statusEl.textContent = "Pronto para salvar";
+          statusEl.className = "text-ok font-extrabold";
+          iconEl.setAttribute("data-lucide", "badge-check");
+        }
+
+        lucide.createIcons();
+      }
+
+      // ---- Actions (demo) ----
+      function saveDraft() {
+        validateLive();
+        showToast("Rascunho salvo (demo). Em produção, isso vira um save parcial no banco.", "ok");
+      }
+
+      function submitForm() {
+        validateLive();
+
+        const invalids = Array.from(document.querySelectorAll('[aria-invalid="true"]'))
+          .map(el => el.id);
+
+        if (invalids.includes("name") || invalids.includes("phone")) {
+          showToast("Preencha os campos obrigatórios corretamente (nome e telefone).", "danger");
+          // scroll para o primeiro inválido
+          const first = document.getElementById(invalids[0]);
+          if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+
+        showToast("Cliente salvo com sucesso (demo).", "ok");
+      }
+
+      function resetForm() {
+        const ids = [
+          "name","phone","isWhatsapp","birth","cpf","email",
+          "cep","street","number","complement","district","city","state",
+          "contra","prefs","source","contactPref","allowMarketing","internalNotes",
+          "isMinor","guardianName","guardianPhone","guardianCpf","consent","createdFrom"
+        ];
+
+        ids.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+
+          if (el.type === "checkbox") el.checked = (id === "isWhatsapp") ? true : false;
+          else el.value = "";
+        });
+
+        isVip = false;
+        document.getElementById("vipBanner").classList.add("hidden");
+        document.getElementById("guardianBox").classList.add("hidden");
+
+        document.querySelectorAll(".chip.active").forEach(c => c.classList.remove("active"));
+
+        document.getElementById("avatar").textContent = "?";
+        document.getElementById("heroName").textContent = "Nome do cliente";
+        document.getElementById("heroMeta").textContent = "Telefone • Cidade";
+
+        hideToast();
+        validateLive();
+        syncHero();
+
+        showToast("Formulário limpo.", "info");
+      }
+
+      // ---- Toast ----
+      let toastTimer;
+
+      function showToast(msg, type) {
+        const toast = document.getElementById("toast");
+        const title = document.getElementById("toastTitle");
+        const text = document.getElementById("toastMsg");
+        const icon = document.getElementById("toastIcon");
+
+        let iconName = "info";
+        let ttl = "Aviso";
+
+        if (type === "ok") { iconName = "check-circle-2"; ttl = "Tudo certo"; }
+        if (type === "danger") { iconName = "alert-triangle"; ttl = "Atenção"; }
+        if (type === "info") { iconName = "sparkles"; ttl = "Dica"; }
+
+        icon.innerHTML = `<i data-lucide="${iconName}" class="w-5 h-5 text-gray-700"></i>`;
+        title.textContent = ttl;
+        text.textContent = msg;
+
+        toast.style.display = "block";
+        lucide.createIcons();
+
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(hideToast, 3800);
+      }
+
+      function hideToast() {
+        const toast = document.getElementById("toast");
+        toast.style.display = "none";
+        clearTimeout(toastTimer);
+      }
+
+      // init
+      validateLive();
+      syncHero();
+    </script>
+  </body>
+</html>

@@ -1,44 +1,43 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Mail, Phone, MessageCircle, MapPin, Briefcase, Calendar, IdCard, Tags, Pencil, Copy, Trash2, Navigation } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { CalendarPlus, ChevronLeft, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import type { Database } from "../../../../lib/supabase/types";
-import { deleteClient, updateClientProfile } from "./actions";
-import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
+import { Chip } from "../../../../components/ui/chip";
+import { SurfaceCard } from "../../../../components/ui/surface-card";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
+type ClientPhoneRow = Database["public"]["Tables"]["client_phones"]["Row"];
+type ClientEmailRow = Database["public"]["Tables"]["client_emails"]["Row"];
+type ClientAddressRow = Database["public"]["Tables"]["client_addresses"]["Row"];
+type ClientHealthItemRow = Database["public"]["Tables"]["client_health_items"]["Row"];
 
 interface ClientProfileProps {
   client: ClientRow;
+  metrics: {
+    visits: number;
+    absences: number;
+    lastVisitLabel: string;
+  };
+  phones: ClientPhoneRow[];
+  emails: ClientEmailRow[];
+  addresses: ClientAddressRow[];
+  healthItems: ClientHealthItemRow[];
 }
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
 }
 
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  return digits
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1-$2");
-}
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits
-      .replace(/^(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return digits
-    .replace(/^(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
-}
-
-function formatCep(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
+function getInitials(name: string) {
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length === 0) return "CA";
+  const first = parts[0] ?? "";
+  const last = parts[parts.length - 1] ?? "";
+  if (parts.length === 1) return first.slice(0, 2).toUpperCase();
+  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
 }
 
 function buildAddressLine(payload: {
@@ -49,7 +48,6 @@ function buildAddressLine(payload: {
   cidade?: string | null;
   estado?: string | null;
   cep?: string | null;
-  fallback?: string | null;
 }) {
   const parts = [
     payload.logradouro,
@@ -63,428 +61,336 @@ function buildAddressLine(payload: {
     .map((value) => (value ? value.trim() : ""))
     .filter((value) => value.length > 0);
 
-  if (parts.length > 0) return parts.join(", ");
-  return payload.fallback?.trim() || "Endereço não informado";
+  return parts.length > 0 ? parts.join(", ") : null;
 }
 
-export function ClientProfile({ client }: ClientProfileProps) {
-  const [editing, setEditing] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [phone, setPhone] = useState(client.phone ?? "");
-  const [cpf, setCpf] = useState(client.cpf ?? "");
-  const [cep, setCep] = useState(client.address_cep ?? "");
-  const [logradouro, setLogradouro] = useState(client.address_logradouro ?? "");
-  const [numero, setNumero] = useState(client.address_numero ?? "");
-  const [complemento, setComplemento] = useState(client.address_complemento ?? "");
-  const [bairro, setBairro] = useState(client.address_bairro ?? "");
-  const [cidade, setCidade] = useState(client.address_cidade ?? "");
-  const [estado, setEstado] = useState(client.address_estado ?? "");
-  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+export function ClientProfile({ client, metrics, phones, emails, addresses, healthItems }: ClientProfileProps) {
+  const [compactHeader, setCompactHeader] = useState(false);
+  const initials = client.initials || getInitials(client.name);
+  const createdAtLabel = client.created_at
+    ? new Date(client.created_at).toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
+    : "";
 
-  const phoneDigits = client.phone ? onlyDigits(client.phone) : "";
-  const whatsappLink = phoneDigits ? `https://wa.me/55${phoneDigits}` : null;
+  const primaryPhone = phones.find((phone) => phone.is_primary) ?? phones[0] ?? null;
+  const whatsappPhone = phones.find((phone) => phone.is_whatsapp) ?? primaryPhone;
+  const primaryAddress = addresses.find((address) => address.is_primary) ?? addresses[0] ?? null;
+
+  const whatsappDigits = whatsappPhone?.number_raw ? onlyDigits(whatsappPhone.number_raw) : "";
+  const phoneDigits = primaryPhone?.number_raw ? onlyDigits(primaryPhone.number_raw) : "";
+  const whatsappLink = whatsappDigits ? `https://wa.me/55${whatsappDigits}` : null;
   const callLink = phoneDigits ? `tel:+55${phoneDigits}` : null;
-  const phoneError = useMemo(() => {
-    if (!phone) return "";
-    const digits = phone.replace(/\D/g, "");
-    return digits.length === 10 || digits.length === 11 ? "" : "Telefone inválido (com DDD).";
-  }, [phone]);
-  const cpfError = useMemo(() => {
-    if (!cpf) return "";
-    const digits = cpf.replace(/\D/g, "");
-    return digits.length === 11 ? "" : "CPF inválido.";
-  }, [cpf]);
 
-  const addressLine = buildAddressLine({
-    logradouro: client.address_logradouro,
-    numero: client.address_numero,
-    complemento: client.address_complemento,
-    bairro: client.address_bairro,
-    cidade: client.address_cidade,
-    estado: client.address_estado,
-    cep: client.address_cep,
-    fallback: client.endereco_completo,
-  });
+  const addressLine = primaryAddress
+    ? buildAddressLine({
+        logradouro: primaryAddress.address_logradouro,
+        numero: primaryAddress.address_numero,
+        complemento: primaryAddress.address_complemento,
+        bairro: primaryAddress.address_bairro,
+        cidade: primaryAddress.address_cidade,
+        estado: primaryAddress.address_estado,
+        cep: primaryAddress.address_cep,
+      })
+    : null;
+  const mapQuery = addressLine ? encodeURIComponent(addressLine) : null;
+  const mapsLink = mapQuery ? `https://maps.google.com/?q=${mapQuery}` : null;
 
-  const mapsQuery = buildAddressLine({
-    logradouro,
-    numero,
-    complemento,
-    bairro,
-    cidade,
-    estado,
-    cep,
-  });
-  const hasMapsQuery = mapsQuery && mapsQuery !== "Endereço não informado";
+  const allergies = healthItems.filter((item) => item.type === "allergy");
+  const conditions = healthItems.filter((item) => item.type === "condition");
+  const quickTags = [...allergies, ...conditions].slice(0, 3);
 
-  const handleCopy = async (value?: string | null) => {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setMessage({ type: "success", text: "Copiado para a área de transferência." });
-    } catch {
-      setMessage({ type: "error", text: "Não foi possível copiar agora." });
-    }
-  };
-
-  const handleCepLookup = async () => {
-    const normalized = normalizeCep(cep);
-    if (normalized.length !== 8) {
-      setCepStatus("error");
-      return;
-    }
-    setCepStatus("loading");
-    const result = await fetchAddressByCep(normalized);
-    if (!result) {
-      setCepStatus("error");
-      return;
-    }
-    setLogradouro(result.logradouro);
-    setBairro(result.bairro);
-    setCidade(result.cidade);
-    setEstado(result.estado);
-    setCepStatus("success");
-  };
+  useEffect(() => {
+    const container = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
+    if (!container) return;
+    const handle = () => setCompactHeader(container.scrollTop > 120);
+    handle();
+    container.addEventListener("scroll", handle, { passive: true });
+    return () => container.removeEventListener("scroll", handle);
+  }, []);
 
   return (
-    <div className="bg-white p-5 rounded-3xl shadow-sm border border-stone-100 space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">{client.name}</h2>
-          {client.email && <p className="text-xs text-gray-400 mt-1">{client.email}</p>}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setEditing((prev) => !prev)}
-            className="flex items-center gap-2 text-xs font-bold text-studio-green bg-green-50 px-3 py-2 rounded-full hover:bg-green-100 transition"
+    <div>
+      <div
+        className={`sticky top-0 z-40 safe-top px-6 pt-4 pb-3 bg-white/95 backdrop-blur border-b border-line transition ${
+          compactHeader ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <Link
+            href="/clientes"
+            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+            aria-label="Voltar"
           >
-            <Pencil size={14} />
-            {editing ? "Fechar edição" : "Editar"}
-          </button>
-          <button
-            onClick={async () => {
-              if (!confirm("Tem certeza? Isso apagará este cliente.")) return;
-              const result = await deleteClient(client.id);
-              if (!result.ok) {
-                setMessage({ type: "error", text: result.error.message });
-                return;
-              }
-              window.location.href = "/clientes";
-            }}
-            className="flex items-center gap-2 text-xs font-bold text-red-600 bg-red-50 px-3 py-2 rounded-full hover:bg-red-100 transition"
-          >
-            <Trash2 size={14} />
-            Apagar
-          </button>
+            <ChevronLeft size={18} />
+          </Link>
+          <div className="min-w-0">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Cliente</p>
+            <p className="text-sm font-extrabold text-studio-text truncate">{client.name}</p>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {callLink && (
-          <a
-            href={callLink}
-            className="inline-flex items-center gap-2 text-xs font-bold text-gray-700 bg-stone-100 px-3 py-2 rounded-full hover:bg-stone-200 transition"
-          >
-            <Phone size={14} />
-            Ligar
-          </a>
-        )}
-        {whatsappLink && (
-          <a
-            href={whatsappLink}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-xs font-bold text-green-700 bg-green-50 px-3 py-2 rounded-full hover:bg-green-100 transition"
-          >
-            <MessageCircle size={14} />
-            WhatsApp
-          </a>
-        )}
-        {client.email && (
-          <a
-            href={`mailto:${client.email}`}
-            className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50 px-3 py-2 rounded-full hover:bg-blue-100 transition"
-          >
-            <Mail size={14} />
-            Email
-          </a>
-        )}
-        {addressLine && addressLine !== "Endereço não informado" && (
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-xs font-bold text-studio-green bg-green-50 px-3 py-2 rounded-full hover:bg-green-100 transition"
-          >
-            <Navigation size={14} />
-            Abrir mapa
-          </a>
-        )}
-      </div>
+      <section className="relative bg-white rounded-b-[2.5rem] shadow-soft overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-full h-36 bg-linear-to-b from-studio-light to-white"></div>
+          <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-studio-light/60 blur-2xl"></div>
+          <div className="absolute -left-12 top-10 w-52 h-52 rounded-full bg-studio-light/40 blur-2xl"></div>
+        </div>
 
-      <div className="grid grid-cols-1 gap-3 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
-          <Phone size={14} className="text-gray-400" />
-          <span>{client.phone || "Telefone não informado"}</span>
-          {client.phone && (
-            <button
-              type="button"
-              onClick={() => handleCopy(client.phone)}
-              className="ml-auto text-gray-400 hover:text-gray-600"
-              aria-label="Copiar telefone"
-            >
-              <Copy size={14} />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar size={14} className="text-gray-400" />
-          <span>{client.data_nascimento || "Data de nascimento não informada"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <IdCard size={14} className="text-gray-400" />
-          <span>{client.cpf || "CPF não informado"}</span>
-          {client.cpf && (
-            <button
-              type="button"
-              onClick={() => handleCopy(client.cpf)}
-              className="ml-auto text-gray-400 hover:text-gray-600"
-              aria-label="Copiar CPF"
-            >
-              <Copy size={14} />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Briefcase size={14} className="text-gray-400" />
-          <span>{client.profissao || "Profissão não informada"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin size={14} className="text-gray-400" />
-          <span>{addressLine}</span>
-          {addressLine && addressLine !== "Endereço não informado" && (
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="ml-auto text-studio-green hover:text-studio-green-dark"
-              aria-label="Abrir endereço no GPS"
-            >
-              <Navigation size={16} />
-            </a>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <MessageCircle size={14} className="text-gray-400" />
-          <span>{client.como_conheceu || "Como conheceu não informado"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tags size={14} className="text-gray-400" />
-          <span>
-            {client.health_tags && client.health_tags.length > 0 ? client.health_tags.join(", ") : "Sem tags"}
-          </span>
-        </div>
-      </div>
-
-      {editing && (
-        <form
-          action={async (formData) => {
-            setMessage(null);
-            const result = await updateClientProfile(formData);
-            if (!result.ok) {
-              setMessage({ type: "error", text: result.error.message });
-              return;
-            }
-            setMessage({ type: "success", text: "Cliente atualizado com sucesso." });
-            setEditing(false);
-          }}
-          className="space-y-4 border-t border-stone-100 pt-4"
-        >
-          <input type="hidden" name="clientId" value={client.id} />
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Nome Completo</label>
-            <input
-              name="name"
-              defaultValue={client.name}
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-              required
-            />
+        <div className="relative safe-top pt-20 px-6 pb-6 flex flex-col items-center text-center">
+          <div className="relative w-24 h-24 rounded-full bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.08)] mb-3 overflow-hidden">
+            {client.avatar_url ? (
+              <Image
+                src={client.avatar_url}
+                alt={client.name}
+                fill
+                sizes="96px"
+                className="object-cover rounded-full"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full rounded-full bg-studio-green text-white flex items-center justify-center text-3xl font-serif font-bold">
+                {initials}
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            <input
-              name="phone"
-              value={phone}
-              placeholder="Telefone / WhatsApp"
-              inputMode="numeric"
-              aria-invalid={phoneError ? "true" : "false"}
-              onChange={(e) => setPhone(formatPhone(e.target.value))}
-              className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
-                phoneError
-                  ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                  : "border-stone-100 focus:ring-studio-green/20"
-              }`}
-            />
-            <p className="text-[11px] text-gray-400">DDD obrigatório.</p>
-            {phoneError && <p className="text-[11px] text-red-500">{phoneError}</p>}
-            <input
-              name="email"
-              defaultValue={client.email ?? ""}
-              placeholder="Email"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-            />
-            <input
-              name="data_nascimento"
-              type="date"
-              defaultValue={client.data_nascimento ?? ""}
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-            />
-            <input
-              name="cpf"
-              value={cpf}
-              placeholder="CPF"
-              inputMode="numeric"
-              aria-invalid={cpfError ? "true" : "false"}
-              onChange={(e) => setCpf(formatCpf(e.target.value))}
-              className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
-                cpfError
-                  ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                  : "border-stone-100 focus:ring-studio-green/20"
-              }`}
-            />
-            {cpfError && <p className="text-[11px] text-red-500">{cpfError}</p>}
-            <input
-              name="profissao"
-              defaultValue={client.profissao ?? ""}
-              placeholder="Profissão"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-            />
-            <input
-              name="como_conheceu"
-              defaultValue={client.como_conheceu ?? ""}
-              placeholder="Como conheceu"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-            />
-            <input
-              name="health_tags"
-              defaultValue={(client.health_tags ?? []).join(", ")}
-              placeholder="Tags de saúde (separe por vírgula)"
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-            />
-            <div className="grid grid-cols-1 gap-3">
-              <div className="flex gap-2">
-                <input
-                  name="address_cep"
-                  value={cep}
-                  placeholder="CEP"
-                  inputMode="numeric"
-                  aria-invalid={cepStatus === "error" ? "true" : "false"}
-                  onChange={(e) => {
-                    setCep(formatCep(e.target.value));
-                    setCepStatus("idle");
-                  }}
-                  className={`w-full bg-stone-50 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 ${
-                    cepStatus === "error"
-                      ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                      : "border-stone-100 focus:ring-studio-green/20"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={handleCepLookup}
-                  className="px-4 py-3.5 rounded-xl bg-stone-100 text-gray-600 text-xs font-bold hover:bg-stone-200 transition"
+          <h1 className="text-2xl font-serif font-bold text-studio-text leading-tight">{client.name}</h1>
+          <p className="text-sm text-muted font-semibold mt-1">Cliente desde {createdAtLabel || "-"}</p>
+
+          <div className="mt-3 flex flex-wrap gap-2 justify-center">
+            {client.is_vip && <Chip tone="success">VIP</Chip>}
+            {client.needs_attention && <Chip tone="danger">Atenção</Chip>}
+            {client.is_minor && <Chip tone="warning">Menor</Chip>}
+            {quickTags.map((item) => (
+              <Chip key={item.id} tone={item.type === "allergy" ? "danger" : "warning"}>
+                {item.label}
+              </Chip>
+            ))}
+          </div>
+
+          <div className="mt-5 flex gap-5">
+            {whatsappLink ? (
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-col items-center gap-1 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
+                  <MessageCircle className="w-5 h-5 text-studio-green" />
+                </div>
+                <span className="text-[10px] font-extrabold text-muted">Whats</span>
+              </a>
+            ) : (
+              <div className="flex flex-col items-center gap-1 opacity-40">
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-studio-green" />
+                </div>
+                <span className="text-[10px] font-extrabold text-muted">Whats</span>
+              </div>
+            )}
+
+            {callLink ? (
+              <a
+                href={callLink}
+                className="flex flex-col items-center gap-1 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
+                  <Phone className="w-5 h-5 text-studio-text" />
+                </div>
+                <span className="text-[10px] font-extrabold text-muted">Ligar</span>
+              </a>
+            ) : (
+              <div className="flex flex-col items-center gap-1 opacity-40">
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center">
+                  <Phone className="w-5 h-5 text-studio-text" />
+                </div>
+                <span className="text-[10px] font-extrabold text-muted">Ligar</span>
+              </div>
+            )}
+
+            {mapsLink ? (
+              <a href={mapsLink} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 group">
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
+                  <MapPin className="w-5 h-5 text-studio-text" />
+                </div>
+                <span className="text-[10px] font-extrabold text-muted">Mapa</span>
+              </a>
+            ) : (
+              <div className="flex flex-col items-center gap-1 opacity-40">
+                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-studio-text" />
+                </div>
+                <span className="text-[10px] font-extrabold text-muted">Mapa</span>
+              </div>
+            )}
+
+            <Link href={`/?view=day&date=${new Date().toISOString().slice(0, 10)}`} className="flex flex-col items-center gap-1 group">
+              <div className="w-12 h-12 rounded-2xl bg-studio-green text-white shadow-soft flex items-center justify-center group-active:scale-95 transition">
+                <CalendarPlus className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-extrabold text-muted">Agendar</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 -mt-6 relative z-10">
+        <div className="bg-white rounded-2xl shadow-sm border border-white px-4 py-3 flex justify-around">
+          <div className="text-center">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Visitas</p>
+            <p className="text-lg font-black text-studio-green tabular-nums">{metrics.visits}</p>
+          </div>
+          <div className="w-px bg-line"></div>
+          <div className="text-center">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Faltas</p>
+            <p className="text-lg font-black text-muted tabular-nums">{metrics.absences}</p>
+          </div>
+          <div className="w-px bg-line"></div>
+          <div className="text-center">
+            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Última</p>
+            <p className="text-lg font-black text-studio-text tabular-nums">{metrics.lastVisitLabel}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 pt-5 pb-4 space-y-5">
+        <div>
+          <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">Contato</h3>
+          <div className="bg-white rounded-3xl border border-white shadow-sm overflow-hidden">
+            <div className="px-5 py-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-studio-light flex items-center justify-center text-studio-green">
+                <Phone className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Telefones</p>
+                {phones.length > 0 ? (
+                  <div className="space-y-1">
+                    {phones.map((phone) => (
+                      <p key={phone.id} className="text-sm font-extrabold text-studio-text truncate">
+                        {phone.number_raw}
+                        {phone.is_whatsapp && <span className="ml-2 text-[10px] text-studio-green">Whats</span>}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted">Sem telefone cadastrado.</p>
+                )}
+              </div>
+            </div>
+            <div className="h-px bg-line mx-5"></div>
+            <div className="px-5 py-4 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-paper border border-line flex items-center justify-center text-studio-text">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Emails</p>
+                {emails.length > 0 ? (
+                  <div className="space-y-1">
+                    {emails.map((email) => (
+                      <p key={email.id} className="text-sm font-extrabold text-studio-text truncate">
+                        {email.email}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted">Sem email cadastrado.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">Endereços</h3>
+          {addresses.length > 0 ? (
+            <div className="space-y-3">
+              {addresses.map((address) => (
+                <div key={address.id} className="bg-white rounded-3xl border border-white shadow-sm p-5">
+                  <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">
+                    {address.label || "Endereço"}
+                    {address.is_primary && <span className="ml-2 text-studio-green">Principal</span>}
+                  </p>
+                  <p className="text-sm font-extrabold text-studio-text mt-1">
+                    {buildAddressLine({
+                      logradouro: address.address_logradouro,
+                      numero: address.address_numero,
+                      complemento: address.address_complemento,
+                      bairro: address.address_bairro,
+                      cidade: address.address_cidade,
+                      estado: address.address_estado,
+                      cep: address.address_cep,
+                    }) || "Endereço não informado"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <SurfaceCard className="text-center py-6 text-muted border border-dashed border-line bg-studio-light/40">
+              <p>Nenhum endereço cadastrado.</p>
+            </SurfaceCard>
+          )}
+        </div>
+
+        <div>
+          <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">Saúde & Preferências</h3>
+          <div className="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {allergies.map((item) => (
+                <span
+                  key={item.id}
+                  className="px-3 py-1 rounded-xl bg-red-50 text-red-600 text-[11px] font-extrabold border border-red-100"
                 >
-                  {cepStatus === "loading" ? "Buscando..." : "Buscar CEP"}
-                </button>
-              </div>
-              {cepStatus === "error" && <p className="text-[11px] text-red-500">CEP inválido.</p>}
-              <input
-                name="address_logradouro"
-                value={logradouro}
-                placeholder="Logradouro"
-                onChange={(e) => setLogradouro(e.target.value)}
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  name="address_numero"
-                  value={numero}
-                  placeholder="Número"
-                  onChange={(e) => setNumero(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-                <input
-                  name="address_complemento"
-                  value={complemento}
-                  placeholder="Complemento"
-                  onChange={(e) => setComplemento(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  name="address_bairro"
-                  value={bairro}
-                  placeholder="Bairro"
-                  onChange={(e) => setBairro(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-                <input
-                  name="address_cidade"
-                  value={cidade}
-                  placeholder="Cidade"
-                  onChange={(e) => setCidade(e.target.value)}
-                  className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                />
-              </div>
-              <input
-                name="address_estado"
-                value={estado}
-                placeholder="Estado (UF)"
-                onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                maxLength={2}
-                className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 uppercase"
-              />
-              {hasMapsQuery && (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-semibold text-studio-green hover:underline"
+                  {item.label}
+                </span>
+              ))}
+              {conditions.map((item) => (
+                <span
+                  key={item.id}
+                  className="px-3 py-1 rounded-xl bg-orange-50 text-orange-600 text-[11px] font-extrabold border border-orange-100"
                 >
-                  Ver endereço no Maps
-                </a>
+                  {item.label}
+                </span>
+              ))}
+              {allergies.length === 0 && conditions.length === 0 && (
+                <span className="text-xs text-muted">Sem tags de saúde cadastradas.</span>
               )}
             </div>
-            <textarea
-              name="observacoes_gerais"
-              defaultValue={client.observacoes_gerais ?? ""}
-              placeholder="Observações"
-              rows={3}
-              className="w-full bg-stone-50 border-stone-100 border rounded-xl py-3.5 px-4 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none"
-            />
+
+            {client.contraindications && (
+              <div className="bg-paper rounded-2xl p-4 border border-line">
+                <p className="text-xs text-studio-text font-semibold">Contraindicações</p>
+                <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{client.contraindications}</p>
+              </div>
+            )}
+
+            {client.preferences_notes && (
+              <div className="bg-paper rounded-2xl p-4 border border-line">
+                <p className="text-xs text-studio-text font-semibold">Preferências</p>
+                <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{client.preferences_notes}</p>
+              </div>
+            )}
+
+            {client.clinical_history && (
+              <div className="bg-paper rounded-2xl p-4 border border-line">
+                <p className="text-xs text-studio-text font-semibold">Histórico clínico</p>
+                <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{client.clinical_history}</p>
+              </div>
+            )}
+
+            {client.anamnese_url && (
+              <a
+                href={client.anamnese_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex text-xs font-semibold text-studio-green underline"
+              >
+                Ver anamnese anexada
+              </a>
+            )}
           </div>
-
-          {message && (
-            <div
-              className={`text-xs font-bold px-3 py-2 rounded-xl ${
-                message.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={Boolean(phoneError || cpfError)}
-            className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl shadow-lg shadow-green-100 hover:bg-studio-green-dark transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            Salvar alterações
-          </button>
-        </form>
-      )}
+        </div>
+      </section>
     </div>
   );
 }

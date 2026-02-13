@@ -195,8 +195,8 @@ export function DesktopCalendar({ appointments, blocks }: DesktopCalendarProps) 
             
             /* Eventos */
             .rbc-event {
-                background-color: rgba(106, 128, 108, 0.15) !important; /* studio-green/15 */
-                border-left: 4px solid #6A806C !important;
+                background-color: rgba(93, 110, 86, 0.15) !important; /* studio-green/15 */
+                border-left: 4px solid #5d6e56 !important;
                 border-radius: 4px !important; /* rounded-r-lg like */
                 border-top: none !important;
                 border-right: none !important;
