@@ -383,6 +383,11 @@ Integracoes em uso:
 3. Mercado Pago Checkout Transparente (Pix/cartao + webhook)
 4. WhatsApp (links de envio assistido)
 
+Regra fixa do Mercado Pago neste projeto:
+- Modelo oficial: **Checkout Transparente** (implementado com Orders API + webhook).
+- **Nao usar Checkout Pro** neste repositorio.
+- Se aparecer "Checkout API/Orders" na documentacao do Mercado Pago, para este projeto isso deve ser tratado como fluxo do Checkout Transparente.
+
 Variaveis criticas na Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`

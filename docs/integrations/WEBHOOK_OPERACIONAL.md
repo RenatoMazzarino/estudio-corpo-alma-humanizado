@@ -5,6 +5,11 @@ Data de referência: 2026-02-13
 ## Objetivo
 Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
 
+## Escopo de integração (obrigatório)
+- Modelo Mercado Pago deste projeto: `Checkout Transparente`.
+- Implementação: `Orders API` + notificações de webhook (`payment` e `order`).
+- `Checkout Pro` não deve ser usado para este fluxo.
+
 ## Estado validado nesta data
 - Callback de produção configurado no MP:
   - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`

@@ -19,6 +19,8 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 3. Mercado Pago (Checkout Transparente)
 - Função: geração de cobrança (Pix/cartão), webhook e confirmação de pagamento.
 - Criticidade: alta.
+- Regra fixa: este projeto usa somente Checkout Transparente.
+- Fora de escopo: Checkout Pro.
 
 4. WhatsApp
 - Função: mensagens assistidas (deep link e compartilhamento de voucher).
@@ -57,6 +59,14 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 
 4. App
 - `APP_TIMEZONE=America/Sao_Paulo`
+
+## 3.1) Regra de nomenclatura (Mercado Pago)
+
+- Modelo oficial do projeto: `Checkout Transparente` (Pix/cartão + webhook).
+- Implementação técnica atual: `Orders API` + endpoint interno `/api/mercadopago/webhook`.
+- Em parte da doc do Mercado Pago pode aparecer o nome `Checkout API (Orders)`.
+- Para este repositorio, tratar `Checkout API (Orders)` como o mesmo fluxo do Checkout Transparente.
+- `Checkout Pro` nao deve ser configurado nem usado neste projeto.
 
 ## 4) Checklist de configuração por ambiente
 

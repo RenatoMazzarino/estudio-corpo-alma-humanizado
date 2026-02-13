@@ -61,6 +61,12 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 ---
 
 ## 3) Mercado Pago (Checkout Transparente)
+### Decisão técnica obrigatória (anti-confusão)
+- Modelo oficial deste projeto: `Checkout Transparente`.
+- Implementação adotada: `Orders API` para criar cobrança + webhook para reconciliação.
+- `Checkout Pro` está fora do escopo e não deve ser usado nesta branch.
+- Quando a documentação oficial usar o termo `Checkout API (Orders)`, neste projeto isso representa o fluxo de Checkout Transparente.
+
 ### Uso atual
 - Geração de cobrança Pix/cartão no fluxo público via Orders API:
   - `POST /v1/orders`
