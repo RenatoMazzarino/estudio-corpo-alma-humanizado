@@ -12,12 +12,9 @@ interface VoucherOverlayProps {
   onShare: () => void;
   voucherRef: RefObject<HTMLDivElement | null>;
   clientName: string;
-  clientPhone: string;
   formattedDate: string;
   selectedTime: string;
   selectedServiceName: string;
-  selectedServiceDescription?: string | null;
-  selectedServiceDurationMinutes: number;
   isHomeVisit: boolean;
   mapsQuery: string;
   protocol: string;
@@ -31,12 +28,9 @@ export function VoucherOverlay({
   onShare,
   voucherRef,
   clientName,
-  clientPhone,
   formattedDate,
   selectedTime,
   selectedServiceName,
-  selectedServiceDescription,
-  selectedServiceDurationMinutes,
   isHomeVisit,
   mapsQuery,
   protocol,
@@ -64,8 +58,6 @@ export function VoucherOverlay({
   const locationLabel = isHomeVisit
     ? `Home Care - ${mapsQuery || "Endereço informado"}`
     : "No Estúdio - Estúdio Corpo & Alma Humanizado";
-  const procedureSubtitle =
-    selectedServiceDescription?.trim() || "Terapêutica e Relaxante";
   const bookingId = protocol || `AGD-${dayPart || "00"}${monthPart || "00"}${yearPart.slice(-2) || "00"}`;
   const barcodePattern = [1, 2, 1, 3, 1, 4, 2, 1, 3, 1, 2, 1];
   const colors = {
@@ -125,7 +117,7 @@ export function VoucherOverlay({
                 />
                 <h3
                   className="font-serif text-[26px] text-white leading-[1.12] mb-1"
-                  style={{ fontFamily: "var(--font-serif), serif" }}
+                  style={{ fontFamily: "var(--font-playfair), serif" }}
                 >
                   Estúdio Corpo & Alma
                   <br />
@@ -133,7 +125,7 @@ export function VoucherOverlay({
                 </h3>
                 <p
                   className="font-serif italic text-[12px] text-white/85 leading-tight mb-2"
-                  style={{ fontFamily: "var(--font-serif), serif" }}
+                  style={{ fontFamily: "var(--font-playfair), serif" }}
                 >
                   Toque que alivia, cuidado que transforma.
                 </p>
@@ -165,7 +157,7 @@ export function VoucherOverlay({
               <div className="flex items-center justify-center gap-2.5 mb-1">
                 <span
                   className="font-serif text-[52px] font-semibold leading-none"
-                  style={{ fontFamily: "var(--font-serif), serif" }}
+                  style={{ fontFamily: "var(--font-playfair), serif" }}
                 >
                   {dayAndMonth}
                 </span>
@@ -175,7 +167,7 @@ export function VoucherOverlay({
                 />
                 <span
                   className="font-serif text-[52px] font-semibold leading-none"
-                  style={{ fontFamily: "var(--font-serif), serif" }}
+                  style={{ fontFamily: "var(--font-playfair), serif" }}
                 >
                   {selectedTime}
                 </span>
@@ -196,16 +188,10 @@ export function VoucherOverlay({
                 </p>
                 <h3
                   className="font-serif text-[56px] text-studio-green leading-[1.02] mb-2 break-words"
-                  style={{ fontFamily: "var(--font-serif), serif" }}
+                  style={{ fontFamily: "var(--font-playfair), serif" }}
                 >
                   {selectedServiceName}
                 </h3>
-                <p className="text-sm" style={{ color: colors.studioText70 }}>
-                  {procedureSubtitle}
-                  {selectedServiceDurationMinutes > 0
-                    ? ` • ${selectedServiceDurationMinutes} min`
-                    : ""}
-                </p>
               </div>
 
               <div className="flex items-center justify-center gap-2 px-2" style={{ color: colors.studioText80 }}>
@@ -230,24 +216,19 @@ export function VoucherOverlay({
             </div>
 
             <div className="voucher-paper-texture px-6 py-4 rounded-b-[14px] flex items-end justify-between gap-4">
-              <div className="text-left min-w-0">
+              <div className="text-left flex-1 min-w-0">
                 <p
-                  className="font-signature text-[58px] mb-1 ml-[-5px] leading-none"
+                  className="font-signature text-[50px] mb-1 ml-[-3px] leading-none whitespace-nowrap"
                   style={{ color: colors.studioText, transform: "rotate(-3deg)" }}
                 >
                   Janaina Santos
                 </p>
                 <p
-                  className="text-[10px] font-bold uppercase tracking-widest"
+                  className="text-[10px] font-semibold tracking-wide"
                   style={{ color: colors.studioText60 }}
                 >
-                  BOOKING ID: {bookingId}
+                  Gerado por Flora • ID {bookingId}
                 </p>
-                {clientPhone && (
-                  <p className="text-[10px] font-semibold mt-1" style={{ color: colors.studioText50 }}>
-                    {clientPhone}
-                  </p>
-                )}
               </div>
               <div className="h-12 flex items-end gap-[3px] opacity-85 shrink-0">
                 {barcodePattern.map((width, index) => (
