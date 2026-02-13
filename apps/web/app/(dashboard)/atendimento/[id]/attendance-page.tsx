@@ -425,7 +425,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
                     <span
                       className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold ${
                         appointment.is_home_visit
-                          ? "bg-purple-50 border-purple-100 text-dom"
+                          ? "bg-dom/20 border-dom/40 text-dom-strong"
                           : "bg-studio-light border-studio-green/10 text-studio-green"
                       }`}
                     >

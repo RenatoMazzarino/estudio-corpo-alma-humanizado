@@ -138,7 +138,7 @@ export default async function ClientProfilePage(props: PageProps) {
                             className={`px-2 py-1 rounded-xl text-[10px] font-extrabold border ${
                               isCompleted
                                 ? "bg-studio-light text-studio-green border-studio-green/10"
-                                : "bg-purple-50 text-purple-600 border-purple-100"
+                                : "bg-dom/20 text-dom-strong border-dom/35"
                             }`}
                           >
                             {isCompleted ? "Concluído" : apt.is_home_visit ? "Domicílio" : "Agendado"}

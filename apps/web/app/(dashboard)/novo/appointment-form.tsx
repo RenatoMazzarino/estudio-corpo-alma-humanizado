@@ -930,7 +930,7 @@ export function AppointmentForm({
               disabled={!canHomeVisit}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 isHomeVisit
-                  ? "border-purple-500 bg-purple-50 text-purple-600"
+                  ? "border-dom bg-dom/20 text-dom-strong"
                   : "border-stone-100 bg-stone-50 text-gray-400"
               } ${!canHomeVisit ? "opacity-50 cursor-not-allowed" : ""}`}
             >
@@ -950,8 +950,8 @@ export function AppointmentForm({
           >
             <div className="space-y-4">
               {clientAddresses.length > 0 && addressMode === "existing" && selectedAddress && (
-                <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4">
-                  <div className="flex items-center gap-2 mb-2 text-purple-700">
+                <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
+                  <div className="flex items-center gap-2 mb-2 text-dom-strong">
                     <MapPin className="w-4 h-4" />
                     <span className="text-xs font-extrabold uppercase tracking-wide">
                       {selectedAddress.label}
@@ -964,7 +964,7 @@ export function AppointmentForm({
                     <button
                       type="button"
                       onClick={() => setIsAddressModalOpen(true)}
-                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-purple-100 text-purple-700 hover:bg-purple-100 transition"
+                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
                     >
                       Trocar endereço
                     </button>
@@ -983,7 +983,7 @@ export function AppointmentForm({
                         setEstado("");
                         setCepStatus("idle");
                       }}
-                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-purple-100 text-purple-700 hover:bg-purple-100 transition"
+                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
                     >
                       Cadastrar novo
                     </button>
@@ -992,12 +992,12 @@ export function AppointmentForm({
               )}
 
               {addressMode === "new" && !addressConfirmed && (
-                <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4">
-                  <div className="flex items-center gap-2 mb-2 text-purple-700">
+                <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
+                  <div className="flex items-center gap-2 mb-2 text-dom-strong">
                     <MapPin className="w-4 h-4" />
                     <span className="text-xs font-extrabold uppercase tracking-wide">Novo endereço</span>
                   </div>
-                  <p className="text-xs text-purple-600 mb-4">
+                  <p className="text-xs text-dom-strong mb-4">
                     Escolha como deseja localizar o endereço do cliente.
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -1009,12 +1009,12 @@ export function AppointmentForm({
                         setCepDraftStatus("idle");
                         setCepDraftResult(null);
                       }}
-                      className="rounded-2xl border border-purple-200 bg-white px-4 py-0 text-left hover:border-purple-300 hover:bg-purple-100/60 transition"
+                      className="rounded-2xl border border-dom/45 bg-white px-4 py-0 text-left hover:border-dom/55 hover:bg-dom/25 transition"
                     >
-                      <span className="text-[10px] font-extrabold uppercase text-purple-700 leading-tight">
+                      <span className="text-[10px] font-extrabold uppercase text-dom-strong leading-tight">
                         Buscar por CEP
                       </span>
-                      <span className="block text-[9px] text-purple-500 leading-tight">Rápido e direto</span>
+                      <span className="block text-[9px] text-dom-strong/80 leading-tight">Rápido e direto</span>
                     </button>
                     <button
                       type="button"
@@ -1025,12 +1025,12 @@ export function AppointmentForm({
                         setAddressSearchLoading(false);
                         setAddressSearchError(null);
                       }}
-                      className="rounded-2xl border border-purple-200 bg-white px-4 py-0 text-left hover:border-purple-300 hover:bg-purple-100/60 transition"
+                      className="rounded-2xl border border-dom/45 bg-white px-4 py-0 text-left hover:border-dom/55 hover:bg-dom/25 transition"
                     >
-                      <span className="text-[10px] font-extrabold uppercase text-purple-700 leading-tight">
+                      <span className="text-[10px] font-extrabold uppercase text-dom-strong leading-tight">
                         Buscar endereço
                       </span>
-                      <span className="block text-[9px] text-purple-500 leading-tight">
+                      <span className="block text-[9px] text-dom-strong/80 leading-tight">
                         Digite rua, bairro, número
                       </span>
                     </button>
@@ -1039,7 +1039,7 @@ export function AppointmentForm({
                     <button
                       type="button"
                       onClick={() => setAddressMode("existing")}
-                      className="mt-4 text-[11px] font-extrabold uppercase tracking-wide text-purple-700 hover:text-purple-800"
+                      className="mt-4 text-[11px] font-extrabold uppercase tracking-wide text-dom-strong hover:text-dom-strong"
                     >
                       Usar endereço cadastrado
                     </button>
@@ -1048,9 +1048,9 @@ export function AppointmentForm({
               )}
 
               {addressMode === "new" && addressConfirmed && (
-                <div className="bg-purple-50 rounded-2xl border border-purple-100 p-4">
+                <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
                   <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2 text-purple-700">
+                    <div className="flex items-center gap-2 text-dom-strong">
                       <MapPin className="w-4 h-4" />
                       <span className="text-xs font-extrabold uppercase tracking-wide">Novo endereço</span>
                     </div>
@@ -1062,7 +1062,7 @@ export function AppointmentForm({
                         setCepDraftStatus("idle");
                         setCepDraftResult(null);
                       }}
-                      className="text-[10px] font-extrabold uppercase tracking-wide text-purple-700"
+                      className="text-[10px] font-extrabold uppercase tracking-wide text-dom-strong"
                     >
                       Refazer busca
                     </button>
@@ -1077,7 +1077,7 @@ export function AppointmentForm({
                         setCepDraftStatus("idle");
                         setCepDraftResult(null);
                       }}
-                      className="px-3 py-2 rounded-xl border border-purple-200 bg-white text-[10px] font-extrabold uppercase text-purple-700 hover:bg-purple-100"
+                      className="px-3 py-2 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase text-dom-strong hover:bg-dom/25"
                     >
                       Buscar por CEP
                     </button>
@@ -1090,7 +1090,7 @@ export function AppointmentForm({
                         setAddressSearchLoading(false);
                         setAddressSearchError(null);
                       }}
-                      className="px-3 py-2 rounded-xl border border-purple-200 bg-white text-[10px] font-extrabold uppercase text-purple-700 hover:bg-purple-100"
+                      className="px-3 py-2 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase text-dom-strong hover:bg-dom/25"
                     >
                       Buscar endereço
                     </button>
@@ -1207,7 +1207,7 @@ export function AppointmentForm({
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-semibold text-purple-700 hover:underline mt-3 inline-flex"
+                      className="text-xs font-semibold text-dom-strong hover:underline mt-3 inline-flex"
                     >
                       Ver endereço no Maps
                     </a>
@@ -1226,7 +1226,7 @@ export function AppointmentForm({
                 )}
                 {displacementStatus !== "loading" && displacementEstimate && (
                   <div className="space-y-1">
-                    <p className="text-base font-bold text-purple-700">
+                    <p className="text-base font-bold text-dom-strong">
                       R$ {displacementEstimate.fee.toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -1265,7 +1265,7 @@ export function AppointmentForm({
                     <button
                       type="button"
                       onClick={() => setManualDisplacementFee("0,00")}
-                      className="px-3 py-3 rounded-xl border border-purple-200 bg-white text-[10px] font-extrabold uppercase tracking-wide text-purple-700 hover:bg-purple-100"
+                      className="px-3 py-3 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/25"
                     >
                       Zerar
                     </button>

@@ -15,7 +15,7 @@ const toneClasses: Record<ChipTone, string> = {
   success: "bg-emerald-50 text-ok",
   warning: "bg-amber-50 text-warn",
   danger: "bg-red-50 text-danger",
-  dom: "bg-purple-50 text-dom",
+  dom: "bg-dom/20 text-dom-strong",
 };
 
 export function Chip({ children, tone = "default", className = "" }: ChipProps) {

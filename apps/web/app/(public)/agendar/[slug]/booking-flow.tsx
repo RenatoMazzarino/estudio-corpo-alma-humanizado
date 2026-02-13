@@ -1095,22 +1095,22 @@ export function BookingFlow({
       />
 
       <header className="flex items-center justify-between px-6 py-4 bg-studio-bg/95 backdrop-blur-sm z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-10 px-3 rounded-2xl bg-white shadow-soft border border-stone-100 flex items-center justify-center">
             <Image
-              src="/brand/logo.png"
+              src="/brand/logo-horizontal.png"
               alt="Estúdio Corpo & Alma Humanizado"
-              width={22}
-              height={22}
-              className="h-5 w-5 object-contain"
+              width={132}
+              height={43}
+              className="h-6 w-auto object-contain"
               priority
             />
           </div>
-          <div className="leading-tight">
+          <div className="leading-tight min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
               Agendamento online
             </p>
-            <p className="text-sm font-serif text-studio-text">
+            <p className="text-sm font-serif text-studio-text truncate">
               Estúdio Corpo & Alma Humanizado
             </p>
           </div>
@@ -1306,7 +1306,7 @@ export function BookingFlow({
                         )}
                       </div>
                       {service.accepts_home_visit && (
-                        <span className="text-[10px] font-bold bg-purple-50 text-purple-600 px-2 py-1 rounded-full uppercase">
+                        <span className="text-[10px] font-bold bg-dom/20 text-dom-strong px-2 py-1 rounded-full uppercase">
                           Home
                         </span>
                       )}

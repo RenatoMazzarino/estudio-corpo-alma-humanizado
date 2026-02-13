@@ -3,10 +3,12 @@
 Fonte: Auditoria Visual PDF.
 
 Marca:
-- Verde Estúdio: `#6A806C`
-- Verde Escuro: `#4E5F50`
+- Verde Estúdio: `#5D6E56`
+- Verde Escuro: `#495744`
 - Verde Claro: `#F3F6F4`
 - Acento: `#D4A373`
+- Domicílio (oficial): `#C0A4B0`
+- Domicílio (texto/contraste): `#8F7483`
 
 Neutros:
 - Paper: `#FAF9F6`
@@ -18,7 +20,7 @@ Estados:
 - OK: `#16A34A`
 - Warn: `#F59E0B`
 - Danger: `#DC2626`
-- Domicílio: `#A855F7`
+- Domicílio: `#C0A4B0`
 
 Regra:
 - Domicílio sempre roxo (`dom`). Studio sempre verde.

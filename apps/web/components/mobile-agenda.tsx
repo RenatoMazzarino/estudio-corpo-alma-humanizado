@@ -951,7 +951,7 @@ export function MobileAgenda({
                         </span>
                       )}
                       {homeCount > 0 && (
-                        <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-purple-50 text-purple-700">
+                        <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 bg-dom/20 text-dom-strong">
                           <Home className="w-3 h-3" /> {homeCount} domicílio
                         </span>
                       )}
@@ -1055,7 +1055,9 @@ export function MobileAgenda({
                           const postHeight =
                             bufferAfter > 0 ? getDurationHeight(bufferAfter, timeGridConfig) : 0;
                           const accentColor = isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)";
-                          const stripeColor = isHomeVisit ? "rgba(168,85,247,0.16)" : "rgba(106,128,108,0.16)";
+                          const stripeColor = isHomeVisit
+                            ? "rgba(192,164,176,0.2)"
+                            : "rgba(93,110,86,0.16)";
                           const bufferStyle = {
                             borderLeftColor: accentColor,
                             backgroundImage: `repeating-linear-gradient(135deg, ${stripeColor} 0, ${stripeColor} 6px, transparent 6px, transparent 12px)`,
@@ -1256,7 +1258,7 @@ export function MobileAgenda({
                             {appt.clients?.name ?? ""}
                           </span>
                           {appt.is_home_visit && (
-                            <span className="ml-auto flex items-center justify-center w-6 h-6 rounded-full bg-purple-50 text-dom">
+                            <span className="ml-auto flex items-center justify-center w-6 h-6 rounded-full bg-dom/20 text-dom-strong">
                               <Car className="w-3 h-3" />
                             </span>
                           )}

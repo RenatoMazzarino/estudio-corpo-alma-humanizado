@@ -4,14 +4,16 @@
   /* Paleta Oficial Estúdio Corpo & Alma */
   --color-studio-bg: #FAF9F6;
   
-  /* Verde Sálvia */
-  --color-studio-green: #6A806C;
-  --color-studio-green-dark: #4E5F50;
+  /* Verde Oficial */
+  --color-studio-green: #5D6E56;
+  --color-studio-green-dark: #495744;
   --color-studio-light: #F3F6F4;
   --color-studio-accent: #D4A373;
   
-  /* Rosa Antigo (Lotus) */
-  --color-studio-pink: #CEAEB9;
+  /* Violeta Oficial (domicílio) */
+  --color-studio-pink: #C0A4B0;
+  --color-dom: #C0A4B0;
+  --color-dom-strong: #8F7483;
   
   /* Texto Principal */
   --color-studio-text: #2C3333;
@@ -24,14 +26,13 @@
   --color-ok: #16A34A;
   --color-warn: #F59E0B;
   --color-danger: #DC2626;
-  --color-dom: #A855F7;
 
   /* Tipografia */
   --font-sans: var(--font-lato);
   --font-serif: var(--font-playfair);
 
   /* Sombras */
-  --shadow-soft: 0 4px 20px -2px rgba(106, 128, 108, 0.15);
+  --shadow-soft: 0 4px 20px -2px rgba(93, 110, 86, 0.15);
   --shadow-float: 0 18px 35px -15px rgba(0, 0, 0, 0.25);
 }
 

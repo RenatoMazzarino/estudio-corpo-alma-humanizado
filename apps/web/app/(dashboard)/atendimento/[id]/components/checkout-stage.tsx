@@ -100,7 +100,7 @@ export function CheckoutStage({
           <div className="space-y-2 text-sm">
             {draftItems.map((item, index) => (
               <div key={`${item.label}-${index}`} className="flex justify-between font-bold text-studio-text">
-                <span className={item.type === "fee" ? "text-dom" : ""}>{item.label}</span>
+                <span className={item.type === "fee" ? "text-dom-strong" : ""}>{item.label}</span>
                 <span className="tabular-nums">R$ {Number(item.amount).toFixed(2)}</span>
               </div>
             ))}

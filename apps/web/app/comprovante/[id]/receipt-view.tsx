@@ -107,7 +107,7 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-50 text-studio-accent flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-dom/20 text-studio-accent flex items-center justify-center">
                     <MapPin className="w-4 h-4" />
                   </div>
                   <div>

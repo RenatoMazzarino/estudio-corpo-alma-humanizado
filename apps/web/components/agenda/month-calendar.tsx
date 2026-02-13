@@ -138,7 +138,7 @@ export function MonthCalendar({
           const tone = getDayTone?.(day) ?? "none";
           const disabled = isDayDisabled?.(day) ?? false;
           const toneClass =
-            tone === "shift" && !isSelected && !isDayToday ? "bg-purple-50 text-purple-700" : "";
+            tone === "shift" && !isSelected && !isDayToday ? "bg-dom/20 text-dom-strong" : "";
           const todayClass = isDayToday && !isSelected ? "border border-studio-green text-studio-green" : "";
           const selectedClass = isSelected ? "bg-studio-green text-white shadow-soft" : "";
 

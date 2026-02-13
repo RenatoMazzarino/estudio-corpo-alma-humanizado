@@ -378,7 +378,7 @@ export function AppointmentDetailsSheet({
                 <span className={`w-2 h-2 rounded-full ${appointmentStatusDot}`} title={statusInfo.label} />
                 <p className="text-2xl font-serif font-bold text-studio-text truncate">{clientName}</p>
                 {isVip && (
-                  <span className="px-2.5 py-1 rounded-full bg-purple-50 text-dom text-[9px] font-extrabold uppercase tracking-[0.08em]">
+                  <span className="px-2.5 py-1 rounded-full bg-dom/20 text-dom-strong text-[9px] font-extrabold uppercase tracking-[0.08em]">
                     VIP
                   </span>
                 )}
@@ -421,7 +421,7 @@ export function AppointmentDetailsSheet({
                     {isHomeVisit ? (
                       <>
                         <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-dom">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-dom-strong">
                             Domicílio
                           </span>
                         </div>
@@ -435,7 +435,7 @@ export function AppointmentDetailsSheet({
                             href={mapsHref}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-dom shadow-sm border border-line"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-dom-strong shadow-sm border border-line"
                             aria-label="Abrir rota no mapa"
                           >
                             <MapPin className="w-3.5 h-3.5" />

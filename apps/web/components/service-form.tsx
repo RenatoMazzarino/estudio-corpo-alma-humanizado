@@ -138,26 +138,26 @@ export function ServiceForm({
 
         {/* Seção Domiciliar */}
         <div className="pt-4 border-t border-stone-100">
-          <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100 space-y-4">
+          <div className="bg-dom/15 p-4 rounded-2xl border border-dom/35 space-y-4">
             <div className="flex items-center gap-3">
               <input 
                 type="checkbox" 
                 id="accepts_home_visit" name="accepts_home_visit"
                 defaultChecked={acceptsHomeVisit}
                 onChange={(e) => setAcceptsHomeVisit(e.target.checked)}
-                className="w-5 h-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                className="w-5 h-5 text-dom-strong rounded border-gray-300 focus:ring-dom"
               />
-              <label htmlFor="accepts_home_visit" className="text-sm font-bold text-purple-900">
+              <label htmlFor="accepts_home_visit" className="text-sm font-bold text-dom-strong">
                 Atendimento Domiciliar?
               </label>
             </div>
 
             {acceptsHomeVisit && (
-              <div className="animate-in slide-in-from-top-2 fade-in rounded-xl border border-purple-100 bg-white px-4 py-3">
-                <p className="text-xs font-bold text-purple-500 uppercase tracking-wide">
+              <div className="animate-in slide-in-from-top-2 fade-in rounded-xl border border-dom/35 bg-white px-4 py-3">
+                <p className="text-xs font-bold text-dom-strong/80 uppercase tracking-wide">
                   Taxa de deslocamento automática
                 </p>
-                <p className="text-xs text-purple-700 mt-1">
+                <p className="text-xs text-dom-strong mt-1">
                   O valor será calculado com base no endereço do cliente no momento do agendamento.
                 </p>
               </div>

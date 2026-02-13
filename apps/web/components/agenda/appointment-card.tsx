@@ -149,7 +149,7 @@ export function AppointmentCard({
               <span className={`w-2 h-2 rounded-full ${statusDotClass}`} title={statusLabel} />
               <h3 className={`font-extrabold text-studio-text leading-tight truncate ${nameClass}`}>{name}</h3>
               {isHomeVisit && (
-                <span className={`inline-flex items-center gap-1 rounded-full bg-purple-50 text-dom font-extrabold uppercase tracking-[0.08em] shrink-0 ${homeTagClass}`}>
+                <span className={`inline-flex items-center gap-1 rounded-full bg-dom/20 text-dom-strong font-extrabold uppercase tracking-[0.08em] shrink-0 ${homeTagClass}`}>
                   <Home className="w-3 h-3" /> {homeTagLabel}
                 </span>
               )}
@@ -183,7 +183,7 @@ export function AppointmentCard({
               </p>
             </div>
             {isHomeVisit && (
-              <span className={`inline-flex items-center gap-1 rounded-full bg-purple-50 text-dom font-extrabold uppercase tracking-[0.08em] ${homeTagClass}`}>
+              <span className={`inline-flex items-center gap-1 rounded-full bg-dom/20 text-dom-strong font-extrabold uppercase tracking-[0.08em] ${homeTagClass}`}>
                 <Home className="w-3 h-3" /> {homeTagLabel}
               </span>
             )}

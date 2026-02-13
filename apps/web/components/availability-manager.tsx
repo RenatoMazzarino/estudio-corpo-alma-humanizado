@@ -472,7 +472,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
           );
           const dots = [];
           if (hasAppointments) dots.push({ key: "appointments", className: "bg-studio-green" });
-          if (hasHome) dots.push({ key: "home", className: "bg-purple-400" });
+          if (hasHome) dots.push({ key: "home", className: "bg-dom" });
           if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-red-500" });
           if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-amber-500" });
           if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-500" });
@@ -488,7 +488,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
                 atendimentos
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-dom" />
                 domicílio
               </span>
               <span className="flex items-center gap-1">
@@ -612,7 +612,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
                   </div>
                   <div className="grid grid-cols-4 gap-3">
                     {([
-                      { type: "shift", label: "Home Care", active: "ring-purple-500/50 text-purple-700 bg-purple-50 border-purple-100", idle: "border-stone-100 text-gray-400", icon: <Stethoscope className="w-6 h-6" /> },
+                      { type: "shift", label: "Home Care", active: "ring-dom/50 text-dom-strong bg-dom/20 border-dom/35", idle: "border-stone-100 text-gray-400", icon: <Stethoscope className="w-6 h-6" /> },
                       { type: "personal", label: "Pessoal", active: "ring-amber-400/50 text-amber-600 bg-amber-50 border-amber-100", idle: "border-stone-100 text-gray-400", icon: <Coffee className="w-6 h-6" /> },
                       { type: "vacation", label: "Férias", active: "ring-teal-400/50 text-teal-600 bg-teal-50 border-teal-100", idle: "border-stone-100 text-gray-400", icon: <Umbrella className="w-6 h-6" /> },
                       { type: "administrative", label: "Outro", active: "ring-gray-300 text-gray-600 bg-stone-100 border-stone-200", idle: "border-stone-100 text-gray-400", icon: <Shield className="w-6 h-6" /> },
