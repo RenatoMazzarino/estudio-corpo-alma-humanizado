@@ -1,89 +1,91 @@
-# PR (Draft) — Agenda v1 UI + Disponibilidade Inteligente + Agendamento Público + Pagamentos
+# PR — agenda-v1-ui (Agenda + Agendamento Publico + Pagamentos)
 
 ## Contexto
-Esta PR consolida a evolução da branch `agenda-v1-ui` para o estado final do módulo de agenda e do fluxo público de agendamento, incluindo:
-- agenda interna (dia/semana/mês),
-- gestão de disponibilidade e bloqueios,
-- jornada pública de agendamento,
-- integração de pagamento (Mercado Pago + webhook),
-- cálculo automático de deslocamento,
-- hardening de dados de clientes (telefone).
+Esta PR consolida a branch `agenda-v1-ui` para o fluxo final de agenda interna e agendamento online.
 
-## Referências legadas usadas na execução (conteúdo)
+Escopo principal:
+- agenda interna (dia/semana/mes) com UX mobile padronizada;
+- disponibilidade inteligente (bloqueios + gerador de escala);
+- jornada publica de agendamento;
+- pagamentos Mercado Pago no modelo **Checkout Transparente** (Orders API + webhook);
+- voucher de servico com exportacao de imagem;
+- hardening de dados de clientes (telefone e email).
 
-Arquivos de referência visual/funcional arquivados desta branch:
-- Índice consolidado: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
-- HTML/HTM de UI:
-  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela Agenda.htm`
-  - `docs/legacy/agenda-v1-ui/ui-decisions/prancha-de-calendario.html`
-  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Fomulário Agendamento Interno.htm`
-  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Atendimento.htm`
-  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Novo Cliente.htm`
-  - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Telas de Lista de Clientes e Detalhes de Clientes.htm`
-- Base visual complementar:
-  - `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
+## Regra de integracao Mercado Pago (fixa)
+- Modelo do projeto: **Checkout Transparente**.
+- Implementacao tecnica: **Orders API** para criacao de cobranca + webhook para reconciliacao.
+- Fora de escopo: **Checkout Pro**.
+- Topicos usados no webhook: **payment** e **order**.
 
 ## Entregas principais
 
-## 1) Agenda interna e UX mobile
-- Cards de agenda refatorados (status de agendamento + status financeiro).
-- Bottom sheet de detalhes de agendamento consolidado.
-- Calendário mensal reutilizável e padronização visual.
-- Melhorias de navegação, shell e consistência de layout.
+## 1) Agenda interna e UX
+- Cards de agenda com status de agendamento e financeiro.
+- Bottom sheet de detalhes consolidado.
+- Calendario mensal reutilizavel e padronizado.
+- Melhorias de shell/navegacao/mobile frame.
 
-## 2) Gestão de disponibilidade inteligente
-- Gerador de escala (dias pares/ímpares) integrado ao fluxo de agenda.
-- Bloqueios de dia inteiro/parcial com tipagem de motivo.
-- Integração com disponibilidade de agendamento online.
+## 2) Disponibilidade inteligente
+- Gerador de escala (pares/impares).
+- Bloqueio de dia inteiro/parcial com tipagem.
+- Integracao com disponibilidade do agendamento online.
 
-## 3) Agendamento público
-- Jornada pública por etapas com revisão e confirmação.
-- Busca de cliente por telefone com preenchimento automático.
-- Voucher de serviço com overlay e exportação de imagem.
-- Fluxo de pagamento integrado ao checkout público.
+## 3) Agendamento publico
+- Fluxo por etapas com revisao e confirmacao.
+- Identificacao por WhatsApp com card "Ola".
+- Coleta obrigatoria de email no fluxo publico.
+- Escolha de forma de pagamento na etapa "Tudo certo?".
+- Pix com QR + copia e cola + contador regressivo.
+- Cartao com overlay de processamento em etapas.
 
-## 4) Pagamentos e integrações
-- Mercado Pago (Checkout Transparente): Pix + cartão.
-- Webhook validado por assinatura HMAC.
-- Atualização de `appointment_payments` e `appointments.payment_status`.
-- Google Maps: busca de endereço e cálculo de deslocamento.
+## 4) Pagamentos e webhook
+- Pix e cartao via Orders API.
+- Validacao de assinatura do webhook (`x-signature` + HMAC).
+- Suporte a eventos `payment` e `order`.
+- Atualizacao de `appointment_payments` e recálculo de `appointments.payment_status`.
+- Fluxo de confirmacao automatica apos webhook.
 
-## 5) Banco de dados
-- Migrations para disponibilidade, pagamentos, taxa de deslocamento e contatos.
-- Nova migration de hardening:
-  - `20260212113000_normalize_client_phone_uniqueness.sql`
-  - normalização + deduplicação por telefone + índice único por tenant.
+## 5) Voucher e branding
+- Novo layout do voucher baseado no HTML de referencia.
+- Tokens de marca com verde oficial `#5d6e56` e roxo oficial `#c0a4b0`.
+- Assinatura ajustada e metadata de rodape.
+- Exportacao de voucher via imagem (`html-to-image`).
 
-## 6) Documentação
-- Report executivo atualizado:
-  - `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`
-- Auditoria final completa da branch:
-  - `docs/legacy/agenda-v1-ui/reports/BRANCH_AUDIT_AGENDA_FINAL_2026-02-12.md`
-- Documentação de integrações:
-  - `docs/integrations/INTEGRATIONS_TECNICO.md`
-  - `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
-- Referências atualizadas em:
-  - `README.md`
-  - `MANUAL_RAPIDO.md`
-  - `docs/legacy/agenda-v1-ui/diagnostics/REPO_INVENTORY.md`
+## 6) Banco de dados
+- Migracoes da branch para agenda/disponibilidade/pagamentos/deslocamento/clientes.
+- Migracoes recentes desta fase:
+  - `20260212234000_canonicalize_public_booking_slug.sql`
+  - `20260213061500_public_booking_client_email.sql`
+  - `20260213070000_fix_public_booking_email_rpc_ambiguity.sql`
 
-## Validações executadas
+## 7) Documentacao atualizada
+- `docs/integrations/INTEGRATIONS_TECNICO.md`
+- `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
+- `docs/integrations/WEBHOOK_OPERACIONAL.md`
+- `docs/branding/BRAND_TOKENS.md`
+- `MANUAL_RAPIDO.md`
+- `README.md`
+
+## Validacoes executadas (estado atual)
 ```powershell
 pnpm --filter web lint
 pnpm --filter web build
-pnpm lint
-pnpm build
 ```
-Resultado: sem erros.
+Resultado: sem erros em 2026-02-13.
 
-## Checklist de deploy (obrigatório antes de merge final)
-- [ ] Aplicar migrations pendentes em preview/produção.
-- [ ] Confirmar variáveis de ambiente por ambiente (Supabase/Google/MP).
-- [ ] Validar webhook MP em preview e produção.
-- [ ] Smoke test ponta a ponta (agendar -> pagar -> webhook -> status).
+## Validacao operacional (manual)
+- Simulacao de webhook `payment` no MP: `200`.
+- Simulacao de webhook `order` no MP: `200`.
+- Fluxo de pagamento com credenciais de producao: webhook recebendo no endpoint esperado.
 
-## Observações de risco residual (não bloqueante de merge draft)
-- Arquivos ainda grandes para próxima etapa de refactor:
-  - `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
-  - `apps/web/src/modules/appointments/actions.ts`
-  - `apps/web/components/mobile-agenda.tsx`
+## Checklist pre-merge
+- [ ] Confirmar no painel MP os topicos `payment` e `order` (somente).
+- [ ] Confirmar URL correta por ambiente:
+  - Dev: `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+  - Producao: `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- [ ] Confirmar `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_PUBLIC_KEY` e `MERCADOPAGO_WEBHOOK_SECRET` no ambiente correto.
+- [ ] Smoke test final ponta a ponta: agendar -> pagar -> webhook -> status -> voucher.
+
+## Risco residual conhecido (nao bloqueante para abrir PR)
+- Ajustes finos de UX visual ainda podem ser refinados no voucher/header sem impacto no fluxo transacional.
+

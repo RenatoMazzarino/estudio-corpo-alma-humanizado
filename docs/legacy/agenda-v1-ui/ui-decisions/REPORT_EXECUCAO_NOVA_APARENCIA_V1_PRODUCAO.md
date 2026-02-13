@@ -1,5 +1,28 @@
 # REPORT — Execução do Plano Nova Aparência/UX v1.0 (Produção)
 
+## Atualização final (2026-02-13)
+Este arquivo manteve histórico cumulativo. Para evitar ambiguidades de leitura, considerar as regras abaixo como estado final vigente desta branch:
+
+- Mercado Pago deste projeto: **Checkout Transparente**.
+- Implementação de pagamento: **Orders API** (`/v1/orders`) + webhook interno.
+- Checkout Pro: **fora de escopo** e não deve ser usado.
+- Webhook ativo da aplicação: `POST /api/mercadopago/webhook`.
+- Eventos de webhook utilizados pelo sistema: **payment** e **order** (somente).
+- URLs operacionais de webhook:
+  - Dev: `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+  - Produção: `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+- Variáveis obrigatórias de pagamento:
+  - `MERCADOPAGO_ACCESS_TOKEN`
+  - `MERCADOPAGO_PUBLIC_KEY`
+  - `MERCADOPAGO_WEBHOOK_SECRET`
+- Slug público canônico do tenant principal: `estudio-corpo-alma`.
+
+Resumo do ciclo final:
+- validação de webhook com assinatura HMAC consolidada;
+- ajustes de UX no checkout (Pix e cartão) concluídos;
+- voucher atualizado com nova aparência da marca;
+- lint/build web validados sem erro em 2026-02-13.
+
 ## 1) Resumo executivo
 - Agenda: header padronizado (saudação + mês clicável + tabs), correção de mês selecionado e troca de visão sem “pisca-pisca”.
 - Agenda: busca em modal com resultados em tempo real (Agenda + Clientes) e CTA “Buscar”.
