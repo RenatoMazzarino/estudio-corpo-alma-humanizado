@@ -889,13 +889,15 @@ export function BookingFlow({
       const node = voucherRef.current;
       const rect = node.getBoundingClientRect();
       const targetWidth = Math.max(380, Math.round(rect.width));
+      const targetHeight = Math.max(620, Math.round(rect.height));
       const pixelRatio = 2;
       const options = {
-        backgroundColor: "#faf9f6",
         cacheBust: true,
         pixelRatio,
         width: targetWidth,
+        height: targetHeight,
         canvasWidth: targetWidth * pixelRatio,
+        canvasHeight: targetHeight * pixelRatio,
       };
 
       const blob = await toBlob(node, options);

@@ -73,6 +73,8 @@ export function VoucherOverlay({
     dom: "#C0A4B0",
     black30: "rgba(0, 0, 0, 0.3)",
     white12: "rgba(255, 255, 255, 0.12)",
+    notchFill: "rgba(250, 249, 246, 0.22)",
+    notchBorder: "rgba(44, 51, 51, 0.18)",
     studioGreen25: "rgba(93, 110, 86, 0.25)",
     studioText80: "rgba(44, 51, 51, 0.8)",
     studioText70: "rgba(44, 51, 51, 0.7)",
@@ -141,8 +143,20 @@ export function VoucherOverlay({
                 className="absolute top-0 left-5 right-5 border-t-[3px] border-dotted"
                 style={{ borderColor: colors.black30 }}
               />
-              <div className="absolute -left-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
-              <div className="absolute -right-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
+              <div
+                className="absolute -left-4 -top-4 w-8 h-8 rounded-full"
+                style={{
+                  backgroundColor: colors.notchFill,
+                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
+                }}
+              />
+              <div
+                className="absolute -right-4 -top-4 w-8 h-8 rounded-full"
+                style={{
+                  backgroundColor: colors.notchFill,
+                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
+                }}
+              />
             </div>
 
             <div className="voucher-paper-texture px-6 py-8 pb-7 text-center text-studio-text">
@@ -190,8 +204,20 @@ export function VoucherOverlay({
                 className="absolute top-0 left-5 right-5 border-t-[3px] border-dotted"
                 style={{ borderColor: colors.black30 }}
               />
-              <div className="absolute -left-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
-              <div className="absolute -right-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
+              <div
+                className="absolute -left-4 -top-4 w-8 h-8 rounded-full"
+                style={{
+                  backgroundColor: colors.notchFill,
+                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
+                }}
+              />
+              <div
+                className="absolute -right-4 -top-4 w-8 h-8 rounded-full"
+                style={{
+                  backgroundColor: colors.notchFill,
+                  boxShadow: `inset 0 0 0 1px ${colors.notchBorder}`,
+                }}
+              />
             </div>
 
             <div className="voucher-paper-texture px-6 py-6 rounded-b-[14px] flex items-end justify-between gap-4">
