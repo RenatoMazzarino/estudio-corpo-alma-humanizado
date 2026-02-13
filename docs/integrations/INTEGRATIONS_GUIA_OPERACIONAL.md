@@ -53,9 +53,6 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 3. Mercado Pago
 - `MERCADOPAGO_ACCESS_TOKEN`
 - `MERCADOPAGO_PUBLIC_KEY`
-- `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`
-- `MERCADOPAGO_CLIENT_ID`
-- `MERCADOPAGO_CLIENT_SECRET`
 - `MERCADOPAGO_WEBHOOK_SECRET`
 
 4. App

@@ -59,7 +59,6 @@ interface BookingFlowProps {
   signalPercentage?: number | null;
   whatsappNumber?: string | null;
   mercadoPagoPublicKey?: string | null;
-  mercadoPagoTestMode?: boolean;
 }
 
 type Step =
@@ -155,7 +154,6 @@ export function BookingFlow({
   signalPercentage,
   whatsappNumber,
   mercadoPagoPublicKey,
-  mercadoPagoTestMode = false,
 }: BookingFlowProps) {
   const [step, setStep] = useState<Step>("WELCOME");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -250,8 +248,6 @@ export function BookingFlow({
     const digits = clientPhone.replace(/\D/g, "");
     return `cliente+${digits || "anon"}@corpoealmahumanizado.com.br`;
   }, [clientPhone]);
-  const cardholderNameForCardForm = mercadoPagoTestMode ? "APRO" : clientName;
-  const cardholderDocumentForCardForm = mercadoPagoTestMode ? "12345678909" : "";
 
   const whatsappLink = useMemo(() => {
     if (!whatsappNumber) return null;
@@ -785,9 +781,8 @@ export function BookingFlow({
               payerEmail: data.cardholderEmail || cardholderEmail,
               payerName: clientName,
               payerPhone: clientPhone,
-              identificationType: data.identificationType || (mercadoPagoTestMode ? "CPF" : undefined),
-              identificationNumber:
-                data.identificationNumber || (mercadoPagoTestMode ? "12345678909" : undefined),
+              identificationType: data.identificationType,
+              identificationNumber: data.identificationNumber,
             });
           } catch (error) {
             console.error("[booking-flow] card payment submit failed", error);
@@ -849,7 +844,6 @@ export function BookingFlow({
     paymentMethod,
     selectedService,
     payableSignalAmount,
-    mercadoPagoTestMode,
     step,
     tenant.id,
   ]);
@@ -1993,12 +1987,6 @@ export function BookingFlow({
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                     Pagamento com cartão
                   </p>
-                  {mercadoPagoTestMode && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-                      Modo teste MP: para aprovação use nome no cartão <strong>APRO</strong> e CPF{" "}
-                      <strong>12345678909</strong>.
-                    </div>
-                  )}
 
                   {cardError && <p className="text-xs text-red-500">{cardError}</p>}
 
@@ -2020,7 +2008,7 @@ export function BookingFlow({
                     <input
                       id="mp-cardholder-name"
                       name="cardholderName"
-                      defaultValue={cardholderNameForCardForm}
+                      defaultValue={clientName}
                       placeholder="Nome no cartão"
                       className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
                     />
@@ -2046,7 +2034,6 @@ export function BookingFlow({
                         id="mp-card-identification-number"
                         name="identificationNumber"
                         placeholder="CPF"
-                        defaultValue={cardholderDocumentForCardForm}
                         className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
                       />
                     </div>

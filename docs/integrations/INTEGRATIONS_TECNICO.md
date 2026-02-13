@@ -82,13 +82,8 @@ Para operação do dia a dia, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIO
 ### Variáveis necessárias
 - Server:
   - `MERCADOPAGO_ACCESS_TOKEN`
-  - `MERCADOPAGO_CLIENT_ID`
-  - `MERCADOPAGO_CLIENT_SECRET`
+  - `MERCADOPAGO_PUBLIC_KEY`
   - `MERCADOPAGO_WEBHOOK_SECRET`
-- Client:
-  - `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY`
-- Compatibilidade:
-  - `MERCADOPAGO_PUBLIC_KEY` (mantida para leitura server-side quando aplicável)
 
 ### Segurança
 - Validação HMAC da assinatura (`x-signature`) usando:
