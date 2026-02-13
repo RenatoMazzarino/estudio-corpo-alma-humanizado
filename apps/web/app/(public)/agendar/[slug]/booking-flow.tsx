@@ -26,7 +26,11 @@ import {
 } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions/appointments";
 import { lookupClientByPhone } from "./public-actions/clients";
-import { createCardPayment, createPixPayment } from "./public-actions/payments";
+import {
+  createCardPayment,
+  createPixPayment,
+  getCardPaymentStatus,
+} from "./public-actions/payments";
 import { getAvailableSlots } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
@@ -204,6 +208,7 @@ export function BookingFlow({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
   const [cardError, setCardError] = useState<string | null>(null);
+  const [cardAwaitingConfirmation, setCardAwaitingConfirmation] = useState(false);
   const [mpReady, setMpReady] = useState(false);
   const cardFormRef = useRef<CardFormInstance | null>(null);
   const cardSubmitInFlightRef = useRef(false);
@@ -641,12 +646,55 @@ export function BookingFlow({
     if (paymentMethod === "pix") {
       setCardError(null);
       setCardStatus("idle");
+      setCardAwaitingConfirmation(false);
     }
     if (paymentMethod === "card") {
       setPixError(null);
       setPixStatus("idle");
     }
   }, [paymentMethod]);
+
+  useEffect(() => {
+    if (
+      step !== "PAYMENT" ||
+      paymentMethod !== "card" ||
+      !appointmentId ||
+      !cardAwaitingConfirmation
+    ) {
+      return;
+    }
+
+    let active = true;
+    const poll = async () => {
+      const result = await getCardPaymentStatus({
+        appointmentId,
+        tenantId: tenant.id,
+      });
+      if (!active || !result.ok) return;
+
+      if (result.data.internal_status === "paid") {
+        setCardAwaitingConfirmation(false);
+        setCardError(null);
+        setStep("SUCCESS");
+        return;
+      }
+      if (result.data.internal_status === "failed") {
+        setCardAwaitingConfirmation(false);
+        setCardStatus("error");
+        setCardError("Pagamento recusado. Tente novamente com outro cartão.");
+      }
+    };
+
+    void poll();
+    const interval = window.setInterval(() => {
+      void poll();
+    }, 5000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [appointmentId, cardAwaitingConfirmation, paymentMethod, step, tenant.id]);
 
   useEffect(() => {
     if (step !== "PAYMENT" || paymentMethod !== "card") {
@@ -707,6 +755,7 @@ export function BookingFlow({
           const data = cardFormRef.current?.getCardFormData();
           if (!data?.token || !data.paymentMethodId) {
             setCardError("Preencha os dados do cartão para continuar.");
+            setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
           }
@@ -716,6 +765,7 @@ export function BookingFlow({
           if (!ensuredId) {
             setCardStatus("error");
             setCardError("Não foi possível registrar o agendamento.");
+            setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
           }
@@ -742,6 +792,7 @@ export function BookingFlow({
                 ? error.message
                 : "Falha ao processar pagamento com cartão. Tente novamente."
             );
+            setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
           }
@@ -749,17 +800,21 @@ export function BookingFlow({
           if (!result.ok) {
             setCardStatus("error");
             setCardError(result.error.message);
+            setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
           }
           if (result.data.internal_status === "paid") {
             setCardStatus("idle");
+            setCardAwaitingConfirmation(false);
             setStep("SUCCESS");
           } else if (result.data.internal_status === "failed") {
             setCardStatus("error");
+            setCardAwaitingConfirmation(false);
             setCardError("Pagamento recusado. Tente novamente com outro cartão.");
           } else {
             setCardStatus("idle");
+            setCardAwaitingConfirmation(true);
             setCardError(
               "Pagamento em processamento. Você receberá a confirmação assim que for aprovado."
             );

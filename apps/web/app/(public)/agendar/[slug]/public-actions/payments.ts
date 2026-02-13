@@ -24,6 +24,10 @@ interface CardPaymentResult {
   transaction_amount: number;
 }
 
+interface CardPaymentStatusResult {
+  internal_status: "paid" | "pending" | "failed";
+}
+
 type InternalPaymentStatus = "paid" | "pending" | "failed";
 
 type MercadoPagoOrderPaymentMethod = {
@@ -664,4 +668,42 @@ export async function createPixPayment({
   }
 
   return ok(result);
+}
+
+export async function getCardPaymentStatus({
+  appointmentId,
+  tenantId,
+}: {
+  appointmentId: string;
+  tenantId: string;
+}): Promise<ActionResult<CardPaymentStatusResult>> {
+  const supabase = createServiceClient();
+  const { data: payments, error } = await supabase
+    .from("appointment_payments")
+    .select("status")
+    .eq("appointment_id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .eq("method", "card");
+
+  if (error) {
+    return fail(
+      new AppError("Não foi possível consultar o status do pagamento.", "SUPABASE_ERROR", 500, error)
+    );
+  }
+
+  const statuses = (payments ?? [])
+    .map((item) => (typeof item.status === "string" ? item.status : null))
+    .filter((value): value is string => Boolean(value));
+
+  if (statuses.includes("paid")) {
+    return ok({ internal_status: "paid" });
+  }
+  if (statuses.includes("pending")) {
+    return ok({ internal_status: "pending" });
+  }
+  if (statuses.includes("failed")) {
+    return ok({ internal_status: "failed" });
+  }
+
+  return ok({ internal_status: "pending" });
 }
