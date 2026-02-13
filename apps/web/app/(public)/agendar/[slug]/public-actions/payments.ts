@@ -207,6 +207,71 @@ const getPayloadMessage = (
   return directMessage ?? errorMessage ?? errorsMessage ?? causeMessage ?? fallback;
 };
 
+const collectMercadoPagoDetails = (payload: Record<string, unknown> | null) => {
+  if (!payload) return "";
+  const details = new Set<string>();
+
+  const collectFromErrors = (input: unknown) => {
+    if (!Array.isArray(input)) return;
+    input.forEach((entry) => {
+      if (!entry || typeof entry !== "object") return;
+      const record = entry as Record<string, unknown>;
+      const code = typeof record.code === "string" ? record.code : null;
+      const message = typeof record.message === "string" ? record.message : null;
+      if (code) details.add(code);
+      if (message) details.add(message);
+      if (Array.isArray(record.details)) {
+        record.details.forEach((item) => {
+          if (typeof item === "string") details.add(item);
+        });
+      }
+    });
+  };
+
+  collectFromErrors(payload.errors);
+  collectFromErrors(payload.cause);
+
+  return Array.from(details).join(" | ").toLowerCase();
+};
+
+const mapMercadoPagoUserMessage = ({
+  method,
+  status,
+  payload,
+  fallback,
+}: {
+  method: "card" | "pix";
+  status: number;
+  payload: Record<string, unknown> | null;
+  fallback: string;
+}) => {
+  const details = collectMercadoPagoDetails(payload);
+
+  if (status === 401 || details.includes("invalid_credentials")) {
+    return "Pagamento indisponível no momento. Tente novamente em alguns minutos.";
+  }
+  if (details.includes("high_risk")) {
+    return "Cartão recusado por segurança. Tente outro cartão ou Pix.";
+  }
+  if (details.includes("invalid_users_involved")) {
+    return "Não foi possível validar os dados do pagador. Confira nome, CPF e email.";
+  }
+  if (details.includes("invalid_transaction_amount")) {
+    return "Valor de pagamento inválido para processamento.";
+  }
+  if (details.includes("unsupported_properties")) {
+    return "Pagamento indisponível no momento. Tente novamente em instantes.";
+  }
+  if (details.includes("failed") && method === "card") {
+    return "Cartão não aprovado. Tente outro cartão ou Pix.";
+  }
+  if (details.includes("failed") && method === "pix") {
+    return "Não foi possível gerar o Pix agora. Tente novamente.";
+  }
+
+  return fallback;
+};
+
 const ensureValidPaymentContext = async ({
   appointmentId,
   tenantId,
@@ -454,12 +519,22 @@ export async function createCardPayment({
       payloadText: payloadText.slice(0, 2000),
     });
     const unauthorizedMessage = `Falha de autenticação com Mercado Pago (401). ${ordersCredentialsMessage}`;
+    const userMessage = mapMercadoPagoUserMessage({
+      method: "card",
+      status: response.status,
+      payload,
+      fallback: payloadMessage,
+    });
     return fail(
       new AppError(
-        response.status === 401 ? `${unauthorizedMessage} Detalhe: ${payloadMessage}` : payloadMessage,
+        response.status === 401 ? `${userMessage}` : userMessage,
         "SUPABASE_ERROR",
         response.status,
-        payload
+        {
+          payload,
+          payloadMessage,
+          unauthorizedMessage,
+        }
       )
     );
   }
@@ -639,12 +714,22 @@ export async function createPixPayment({
       payloadText: payloadText.slice(0, 2000),
     });
     const unauthorizedMessage = `Falha de autenticação com Mercado Pago (401). ${ordersCredentialsMessage}`;
+    const userMessage = mapMercadoPagoUserMessage({
+      method: "pix",
+      status: response.status,
+      payload,
+      fallback: payloadMessage,
+    });
     return fail(
       new AppError(
-        response.status === 401 ? `${unauthorizedMessage} Detalhe: ${payloadMessage}` : payloadMessage,
+        response.status === 401 ? `${userMessage}` : userMessage,
         "SUPABASE_ERROR",
         response.status,
-        payload
+        {
+          payload,
+          payloadMessage,
+          unauthorizedMessage,
+        }
       )
     );
   }

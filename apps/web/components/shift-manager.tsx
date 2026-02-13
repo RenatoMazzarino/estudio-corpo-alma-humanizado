@@ -5,7 +5,9 @@ import { createShiftBlocks, clearMonthBlocks } from "../app/(dashboard)/admin/es
 import { getMonthOverview } from "../app/(dashboard)/bloqueios/actions";
 import { format, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Calendar, Trash2 } from "lucide-react";
+import { Toast, useToast } from "./ui/toast";
+import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 
 interface MonthOverview {
   blocks: { id: string; start_time: string; end_time: string; title: string }[];
@@ -15,9 +17,9 @@ interface MonthOverview {
 export function ShiftManager() {
   const [selectedMonth, setSelectedMonth] = useState(format(addMonths(new Date(), 1), "yyyy-MM"));
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [overview, setOverview] = useState<MonthOverview>({ blocks: [], appointments: [] });
   const [pendingConfirm, setPendingConfirm] = useState<null | { type: "even" | "odd"; conflicts: { blocks: number; appointments: number } }>(null);
+  const { toast, showToast } = useToast();
 
   useEffect(() => {
     async function loadOverview() {
@@ -32,7 +34,6 @@ export function ShiftManager() {
 
   async function handleCreate(type: "even" | "odd", force?: boolean) {
     setLoading(true);
-    setMessage(null);
     try {
       const result = await createShiftBlocks(type, selectedMonth, force);
       if (!result.ok) {
@@ -42,19 +43,21 @@ export function ShiftManager() {
         setPendingConfirm({ type, conflicts: result.data.conflicts });
         return;
       }
-      setMessage({
-        type: "success",
-        text: `Bloqueios criados para dias ${type === "even" ? "pares" : "ímpares"} em ${format(
-          new Date(selectedMonth + "-01"),
-          "MMMM/yyyy",
-          { locale: ptBR }
-        )}.`,
-      });
+      showToast(
+        feedbackById("generic_saved", {
+          tone: "success",
+          message: `Bloqueios criados para dias ${type === "even" ? "pares" : "ímpares"} em ${format(
+            new Date(selectedMonth + "-01"),
+            "MMMM/yyyy",
+            { locale: ptBR }
+          )}.`,
+        })
+      );
       const data = await getMonthOverview(selectedMonth);
       setOverview(data);
     } catch (error) {
       console.error(error);
-      setMessage({ type: "error", text: `Erro ao criar bloqueios: ${error instanceof Error ? error.message : "Desconhecido"}` });
+      showToast(feedbackFromError(error, "agenda"));
     } finally {
       setLoading(false);
     }
@@ -64,18 +67,17 @@ export function ShiftManager() {
     if (!confirm("Tem certeza? Isso apagará TODOS os bloqueios deste mês.")) return;
 
     setLoading(true);
-    setMessage(null);
     try {
       const result = await clearMonthBlocks(selectedMonth);
       if (!result.ok) {
         throw result.error;
       }
-      setMessage({ type: "success", text: "Bloqueios do mês limpos com sucesso!" });
+      showToast(feedbackById("generic_saved", { tone: "success", message: "Bloqueios do mês limpos com sucesso." }));
       const data = await getMonthOverview(selectedMonth);
       setOverview(data);
     } catch (error) {
       console.error(error);
-      setMessage({ type: "error", text: `Erro ao limpar bloqueios: ${error instanceof Error ? error.message : "Desconhecido"}` });
+      showToast(feedbackFromError(error, "agenda"));
     } finally {
       setLoading(false);
     }
@@ -87,6 +89,7 @@ export function ShiftManager() {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
+      <Toast toast={toast} />
       <div className="flex items-center gap-3">
         <div className="p-2 bg-green-50 text-studio-green rounded-lg">
           <Calendar size={20} />
@@ -127,18 +130,6 @@ export function ShiftManager() {
               <span className="text-xs text-gray-400">{block.title}</span>
             </div>
           ))}
-        </div>
-      )}
-
-      {message && (
-        <div
-          className={`p-4 rounded-xl text-sm flex items-center gap-2 ${
-            message.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-          }`}
-        >
-          {message.type === "success" && <CheckCircle2 size={16} />}
-          {message.type === "error" && <AlertCircle size={16} />}
-          {message.text}
         </div>
       )}
 

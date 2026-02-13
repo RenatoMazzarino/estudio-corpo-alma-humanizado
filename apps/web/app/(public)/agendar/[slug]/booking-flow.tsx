@@ -35,6 +35,7 @@ import {
 import { getAvailableSlots } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
+import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { VoucherOverlay } from "./components/voucher-overlay";
 import { formatCep, formatCountdown } from "./booking-flow-formatters";
@@ -50,6 +51,7 @@ import {
   progressSteps,
   stepLabels,
 } from "./booking-flow-config";
+import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
 interface Service {
   id: string;
@@ -180,15 +182,15 @@ export function BookingFlow({
   const [addressSearchQuery, setAddressSearchQuery] = useState("");
   const [addressSearchResults, setAddressSearchResults] = useState<AddressSearchResult[]>([]);
   const [addressSearchLoading, setAddressSearchLoading] = useState(false);
-  const [addressSearchError, setAddressSearchError] = useState<string | null>(null);
+  const [, setAddressSearchError] = useState<string | null>(null);
   const [displacementEstimate, setDisplacementEstimate] = useState<DisplacementEstimate | null>(
     null
   );
   const [displacementStatus, setDisplacementStatus] = useState<"idle" | "loading" | "error">(
     "idle"
   );
-  const [displacementError, setDisplacementError] = useState<string | null>(null);
-  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">(
+  const [, setDisplacementError] = useState<string | null>(null);
+  const [, setCepStatus] = useState<"idle" | "loading" | "error" | "success">(
     "idle"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -208,19 +210,24 @@ export function BookingFlow({
     expires_at: string;
   } | null>(null);
   const [pixStatus, setPixStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [pixError, setPixError] = useState<string | null>(null);
+  const [, setPixError] = useState<string | null>(null);
   const [pixAttempt, setPixAttempt] = useState(0);
   const [pixNowMs, setPixNowMs] = useState(() => Date.now());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [cardStatus, setCardStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [cardError, setCardError] = useState<string | null>(null);
+  const [, setCardError] = useState<string | null>(null);
   const [cardAwaitingConfirmation, setCardAwaitingConfirmation] = useState(false);
   const [cardProcessingStageIndex, setCardProcessingStageIndex] = useState(0);
   const [mpReady, setMpReady] = useState(false);
+  const { toast, showToast } = useToast(2600);
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
   const cardFormRef = useRef<CardFormInstance | null>(null);
   const cardSubmitInFlightRef = useRef(false);
   const pixAutoRefreshByPaymentRef = useRef<string | null>(null);
+  const pixFailureStatusRef = useRef<string | null>(null);
+  const cardFailureStatusRef = useRef<string | null>(null);
+  const displacementFailureNotifiedRef = useRef(false);
+  const mpInitToastShownRef = useRef(false);
   const voucherRef = useRef<HTMLDivElement | null>(null);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
   const [voucherBusy, setVoucherBusy] = useState(false);
@@ -331,6 +338,7 @@ export function BookingFlow({
       setDisplacementEstimate(null);
       setDisplacementStatus("idle");
       setDisplacementError(null);
+      displacementFailureNotifiedRef.current = false;
       return;
     }
 
@@ -368,14 +376,30 @@ export function BookingFlow({
       }
       setDisplacementEstimate(payload);
       setDisplacementStatus("idle");
+      displacementFailureNotifiedRef.current = false;
     } catch (error) {
       setDisplacementEstimate(null);
       setDisplacementStatus("error");
-      setDisplacementError(
-        error instanceof Error ? error.message : "Não foi possível calcular a taxa de deslocamento."
-      );
+      const message =
+        error instanceof Error ? error.message : "Não foi possível calcular a taxa de deslocamento.";
+      setDisplacementError(message);
+      if (!displacementFailureNotifiedRef.current) {
+        displacementFailureNotifiedRef.current = true;
+        showToast(feedbackById("displacement_calc_failed"));
+      }
     }
-  }, [addressComplete, bairro, cep, cidade, complemento, estado, logradouro, numero, requiresAddress]);
+  }, [
+    addressComplete,
+    bairro,
+    cep,
+    cidade,
+    complemento,
+    estado,
+    logradouro,
+    numero,
+    requiresAddress,
+    showToast,
+  ]);
 
   const StepTabs = () => (
     <div className="mt-3 flex gap-1">
@@ -484,12 +508,14 @@ export function BookingFlow({
     const normalized = normalizeCep(cep);
     if (normalized.length !== 8) {
       setCepStatus("error");
+      showToast(feedbackById("address_cep_invalid"));
       return;
     }
     setCepStatus("loading");
     const result = await fetchAddressByCep(normalized);
     if (!result) {
       setCepStatus("error");
+      showToast(feedbackById("address_cep_not_found"));
       return;
     }
     setLogradouro(result.logradouro);
@@ -497,6 +523,7 @@ export function BookingFlow({
     setCidade(result.cidade);
     setEstado(result.estado);
     setCepStatus("success");
+    showToast(feedbackById("address_cep_found"));
   };
 
   useEffect(() => {
@@ -525,13 +552,14 @@ export function BookingFlow({
         if ((error as { name?: string }).name === "AbortError") return;
         setAddressSearchResults([]);
         setAddressSearchError("Não foi possível buscar endereços. Tente novamente.");
+        showToast(feedbackById("address_search_failed"));
       } finally {
         setAddressSearchLoading(false);
       }
     };
     runSearch();
     return () => controller.abort();
-  }, [addressSearchQuery, isAddressSearchModalOpen]);
+  }, [addressSearchQuery, isAddressSearchModalOpen, showToast]);
 
   useEffect(() => {
     if (!requiresAddress || !addressComplete) {
@@ -584,6 +612,7 @@ export function BookingFlow({
       closeAddressSearchModal();
     } catch {
       setAddressSearchError("Não foi possível carregar o endereço. Tente novamente.");
+      showToast(feedbackById("address_details_failed"));
       setAddressSearchLoading(false);
     }
   };
@@ -614,14 +643,15 @@ export function BookingFlow({
         displacementDistanceKm: displacementEstimate?.distanceKm,
       });
       if (!result.ok) {
-        alert(result.error.message);
+        showToast(feedbackFromError(result.error, "public_booking"));
         return null;
       }
       const createdId = result.data.appointmentId ?? null;
       setAppointmentId(createdId);
+      showToast(feedbackById("booking_created", { durationMs: 1800 }));
       return createdId;
-    } catch {
-      alert("Erro ao agendar. Tente novamente.");
+    } catch (error) {
+      showToast(feedbackFromError(error, "public_booking"));
       return null;
     } finally {
       setIsSubmitting(false);
@@ -646,18 +676,19 @@ export function BookingFlow({
     selectedTime,
     tenant.slug,
     isEmailValid,
+    showToast,
   ]);
 
   const handleCopyPix = async () => {
     try {
       if (!pixPayment?.qr_code) {
-        window.alert("Gere o Pix antes de copiar a chave.");
+        showToast(feedbackById("payment_pix_copy_unavailable"));
         return;
       }
       await navigator.clipboard.writeText(pixPayment.qr_code);
-      window.alert("Chave Pix copiada!");
+      showToast(feedbackById("payment_pix_copy_success", { durationMs: 1600 }));
     } catch {
-      window.alert("Copiar chave Pix ainda não está disponível.");
+      showToast(feedbackById("payment_pix_copy_unavailable"));
     }
   };
 
@@ -685,16 +716,24 @@ export function BookingFlow({
       });
       if (!result.ok) {
         setPixStatus("error");
-        setPixError(result.error.message);
+        const feedback = feedbackFromError(result.error, "payment_pix");
+        setPixError(feedback.message);
+        showToast(feedback);
         return;
       }
       pixAutoRefreshByPaymentRef.current = null;
+      pixFailureStatusRef.current = null;
       setPixPayment(result.data);
       setPixNowMs(Date.now());
       setPixStatus("idle");
+      if (normalizedAttempt === 0) {
+        showToast(feedbackById("payment_pix_generated", { durationMs: 2200 }));
+      }
     } catch {
       setPixStatus("error");
-      setPixError("Erro ao gerar Pix. Tente novamente.");
+      const feedback = feedbackById("payment_service_unavailable");
+      setPixError(feedback.message);
+      showToast(feedback);
     }
   }, [
     appointmentId,
@@ -705,6 +744,7 @@ export function BookingFlow({
     payableSignalAmount,
     pixAttempt,
     selectedService,
+    showToast,
     tenant.id,
   ]);
 
@@ -768,8 +808,9 @@ export function BookingFlow({
     const nextAttempt = pixAttempt + 1;
     setPixAttempt(nextAttempt);
     setPixError("QR Code expirou. Gerando um novo Pix automaticamente...");
+    showToast(feedbackById("payment_pix_expired_regenerating"));
     void handleCreatePix({ attempt: nextAttempt });
-  }, [handleCreatePix, paymentMethod, pixAttempt, pixPayment, pixQrExpired, pixStatus, step]);
+  }, [handleCreatePix, paymentMethod, pixAttempt, pixPayment, pixQrExpired, pixStatus, showToast, step]);
 
   useEffect(() => {
     if (step !== "PAYMENT" || paymentMethod !== "pix" || !pixPayment) {
@@ -799,12 +840,17 @@ export function BookingFlow({
 
       if (result.data.internal_status === "paid") {
         setPixError(null);
+        pixFailureStatusRef.current = null;
         setStep("SUCCESS");
         return;
       }
       if (result.data.internal_status === "failed") {
         setPixStatus("error");
         setPixError("O Pix não foi aprovado. Volte e gere um novo pagamento.");
+        if (pixFailureStatusRef.current !== "failed") {
+          pixFailureStatusRef.current = "failed";
+          showToast(feedbackById("payment_pix_failed", { kind: "banner", durationMs: 3200 }));
+        }
       }
     };
 
@@ -817,7 +863,7 @@ export function BookingFlow({
       active = false;
       window.clearInterval(interval);
     };
-  }, [appointmentId, paymentMethod, pixPayment, step, tenant.id]);
+  }, [appointmentId, paymentMethod, pixPayment, showToast, step, tenant.id]);
 
   useEffect(() => {
     if (
@@ -840,6 +886,7 @@ export function BookingFlow({
       if (result.data.internal_status === "paid") {
         setCardAwaitingConfirmation(false);
         setCardError(null);
+        cardFailureStatusRef.current = null;
         setStep("SUCCESS");
         return;
       }
@@ -847,6 +894,10 @@ export function BookingFlow({
         setCardAwaitingConfirmation(false);
         setCardStatus("error");
         setCardError("Pagamento recusado. Tente novamente com outro cartão.");
+        if (cardFailureStatusRef.current !== "failed") {
+          cardFailureStatusRef.current = "failed";
+          showToast(feedbackById("payment_card_declined", { kind: "banner", durationMs: 3200 }));
+        }
       }
     };
 
@@ -859,7 +910,7 @@ export function BookingFlow({
       active = false;
       window.clearInterval(interval);
     };
-  }, [appointmentId, cardAwaitingConfirmation, paymentMethod, step, tenant.id]);
+  }, [appointmentId, cardAwaitingConfirmation, paymentMethod, showToast, step, tenant.id]);
 
   useEffect(() => {
     if (step !== "PAYMENT" || paymentMethod !== "card") {
@@ -874,11 +925,20 @@ export function BookingFlow({
     const publicKey = mercadoPagoPublicKey ?? null;
     if (!publicKey) {
       setCardError("Chave pública do Mercado Pago ausente.");
+      if (!mpInitToastShownRef.current) {
+        mpInitToastShownRef.current = true;
+        showToast(feedbackById("payment_service_unavailable", { kind: "banner", durationMs: 3200 }));
+      }
       return;
     }
+    mpInitToastShownRef.current = false;
     if (!mpReady) return;
     if (!window.MercadoPago) {
       setCardError("Não foi possível carregar o formulário de cartão.");
+      if (!mpInitToastShownRef.current) {
+        mpInitToastShownRef.current = true;
+        showToast(feedbackById("payment_service_unavailable", { kind: "banner", durationMs: 3200 }));
+      }
       return;
     }
     try {
@@ -907,6 +967,7 @@ export function BookingFlow({
         onFormMounted: (error) => {
           if (error) {
             setCardError("Não foi possível carregar o formulário de cartão.");
+            showToast(feedbackById("payment_service_unavailable"));
           }
         },
         onSubmit: async (event) => {
@@ -919,7 +980,9 @@ export function BookingFlow({
           cardSubmitInFlightRef.current = true;
           const data = cardFormRef.current?.getCardFormData();
           if (!data?.token || !data.paymentMethodId) {
-            setCardError("Preencha os dados do cartão para continuar.");
+            const feedback = feedbackById("validation_required_fields");
+            setCardError(feedback.message);
+            showToast(feedback);
             setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
@@ -929,7 +992,9 @@ export function BookingFlow({
           const ensuredId = appointmentId ?? (await ensureAppointment());
           if (!ensuredId) {
             setCardStatus("error");
-            setCardError("Não foi possível registrar o agendamento.");
+            const feedback = feedbackById("booking_create_failed");
+            setCardError(feedback.message);
+            showToast(feedback);
             setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
@@ -952,11 +1017,9 @@ export function BookingFlow({
           } catch (error) {
             console.error("[booking-flow] card payment submit failed", error);
             setCardStatus("error");
-            setCardError(
-              error instanceof Error && error.message
-                ? error.message
-                : "Falha ao processar pagamento com cartão. Tente novamente."
-            );
+            const feedback = feedbackFromError(error, "payment_card");
+            setCardError(feedback.message);
+            showToast(feedback);
             setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
@@ -964,7 +1027,9 @@ export function BookingFlow({
 
           if (!result.ok) {
             setCardStatus("error");
-            setCardError(result.error.message);
+            const feedback = feedbackFromError(result.error, "payment_card");
+            setCardError(feedback.message);
+            showToast(feedback);
             setCardAwaitingConfirmation(false);
             cardSubmitInFlightRef.current = false;
             return;
@@ -972,17 +1037,20 @@ export function BookingFlow({
           if (result.data.internal_status === "paid") {
             setCardStatus("idle");
             setCardAwaitingConfirmation(false);
+            showToast(feedbackById("payment_recorded", { durationMs: 1800 }));
             setStep("SUCCESS");
           } else if (result.data.internal_status === "failed") {
             setCardStatus("error");
             setCardAwaitingConfirmation(false);
             setCardError("Pagamento recusado. Tente novamente com outro cartão.");
+            showToast(feedbackById("payment_card_declined", { kind: "banner", durationMs: 3200 }));
           } else {
             setCardStatus("idle");
             setCardAwaitingConfirmation(true);
             setCardError(
               "Pagamento em processamento. Você receberá a confirmação assim que for aprovado."
             );
+            showToast(feedbackById("payment_pending"));
           }
           cardSubmitInFlightRef.current = false;
         },
@@ -1009,6 +1077,7 @@ export function BookingFlow({
     paymentMethod,
     selectedService,
     payableSignalAmount,
+    showToast,
     step,
     tenant.id,
   ]);
@@ -1110,11 +1179,11 @@ export function BookingFlow({
   const handleDownloadVoucher = useCallback(async () => {
     const blob = await buildVoucherBlob();
     if (!blob) {
-      window.alert("Não foi possível gerar a imagem do voucher.");
+      showToast(feedbackById("voucher_generation_failed"));
       return;
     }
     downloadVoucherBlob(blob, `voucher-${protocol || "agendamento"}.png`, window.navigator.userAgent);
-  }, [buildVoucherBlob, protocol]);
+  }, [buildVoucherBlob, protocol, showToast]);
 
   const handleShareVoucher = useCallback(async () => {
     const blob = await buildVoucherBlob();
@@ -1245,7 +1314,7 @@ export function BookingFlow({
     if (whatsappLink) {
       window.open(whatsappLink, "_blank");
     } else {
-      alert("WhatsApp ainda não configurado pelo estúdio.");
+      showToast(feedbackById("contact_whatsapp_unavailable"));
     }
   };
 
@@ -1764,16 +1833,6 @@ export function BookingFlow({
                               Buscar
                             </button>
                           </div>
-                          {cepStatus === "error" && (
-                            <span className="text-xs text-red-400 font-bold">
-                              CEP não encontrado.
-                            </span>
-                          )}
-                          {cepStatus === "success" && (
-                            <span className="text-xs text-green-600 font-bold">
-                              Endereço encontrado!
-                            </span>
-                          )}
                         </div>
                       )}
 
@@ -1901,9 +1960,6 @@ export function BookingFlow({
                               {displacementEstimate.rule === "urban" ? "regra urbana" : "regra rodoviária"}).
                             </p>
                           </div>
-                        )}
-                        {displacementStatus === "error" && (
-                          <p className="text-xs text-red-500">{displacementError}</p>
                         )}
                         {displacementStatus === "idle" && !displacementEstimate && (
                           <p className="text-xs text-gray-500">
@@ -2086,12 +2142,7 @@ export function BookingFlow({
                     </div>
                   )}
 
-                  {pixError && <p className="text-xs text-red-500">{pixError}</p>}
-                  {pixQrExpired && (
-                    <p className="text-xs text-amber-700">
-                      Este QR Code expirou. Estamos gerando um novo automaticamente.
-                    </p>
-                  )}
+                  {pixQrExpired && <span className="sr-only">QR Code expirado</span>}
 
                   <button
                     type="button"
@@ -2112,8 +2163,6 @@ export function BookingFlow({
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                     Pagamento com cartão
                   </p>
-
-                  {cardError && <p className="text-xs text-red-500">{cardError}</p>}
 
                   <form id="mp-card-form" className="grid gap-3">
                     <div
@@ -2349,10 +2398,6 @@ export function BookingFlow({
               {addressSearchLoading && (
                 <p className="text-xs text-gray-400">Buscando endereços...</p>
               )}
-              {addressSearchError && (
-                <p className="text-xs text-red-400">{addressSearchError}</p>
-              )}
-
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {addressSearchResults.map((result) => (
                   <button
@@ -2365,7 +2410,6 @@ export function BookingFlow({
                   </button>
                 ))}
                 {!addressSearchLoading &&
-                  !addressSearchError &&
                   addressSearchQuery.trim().length >= 3 &&
                   addressSearchResults.length === 0 && (
                     <p className="text-xs text-gray-400">Nenhum endereço encontrado.</p>
@@ -2400,6 +2444,8 @@ export function BookingFlow({
           </div>
         </footer>
       )}
+
+      <Toast toast={toast} />
     </div>
   );
 }

@@ -24,6 +24,7 @@ import { CheckoutStage } from "./components/checkout-stage";
 import { PostStage } from "./components/post-stage";
 import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
 import { Toast, useToast } from "../../../../components/ui/toast";
+import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
 interface AttendancePageProps {
   data: AttendanceOverview;
@@ -131,7 +132,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
 
   const scrollToStage = (stage: StageKey) => {
     if (stageStatusMap[stage] === "locked") {
-      showToast("Etapa bloqueada. Conclua a anterior para liberar.");
+      showToast(feedbackById("agenda_stage_locked"));
       return;
     }
     if (!pagerRef.current) return;
@@ -173,7 +174,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
 
   const handleToggleChecklist = async (itemId: string, completed: boolean) => {
     const result = await toggleChecklistItem({ appointmentId: appointment.id, itemId, completed });
-    if (!result.ok) showToast(result.error.message);
+    if (!result.ok) showToast(feedbackFromError(result.error, "attendance"));
     router.refresh();
   };
 
@@ -189,7 +190,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
       },
     });
     if (!result.ok) {
-      showToast(result.error.message);
+      showToast(feedbackFromError(result.error, "attendance"));
       return;
     }
     router.refresh();
@@ -199,7 +200,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const handleSaveItems = async (items: Array<{ type: "service" | "fee" | "addon" | "adjustment"; label: string; qty: number; amount: number }>) => {
     const result = await setCheckoutItems({ appointmentId: appointment.id, items });
     if (!result.ok) {
-      showToast(result.error.message);
+      showToast(feedbackFromError(result.error, "attendance"));
       return;
     }
     router.refresh();
@@ -208,7 +209,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const handleSetDiscount = async (type: "value" | "pct" | null, value: number | null, reason?: string) => {
     const result = await setDiscount({ appointmentId: appointment.id, type, value, reason: reason ?? null });
     if (!result.ok) {
-      showToast(result.error.message);
+      showToast(feedbackFromError(result.error, "attendance"));
       return;
     }
     router.refresh();
@@ -217,7 +218,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const handleRecordPayment = async (method: "pix" | "card" | "cash" | "other", amount: number) => {
     const result = await recordPayment({ appointmentId: appointment.id, method, amount });
     if (!result.ok) {
-      showToast(result.error.message);
+      showToast(feedbackFromError(result.error, "attendance"));
       return;
     }
     router.refresh();
@@ -226,7 +227,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
   const handleConfirmCheckout = async () => {
     const result = await confirmCheckout({ appointmentId: appointment.id });
     if (!result.ok) {
-      showToast(result.error.message);
+      showToast(feedbackFromError(result.error, "attendance"));
       return;
     }
     router.refresh();
@@ -239,7 +240,7 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
       ...payload,
       kpiTotalSeconds: attendance.actual_seconds || currentElapsed,
     });
-    if (!result.ok) showToast(result.error.message);
+    if (!result.ok) showToast(feedbackFromError(result.error, "attendance"));
     router.refresh();
   };
 
@@ -252,27 +253,27 @@ export function AttendancePage({ data, initialStage }: AttendancePageProps) {
 
   const handleSendSurvey = async () => {
     if (!contactPhone) {
-      showToast("Sem telefone de WhatsApp cadastrado.");
+      showToast(feedbackById("whatsapp_missing_phone"));
       return;
     }
     const name = appointment.clients?.name ?? "Cliente";
     const message = `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
     openWhatsapp(message);
     const result = await sendSurvey({ appointmentId: appointment.id, message });
-    if (!result.ok) showToast(result.error.message);
+    if (!result.ok) showToast(feedbackFromError(result.error, "whatsapp"));
     router.refresh();
   };
 
   const handleRecordSurvey = async (score: number) => {
     const result = await recordSurveyAnswer({ appointmentId: appointment.id, score });
-    if (!result.ok) showToast(result.error.message);
+    if (!result.ok) showToast(feedbackFromError(result.error, "attendance"));
     router.refresh();
   };
 
   const handleFinish = async () => {
     const result = await finishAttendance({ appointmentId: appointment.id });
     if (!result.ok) {
-      showToast(result.error.message);
+      showToast(feedbackFromError(result.error, "attendance"));
       return;
     }
     stopSession();
