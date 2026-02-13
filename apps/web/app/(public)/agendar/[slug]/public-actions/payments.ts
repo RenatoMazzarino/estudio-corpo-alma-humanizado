@@ -111,7 +111,6 @@ const usesUnsupportedOrdersTestCredential = (token: string) => token.toUpperCase
 const ordersCredentialsMessage =
   "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação e valide em sandbox com usuários/cartões de teste.";
 const minimumTransactionAmount = 1;
-const defaultMercadoPagoTestPayerEmail = "test@testuser.com";
 
 const shouldUseMercadoPagoTestPayerEmail = () => {
   return process.env.VERCEL_ENV !== "production";
@@ -125,7 +124,10 @@ const resolvePayerEmail = ({
   phoneDigits: string;
 }) => {
   if (shouldUseMercadoPagoTestPayerEmail()) {
-    return defaultMercadoPagoTestPayerEmail;
+    const configured = process.env.MERCADOPAGO_TEST_PAYER_EMAIL?.trim();
+    if (configured && configured.length > 0) {
+      return configured;
+    }
   }
   const normalized = providedEmail?.trim();
   return normalized && normalized.length > 0 ? normalized : buildPayerEmail(phoneDigits);
