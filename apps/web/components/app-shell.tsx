@@ -1,11 +1,10 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { TimerBubble } from "./timer/timer-bubble";
 import { TimerProvider } from "./timer/timer-provider";
 import { BottomNav } from "./ui/bottom-nav";
-import { DebugPointerOverlay } from "./debug/debug-pointer-overlay";
 
 interface AppShellProps {
   children: ReactNode;
@@ -13,8 +12,6 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const debugTouch = searchParams.get("debug") === "1";
   const canShowBottomNav = () => {
     if (
       pathname === "/" ||
@@ -35,18 +32,10 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <TimerProvider>
       {/* Fundo geral usando var(--color-studio-bg) */}
-      <div
-        className={`app-viewport flex justify-center items-stretch overflow-hidden ${
-          debugTouch ? "bg-transparent debug-overflow" : "bg-neutral-900"
-        }`}
-      >
+      <div className="app-viewport flex justify-center items-stretch overflow-hidden bg-neutral-900">
         <div
           id="app-frame"
-          className={`
-          app-frame bg-studio-bg grid grid-rows-[1fr_auto] relative shadow-2xl min-h-0 ${
-            debugTouch ? "debug-hitbox debug-overflow" : "overflow-hidden"
-          }
-        `}
+          className="app-frame bg-studio-bg grid grid-rows-[1fr_auto] relative shadow-2xl min-h-0 overflow-hidden"
           style={{ "--nav-height": navHeight } as CSSProperties}
         >
           <div
@@ -67,7 +56,6 @@ export function AppShell({ children }: AppShellProps) {
 
           {showBottomNav && <BottomNav className="shrink-0" />}
         </div>
-        {debugTouch && <DebugPointerOverlay />}
       </div>
     </TimerProvider>
   );
