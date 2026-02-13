@@ -33,12 +33,6 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - App interno: `https://app.corpoealmahumanizado.com.br`
 - Público: `https://public.corpoealmahumanizado.com.br`
 
-2. Preview (teste online)
-- Público fixo: `https://dev.public.corpoealmahumanizado.com.br`
-
-3. Local
-- `http://localhost:3000`
-
 ## 3) Variáveis críticas por integração
 
 1. Supabase
@@ -66,7 +60,7 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - Para este repositorio, tratar `Checkout API (Orders)` como o mesmo fluxo do Checkout Transparente.
 - `Checkout Pro` nao deve ser configurado nem usado neste projeto.
 
-## 4) Checklist de configuração por ambiente
+## 4) Checklist de configuração (produção)
 
 1. Produção (Vercel Production)
 - Credenciais MP de produção.
@@ -78,27 +72,6 @@ Para detalhes técnicos de endpoint/arquitetura, usar `docs/integrations/INTEGRA
 - O endpoint precisa responder sem bloqueio de autenticação (teste rápido com `GET` retornando `200`).
 - Segredo do webhook em `MERCADOPAGO_WEBHOOK_SECRET`.
 - Supabase de produção.
-
-2. Preview (Vercel Preview)
-- Credenciais MP de producao da mesma aplicacao (Orders API nao aceita `TEST-`).
-- Para sandbox em preview, usar usuarios/cartoes de teste no fluxo.
-- Webhook MP apontando para:
-  - sem proteção Vercel:
-`https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
-  - com Vercel Authentication ativa:
-`https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook?x-vercel-protection-bypass=<VERCEL_AUTOMATION_BYPASS_SECRET>`
-- Eventos selecionados no painel MP:
-  - `Pagamentos`
-  - `Order (Mercado Pago)`
-- O endpoint de preview precisa aceitar chamada server-to-server do MP.
-- Se preview estiver protegido, o callback com `x-vercel-protection-bypass` e obrigatorio para evitar `401`.
-- Validar no painel do MP com simulacao de `payment` e `order` retornando `200/201`.
-- Segredo do webhook de teste em `MERCADOPAGO_WEBHOOK_SECRET`.
-- Supabase de preview/teste.
-
-3. Local
-- `.env.local` em `apps/web/.env.local`.
-- Para Orders API, usar credenciais de producao da aplicacao e executar apenas cenarios de teste (usuarios/cartoes de teste).
 
 ## 5) Fluxo operacional do pagamento (resumo)
 
@@ -125,8 +98,8 @@ pnpm supabase db push             # remoto linkado
 ```
 
 3. Smoke test funcional
-- Agendamento público com cartão (E2E de sandbox).
-- Pix em sandbox validado por request de teste da Orders API (nao compra real no checkout).
+- Agendamento público com cartão.
+- Geração de Pix no fluxo público.
 - Recebimento de webhook.
 - Status financeiro atualizado.
 - Voucher abre e exporta imagem.
@@ -139,15 +112,12 @@ pnpm supabase db push             # remoto linkado
 
 2. Webhook 401
 - Verificar `MERCADOPAGO_WEBHOOK_SECRET` no ambiente correto.
-- Verificar URL configurada no painel MP para o mesmo ambiente (preview/prod).
-- Em preview protegido, confirmar callback com `?x-vercel-protection-bypass=<secret>`.
-- Em producao, nao usar bypass no callback.
+- Verificar URL configurada no painel MP para produção.
 
 3. Pix gerado, mas status não atualiza
 - Verificar logs da rota `/api/mercadopago/webhook`.
 - Confirmar assinatura válida no header.
-- Em sandbox, lembrar que Pix e validado oficialmente por request de teste em `POST /v1/orders`.
-- Confirmar disponibilidade do endpoint (publico em producao, ou bypass valido no preview protegido).
+- Confirmar disponibilidade pública do endpoint em produção.
 
 4. Cliente duplicado por telefone
 - Aplicar migration de normalização e unicidade:
@@ -155,7 +125,6 @@ pnpm supabase db push             # remoto linkado
 
 ## 8) Regra operacional importante
 
-- Não misturar credencial de produção em Preview/Local.
-- Não misturar segredo de webhook de produção em Preview.
-- Sempre validar ambiente ativo antes de teste de pagamento.
+- Não misturar credenciais entre aplicações/projetos.
+- Sempre validar ambiente ativo antes de processar pagamento.
 - Não habilitar tópicos extras de webhook no MP sem necessidade real (gera ruído e risco operacional).

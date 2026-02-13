@@ -8,7 +8,7 @@ Este diretório foi organizado em duas camadas:
 - `MANUAL_RAPIDO.md`: comandos operacionais (dev, build, migrations, deploy).
 - `docs/apis/API_GUIDE.md`: APIs internas do app.
 - `docs/integrations/INTEGRATIONS_TECNICO.md`: arquitetura e requisitos técnicos das integrações.
-- `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: operação por ambiente (preview/prod/local).
+- `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: operação de produção.
 - `docs/ui-system/*`: design system e padrões canônicos de UI.
 - `docs/sql/README.md`: orientação para snapshots SQL de auditoria.
 

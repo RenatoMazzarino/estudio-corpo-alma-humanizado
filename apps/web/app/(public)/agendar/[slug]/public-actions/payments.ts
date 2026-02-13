@@ -109,7 +109,7 @@ const normalizeMercadoPagoToken = (value: string | undefined | null) => {
 const usesUnsupportedOrdersTestCredential = (token: string) => token.toUpperCase().startsWith("TEST-");
 
 const ordersCredentialsMessage =
-  "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação e valide em sandbox com usuários/cartões de teste.";
+  "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação.";
 const minimumTransactionAmount = 1;
 
 const resolvePayerEmail = ({
