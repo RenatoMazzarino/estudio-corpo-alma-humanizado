@@ -68,10 +68,25 @@ export function VoucherOverlay({
     selectedServiceDescription?.trim() || "Terapêutica e Relaxante";
   const bookingId = protocol || `AGD-${dayPart || "00"}${monthPart || "00"}${yearPart.slice(-2) || "00"}`;
   const barcodePattern = [1, 2, 1, 3, 1, 4, 2, 1, 3, 1, 2, 1];
+  const colors = {
+    studioText: "#2C3333",
+    dom: "#C0A4B0",
+    black30: "rgba(0, 0, 0, 0.3)",
+    white12: "rgba(255, 255, 255, 0.12)",
+    studioGreen25: "rgba(93, 110, 86, 0.25)",
+    studioText80: "rgba(44, 51, 51, 0.8)",
+    studioText70: "rgba(44, 51, 51, 0.7)",
+    studioText60: "rgba(44, 51, 51, 0.6)",
+    studioText50: "rgba(44, 51, 51, 0.5)",
+  };
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px]" onClick={onClose} />
+      <div
+        className="absolute inset-0 backdrop-blur-[1px]"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.75)" }}
+        onClick={onClose}
+      />
       <div className="relative z-10 w-full max-w-[430px]">
         <div className="absolute right-2 top-2 z-20">
           <button
@@ -91,7 +106,8 @@ export function VoucherOverlay({
           >
             <div className="bg-studio-green px-8 py-7 pb-9 text-center relative overflow-hidden">
               <svg
-                className="absolute top-0 right-0 w-32 h-32 text-white/12 pointer-events-none"
+                className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
+                style={{ color: colors.white12 }}
                 fill="currentColor"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
@@ -111,14 +127,20 @@ export function VoucherOverlay({
                   <br />
                   Humanizado
                 </h3>                
-                <p className="font-signature text-[52px] text-dom/95 -rotate-2 leading-none">
+                <p
+                  className="font-signature text-[52px] -rotate-2 leading-none"
+                  style={{ color: colors.dom }}
+                >
                   Voucher de Serviço
                 </p>
               </div>
             </div>
 
             <div className="relative h-0 z-10">
-              <div className="absolute top-0 left-5 right-5 border-t-[3px] border-dotted border-black/30" />
+              <div
+                className="absolute top-0 left-5 right-5 border-t-[3px] border-dotted"
+                style={{ borderColor: colors.black30 }}
+              />
               <div className="absolute -left-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
               <div className="absolute -right-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
             </div>
@@ -126,21 +148,30 @@ export function VoucherOverlay({
             <div className="voucher-paper-texture px-6 py-8 pb-7 text-center text-studio-text">
               <div className="flex items-center justify-center gap-3 mb-1">
                 <span className="font-serif text-5xl font-bold leading-none">{dayAndMonth}</span>
-                <span className="h-8 w-[2px] bg-studio-text/30" />
+                <span
+                  className="h-8 w-[2px]"
+                  style={{ backgroundColor: "rgba(44, 51, 51, 0.3)" }}
+                />
                 <span className="font-serif text-5xl font-bold leading-none">{selectedTime}</span>
               </div>
               <p className="text-[24px] font-bold uppercase tracking-[0.09em] mb-7 truncate px-2">
                 CLIENTE: {clientName || "CLIENTE"}
               </p>
 
-              <div className="border border-studio-green/25 rounded-xl p-5 mb-7 bg-white/50">
+              <div
+                className="border rounded-xl p-5 mb-7"
+                style={{
+                  borderColor: colors.studioGreen25,
+                  backgroundColor: "rgba(255, 255, 255, 0.5)",
+                }}
+              >
                 <p className="text-xs font-bold uppercase tracking-[0.2em] mb-2 text-studio-green">
                   Procedimento
                 </p>
                 <h3 className="font-serif text-[48px] text-studio-green leading-[1.05] mb-2 break-words">
                   {selectedServiceName}
                 </h3>
-                <p className="text-sm text-studio-text/70">
+                <p className="text-sm" style={{ color: colors.studioText70 }}>
                   {procedureSubtitle}
                   {selectedServiceDurationMinutes > 0
                     ? ` • ${selectedServiceDurationMinutes} min`
@@ -148,14 +179,17 @@ export function VoucherOverlay({
                 </p>
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-studio-text/80 px-2">
+              <div className="flex items-center justify-center gap-2 px-2" style={{ color: colors.studioText80 }}>
                 <MapPin className="w-5 h-5 text-studio-green shrink-0" />
                 <p className="text-sm font-medium truncate">{locationLabel}</p>
               </div>
             </div>
 
             <div className="relative h-0 z-10">
-              <div className="absolute top-0 left-5 right-5 border-t-[3px] border-dotted border-black/30" />
+              <div
+                className="absolute top-0 left-5 right-5 border-t-[3px] border-dotted"
+                style={{ borderColor: colors.black30 }}
+              />
               <div className="absolute -left-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
               <div className="absolute -right-4 -top-4 w-8 h-8 rounded-full bg-[#171717]" />
             </div>
@@ -163,16 +197,21 @@ export function VoucherOverlay({
             <div className="voucher-paper-texture px-6 py-6 rounded-b-[14px] flex items-end justify-between gap-4">
               <div className="text-left min-w-0">
                 <p
-                  className="font-signature text-[64px] text-studio-text mb-1 ml-[-5px] leading-none"
-                  style={{ transform: "rotate(-3deg)" }}
+                  className="font-signature text-[64px] mb-1 ml-[-5px] leading-none"
+                  style={{ color: colors.studioText, transform: "rotate(-3deg)" }}
                 >
                   Janaina Santos
                 </p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-studio-text/60">
+                <p
+                  className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: colors.studioText60 }}
+                >
                   BOOKING ID: {bookingId}
                 </p>
                 {clientPhone && (
-                  <p className="text-[10px] font-semibold text-studio-text/50 mt-1">{clientPhone}</p>
+                  <p className="text-[10px] font-semibold mt-1" style={{ color: colors.studioText50 }}>
+                    {clientPhone}
+                  </p>
                 )}
               </div>
               <div className="h-12 flex items-end gap-[3px] opacity-85 shrink-0">
