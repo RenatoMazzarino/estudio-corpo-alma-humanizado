@@ -2058,6 +2058,7 @@ export function BookingFlow({
         formattedDate={format(selectedDateObj, "dd/MM/yyyy")}
         selectedTime={selectedTime}
         selectedServiceName={selectedService?.name ?? "Serviço"}
+        selectedServiceDescription={selectedService?.description ?? null}
         selectedServiceDurationMinutes={selectedService?.duration_minutes ?? 0}
         isHomeVisit={isHomeVisit}
         mapsQuery={mapsQuery}
