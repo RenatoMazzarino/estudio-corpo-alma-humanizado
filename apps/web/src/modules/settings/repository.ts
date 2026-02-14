@@ -9,7 +9,7 @@ export async function getSettings(tenantId: string) {
   return supabase
     .from("settings")
     .select(
-      "default_home_buffer, default_studio_buffer, buffer_before_minutes, buffer_after_minutes, signal_percentage, public_base_url, mp_point_enabled, mp_point_terminal_id, mp_point_terminal_name, mp_point_terminal_model, mp_point_terminal_external_id"
+      "default_home_buffer, default_studio_buffer, buffer_before_minutes, buffer_after_minutes, signal_percentage, public_base_url, mp_point_enabled, mp_point_terminal_id, mp_point_terminal_name, mp_point_terminal_model, mp_point_terminal_external_id, attendance_checklist_enabled, attendance_checklist_items"
     )
     .eq("tenant_id", tenantId)
     .single();

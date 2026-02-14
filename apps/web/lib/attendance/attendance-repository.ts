@@ -5,6 +5,7 @@ import type {
   AttendanceRow,
   ChecklistItem,
   EvolutionEntry,
+  ClientHistoryEntry,
   CheckoutRow,
   CheckoutItem,
   PaymentRow,
@@ -38,6 +39,15 @@ function coerceNumber(value: unknown, fallback = 0) {
     return Number.isNaN(parsed) ? fallback : parsed;
   }
   return fallback;
+}
+
+function normalizeChecklistTemplate(value: Json | null | undefined): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 20);
 }
 
 export async function getAttendanceOverview(tenantId: string, appointmentId: string): Promise<AttendanceOverview | null> {
@@ -126,26 +136,38 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     attendance = inserted as AttendanceRow;
   }
 
-  const { data: checklistData } = await supabase
-    .from("appointment_checklist_items")
-    .select("*")
-    .eq("appointment_id", appointmentId)
-    .order("sort_order", { ascending: true });
+  const { data: settingsData } = await supabase
+    .from("settings")
+    .select("attendance_checklist_enabled, attendance_checklist_items")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  const checklistEnabled = settingsData?.attendance_checklist_enabled ?? true;
+  const checklistTemplate = normalizeChecklistTemplate(settingsData?.attendance_checklist_items);
 
-  let checklist = (checklistData ?? []) as ChecklistItem[];
-  if (checklist.length === 0) {
-    const inserts = DEFAULT_CHECKLIST.map((label, index) => ({
-      appointment_id: appointmentId,
-      tenant_id: tenantId,
-      label,
-      sort_order: index + 1,
-      source: "default",
-    }));
-    const { data: inserted } = await supabase
+  let checklist: ChecklistItem[] = [];
+  if (checklistEnabled) {
+    const { data: checklistData } = await supabase
       .from("appointment_checklist_items")
-      .insert(inserts)
-      .select("*");
-    checklist = (inserted ?? []) as ChecklistItem[];
+      .select("*")
+      .eq("appointment_id", appointmentId)
+      .order("sort_order", { ascending: true });
+
+    checklist = (checklistData ?? []) as ChecklistItem[];
+    if (checklist.length === 0) {
+      const seedItems = checklistTemplate.length > 0 ? checklistTemplate : DEFAULT_CHECKLIST;
+      const inserts = seedItems.map((label, index) => ({
+        appointment_id: appointmentId,
+        tenant_id: tenantId,
+        label,
+        sort_order: index + 1,
+        source: checklistTemplate.length > 0 ? "tenant_setting" : "default",
+      }));
+      const { data: inserted } = await supabase
+        .from("appointment_checklist_items")
+        .insert(inserts)
+        .select("*");
+      checklist = (inserted ?? []) as ChecklistItem[];
+    }
   }
 
   const { data: evolutionData } = await supabase
@@ -155,6 +177,67 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     .order("created_at", { ascending: false });
 
   const evolution = (evolutionData ?? []) as EvolutionEntry[];
+
+  let clientHistory: ClientHistoryEntry[] = [];
+  const clientId = appointment.clients?.id ?? null;
+  if (clientId) {
+    const { data: historyAppointmentsData } = await supabase
+      .from("appointments")
+      .select("id, start_time, service_name, status")
+      .eq("tenant_id", tenantId)
+      .eq("client_id", clientId)
+      .order("start_time", { ascending: false })
+      .limit(20);
+
+    const historyAppointments = (historyAppointmentsData ?? []).filter((item) => item.id !== appointmentId);
+    const historyAppointmentIds = historyAppointments.map((item) => item.id);
+
+    const evolutionByAppointment = new Map<
+      string,
+      { evolution_text: string | null; status: "draft" | "published"; version: number }
+    >();
+
+    if (historyAppointmentIds.length > 0) {
+      const { data: historyEvolutionData } = await supabase
+        .from("appointment_evolution_entries")
+        .select("appointment_id, evolution_text, status, version, created_at")
+        .in("appointment_id", historyAppointmentIds)
+        .order("created_at", { ascending: false });
+
+      for (const item of historyEvolutionData ?? []) {
+        const existing = evolutionByAppointment.get(item.appointment_id);
+        if (!existing) {
+          evolutionByAppointment.set(item.appointment_id, {
+            evolution_text: item.evolution_text ?? null,
+            status: item.status === "published" ? "published" : "draft",
+            version: item.version ?? 1,
+          });
+          continue;
+        }
+
+        if (existing.status !== "published" && item.status === "published") {
+          evolutionByAppointment.set(item.appointment_id, {
+            evolution_text: item.evolution_text ?? null,
+            status: "published",
+            version: item.version ?? existing.version,
+          });
+        }
+      }
+    }
+
+    clientHistory = historyAppointments.map((item) => {
+      const entry = evolutionByAppointment.get(item.id);
+      return {
+        appointment_id: item.id,
+        start_time: item.start_time,
+        service_name: item.service_name,
+        appointment_status: item.status ?? null,
+        evolution_text: entry?.evolution_text ?? null,
+        evolution_status: entry?.status ?? null,
+        evolution_version: entry?.version ?? null,
+      };
+    });
+  }
 
   const { data: checkoutData } = await supabase
     .from("appointment_checkout")
@@ -290,6 +373,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     attendance,
     checklist,
     evolution,
+    clientHistory,
     checkout,
     checkoutItems,
     payments,

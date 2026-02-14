@@ -486,43 +486,31 @@ export type Database = {
       appointment_evolution_entries: {
         Row: {
           appointment_id: string
-          complaint: string | null
           created_at: string
           created_by: string | null
+          evolution_text: string | null
           id: string
-          recommendations: string | null
-          sections_json: Json | null
           status: string
-          summary: string | null
-          techniques: string | null
           tenant_id: string
           version: number
         }
         Insert: {
           appointment_id: string
-          complaint?: string | null
           created_at?: string
           created_by?: string | null
+          evolution_text?: string | null
           id?: string
-          recommendations?: string | null
-          sections_json?: Json | null
           status?: string
-          summary?: string | null
-          techniques?: string | null
           tenant_id?: string
           version: number
         }
         Update: {
           appointment_id?: string
-          complaint?: string | null
           created_at?: string
           created_by?: string | null
+          evolution_text?: string | null
           id?: string
-          recommendations?: string | null
-          sections_json?: Json | null
           status?: string
-          summary?: string | null
-          techniques?: string | null
           tenant_id?: string
           version?: number
         }
@@ -1253,6 +1241,8 @@ export type Database = {
       }
       settings: {
         Row: {
+          attendance_checklist_enabled: boolean
+          attendance_checklist_items: Json
           buffer_after_minutes: number | null
           buffer_before_minutes: number | null
           created_at: string | null
@@ -1271,6 +1261,8 @@ export type Database = {
           whatsapp_notification_number: string | null
         }
         Insert: {
+          attendance_checklist_enabled?: boolean
+          attendance_checklist_items?: Json
           buffer_after_minutes?: number | null
           buffer_before_minutes?: number | null
           created_at?: string | null
@@ -1289,6 +1281,8 @@ export type Database = {
           whatsapp_notification_number?: string | null
         }
         Update: {
+          attendance_checklist_enabled?: boolean
+          attendance_checklist_items?: Json
           buffer_after_minutes?: number | null
           buffer_before_minutes?: number | null
           created_at?: string | null

@@ -31,6 +31,13 @@ export default async function ConfiguracoesPage() {
     };
   });
 
+  const attendanceChecklistItems = Array.isArray(settingsData?.attendance_checklist_items)
+    ? settingsData.attendance_checklist_items
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -62,6 +69,8 @@ export default async function ConfiguracoesPage() {
         pointTerminalName={settingsData?.mp_point_terminal_name ?? ""}
         pointTerminalModel={settingsData?.mp_point_terminal_model ?? ""}
         pointTerminalExternalId={settingsData?.mp_point_terminal_external_id ?? ""}
+        attendanceChecklistEnabled={settingsData?.attendance_checklist_enabled ?? true}
+        attendanceChecklistItems={attendanceChecklistItems}
       />
     </div>
   );

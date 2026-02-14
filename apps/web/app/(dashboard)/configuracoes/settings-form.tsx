@@ -28,6 +28,8 @@ interface SettingsFormProps {
   pointTerminalName: string;
   pointTerminalModel: string;
   pointTerminalExternalId: string;
+  attendanceChecklistEnabled: boolean;
+  attendanceChecklistItems: string[];
 }
 
 type PointDeviceItem = {
@@ -51,6 +53,8 @@ export function SettingsForm({
   pointTerminalName,
   pointTerminalModel,
   pointTerminalExternalId,
+  attendanceChecklistEnabled,
+  attendanceChecklistItems,
 }: SettingsFormProps) {
   const { toast, showToast } = useToast();
   const [pointDevices, setPointDevices] = useState<PointDeviceItem[]>([]);
@@ -61,6 +65,12 @@ export function SettingsForm({
   const [pointTerminalNameValue, setPointTerminalNameValue] = useState(pointTerminalName);
   const [pointTerminalModelValue, setPointTerminalModelValue] = useState(pointTerminalModel);
   const [pointTerminalExternalIdValue, setPointTerminalExternalIdValue] = useState(pointTerminalExternalId);
+  const [attendanceChecklistEnabledValue, setAttendanceChecklistEnabledValue] = useState(
+    attendanceChecklistEnabled
+  );
+  const [attendanceChecklistItemsValue, setAttendanceChecklistItemsValue] = useState(
+    attendanceChecklistItems.join("\n")
+  );
 
   const handleFetchPointDevices = async () => {
     setPointLoading(true);
@@ -229,6 +239,40 @@ export function SettingsForm({
             placeholder="https://seu-dominio.com"
             className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
           />
+        </div>
+
+        <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Checklist do atendimento</h3>
+            <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                name="attendance_checklist_enabled"
+                checked={attendanceChecklistEnabledValue}
+                onChange={(event) => setAttendanceChecklistEnabledValue(event.target.checked)}
+              />
+              Exibir no atendimento
+            </label>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase">Itens padrão (1 por linha)</label>
+            <textarea
+              name="attendance_checklist_items"
+              value={attendanceChecklistItemsValue}
+              onChange={(event) => setAttendanceChecklistItemsValue(event.target.value)}
+              readOnly={!attendanceChecklistEnabledValue}
+              rows={5}
+              className={`mt-1 w-full border border-stone-200 rounded-xl py-2 px-3 text-sm ${
+                attendanceChecklistEnabledValue ? "bg-white" : "bg-stone-100 text-gray-500"
+              }`}
+              placeholder={"Separar materiais e itens de higiene\nConfirmar endereço/portaria\nRever restrições (anamnese)"}
+            />
+          </div>
+
+          <p className="text-[11px] text-gray-500">
+            Quando desativado, o checklist não aparece na tela de atendimento.
+          </p>
         </div>
 
         <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">

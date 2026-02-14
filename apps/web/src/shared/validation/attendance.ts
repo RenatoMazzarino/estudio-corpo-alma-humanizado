@@ -42,11 +42,7 @@ export const checklistUpsertSchema = appointmentIdSchema.extend({
 });
 
 const evolutionPayload = z.object({
-  summary: z.string().optional().nullable(),
-  complaint: z.string().optional().nullable(),
-  techniques: z.string().optional().nullable(),
-  recommendations: z.string().optional().nullable(),
-  sectionsJson: z.record(z.string(), z.unknown()).optional().nullable(),
+  text: z.string().optional().nullable(),
 });
 
 export const saveEvolutionSchema = appointmentIdSchema.extend({

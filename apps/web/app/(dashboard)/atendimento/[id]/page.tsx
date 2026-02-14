@@ -30,6 +30,7 @@ export default async function AtendimentoPage(props: PageProps) {
       pointEnabled={settings?.mp_point_enabled ?? false}
       pointTerminalName={settings?.mp_point_terminal_name ?? ""}
       pointTerminalModel={settings?.mp_point_terminal_model ?? ""}
+      checklistEnabled={settings?.attendance_checklist_enabled ?? true}
       publicBaseUrl={settings?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
       messageTemplates={messageTemplates}
     />

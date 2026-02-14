@@ -39,6 +39,7 @@ import {
   type PointCardMode,
 } from "../../../../src/modules/payments/mercadopago-orders";
 import { getSettings } from "../../../../src/modules/settings/repository";
+import { runFloraText } from "../../../../src/shared/ai/flora";
 
 async function insertMessageLog(params: {
   appointmentId: string;
@@ -85,6 +86,25 @@ async function recalcCheckoutTotals(appointmentId: string) {
     .eq("appointment_id", appointmentId);
 
   return totals;
+}
+
+function fallbackStructuredEvolution(rawText: string) {
+  const normalized = rawText.trim();
+  if (!normalized) return "";
+
+  return [
+    "Queixa principal:",
+    normalized,
+    "",
+    "Conduta aplicada:",
+    "Descrever técnicas e abordagem realizada na sessão.",
+    "",
+    "Resposta do cliente:",
+    "Descrever resposta durante e após a sessão.",
+    "",
+    "Recomendação:",
+    "Descrever orientação de autocuidado e próximo passo.",
+  ].join("\n");
 }
 
 async function updatePaymentStatus(appointmentId: string) {
@@ -367,11 +387,7 @@ export async function upsertChecklist(payload: {
 export async function saveEvolution(payload: {
   appointmentId: string;
   payload: {
-    summary?: string | null;
-    complaint?: string | null;
-    techniques?: string | null;
-    recommendations?: string | null;
-    sectionsJson?: Record<string, unknown> | null;
+    text?: string | null;
   };
   status: "draft" | "published";
 }): Promise<ActionResult<{ appointmentId: string }>> {
@@ -381,7 +397,7 @@ export async function saveEvolution(payload: {
   }
 
   const supabase = createServiceClient();
-  const sectionsJson = (parsed.data.payload.sectionsJson ?? null) as Json | null;
+  const evolutionText = parsed.data.payload.text?.trim() ?? null;
   const { data: existingDraft } = await supabase
     .from("appointment_evolution_entries")
     .select("id")
@@ -395,11 +411,7 @@ export async function saveEvolution(payload: {
     const { error } = await supabase
       .from("appointment_evolution_entries")
       .update({
-        summary: parsed.data.payload.summary,
-        complaint: parsed.data.payload.complaint,
-        techniques: parsed.data.payload.techniques,
-        recommendations: parsed.data.payload.recommendations,
-        sections_json: sectionsJson,
+        evolution_text: evolutionText,
       })
       .eq("id", existingDraft.id);
 
@@ -423,11 +435,7 @@ export async function saveEvolution(payload: {
         tenant_id: FIXED_TENANT_ID,
         version: nextVersion,
         status: parsed.data.status,
-        summary: parsed.data.payload.summary ?? null,
-        complaint: parsed.data.payload.complaint ?? null,
-        techniques: parsed.data.payload.techniques ?? null,
-        recommendations: parsed.data.payload.recommendations ?? null,
-        sections_json: sectionsJson,
+        evolution_text: evolutionText,
       });
 
     const mapped = mapSupabaseError(error);
@@ -455,6 +463,55 @@ export async function saveEvolution(payload: {
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
   return ok({ appointmentId: parsed.data.appointmentId });
+}
+
+export async function structureEvolutionFromAudio(payload: {
+  appointmentId: string;
+  transcript: string;
+}): Promise<ActionResult<{ transcript: string; structuredText: string }>> {
+  const parsed = z
+    .object({
+      appointmentId: z.string().uuid(),
+      transcript: z.string().min(4),
+    })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const transcript = parsed.data.transcript.trim();
+  if (!transcript) {
+    return fail(new AppError("Áudio sem conteúdo para estruturar.", "VALIDATION_ERROR", 400));
+  }
+
+  const floraResponse = await runFloraText({
+    systemPrompt:
+      "Você é Flora, assistente clínica do Estúdio Corpo & Alma. Estruture uma evolução de atendimento em português, com texto objetivo, humanizado e profissional. Não invente dados.",
+    userPrompt: [
+      "Estruture a evolução abaixo no formato:",
+      "Queixa principal:",
+      "Conduta aplicada:",
+      "Resposta do cliente:",
+      "Recomendação:",
+      "",
+      "Transcrição do profissional:",
+      transcript,
+    ].join("\n"),
+    temperature: 0.1,
+    maxOutputTokens: 900,
+  });
+
+  const structuredText = floraResponse?.trim() || fallbackStructuredEvolution(transcript);
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "evolution_audio_structured",
+    payload: { transcript_length: transcript.length, used_ai: Boolean(floraResponse) },
+  });
+
+  return ok({ transcript, structuredText });
 }
 
 export async function setCheckoutItems(payload: {

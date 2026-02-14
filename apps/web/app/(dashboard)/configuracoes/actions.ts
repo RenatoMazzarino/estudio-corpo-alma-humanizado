@@ -8,6 +8,12 @@ import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
 import { updateSettings, upsertBusinessHours, deleteInvalidBusinessHours } from "../../../src/modules/settings/repository";
 import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
 
+const DEFAULT_ATTENDANCE_CHECKLIST = [
+  "Separar materiais e itens de higiene",
+  "Confirmar endereço/portaria",
+  "Rever restrições (anamnese)",
+];
+
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
   const payload = [];
 
@@ -49,6 +55,16 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   const mp_point_terminal_model = (formData.get("mp_point_terminal_model") as string | null)?.trim() ?? "";
   const mp_point_terminal_external_id =
     (formData.get("mp_point_terminal_external_id") as string | null)?.trim() ?? "";
+  const attendance_checklist_enabled = formData.get("attendance_checklist_enabled") === "on";
+  const attendance_checklist_items_raw =
+    (formData.get("attendance_checklist_items") as string | null) ?? "";
+  const attendance_checklist_items = attendance_checklist_items_raw
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 20);
+  const normalizedChecklistItems =
+    attendance_checklist_items.length > 0 ? attendance_checklist_items : DEFAULT_ATTENDANCE_CHECKLIST;
 
   if (Number.isNaN(buffer_before_minutes) || Number.isNaN(buffer_after_minutes)) {
     return fail(new AppError("Buffers inválidos", "VALIDATION_ERROR", 400));
@@ -75,6 +91,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
     mp_point_terminal_name: mp_point_terminal_name || null,
     mp_point_terminal_model: mp_point_terminal_model || null,
     mp_point_terminal_external_id: mp_point_terminal_external_id || null,
+    attendance_checklist_enabled,
+    attendance_checklist_items: normalizedChecklistItems,
   });
 
   const mapped = mapSupabaseError(error);

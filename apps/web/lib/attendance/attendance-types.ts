@@ -40,13 +40,19 @@ export interface EvolutionEntry {
   tenant_id?: string;
   version: number;
   status: "draft" | "published";
-  summary: string | null;
-  complaint: string | null;
-  techniques: string | null;
-  recommendations: string | null;
-  sections_json: Record<string, unknown> | null;
+  evolution_text: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+export interface ClientHistoryEntry {
+  appointment_id: string;
+  start_time: string;
+  service_name: string;
+  appointment_status: string | null;
+  evolution_text: string | null;
+  evolution_status: "draft" | "published" | null;
+  evolution_version: number | null;
 }
 
 export interface CheckoutRow {
@@ -180,6 +186,7 @@ export interface AttendanceOverview {
   attendance: AttendanceRow;
   checklist: ChecklistItem[];
   evolution: EvolutionEntry[];
+  clientHistory: ClientHistoryEntry[];
   checkout: CheckoutRow | null;
   checkoutItems: CheckoutItem[];
   payments: PaymentRow[];
