@@ -57,6 +57,11 @@ export default async function ConfiguracoesPage() {
         }
         signalPercentage={settingsData?.signal_percentage ?? 30}
         publicBaseUrl={settingsData?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
+        pointEnabled={settingsData?.mp_point_enabled ?? false}
+        pointTerminalId={settingsData?.mp_point_terminal_id ?? ""}
+        pointTerminalName={settingsData?.mp_point_terminal_name ?? ""}
+        pointTerminalModel={settingsData?.mp_point_terminal_model ?? ""}
+        pointTerminalExternalId={settingsData?.mp_point_terminal_external_id ?? ""}
       />
     </div>
   );

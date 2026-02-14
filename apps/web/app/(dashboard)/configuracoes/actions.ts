@@ -6,6 +6,7 @@ import { AppError } from "../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
 import { updateSettings, upsertBusinessHours, deleteInvalidBusinessHours } from "../../../src/modules/settings/repository";
+import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
 
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
   const payload = [];
@@ -42,6 +43,12 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   const buffer_after_minutes = Number(formData.get("buffer_after_minutes"));
   const signal_percentage = Number(formData.get("signal_percentage"));
   const public_base_url = (formData.get("public_base_url") as string | null)?.trim() ?? "";
+  const mp_point_enabled = formData.get("mp_point_enabled") === "on";
+  const mp_point_terminal_id = (formData.get("mp_point_terminal_id") as string | null)?.trim() ?? "";
+  const mp_point_terminal_name = (formData.get("mp_point_terminal_name") as string | null)?.trim() ?? "";
+  const mp_point_terminal_model = (formData.get("mp_point_terminal_model") as string | null)?.trim() ?? "";
+  const mp_point_terminal_external_id =
+    (formData.get("mp_point_terminal_external_id") as string | null)?.trim() ?? "";
 
   if (Number.isNaN(buffer_before_minutes) || Number.isNaN(buffer_after_minutes)) {
     return fail(new AppError("Buffers inválidos", "VALIDATION_ERROR", 400));
@@ -63,6 +70,11 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
     default_home_buffer: legacyTotal,
     signal_percentage,
     public_base_url: public_base_url || null,
+    mp_point_enabled,
+    mp_point_terminal_id: mp_point_terminal_id || null,
+    mp_point_terminal_name: mp_point_terminal_name || null,
+    mp_point_terminal_model: mp_point_terminal_model || null,
+    mp_point_terminal_external_id: mp_point_terminal_external_id || null,
   });
 
   const mapped = mapSupabaseError(error);
@@ -71,5 +83,43 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   revalidatePath("/configuracoes");
   revalidatePath("/");
 
+  return ok({ ok: true });
+}
+
+export async function fetchPointDevices(): Promise<ActionResult<{
+  devices: Array<{ id: string; name: string; model: string | null; external_id: string | null; status: string | null }>;
+}>> {
+  const result = await listPointDevices();
+  if (!result.ok) return fail(result.error);
+  return ok({ devices: result.data });
+}
+
+export async function configurePointTerminal(payload: {
+  terminalId: string;
+  externalId: string;
+  terminalName?: string | null;
+  terminalModel?: string | null;
+}): Promise<ActionResult<{ ok: true }>> {
+  const terminalId = payload.terminalId?.trim();
+  const externalId = payload.externalId?.trim();
+  if (!terminalId || !externalId) {
+    return fail(new AppError("Terminal e identificador externo são obrigatórios.", "VALIDATION_ERROR", 400));
+  }
+
+  const configureResult = await configurePointDeviceToPdv({ terminalId, externalId });
+  if (!configureResult.ok) return fail(configureResult.error);
+
+  const { error } = await updateSettings(FIXED_TENANT_ID, {
+    mp_point_enabled: true,
+    mp_point_terminal_id: terminalId,
+    mp_point_terminal_external_id: externalId,
+    mp_point_terminal_name: payload.terminalName?.trim() || null,
+    mp_point_terminal_model: payload.terminalModel?.trim() || null,
+  });
+  const mapped = mapSupabaseError(error);
+  if (mapped) return fail(mapped);
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/");
   return ok({ ok: true });
 }

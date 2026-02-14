@@ -1,6 +1,12 @@
 "use client";
 
-import { saveBusinessHours, saveSettings } from "./actions";
+import { useState } from "react";
+import {
+  configurePointTerminal,
+  fetchPointDevices,
+  saveBusinessHours,
+  saveSettings,
+} from "./actions";
 import { Toast, useToast } from "../../../components/ui/toast";
 import { feedbackById, feedbackFromError } from "../../../src/shared/feedback/user-feedback";
 
@@ -17,7 +23,20 @@ interface SettingsFormProps {
   bufferAfterMinutes: number;
   signalPercentage: number;
   publicBaseUrl: string;
+  pointEnabled: boolean;
+  pointTerminalId: string;
+  pointTerminalName: string;
+  pointTerminalModel: string;
+  pointTerminalExternalId: string;
 }
+
+type PointDeviceItem = {
+  id: string;
+  name: string;
+  model: string | null;
+  external_id: string | null;
+  status: string | null;
+};
 
 const dayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -27,8 +46,90 @@ export function SettingsForm({
   bufferAfterMinutes,
   signalPercentage,
   publicBaseUrl,
+  pointEnabled,
+  pointTerminalId,
+  pointTerminalName,
+  pointTerminalModel,
+  pointTerminalExternalId,
 }: SettingsFormProps) {
   const { toast, showToast } = useToast();
+  const [pointDevices, setPointDevices] = useState<PointDeviceItem[]>([]);
+  const [pointLoading, setPointLoading] = useState(false);
+  const [pointConfigLoading, setPointConfigLoading] = useState(false);
+  const [pointEnabledValue, setPointEnabledValue] = useState(pointEnabled);
+  const [pointTerminalIdValue, setPointTerminalIdValue] = useState(pointTerminalId);
+  const [pointTerminalNameValue, setPointTerminalNameValue] = useState(pointTerminalName);
+  const [pointTerminalModelValue, setPointTerminalModelValue] = useState(pointTerminalModel);
+  const [pointTerminalExternalIdValue, setPointTerminalExternalIdValue] = useState(pointTerminalExternalId);
+
+  const handleFetchPointDevices = async () => {
+    setPointLoading(true);
+    const result = await fetchPointDevices();
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "generic"));
+      setPointLoading(false);
+      return;
+    }
+    setPointDevices(result.data.devices);
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: `${result.data.devices.length} maquininha(s) encontrada(s).`,
+      })
+    );
+    setPointLoading(false);
+  };
+
+  const handleSelectPointDevice = (deviceId: string) => {
+    const selected = pointDevices.find((item) => item.id === deviceId);
+    if (!selected) return;
+    setPointTerminalIdValue(selected.id);
+    setPointTerminalNameValue(selected.name);
+    setPointTerminalModelValue(selected.model ?? "");
+    if (!pointTerminalExternalIdValue && selected.external_id) {
+      setPointTerminalExternalIdValue(selected.external_id);
+    }
+  };
+
+  const handleConfigurePoint = async () => {
+    if (!pointTerminalIdValue.trim()) {
+      showToast(
+        feedbackById("validation_required_fields", {
+          message: "Selecione uma maquininha antes de configurar.",
+        })
+      );
+      return;
+    }
+    if (!pointTerminalExternalIdValue.trim()) {
+      showToast(
+        feedbackById("validation_required_fields", {
+          message: "Preencha o identificador externo (PDV) da maquininha.",
+        })
+      );
+      return;
+    }
+
+    setPointConfigLoading(true);
+    const result = await configurePointTerminal({
+      terminalId: pointTerminalIdValue,
+      externalId: pointTerminalExternalIdValue,
+      terminalName: pointTerminalNameValue,
+      terminalModel: pointTerminalModelValue,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "generic"));
+      setPointConfigLoading(false);
+      return;
+    }
+    setPointEnabledValue(true);
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Maquininha configurada em modo PDV.",
+      })
+    );
+    setPointConfigLoading(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -40,7 +141,7 @@ export function SettingsForm({
             showToast(feedbackFromError(result.error, "generic"));
             return;
           }
-          showToast(feedbackById("generic_saved", { tone: "success", message: "Horarios atualizados." }));
+          showToast(feedbackById("generic_saved", { tone: "success", message: "Horários atualizados." }));
         }}
         className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4"
       >
@@ -82,7 +183,7 @@ export function SettingsForm({
             showToast(feedbackFromError(result.error, "generic"));
             return;
           }
-          showToast(feedbackById("generic_saved", { tone: "success", message: "Configuracoes atualizadas." }));
+          showToast(feedbackById("generic_saved", { tone: "success", message: "Configurações atualizadas." }));
         }}
         className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4"
       >
@@ -129,6 +230,91 @@ export function SettingsForm({
             className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
           />
         </div>
+
+        <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Maquininha Point</h3>
+            <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                name="mp_point_enabled"
+                checked={pointEnabledValue}
+                onChange={(event) => setPointEnabledValue(event.target.checked)}
+              />
+              Habilitada
+            </label>
+          </div>
+
+          <input type="hidden" name="mp_point_terminal_id" value={pointTerminalIdValue} />
+          <input type="hidden" name="mp_point_terminal_name" value={pointTerminalNameValue} />
+          <input type="hidden" name="mp_point_terminal_model" value={pointTerminalModelValue} />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleFetchPointDevices}
+              disabled={pointLoading}
+              className="h-10 rounded-xl border border-stone-200 bg-white text-xs font-bold text-studio-green disabled:opacity-60"
+            >
+              {pointLoading ? "Buscando..." : "Buscar maquininhas"}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfigurePoint}
+              disabled={pointConfigLoading}
+              className="h-10 rounded-xl border border-studio-green bg-studio-green text-xs font-bold text-white disabled:opacity-60"
+            >
+              {pointConfigLoading ? "Configurando..." : "Configurar modo PDV"}
+            </button>
+          </div>
+
+          {pointDevices.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-gray-500 uppercase">Selecionar maquininha padrão</label>
+              <select
+                value={pointTerminalIdValue}
+                onChange={(event) => handleSelectPointDevice(event.target.value)}
+                className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
+              >
+                <option value="">Selecione...</option>
+                {pointDevices.map((device) => (
+                  <option key={device.id} value={device.id}>
+                    {device.name} ({device.model ?? "Modelo não informado"}) {device.status ? `- ${device.status}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase">Terminal ID</label>
+              <input
+                type="text"
+                value={pointTerminalIdValue}
+                onChange={(event) => setPointTerminalIdValue(event.target.value)}
+                className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
+                placeholder="Ex.: PAX12345"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase">Identificador externo (PDV)</label>
+              <input
+                type="text"
+                name="mp_point_terminal_external_id"
+                value={pointTerminalExternalIdValue}
+                onChange={(event) => setPointTerminalExternalIdValue(event.target.value)}
+                className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
+                placeholder="Ex.: studio-sala-1"
+              />
+            </div>
+          </div>
+
+          <p className="text-[11px] text-gray-500">
+            Status: {pointTerminalIdValue ? "maquininha selecionada" : "nenhuma maquininha selecionada"}.
+          </p>
+        </div>
+
         <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar configurações</button>
       </form>
     </div>
