@@ -1,0 +1,1251 @@
+import crypto from "crypto";
+import { createServiceClient } from "../../../lib/supabase/service";
+import type { Json } from "../../../lib/supabase/types";
+import { normalizePhoneDigits } from "../../shared/phone";
+import { AppError } from "../../shared/errors/AppError";
+import { fail, ok, type ActionResult } from "../../shared/errors/result";
+
+export type InternalPaymentStatus = "paid" | "pending" | "failed";
+export type PointCardMode = "debit" | "credit";
+
+export interface CardOrderResult {
+  id: string;
+  order_id: string;
+  status: string;
+  internal_status: InternalPaymentStatus;
+  status_detail: string | null;
+  transaction_amount: number;
+}
+
+export interface PixOrderResult {
+  id: string;
+  order_id: string;
+  status: string;
+  internal_status: InternalPaymentStatus;
+  ticket_url: string | null;
+  qr_code: string | null;
+  qr_code_base64: string | null;
+  transaction_amount: number;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface PointOrderResult {
+  id: string;
+  order_id: string;
+  status: string;
+  internal_status: InternalPaymentStatus;
+  status_detail: string | null;
+  transaction_amount: number;
+  point_terminal_id: string;
+  card_mode: PointCardMode;
+}
+
+export interface PointOrderStatusResult {
+  id: string;
+  order_id: string;
+  status: string;
+  internal_status: InternalPaymentStatus;
+  status_detail: string | null;
+  transaction_amount: number;
+  point_terminal_id: string | null;
+  card_mode: PointCardMode | null;
+  appointment_id: string | null;
+}
+
+export interface PointDevice {
+  id: string;
+  name: string;
+  model: string | null;
+  external_id: string | null;
+  status: string | null;
+}
+
+type MercadoPagoOrderPaymentMethod = {
+  id?: string;
+  type?: string;
+  ticket_url?: string;
+  qr_code?: string;
+  qr_code_base64?: string;
+  date_of_expiration?: string;
+  expiration_date?: string;
+  expiration_time?: string;
+  installments?: number;
+};
+
+type MercadoPagoOrderPayment = {
+  id?: string | number;
+  amount?: string | number;
+  paid_amount?: string | number;
+  status?: string;
+  status_detail?: string;
+  date_of_expiration?: string;
+  expiration_date?: string;
+  created_date?: string;
+  date_created?: string;
+  payment_method?: MercadoPagoOrderPaymentMethod | null;
+};
+
+type MercadoPagoOrderResponse = {
+  id?: string;
+  status?: string;
+  status_detail?: string;
+  external_reference?: string | null;
+  created_date?: string;
+  date_created?: string;
+  date_of_expiration?: string;
+  expiration_date?: string;
+  transactions?: {
+    payments?: MercadoPagoOrderPayment[] | null;
+  } | null;
+  data?: {
+    id?: string;
+    external_reference?: string | null;
+    status?: string;
+    status_detail?: string;
+    transactions?: {
+      payments?: MercadoPagoOrderPayment[] | null;
+    } | null;
+  } | null;
+};
+
+const ordersCredentialsMessage =
+  "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação.";
+const minimumTransactionAmount = 1;
+const defaultPixTtlMs = 24 * 60 * 60 * 1000;
+
+export function normalizeMercadoPagoToken(value: string | undefined | null) {
+  if (!value) return "";
+  const trimmed = value.trim().replace(/^["']|["']$/g, "");
+  return trimmed.replace(/^Bearer\s+/i, "");
+}
+
+function usesUnsupportedOrdersTestCredential(token: string) {
+  return token.toUpperCase().startsWith("TEST-");
+}
+
+function splitName(name: string) {
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: "Cliente", lastName: "Corpo & Alma" };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "Corpo & Alma" };
+  }
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+function buildPayerEmail(phoneDigits: string) {
+  const clean = normalizePhoneDigits(phoneDigits);
+  return `cliente+${clean || "anon"}@corpoealmahumanizado.com.br`;
+}
+
+function splitPhone(phoneDigits: string) {
+  const digits = normalizePhoneDigits(phoneDigits);
+  const area = digits.slice(0, 2);
+  const number = digits.slice(2);
+  return { area_code: area || "11", number: number || digits };
+}
+
+function resolvePayerEmail({
+  providedEmail,
+  phoneDigits,
+}: {
+  providedEmail?: string | null;
+  phoneDigits: string;
+}) {
+  const normalized = providedEmail?.trim();
+  return normalized && normalized.length > 0 ? normalized : buildPayerEmail(phoneDigits);
+}
+
+function parseNumericAmount(value: unknown, fallback: number) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function parseIsoDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const timestamp = Date.parse(trimmed);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp).toISOString();
+}
+
+function parseApiPayload(payloadText: string) {
+  if (!payloadText) return null;
+  try {
+    return JSON.parse(payloadText) as Record<string, unknown>;
+  } catch {
+    return { message: payloadText };
+  }
+}
+
+function mapProviderStatusToInternal(providerStatus: string | null | undefined): InternalPaymentStatus {
+  const normalized = (providerStatus ?? "").toLowerCase();
+
+  if (
+    normalized === "approved" ||
+    normalized === "processed" ||
+    normalized === "accredited" ||
+    normalized === "partially_refunded"
+  ) {
+    return "paid";
+  }
+
+  if (
+    normalized === "rejected" ||
+    normalized === "cancelled" ||
+    normalized === "canceled" ||
+    normalized === "charged_back" ||
+    normalized === "failed" ||
+    normalized === "refunded"
+  ) {
+    return "failed";
+  }
+
+  return "pending";
+}
+
+function getPayloadCauseMessage(payload: Record<string, unknown> | null) {
+  if (!payload) return null;
+  const cause = payload.cause;
+  if (!Array.isArray(cause)) return null;
+  const parts = cause
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const causeItem = item as Record<string, unknown>;
+      if (typeof causeItem.description === "string" && causeItem.description.trim().length > 0) {
+        return causeItem.description.trim();
+      }
+      if (typeof causeItem.code === "string" && causeItem.code.trim().length > 0) {
+        return causeItem.code.trim();
+      }
+      return null;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+
+  return parts.length > 0 ? parts.join(" | ") : null;
+}
+
+function getPayloadErrorsMessage(payload: Record<string, unknown> | null) {
+  if (!payload) return null;
+  const errors = payload.errors;
+  if (!Array.isArray(errors)) return null;
+  const parts = errors
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const errorItem = entry as Record<string, unknown>;
+      const message =
+        typeof errorItem.message === "string" && errorItem.message.trim().length > 0
+          ? errorItem.message.trim()
+          : null;
+      const code =
+        typeof errorItem.code === "string" && errorItem.code.trim().length > 0
+          ? errorItem.code.trim()
+          : null;
+      return message ?? code;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+  return parts.length > 0 ? parts.join(" | ") : null;
+}
+
+function getPayloadMessage(payload: Record<string, unknown> | null, fallback: string) {
+  if (!payload) return fallback;
+  const directMessage =
+    typeof payload.message === "string" && payload.message.trim().length > 0
+      ? payload.message.trim()
+      : null;
+  const errorMessage =
+    typeof payload.error === "string" && payload.error.trim().length > 0
+      ? payload.error.trim()
+      : null;
+  const errorsMessage = getPayloadErrorsMessage(payload);
+  const causeMessage = getPayloadCauseMessage(payload);
+  return directMessage ?? errorMessage ?? errorsMessage ?? causeMessage ?? fallback;
+}
+
+function collectMercadoPagoDetails(payload: Record<string, unknown> | null) {
+  if (!payload) return "";
+  const details = new Set<string>();
+
+  const collectFromErrors = (input: unknown) => {
+    if (!Array.isArray(input)) return;
+    input.forEach((entry) => {
+      if (!entry || typeof entry !== "object") return;
+      const record = entry as Record<string, unknown>;
+      const code = typeof record.code === "string" ? record.code : null;
+      const message = typeof record.message === "string" ? record.message : null;
+      if (code) details.add(code);
+      if (message) details.add(message);
+      if (Array.isArray(record.details)) {
+        record.details.forEach((item) => {
+          if (typeof item === "string") details.add(item);
+        });
+      }
+    });
+  };
+
+  collectFromErrors(payload.errors);
+  collectFromErrors(payload.cause);
+
+  return Array.from(details).join(" | ").toLowerCase();
+}
+
+function mapMercadoPagoUserMessage({
+  method,
+  status,
+  payload,
+  fallback,
+}: {
+  method: "card" | "pix" | "point";
+  status: number;
+  payload: Record<string, unknown> | null;
+  fallback: string;
+}) {
+  const details = collectMercadoPagoDetails(payload);
+
+  if (status === 401 || details.includes("invalid_credentials")) {
+    return "Pagamento indisponível no momento. Tente novamente em alguns minutos.";
+  }
+  if (details.includes("high_risk")) {
+    return "Cartão recusado por segurança. Tente outro cartão ou Pix.";
+  }
+  if (details.includes("invalid_users_involved")) {
+    return "Não foi possível validar os dados do pagador. Confira nome, CPF e email.";
+  }
+  if (details.includes("invalid_transaction_amount")) {
+    return "Valor de pagamento inválido para processamento.";
+  }
+  if (details.includes("unsupported_properties")) {
+    return "Pagamento indisponível no momento. Tente novamente em instantes.";
+  }
+  if (details.includes("failed") && method === "card") {
+    return "Cartão não aprovado. Tente outro cartão ou Pix.";
+  }
+  if (details.includes("failed") && method === "pix") {
+    return "Não foi possível gerar o Pix agora. Tente novamente.";
+  }
+  if (details.includes("failed") && method === "point") {
+    return "Cobrança na maquininha não concluída. Verifique o terminal e tente novamente.";
+  }
+
+  return fallback;
+}
+
+function buildIdempotencyKey(parts: string[]) {
+  return crypto.createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 64);
+}
+
+async function ensureValidPaymentContext({
+  appointmentId,
+  tenantId,
+  amount,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  amount: number;
+}) {
+  if (amount <= 0) {
+    return fail(new AppError("Valor de pagamento inválido.", "VALIDATION_ERROR", 400));
+  }
+  if (amount < minimumTransactionAmount) {
+    return fail(
+      new AppError(
+        "Valor mínimo para pagamento no Mercado Pago é R$ 1,00. Ajuste o valor para continuar.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
+  const supabase = createServiceClient();
+  const { data: appointment, error } = await supabase
+    .from("appointments")
+    .select("id, tenant_id")
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (error) {
+    return fail(
+      new AppError(
+        "Não foi possível validar o agendamento para pagamento.",
+        "SUPABASE_ERROR",
+        500,
+        error
+      )
+    );
+  }
+
+  if (!appointment) {
+    return fail(new AppError("Agendamento não encontrado para pagamento.", "NOT_FOUND", 404));
+  }
+
+  return ok(appointment);
+}
+
+async function resolveAccessToken() {
+  const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
+  if (!accessToken) {
+    return fail(
+      new AppError(
+        "MERCADOPAGO_ACCESS_TOKEN ausente: configure a chave no ambiente.",
+        "CONFIG_ERROR",
+        500
+      )
+    );
+  }
+  if (usesUnsupportedOrdersTestCredential(accessToken)) {
+    return fail(new AppError(ordersCredentialsMessage, "CONFIG_ERROR", 500));
+  }
+  return ok(accessToken);
+}
+
+function extractOrder(payload: Record<string, unknown> | null) {
+  if (!payload) return null;
+  const direct = payload as MercadoPagoOrderResponse;
+  if (direct?.id || direct?.transactions?.payments?.length) return direct;
+  if (payload.data && typeof payload.data === "object") {
+    const data = payload.data as MercadoPagoOrderResponse;
+    return data;
+  }
+  return direct;
+}
+
+function resolveOrderPayment(order: MercadoPagoOrderResponse | null) {
+  const orderId = order?.id ? String(order.id) : null;
+  const externalReference =
+    typeof order?.external_reference === "string"
+      ? order.external_reference
+      : typeof order?.data?.external_reference === "string"
+        ? order.data.external_reference
+        : null;
+  const payments = order?.transactions?.payments ?? order?.data?.transactions?.payments ?? [];
+  const firstPayment = payments?.[0] ?? null;
+  const paymentId = firstPayment?.id ? String(firstPayment.id) : orderId;
+  const providerStatus = firstPayment?.status ?? order?.status ?? order?.data?.status ?? "pending";
+  const statusDetail =
+    firstPayment?.status_detail ?? order?.status_detail ?? order?.data?.status_detail ?? null;
+  const amount = parseNumericAmount(firstPayment?.amount ?? firstPayment?.paid_amount, 0);
+
+  return {
+    orderId,
+    paymentId,
+    externalReference,
+    providerStatus,
+    statusDetail,
+    amount,
+    paymentMethodId: firstPayment?.payment_method?.id ?? null,
+    paymentTypeId: firstPayment?.payment_method?.type ?? null,
+    installments:
+      typeof firstPayment?.payment_method?.installments === "number"
+        ? firstPayment.payment_method.installments
+        : null,
+    ticketUrl: firstPayment?.payment_method?.ticket_url ?? null,
+    qrCode: firstPayment?.payment_method?.qr_code ?? null,
+    qrCodeBase64: firstPayment?.payment_method?.qr_code_base64 ?? null,
+    createdAt:
+      parseIsoDate(firstPayment?.created_date) ??
+      parseIsoDate(firstPayment?.date_created) ??
+      parseIsoDate(order?.created_date) ??
+      parseIsoDate(order?.date_created) ??
+      new Date().toISOString(),
+    expiresAt:
+      parseIsoDate(firstPayment?.payment_method?.date_of_expiration) ??
+      parseIsoDate(firstPayment?.payment_method?.expiration_date) ??
+      parseIsoDate(firstPayment?.payment_method?.expiration_time) ??
+      parseIsoDate(firstPayment?.date_of_expiration) ??
+      parseIsoDate(firstPayment?.expiration_date) ??
+      parseIsoDate(order?.date_of_expiration) ??
+      parseIsoDate(order?.expiration_date) ??
+      null,
+  };
+}
+
+async function upsertAppointmentPayment(params: {
+  appointmentId: string;
+  tenantId: string;
+  method: "pix" | "card";
+  amount: number;
+  status: InternalPaymentStatus;
+  providerRef: string;
+  providerOrderId: string | null;
+  pointTerminalId?: string | null;
+  cardMode?: string | null;
+  paymentMethodId?: string | null;
+  installments?: number | null;
+  cardBrand?: string | null;
+  cardLast4?: string | null;
+  rawPayload?: Json | null;
+}) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from("appointment_payments").upsert(
+    {
+      appointment_id: params.appointmentId,
+      tenant_id: params.tenantId,
+      method: params.method,
+      amount: params.amount,
+      status: params.status,
+      provider_ref: params.providerRef,
+      provider_order_id: params.providerOrderId,
+      point_terminal_id: params.pointTerminalId ?? null,
+      card_mode: params.cardMode ?? null,
+      paid_at: params.status === "paid" ? new Date().toISOString() : null,
+      payment_method_id: params.paymentMethodId ?? null,
+      installments: params.installments ?? null,
+      card_last4: params.cardLast4 ?? null,
+      card_brand: params.cardBrand ?? null,
+      raw_payload: params.rawPayload ?? null,
+    },
+    { onConflict: "provider_ref,tenant_id" }
+  );
+
+  if (error) {
+    return fail(new AppError("Não foi possível registrar o pagamento.", "SUPABASE_ERROR", 500, error));
+  }
+
+  return ok(null);
+}
+
+export async function recalculateAppointmentPaymentStatus({
+  appointmentId,
+  tenantId,
+}: {
+  appointmentId: string;
+  tenantId: string;
+}) {
+  const supabase = createServiceClient();
+  const { data: appointment, error: appointmentError } = await supabase
+    .from("appointments")
+    .select("id, tenant_id, price, price_override")
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (appointmentError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        appointmentError
+      )
+    );
+  }
+
+  if (!appointment) {
+    return ok(null);
+  }
+
+  const { data: paidPayments, error: paidPaymentsError } = await supabase
+    .from("appointment_payments")
+    .select("amount")
+    .eq("tenant_id", tenantId)
+    .eq("appointment_id", appointmentId)
+    .eq("status", "paid");
+
+  if (paidPaymentsError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        paidPaymentsError
+      )
+    );
+  }
+
+  const total = Number(appointment.price_override ?? appointment.price ?? 0);
+  const paidTotal = (paidPayments ?? []).reduce((acc, item) => acc + Number(item.amount ?? 0), 0);
+  const nextStatus = paidTotal >= total && total > 0 ? "paid" : paidTotal > 0 ? "partial" : "pending";
+
+  const { error: updateError } = await supabase
+    .from("appointments")
+    .update({ payment_status: nextStatus })
+    .eq("id", appointmentId)
+    .eq("tenant_id", tenantId);
+
+  if (updateError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        updateError
+      )
+    );
+  }
+
+  return ok({ nextStatus, paidTotal, total });
+}
+
+export async function createOnlineCardOrderForAppointment({
+  appointmentId,
+  tenantId,
+  amount,
+  token,
+  paymentMethodId,
+  installments,
+  payerEmail,
+  payerName,
+  payerPhone,
+  identificationType,
+  identificationNumber,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  amount: number;
+  token: string;
+  paymentMethodId: string;
+  installments: number;
+  payerEmail?: string | null;
+  payerName: string;
+  payerPhone: string;
+  identificationType?: string;
+  identificationNumber?: string;
+}): Promise<ActionResult<CardOrderResult>> {
+  const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
+  if (!contextResult.ok) return contextResult;
+
+  const tokenResult = await resolveAccessToken();
+  if (!tokenResult.ok) return tokenResult;
+  const accessToken = tokenResult.data;
+
+  const { firstName, lastName } = splitName(payerName);
+  const phoneDigits = normalizePhoneDigits(payerPhone);
+
+  const payer: Record<string, unknown> = {
+    email: resolvePayerEmail({ providedEmail: payerEmail, phoneDigits }),
+    first_name: firstName,
+    last_name: lastName,
+    phone: splitPhone(phoneDigits),
+  };
+
+  if (identificationType && identificationNumber) {
+    payer.identification = {
+      type: identificationType,
+      number: identificationNumber,
+    };
+  }
+
+  const normalizedInstallments = Number.isFinite(installments) ? Math.max(1, installments) : 1;
+  const idempotencyKey = buildIdempotencyKey([
+    "online-card",
+    appointmentId,
+    paymentMethodId,
+    Number(amount.toFixed(2)).toFixed(2),
+    token,
+  ]);
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.mercadopago.com/v1/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        type: "online",
+        processing_mode: "automatic",
+        total_amount: amount.toFixed(2),
+        external_reference: appointmentId,
+        payer,
+        transactions: {
+          payments: [
+            {
+              amount: amount.toFixed(2),
+              payment_method: {
+                id: paymentMethodId,
+                type: "credit_card",
+                token,
+                installments: normalizedInstallments,
+              },
+            },
+          ],
+        },
+      }),
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(new AppError("Falha de rede ao processar cartão. Tente novamente.", "UNKNOWN", 500, details));
+  }
+
+  const payloadText = await response.text();
+  const payload = parseApiPayload(payloadText);
+  const payloadMessage = getPayloadMessage(payload, "Erro ao processar pagamento com cartão.");
+
+  if (!response.ok) {
+    const userMessage = mapMercadoPagoUserMessage({
+      method: "card",
+      status: response.status,
+      payload,
+      fallback: payloadMessage,
+    });
+    return fail(new AppError(userMessage, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  const order = extractOrder(payload);
+  const orderData = resolveOrderPayment(order);
+  if (!orderData.paymentId || !orderData.orderId) {
+    return fail(new AppError("Resposta inválida do Mercado Pago ao processar cartão.", "SUPABASE_ERROR", 502, payload));
+  }
+
+  const internalStatus = mapProviderStatusToInternal(orderData.providerStatus);
+  const transactionAmount = parseNumericAmount(orderData.amount, amount);
+
+  const upsertResult = await upsertAppointmentPayment({
+    appointmentId,
+    tenantId,
+    method: "card",
+    amount: transactionAmount,
+    status: internalStatus,
+    providerRef: orderData.paymentId,
+    providerOrderId: orderData.orderId,
+    paymentMethodId: orderData.paymentMethodId ?? paymentMethodId,
+    installments: orderData.installments ?? normalizedInstallments,
+    cardMode: "credit",
+    rawPayload: (payload ?? null) as Json | null,
+  });
+  if (!upsertResult.ok) return upsertResult;
+
+  if (internalStatus === "paid") {
+    const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+    if (!recalcResult.ok) return recalcResult;
+  }
+
+  return ok({
+    id: orderData.paymentId,
+    order_id: orderData.orderId,
+    status: orderData.providerStatus,
+    internal_status: internalStatus,
+    status_detail: orderData.statusDetail,
+    transaction_amount: transactionAmount,
+  });
+}
+
+export async function createPixOrderForAppointment({
+  appointmentId,
+  tenantId,
+  amount,
+  payerEmail,
+  payerName,
+  payerPhone,
+  attempt,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  amount: number;
+  payerEmail?: string | null;
+  payerName: string;
+  payerPhone: string;
+  attempt?: number;
+}): Promise<ActionResult<PixOrderResult>> {
+  const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
+  if (!contextResult.ok) return contextResult;
+
+  const tokenResult = await resolveAccessToken();
+  if (!tokenResult.ok) return tokenResult;
+  const accessToken = tokenResult.data;
+
+  const { firstName, lastName } = splitName(payerName);
+  const phoneDigits = normalizePhoneDigits(payerPhone);
+  const payer = {
+    email: resolvePayerEmail({ providedEmail: payerEmail, phoneDigits }),
+    first_name: firstName,
+    last_name: lastName,
+    phone: splitPhone(phoneDigits),
+  };
+
+  const normalizedAttempt = Number.isFinite(attempt) && Number(attempt) >= 0 ? Math.floor(Number(attempt)) : 0;
+  const idempotencyKey = buildIdempotencyKey([
+    "online-pix",
+    appointmentId,
+    Number(amount.toFixed(2)).toFixed(2),
+    String(normalizedAttempt),
+  ]);
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.mercadopago.com/v1/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        type: "online",
+        processing_mode: "automatic",
+        total_amount: amount.toFixed(2),
+        external_reference: appointmentId,
+        payer,
+        transactions: {
+          payments: [
+            {
+              amount: amount.toFixed(2),
+              payment_method: {
+                id: "pix",
+                type: "bank_transfer",
+              },
+            },
+          ],
+        },
+      }),
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(new AppError("Falha de rede ao criar pagamento Pix. Tente novamente.", "UNKNOWN", 500, details));
+  }
+
+  const payloadText = await response.text();
+  const payload = parseApiPayload(payloadText);
+  const payloadMessage = getPayloadMessage(payload, "Erro ao criar pagamento Pix.");
+
+  if (!response.ok) {
+    const userMessage = mapMercadoPagoUserMessage({
+      method: "pix",
+      status: response.status,
+      payload,
+      fallback: payloadMessage,
+    });
+    return fail(new AppError(userMessage, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  const order = extractOrder(payload);
+  const orderData = resolveOrderPayment(order);
+  if (!orderData.paymentId || !orderData.orderId) {
+    return fail(new AppError("Resposta inválida do Mercado Pago ao criar Pix.", "SUPABASE_ERROR", 502, payload));
+  }
+
+  const internalStatus = mapProviderStatusToInternal(orderData.providerStatus);
+  const transactionAmount = parseNumericAmount(orderData.amount, amount);
+
+  const upsertResult = await upsertAppointmentPayment({
+    appointmentId,
+    tenantId,
+    method: "pix",
+    amount: transactionAmount,
+    status: internalStatus,
+    providerRef: orderData.paymentId,
+    providerOrderId: orderData.orderId,
+    paymentMethodId: "pix",
+    rawPayload: (payload ?? null) as Json | null,
+  });
+  if (!upsertResult.ok) return upsertResult;
+
+  if (internalStatus === "paid") {
+    const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+    if (!recalcResult.ok) return recalcResult;
+  }
+
+  const expiresAt =
+    orderData.expiresAt ?? new Date(new Date(orderData.createdAt).getTime() + defaultPixTtlMs).toISOString();
+
+  return ok({
+    id: orderData.paymentId,
+    order_id: orderData.orderId,
+    status: orderData.providerStatus,
+    internal_status: internalStatus,
+    ticket_url: orderData.ticketUrl,
+    qr_code: orderData.qrCode,
+    qr_code_base64: orderData.qrCodeBase64,
+    transaction_amount: transactionAmount,
+    created_at: orderData.createdAt,
+    expires_at: expiresAt,
+  });
+}
+
+export async function createPointOrderForAppointment({
+  appointmentId,
+  tenantId,
+  amount,
+  terminalId,
+  cardMode,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  amount: number;
+  terminalId: string;
+  cardMode: PointCardMode;
+}): Promise<ActionResult<PointOrderResult>> {
+  const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
+  if (!contextResult.ok) return contextResult;
+
+  const tokenResult = await resolveAccessToken();
+  if (!tokenResult.ok) return tokenResult;
+  const accessToken = tokenResult.data;
+
+  const normalizedTerminalId = terminalId.trim();
+  if (!normalizedTerminalId) {
+    return fail(new AppError("Terminal Point não configurado.", "VALIDATION_ERROR", 400));
+  }
+
+  const idempotencyKey = buildIdempotencyKey([
+    "point-card",
+    appointmentId,
+    normalizedTerminalId,
+    cardMode,
+    Number(amount.toFixed(2)).toFixed(2),
+  ]);
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.mercadopago.com/v1/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        type: "point",
+        processing_mode: "automatic",
+        total_amount: amount.toFixed(2),
+        external_reference: appointmentId,
+        config: {
+          point: {
+            terminal_id: normalizedTerminalId,
+          },
+        },
+        transactions: {
+          payments: [
+            {
+              amount: amount.toFixed(2),
+              payment_method: {
+                type: cardMode === "debit" ? "debit_card" : "credit_card",
+              },
+            },
+          ],
+        },
+      }),
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(
+      new AppError("Falha de rede ao enviar cobrança para maquininha.", "UNKNOWN", 500, details)
+    );
+  }
+
+  const payloadText = await response.text();
+  const payload = parseApiPayload(payloadText);
+  const payloadMessage = getPayloadMessage(payload, "Erro ao cobrar na maquininha.");
+
+  if (!response.ok) {
+    const userMessage = mapMercadoPagoUserMessage({
+      method: "point",
+      status: response.status,
+      payload,
+      fallback: payloadMessage,
+    });
+    return fail(new AppError(userMessage, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  const order = extractOrder(payload);
+  const orderData = resolveOrderPayment(order);
+  if (!orderData.paymentId || !orderData.orderId) {
+    return fail(new AppError("Resposta inválida do Mercado Pago para cobrança Point.", "SUPABASE_ERROR", 502, payload));
+  }
+
+  const internalStatus = mapProviderStatusToInternal(orderData.providerStatus);
+  const transactionAmount = parseNumericAmount(orderData.amount, amount);
+
+  const upsertResult = await upsertAppointmentPayment({
+    appointmentId,
+    tenantId,
+    method: "card",
+    amount: transactionAmount,
+    status: internalStatus,
+    providerRef: orderData.paymentId,
+    providerOrderId: orderData.orderId,
+    pointTerminalId: normalizedTerminalId,
+    cardMode,
+    paymentMethodId: orderData.paymentMethodId,
+    rawPayload: (payload ?? null) as Json | null,
+  });
+  if (!upsertResult.ok) return upsertResult;
+
+  if (internalStatus === "paid") {
+    const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+    if (!recalcResult.ok) return recalcResult;
+  }
+
+  return ok({
+    id: orderData.paymentId,
+    order_id: orderData.orderId,
+    status: orderData.providerStatus,
+    internal_status: internalStatus,
+    status_detail: orderData.statusDetail,
+    transaction_amount: transactionAmount,
+    point_terminal_id: normalizedTerminalId,
+    card_mode: cardMode,
+  });
+}
+
+export async function getOrderById(orderId: string): Promise<ActionResult<PointOrderStatusResult>> {
+  const tokenResult = await resolveAccessToken();
+  if (!tokenResult.ok) return tokenResult;
+  const accessToken = tokenResult.data;
+
+  let response: Response;
+  try {
+    response = await fetch(`https://api.mercadopago.com/v1/orders/${orderId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(new AppError("Falha de rede ao consultar cobrança Point.", "UNKNOWN", 500, details));
+  }
+
+  const payloadText = await response.text();
+  const payload = parseApiPayload(payloadText);
+  if (!response.ok) {
+    const payloadMessage = getPayloadMessage(payload, "Erro ao consultar status da cobrança Point.");
+    return fail(new AppError(payloadMessage, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  const order = extractOrder(payload);
+  const orderData = resolveOrderPayment(order);
+  if (!orderData.orderId || !orderData.paymentId) {
+    return fail(new AppError("Resposta inválida ao consultar cobrança Point.", "SUPABASE_ERROR", 502, payload));
+  }
+
+  const paymentType = orderData.paymentTypeId?.toLowerCase() ?? "";
+  const cardMode: PointCardMode | null = paymentType.includes("debit")
+    ? "debit"
+    : paymentType.includes("credit")
+      ? "credit"
+      : null;
+
+  return ok({
+    id: orderData.paymentId,
+    order_id: orderData.orderId,
+    status: orderData.providerStatus,
+    internal_status: mapProviderStatusToInternal(orderData.providerStatus),
+    status_detail: orderData.statusDetail,
+    transaction_amount: parseNumericAmount(orderData.amount, 0),
+    point_terminal_id: null,
+    card_mode: cardMode,
+    appointment_id: orderData.externalReference,
+  });
+}
+
+export async function getPointOrderStatus({
+  orderId,
+  tenantId,
+}: {
+  orderId: string;
+  tenantId: string;
+}): Promise<ActionResult<PointOrderStatusResult>> {
+  const statusResult = await getOrderById(orderId);
+  if (!statusResult.ok) return statusResult;
+
+  const statusData = statusResult.data;
+  const appointmentId = statusData.appointment_id;
+
+  if (appointmentId) {
+    const upsertResult = await upsertAppointmentPayment({
+      appointmentId,
+      tenantId,
+      method: "card",
+      amount: statusData.transaction_amount,
+      status: statusData.internal_status,
+      providerRef: statusData.id,
+      providerOrderId: statusData.order_id,
+      pointTerminalId: statusData.point_terminal_id,
+      cardMode: statusData.card_mode,
+      rawPayload: null,
+    });
+    if (!upsertResult.ok) return upsertResult;
+
+    if (statusData.internal_status === "paid") {
+      const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+      if (!recalcResult.ok) return recalcResult;
+    }
+  }
+
+  return ok(statusData);
+}
+
+function resolveDeviceArray(payload: Record<string, unknown> | null) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.results)) return payload.results;
+  if (payload.data && typeof payload.data === "object") {
+    const dataObj = payload.data as Record<string, unknown>;
+    if (Array.isArray(dataObj.results)) return dataObj.results;
+    if (Array.isArray(dataObj.devices)) return dataObj.devices;
+  }
+  if (Array.isArray(payload.devices)) return payload.devices;
+  return [];
+}
+
+export async function listPointDevices({
+  offset = 0,
+  limit = 50,
+}: {
+  offset?: number;
+  limit?: number;
+} = {}): Promise<ActionResult<PointDevice[]>> {
+  const tokenResult = await resolveAccessToken();
+  if (!tokenResult.ok) return tokenResult;
+  const accessToken = tokenResult.data;
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://api.mercadopago.com/point/integration-api/devices?offset=${offset}&limit=${limit}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(new AppError("Falha de rede ao listar maquininhas.", "UNKNOWN", 500, details));
+  }
+
+  const payloadText = await response.text();
+  const payload = parseApiPayload(payloadText);
+  if (!response.ok) {
+    const message = getPayloadMessage(payload, "Não foi possível listar maquininhas Point.");
+    return fail(new AppError(message, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  const devices = resolveDeviceArray(payload)
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const record = entry as Record<string, unknown>;
+      const id =
+        (typeof record.id === "string" && record.id) ||
+        (typeof record.terminal_id === "string" && record.terminal_id) ||
+        (typeof record.terminalId === "string" && record.terminalId) ||
+        "";
+      if (!id) return null;
+      return {
+        id,
+        name:
+          (typeof record.name === "string" && record.name) ||
+          (typeof record.device_name === "string" && record.device_name) ||
+          "Point",
+        model:
+          (typeof record.model === "string" && record.model) ||
+          (typeof record.device_model === "string" && record.device_model) ||
+          null,
+        external_id:
+          (typeof record.external_id === "string" && record.external_id) ||
+          (typeof record.externalId === "string" && record.externalId) ||
+          null,
+        status:
+          (typeof record.status === "string" && record.status) ||
+          (typeof record.connection_status === "string" && record.connection_status) ||
+          null,
+      } satisfies PointDevice;
+    })
+    .filter((item): item is PointDevice => Boolean(item));
+
+  return ok(devices);
+}
+
+export async function configurePointDeviceToPdv({
+  terminalId,
+  externalId,
+}: {
+  terminalId: string;
+  externalId: string;
+}): Promise<ActionResult<{ terminalId: string; externalId: string }>> {
+  const tokenResult = await resolveAccessToken();
+  if (!tokenResult.ok) return tokenResult;
+  const accessToken = tokenResult.data;
+
+  const terminal = terminalId.trim();
+  const external = externalId.trim();
+  if (!terminal || !external) {
+    return fail(new AppError("Terminal e identificador externo são obrigatórios.", "VALIDATION_ERROR", 400));
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`https://api.mercadopago.com/point/integration-api/devices/${terminal}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        external_id: external,
+      }),
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    return fail(new AppError("Falha de rede ao configurar maquininha.", "UNKNOWN", 500, details));
+  }
+
+  const payloadText = await response.text();
+  const payload = parseApiPayload(payloadText);
+  if (!response.ok) {
+    const message = getPayloadMessage(payload, "Não foi possível configurar a maquininha Point.");
+    return fail(new AppError(message, "SUPABASE_ERROR", response.status, payload));
+  }
+
+  return ok({ terminalId: terminal, externalId: external });
+}
+
+export async function getAppointmentPaymentStatusByMethod({
+  appointmentId,
+  tenantId,
+  method,
+  cardMode,
+}: {
+  appointmentId: string;
+  tenantId: string;
+  method: "card" | "pix";
+  cardMode?: PointCardMode | null;
+}): Promise<ActionResult<{ internal_status: InternalPaymentStatus }>> {
+  const supabase = createServiceClient();
+  let query = supabase
+    .from("appointment_payments")
+    .select("status, created_at, card_mode")
+    .eq("appointment_id", appointmentId)
+    .eq("tenant_id", tenantId)
+    .eq("method", method)
+    .order("created_at", { ascending: false });
+
+  if (cardMode) {
+    query = query.eq("card_mode", cardMode);
+  }
+
+  const { data: payments, error } = await query;
+
+  if (error) {
+    return fail(new AppError("Não foi possível consultar o status do pagamento.", "SUPABASE_ERROR", 500, error));
+  }
+
+  const statuses = (payments ?? [])
+    .map((item) => (typeof item.status === "string" ? item.status : null))
+    .filter((value): value is string => Boolean(value));
+
+  if (statuses.includes("paid")) {
+    return ok({ internal_status: "paid" });
+  }
+
+  const latestStatus = statuses[0] ?? null;
+  if (latestStatus === "failed") {
+    return ok({ internal_status: "failed" });
+  }
+
+  return ok({ internal_status: "pending" });
+}

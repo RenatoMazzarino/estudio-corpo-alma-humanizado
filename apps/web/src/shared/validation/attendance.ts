@@ -9,7 +9,7 @@ export const confirmPreSchema = appointmentIdSchema.extend({
 });
 
 export const sendMessageSchema = appointmentIdSchema.extend({
-  type: z.enum(["created_confirmation", "reminder_24h", "post_survey"]),
+  type: z.enum(["created_confirmation", "reminder_24h", "post_survey", "payment_charge", "payment_receipt"]),
   channel: z.string().optional().nullable(),
   payload: z.record(z.string(), z.unknown()).optional().nullable(),
 });

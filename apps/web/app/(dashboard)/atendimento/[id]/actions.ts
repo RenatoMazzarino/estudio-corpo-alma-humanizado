@@ -31,10 +31,18 @@ import { computeElapsedSeconds, computeTotals } from "../../../../lib/attendance
 import { getAttendanceOverview, insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
 import { updateAppointment, updateAppointmentReturning } from "../../../../src/modules/appointments/repository";
 import { insertTransaction } from "../../../../src/modules/finance/repository";
+import {
+  createPixOrderForAppointment,
+  createPointOrderForAppointment,
+  getAppointmentPaymentStatusByMethod,
+  getPointOrderStatus,
+  type PointCardMode,
+} from "../../../../src/modules/payments/mercadopago-orders";
+import { getSettings } from "../../../../src/modules/settings/repository";
 
 async function insertMessageLog(params: {
   appointmentId: string;
-  type: "created_confirmation" | "reminder_24h" | "post_survey";
+  type: "created_confirmation" | "reminder_24h" | "post_survey" | "payment_charge" | "payment_receipt";
   status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
   payload?: Json | null;
   sentAt?: string | null;
@@ -217,7 +225,7 @@ export async function sendReminder24h(payload: { appointmentId: string; message?
 
 export async function sendMessage(payload: {
   appointmentId: string;
-  type: "created_confirmation" | "reminder_24h" | "post_survey";
+  type: "created_confirmation" | "reminder_24h" | "post_survey" | "payment_charge" | "payment_receipt";
   channel?: string | null;
   payload?: Json | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
@@ -577,6 +585,203 @@ export async function recordPayment(payload: {
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
   return ok({ paymentId: data?.id ?? parsed.data.appointmentId });
+}
+
+export async function createAttendancePixPayment(payload: {
+  appointmentId: string;
+  amount: number;
+  payerName: string;
+  payerPhone: string;
+  payerEmail?: string | null;
+  attempt?: number;
+}): Promise<ActionResult<{
+  id: string;
+  order_id: string;
+  internal_status: "paid" | "pending" | "failed";
+  status: string;
+  ticket_url: string | null;
+  qr_code: string | null;
+  qr_code_base64: string | null;
+  transaction_amount: number;
+  created_at: string;
+  expires_at: string;
+}>> {
+  const parsed = z
+    .object({
+      appointmentId: z.string().uuid(),
+      amount: z.number().positive(),
+      payerName: z.string().min(2),
+      payerPhone: z.string().min(8),
+      payerEmail: z.string().email().optional().nullable(),
+      attempt: z.number().int().min(0).optional(),
+    })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const result = await createPixOrderForAppointment({
+    appointmentId: parsed.data.appointmentId,
+    tenantId: FIXED_TENANT_ID,
+    amount: parsed.data.amount,
+    payerName: parsed.data.payerName,
+    payerPhone: parsed.data.payerPhone,
+    payerEmail: parsed.data.payerEmail,
+    attempt: parsed.data.attempt,
+  });
+  if (!result.ok) return result;
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "payment_pix_created",
+    payload: {
+      payment_id: result.data.id,
+      order_id: result.data.order_id,
+      amount: result.data.transaction_amount,
+      status: result.data.internal_status,
+    },
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  return ok(result.data);
+}
+
+export async function getAttendancePixPaymentStatus(payload: {
+  appointmentId: string;
+}): Promise<ActionResult<{ internal_status: "paid" | "pending" | "failed" }>> {
+  const parsed = appointmentIdSchema.safeParse(payload);
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  return getAppointmentPaymentStatusByMethod({
+    appointmentId: parsed.data.appointmentId,
+    tenantId: FIXED_TENANT_ID,
+    method: "pix",
+  });
+}
+
+export async function createAttendancePointPayment(payload: {
+  appointmentId: string;
+  amount: number;
+  cardMode: PointCardMode;
+  terminalId?: string | null;
+}): Promise<ActionResult<{
+  id: string;
+  order_id: string;
+  internal_status: "paid" | "pending" | "failed";
+  status: string;
+  status_detail: string | null;
+  transaction_amount: number;
+  point_terminal_id: string;
+  card_mode: PointCardMode;
+}>> {
+  const parsed = z
+    .object({
+      appointmentId: z.string().uuid(),
+      amount: z.number().positive(),
+      cardMode: z.enum(["debit", "credit"]),
+      terminalId: z.string().optional().nullable(),
+    })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  let terminalId = parsed.data.terminalId?.trim() ?? "";
+  if (!terminalId) {
+    const { data: settings, error } = await getSettings(FIXED_TENANT_ID);
+    const mapped = mapSupabaseError(error);
+    if (mapped) return fail(mapped);
+    terminalId = settings?.mp_point_terminal_id?.trim() ?? "";
+  }
+
+  if (!terminalId) {
+    return fail(
+      new AppError(
+        "Nenhuma maquininha Point configurada. Ajuste em Configurações antes de cobrar.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
+  const result = await createPointOrderForAppointment({
+    appointmentId: parsed.data.appointmentId,
+    tenantId: FIXED_TENANT_ID,
+    amount: parsed.data.amount,
+    terminalId,
+    cardMode: parsed.data.cardMode,
+  });
+  if (!result.ok) return result;
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "payment_point_charge_started",
+    payload: {
+      payment_id: result.data.id,
+      order_id: result.data.order_id,
+      amount: result.data.transaction_amount,
+      card_mode: result.data.card_mode,
+      point_terminal_id: result.data.point_terminal_id,
+      status: result.data.internal_status,
+    },
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  return ok(result.data);
+}
+
+export async function getAttendancePointPaymentStatus(payload: {
+  appointmentId: string;
+  orderId: string;
+}): Promise<ActionResult<{
+  id: string;
+  order_id: string;
+  internal_status: "paid" | "pending" | "failed";
+  status: string;
+  status_detail: string | null;
+  transaction_amount: number;
+  point_terminal_id: string | null;
+  card_mode: PointCardMode | null;
+  appointment_id: string | null;
+}>> {
+  const parsed = z
+    .object({
+      appointmentId: z.string().uuid(),
+      orderId: z.string().min(4),
+    })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const result = await getPointOrderStatus({
+    orderId: parsed.data.orderId,
+    tenantId: FIXED_TENANT_ID,
+  });
+  if (!result.ok) return result;
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "payment_point_charge_status",
+    payload: {
+      payment_id: result.data.id,
+      order_id: result.data.order_id,
+      status: result.data.internal_status,
+      status_detail: result.data.status_detail,
+      amount: result.data.transaction_amount,
+    },
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  return ok(result.data);
 }
 
 export async function confirmCheckout(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {

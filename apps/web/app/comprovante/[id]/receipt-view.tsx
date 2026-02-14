@@ -13,6 +13,7 @@ interface ReceiptData {
   dateLabel: string;
   timeLabel: string;
   paymentStatus: "paid" | "partial";
+  paymentMethodLabel?: string;
   locationLabel: string;
   locationDetail?: string;
   totalLabel: string;
@@ -32,6 +33,12 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
   const [downloading, setDownloading] = useState(false);
   const isPaid = data.paymentStatus === "paid";
   const statusPill = isPaid ? "Pagamento confirmado" : "Sinal confirmado";
+  const partialPaymentLabel = data.paymentMethodLabel
+    ? `Pagamento (${data.paymentMethodLabel})`
+    : "Pagamento parcial";
+  const paidPaymentLabel = data.paymentMethodLabel
+    ? `Pagamento (${data.paymentMethodLabel})`
+    : "Pagamento integral";
   const fileName = useMemo(() => {
     const safeDate = data.dateLabel.replace(/\//g, "-");
     return `Recibo-CorpoAlma-${safeDate}.pdf`;
@@ -129,9 +136,9 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
                   <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-green-50 p-2 rounded-lg">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Sinal Pago (PIX)</span>
+                      <span>{partialPaymentLabel}</span>
                     </div>
-                    <span>- {data.signalLabel}</span>
+                    <span>{data.signalLabel}</span>
                   </div>
                 )}
 
@@ -139,7 +146,7 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
                   <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-green-50 p-2 rounded-lg">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Pagamento Integral</span>
+                      <span>{paidPaymentLabel}</span>
                     </div>
                     <span>{data.paidLabel}</span>
                   </div>

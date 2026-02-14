@@ -85,6 +85,9 @@ export interface PaymentRow {
   status: "pending" | "paid" | "failed" | "refunded";
   paid_at: string | null;
   provider_ref: string | null;
+  provider_order_id: string | null;
+  point_terminal_id: string | null;
+  card_mode: "debit" | "credit" | null;
   transaction_id: string | null;
   created_at: string;
 }
@@ -102,7 +105,12 @@ export interface PostRow {
   updated_at: string;
 }
 
-export type MessageType = "created_confirmation" | "reminder_24h" | "post_survey";
+export type MessageType =
+  | "created_confirmation"
+  | "reminder_24h"
+  | "post_survey"
+  | "payment_charge"
+  | "payment_receipt";
 export type MessageStatus = "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
 
 export interface AppointmentMessage {

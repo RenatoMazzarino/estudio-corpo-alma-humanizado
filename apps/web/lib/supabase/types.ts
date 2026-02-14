@@ -547,6 +547,7 @@ export type Database = {
         Row: {
           amount: number
           appointment_id: string
+          card_mode: string | null
           card_brand: string | null
           card_last4: string | null
           created_at: string
@@ -555,6 +556,8 @@ export type Database = {
           method: string
           paid_at: string | null
           payment_method_id: string | null
+          point_terminal_id: string | null
+          provider_order_id: string | null
           provider_ref: string | null
           raw_payload: Json | null
           status: string
@@ -564,6 +567,7 @@ export type Database = {
         Insert: {
           amount: number
           appointment_id: string
+          card_mode?: string | null
           card_brand?: string | null
           card_last4?: string | null
           created_at?: string
@@ -572,6 +576,8 @@ export type Database = {
           method: string
           paid_at?: string | null
           payment_method_id?: string | null
+          point_terminal_id?: string | null
+          provider_order_id?: string | null
           provider_ref?: string | null
           raw_payload?: Json | null
           status?: string
@@ -581,6 +587,7 @@ export type Database = {
         Update: {
           amount?: number
           appointment_id?: string
+          card_mode?: string | null
           card_brand?: string | null
           card_last4?: string | null
           created_at?: string
@@ -589,6 +596,8 @@ export type Database = {
           method?: string
           paid_at?: string | null
           payment_method_id?: string | null
+          point_terminal_id?: string | null
+          provider_order_id?: string | null
           provider_ref?: string | null
           raw_payload?: Json | null
           status?: string
@@ -1250,6 +1259,11 @@ export type Database = {
           default_home_buffer: number | null
           default_studio_buffer: number | null
           id: string
+          mp_point_enabled: boolean
+          mp_point_terminal_external_id: string | null
+          mp_point_terminal_id: string | null
+          mp_point_terminal_model: string | null
+          mp_point_terminal_name: string | null
           public_base_url: string | null
           signal_percentage: number | null
           tenant_id: string
@@ -1263,6 +1277,11 @@ export type Database = {
           default_home_buffer?: number | null
           default_studio_buffer?: number | null
           id?: string
+          mp_point_enabled?: boolean
+          mp_point_terminal_external_id?: string | null
+          mp_point_terminal_id?: string | null
+          mp_point_terminal_model?: string | null
+          mp_point_terminal_name?: string | null
           public_base_url?: string | null
           signal_percentage?: number | null
           tenant_id?: string
@@ -1276,6 +1295,11 @@ export type Database = {
           default_home_buffer?: number | null
           default_studio_buffer?: number | null
           id?: string
+          mp_point_enabled?: boolean
+          mp_point_terminal_external_id?: string | null
+          mp_point_terminal_id?: string | null
+          mp_point_terminal_model?: string | null
+          mp_point_terminal_name?: string | null
           public_base_url?: string | null
           signal_percentage?: number | null
           tenant_id?: string

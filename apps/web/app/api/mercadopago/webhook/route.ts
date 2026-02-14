@@ -35,6 +35,11 @@ type MercadoPagoOrder = {
   transactions?: {
     payments?: MercadoPagoOrderPayment[] | null;
   } | null;
+  config?: {
+    point?: {
+      terminal_id?: string;
+    } | null;
+  } | null;
 };
 
 type MercadoPagoPayment = {
@@ -97,13 +102,20 @@ const safeEqual = (left: string, right: string) => {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-const verifyWebhookSignature = (request: Request, secret: string) => {
+const verifyWebhookSignature = (
+  request: Request,
+  secret: string,
+  body: Record<string, unknown> | null
+) => {
   const signature = parseSignatureHeader(request.headers.get("x-signature"));
   const requestId = request.headers.get("x-request-id") ?? "";
   const url = new URL(request.url);
+  const bodyData = body?.data as { id?: string | number } | undefined;
+  const bodyDataId = bodyData?.id?.toString() ?? (typeof body?.id === "string" || typeof body?.id === "number" ? String(body.id) : "");
   const rawDataId =
     url.searchParams.get("data.id") ||
     url.searchParams.get("id") ||
+    bodyDataId ||
     "";
   const dataId = rawDataId ? rawDataId.toLowerCase() : "";
 
@@ -211,7 +223,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Missing Mercado Pago webhook secret" }, { status: 500 });
   }
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const signatureCheck = verifyWebhookSignature(request, webhookSecret);
+  const signatureCheck = verifyWebhookSignature(request, webhookSecret, body);
   if (!signatureCheck.valid) {
     console.warn("[mercadopago-webhook] invalid signature", {
       reason: signatureCheck.reason,
@@ -248,6 +260,7 @@ export async function POST(request: Request) {
   let transactionAmount: number = 0;
   let appointmentId: string | null = null;
   let orderIdFromPayment: string | null = null;
+  let pointTerminalId: string | null = null;
 
   const hydrateFromPayment = (payment: MercadoPagoPayment) => {
     providerRef = String(payment.id);
@@ -281,6 +294,8 @@ export async function POST(request: Request) {
 
     const order = (await orderResponse.json()) as MercadoPagoOrder;
     appointmentId = typeof order.external_reference === "string" ? order.external_reference : null;
+    pointTerminalId =
+      typeof order.config?.point?.terminal_id === "string" ? order.config.point.terminal_id : null;
     const firstPayment = order.transactions?.payments?.[0] ?? null;
     if (!firstPayment) {
       return NextResponse.json({ ok: true, skipped: "order_without_payment" });
@@ -350,6 +365,7 @@ export async function POST(request: Request) {
     source: notificationType,
     resource_id: resourceId,
     provider_ref: providerRef,
+    provider_order_id: orderIdFromPayment ?? (notificationType === "order" ? resourceId : null),
     status: providerStatus,
     status_detail: providerStatusDetail,
     payment_method_id: paymentMethodId,
@@ -363,6 +379,16 @@ export async function POST(request: Request) {
 
   const status = mapProviderStatusToInternal(providerStatus);
   const method = paymentMethodId === "pix" || paymentTypeId === "bank_transfer" ? "pix" : "card";
+  const providerOrderId =
+    orderIdFromPayment ?? (notificationType === "order" ? resourceId : null);
+  const cardMode =
+    method === "card"
+      ? paymentTypeId?.toLowerCase().includes("debit")
+        ? "debit"
+        : paymentTypeId?.toLowerCase().includes("credit")
+          ? "credit"
+          : null
+      : null;
 
   const supabase = createServiceClient();
 
@@ -408,8 +434,11 @@ export async function POST(request: Request) {
         amount,
         status,
         provider_ref: providerRef,
+        provider_order_id: providerOrderId,
         paid_at: status === "paid" ? approvedAt ?? new Date().toISOString() : null,
         payment_method_id: paymentMethodId,
+        point_terminal_id: pointTerminalId,
+        card_mode: cardMode,
         installments,
         card_last4: cardLast4,
         card_brand: cardBrand,
