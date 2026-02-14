@@ -541,7 +541,17 @@ export function MobileAgenda({
     return `https://wa.me/${withCountry}`;
   }, []);
 
-  const buildMessage = (type: MessageType, appointment: AttendanceOverview["appointment"]) => {
+  const resolvePublicBaseUrl = () => {
+    const raw = publicBaseUrl.trim();
+    if (!raw) return "";
+    return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
+  };
+
+  const buildMessage = (
+    type: MessageType,
+    appointment: AttendanceOverview["appointment"],
+    options?: { paymentId?: string | null; chargeAmount?: number | null }
+  ) => {
     const name = appointment.clients?.name?.trim() ?? "";
     const greeting = name ? `Olá, ${name}!` : "Olá!";
     const startDate = new Date(appointment.start_time);
@@ -572,6 +582,43 @@ export function MobileAgenda({
         date_line: dateLine,
       }).trim();
     }
+
+    if (type === "payment_charge") {
+      const base = resolvePublicBaseUrl();
+      const paymentLink = base ? `${base}/pagamento` : "";
+      const chargeAmount =
+        typeof options?.chargeAmount === "number" && Number.isFinite(options.chargeAmount)
+          ? options.chargeAmount
+          : null;
+      const chargeLabel =
+        chargeAmount !== null
+          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(chargeAmount)
+          : "";
+      const paymentLinkBlock = paymentLink
+        ? `💰 Valor pendente: ${chargeLabel || "conforme combinado"}\nLink:\n${paymentLink}\n\n`
+        : "";
+
+      return applyAutoMessageTemplate(messageTemplates.payment_charge, {
+        greeting,
+        service_name: serviceName,
+        payment_link_block: paymentLinkBlock,
+      }).trim();
+    }
+
+    if (type === "payment_receipt") {
+      const base = resolvePublicBaseUrl();
+      const receiptLink =
+        base && options?.paymentId ? `${base}/comprovante/pagamento/${options.paymentId}` : "";
+      const receiptBlock = receiptLink
+        ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`
+        : "";
+      return applyAutoMessageTemplate(messageTemplates.payment_receipt, {
+        greeting,
+        service_name: serviceName,
+        receipt_link_block: receiptBlock,
+      }).trim();
+    }
+
     if (name) {
       return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
     }
@@ -616,6 +663,76 @@ export function MobileAgenda({
     setDetailsActionPending(false);
   };
 
+  const handleSendPaymentCharge = async () => {
+    if (!detailsData) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    const totalAmount = Number(detailsData.checkout?.total ?? detailsData.appointment.price ?? 0);
+    const paidAmount = (detailsData.payments ?? [])
+      .filter((payment) => payment.status === "paid")
+      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
+    const remainingAmount = Math.max(totalAmount - paidAmount, 0);
+
+    setDetailsActionPending(true);
+    const message = buildMessage("payment_charge", detailsData.appointment, {
+      chargeAmount: remainingAmount,
+    });
+    openWhatsapp(phone, message);
+
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type: "payment_charge",
+      channel: "whatsapp",
+      payload: { message, remaining_amount: remainingAmount },
+    });
+
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "whatsapp"));
+      setDetailsActionPending(false);
+      return;
+    }
+
+    showToast(feedbackById("message_recorded"));
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleSendPaymentReceipt = async (paymentId: string | null) => {
+    if (!detailsData || !paymentId) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    setDetailsActionPending(true);
+    const message = buildMessage("payment_receipt", detailsData.appointment, { paymentId });
+    openWhatsapp(phone, message);
+
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type: "payment_receipt",
+      channel: "whatsapp",
+      payload: { message, payment_id: paymentId },
+    });
+
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "whatsapp"));
+      setDetailsActionPending(false);
+      return;
+    }
+
+    showToast(feedbackById("message_recorded"));
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
   const handleSendReminder = async () => {
     if (!detailsData) return;
     const phone = detailsData.appointment.clients?.phone ?? null;
@@ -633,6 +750,36 @@ export function MobileAgenda({
       return;
     }
     showToast(feedbackById("reminder_recorded"));
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleSendSurvey = async () => {
+    if (!detailsData) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    setDetailsActionPending(true);
+    const message = buildMessage("post_survey", detailsData.appointment);
+    openWhatsapp(phone, message);
+
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type: "post_survey",
+      channel: "whatsapp",
+      payload: { message },
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "whatsapp"));
+      setDetailsActionPending(false);
+      return;
+    }
+
+    showToast(feedbackById("message_recorded"));
     await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
@@ -703,11 +850,11 @@ export function MobileAgenda({
     setDetailsActionPending(false);
   };
 
-  const handleStartSession = () => {
+  const handleOpenAttendance = () => {
     if (!detailsData) return;
     const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
     setDetailsOpen(false);
-    router.push(`/atendimento/${detailsData.appointment.id}?stage=session&return=${encodeURIComponent(returnTo)}`);
+    router.push(`/atendimento/${detailsData.appointment.id}?return=${encodeURIComponent(returnTo)}`);
   };
 
   return (
@@ -1370,9 +1517,13 @@ export function MobileAgenda({
           setDetailsAppointmentId(null);
           setDetailsActionPending(false);
         }}
-        onStartSession={handleStartSession}
+        onStartSession={handleOpenAttendance}
+        onOpenAttendance={handleOpenAttendance}
         onSendCreatedMessage={() => handleSendMessage("created_confirmation")}
         onSendReminder={handleSendReminder}
+        onSendSurvey={handleSendSurvey}
+        onSendPaymentCharge={handleSendPaymentCharge}
+        onSendPaymentReceipt={handleSendPaymentReceipt}
         onConfirmClient={handleConfirmClient}
         onCancelAppointment={handleCancelAppointment}
         onRecordPayment={handleRecordPayment}
