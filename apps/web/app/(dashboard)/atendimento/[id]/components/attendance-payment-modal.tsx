@@ -95,9 +95,12 @@ export function AttendancePaymentModal({
     items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount }))
   );
   const [newItem, setNewItem] = useState({ type: "addon" as CheckoutItem["type"], label: "", qty: 1, amount: 0 });
-  const [discountType, setDiscountType] = useState<"value" | "pct" | null>(checkout?.discount_type ?? "value");
-  const [discountValue, setDiscountValue] = useState<number>(checkout?.discount_value ?? 0);
-  const [discountReason, setDiscountReason] = useState<string>(checkout?.discount_reason ?? "");
+  const [appliedDiscountType, setAppliedDiscountType] = useState<"value" | "pct" | null>(checkout?.discount_type ?? null);
+  const [appliedDiscountValue, setAppliedDiscountValue] = useState<number>(checkout?.discount_value ?? 0);
+  const [appliedDiscountReason, setAppliedDiscountReason] = useState<string>(checkout?.discount_reason ?? "");
+  const [discountTypeInput, setDiscountTypeInput] = useState<"value" | "pct">(checkout?.discount_type === "pct" ? "pct" : "value");
+  const [discountValueInput, setDiscountValueInput] = useState<number>(checkout?.discount_value ?? 0);
+  const [discountReasonInput, setDiscountReasonInput] = useState<string>(checkout?.discount_reason ?? "");
   const [cashAmount, setCashAmount] = useState<number>(0);
   const [pixPayment, setPixPayment] = useState<PixPaymentData | null>(null);
   const [pixAttempt, setPixAttempt] = useState(0);
@@ -113,19 +116,51 @@ export function AttendancePaymentModal({
     () => payments.filter((payment) => payment.status === "paid").reduce((acc, item) => acc + Number(item.amount ?? 0), 0),
     [payments]
   );
-  const total = Number(checkout?.total ?? 0);
+  const normalizedItems = useMemo(
+    () =>
+      draftItems.map((item) => ({
+        ...item,
+        qty: Math.max(1, Number(item.qty ?? 1)),
+        amount: Number(item.amount ?? 0),
+      })),
+    [draftItems]
+  );
+  const subtotal = useMemo(
+    () => normalizedItems.reduce((acc, item) => acc + item.amount * (item.qty ?? 1), 0),
+    [normalizedItems]
+  );
+  const serviceAmount = useMemo(
+    () => normalizedItems.filter((item) => item.type === "service").reduce((acc, item) => acc + item.amount * (item.qty ?? 1), 0),
+    [normalizedItems]
+  );
+  const extraItems = useMemo(() => normalizedItems.filter((item) => item.type !== "service"), [normalizedItems]);
+  const appliedDiscountAmount = useMemo(() => {
+    if (!appliedDiscountType || appliedDiscountValue <= 0) return 0;
+    if (appliedDiscountType === "pct") {
+      return Math.min(subtotal, subtotal * (appliedDiscountValue / 100));
+    }
+    return Math.min(subtotal, appliedDiscountValue);
+  }, [appliedDiscountType, appliedDiscountValue, subtotal]);
+  const total = Math.max(subtotal - appliedDiscountAmount, 0);
   const remaining = Math.max(total - paidTotal, 0);
   const isFullyPaid = remaining <= 0 && total > 0;
 
   useEffect(() => {
     if (!open) return;
     setDraftItems(items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount })));
-    setDiscountType(checkout?.discount_type ?? "value");
-    setDiscountValue(checkout?.discount_value ?? 0);
-    setDiscountReason(checkout?.discount_reason ?? "");
-    setCashAmount(Math.max(remaining, 0));
+    setAppliedDiscountType(checkout?.discount_type ?? null);
+    setAppliedDiscountValue(checkout?.discount_value ?? 0);
+    setAppliedDiscountReason(checkout?.discount_reason ?? "");
+    setDiscountTypeInput(checkout?.discount_type === "pct" ? "pct" : "value");
+    setDiscountValueInput(checkout?.discount_value ?? 0);
+    setDiscountReasonInput(checkout?.discount_reason ?? "");
     setErrorText(null);
-  }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason, remaining]);
+  }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
+
+  useEffect(() => {
+    if (!open) return;
+    setCashAmount(remaining);
+  }, [open, remaining]);
 
   useEffect(() => {
     if (!busy) {
@@ -236,6 +271,34 @@ export function AttendancePaymentModal({
     }
   };
 
+  const handleAddItem = async () => {
+    const label = newItem.label.trim();
+    const amount = Number(newItem.amount ?? 0);
+    if (!label || amount <= 0) return;
+    const nextItems = [...normalizedItems, { ...newItem, label, qty: 1, amount }];
+    setDraftItems(nextItems);
+    setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
+    await onSaveItems(nextItems);
+  };
+
+  const handleApplyDiscount = async () => {
+    const normalizedValue = Number(discountValueInput ?? 0);
+    const safeValue = Number.isFinite(normalizedValue) ? Math.max(normalizedValue, 0) : 0;
+    const nextType: "value" | "pct" | null = safeValue > 0 ? discountTypeInput : null;
+    const nextReason = discountReasonInput.trim();
+
+    setAppliedDiscountType(nextType);
+    setAppliedDiscountValue(safeValue);
+    setAppliedDiscountReason(nextReason);
+
+    const nextDiscountAmount =
+      nextType === "pct" ? Math.min(subtotal, subtotal * (safeValue / 100)) : nextType === "value" ? Math.min(subtotal, safeValue) : 0;
+    const nextTotal = Math.max(subtotal - nextDiscountAmount, 0);
+    setCashAmount(Math.max(nextTotal - paidTotal, 0));
+
+    await onSetDiscount(nextType, safeValue > 0 ? safeValue : null, nextReason || undefined);
+  };
+
   const modalNode = (
     <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center pointer-events-none`}>
       <button
@@ -267,20 +330,49 @@ export function AttendancePaymentModal({
           <section className="mt-5">
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
               <Wallet className="w-3.5 h-3.5" />
-              Resumo financeiro
+              Descritivo da cobrança
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted block">Total</span>
-                <span className="mt-1 block text-xs font-bold text-studio-text">{formatCurrency(total)}</span>
+            <div className="rounded-2xl border border-line bg-white px-4 py-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-studio-text">
+                  <span>Valor do serviço</span>
+                  <span className="font-bold">{formatCurrency(serviceAmount)}</span>
+                </div>
+
+                {paidTotal > 0 && (
+                  <div className="flex items-center justify-between text-sm text-studio-text">
+                    <span>Sinal pago</span>
+                    <span className="font-bold text-studio-green">- {formatCurrency(paidTotal)}</span>
+                  </div>
+                )}
+
+                {extraItems.map((item, index) => (
+                  <div key={`${item.label}-${index}`} className="flex items-center justify-between text-sm text-studio-text">
+                    <span className="truncate pr-3">
+                      {item.label}
+                      {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
+                    </span>
+                    <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
+                  </div>
+                ))}
+
+                {appliedDiscountAmount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-studio-text">
+                    <span className="truncate pr-3">
+                      {appliedDiscountReason
+                        ? `Desconto • ${appliedDiscountReason}`
+                        : appliedDiscountType === "pct"
+                          ? `Desconto aplicado (${appliedDiscountValue}%)`
+                          : "Desconto aplicado"}
+                    </span>
+                    <span className="font-bold text-studio-green">- {formatCurrency(appliedDiscountAmount)}</span>
+                  </div>
+                )}
               </div>
-              <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted block">Pago</span>
-                <span className="mt-1 block text-xs font-bold text-studio-green">{formatCurrency(paidTotal)}</span>
-              </div>
-              <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted block">A receber</span>
-                <span className="mt-1 block text-xs font-bold text-studio-text">{formatCurrency(remaining)}</span>
+
+              <div className="mt-3 border-t border-dashed border-line pt-3 flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted">Valor total a cobrar</span>
+                <span className="text-lg font-black text-studio-text">{formatCurrency(remaining)}</span>
               </div>
             </div>
           </section>
@@ -316,29 +408,19 @@ export function AttendancePaymentModal({
                 onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
               />
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="mt-2">
               <button
-                className="rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
-                onClick={() => {
-                  if (!newItem.label.trim()) return;
-                  setDraftItems((current) => [...current, newItem]);
-                  setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
-                }}
+                className="w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
+                onClick={handleAddItem}
               >
                 Adicionar item
-              </button>
-              <button
-                className="rounded-xl bg-studio-green px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-white"
-                onClick={() => onSaveItems(draftItems)}
-              >
-                Salvar itens
               </button>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               <select
-                value={discountType ?? "value"}
-                onChange={(event) => setDiscountType(event.target.value === "pct" ? "pct" : "value")}
+                value={discountTypeInput}
+                onChange={(event) => setDiscountTypeInput(event.target.value === "pct" ? "pct" : "value")}
                 className="rounded-xl border border-line px-3 py-2 text-xs"
               >
                 <option value="value">Desconto em R$</option>
@@ -346,20 +428,20 @@ export function AttendancePaymentModal({
               </select>
               <input
                 type="number"
-                value={discountValue}
-                onChange={(event) => setDiscountValue(Number(event.target.value))}
+                value={discountValueInput}
+                onChange={(event) => setDiscountValueInput(Number(event.target.value))}
                 className="rounded-xl border border-line px-3 py-2 text-xs"
               />
             </div>
             <input
-              value={discountReason}
-              onChange={(event) => setDiscountReason(event.target.value)}
+              value={discountReasonInput}
+              onChange={(event) => setDiscountReasonInput(event.target.value)}
               className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
               placeholder="Motivo do desconto"
             />
             <button
               className="mt-2 w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-              onClick={() => onSetDiscount(discountType, discountValue, discountReason)}
+              onClick={handleApplyDiscount}
             >
               Aplicar desconto
             </button>

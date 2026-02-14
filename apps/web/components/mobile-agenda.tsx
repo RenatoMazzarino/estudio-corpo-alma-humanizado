@@ -549,7 +549,10 @@ export function MobileAgenda({
 
   const resolvePublicBaseUrl = () => {
     const raw = publicBaseUrl.trim();
-    if (!raw) return "";
+    if (!raw) {
+      if (typeof window === "undefined") return "";
+      return window.location.origin.replace(/\/$/, "");
+    }
     return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
   };
 
@@ -717,6 +720,8 @@ export function MobileAgenda({
     }
 
     setDetailsActionPending(true);
+    const base = resolvePublicBaseUrl();
+    const receiptLink = base ? `${base}/comprovante/pagamento/${paymentId}` : "";
     const message = buildMessage("payment_receipt", detailsData.appointment, { paymentId });
     openWhatsapp(phone, message);
 
@@ -724,7 +729,7 @@ export function MobileAgenda({
       appointmentId: detailsData.appointment.id,
       type: "payment_receipt",
       channel: "whatsapp",
-      payload: { message, payment_id: paymentId },
+      payload: { message, payment_id: paymentId, receipt_link: receiptLink || null },
     });
 
     if (!result.ok) {

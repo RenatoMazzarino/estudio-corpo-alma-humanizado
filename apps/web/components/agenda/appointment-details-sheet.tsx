@@ -308,7 +308,10 @@ export function AppointmentDetailsSheet({
 
   const resolvePublicBaseUrl = () => {
     const raw = publicBaseUrl.trim();
-    if (!raw) return "";
+    if (!raw) {
+      if (typeof window === "undefined") return "";
+      return window.location.origin.replace(/\/$/, "");
+    }
     return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
   };
 
