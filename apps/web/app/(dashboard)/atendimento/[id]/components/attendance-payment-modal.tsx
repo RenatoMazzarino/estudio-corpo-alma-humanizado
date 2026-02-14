@@ -237,199 +237,305 @@ export function AttendancePaymentModal({
   };
 
   const modalNode = (
-    <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-[80]`}>
-      <button className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-label="Fechar modal" />
-      <div className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-105 rounded-t-3xl bg-white p-4 pb-6 max-h-[90vh] overflow-y-auto">
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-serif font-bold text-studio-text">Pagamento</h2>
-          <button className="rounded-xl border border-line px-3 py-1 text-xs font-bold text-gray-500" onClick={onClose}>Fechar</button>
+    <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center pointer-events-none`}>
+      <button
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+        onClick={onClose}
+        aria-label="Fechar modal"
+      />
+      <div className="relative w-full max-w-105 rounded-t-3xl bg-white shadow-float flex flex-col max-h-[90vh] pointer-events-auto">
+        <div className="flex items-center justify-center px-6 pt-4 pb-2">
+          <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-200" />
         </div>
 
-        <div className="mt-4 rounded-2xl border border-line p-4">
-          <div className="flex justify-between text-sm text-muted">
-            <span>Total</span>
-            <strong className="text-studio-text">{formatCurrency(total)}</strong>
-          </div>
-          <div className="mt-2 flex justify-between text-sm text-muted">
-            <span>Pago</span>
-            <strong className="text-studio-green">{formatCurrency(paidTotal)}</strong>
-          </div>
-          <div className="mt-2 flex justify-between text-sm text-muted">
-            <span>A receber</span>
-            <strong className="text-studio-text">{formatCurrency(remaining)}</strong>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-3 rounded-2xl border border-line p-4">
-          <p className="text-[11px] uppercase tracking-widest text-muted font-extrabold">Itens e desconto</p>
-          {draftItems.map((item, index) => (
-            <div key={`${item.label}-${index}`} className="flex justify-between text-sm text-studio-text">
-              <span>{item.label}</span>
-              <span>{formatCurrency(item.amount)}</span>
-            </div>
-          ))}
-          <div className="grid grid-cols-3 gap-2">
-            <input
-              className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
-              placeholder="Novo item"
-              value={newItem.label}
-              onChange={(event) => setNewItem((current) => ({ ...current, label: event.target.value }))}
-            />
-            <input
-              className="rounded-xl border border-line px-3 py-2 text-xs"
-              type="number"
-              value={newItem.amount}
-              onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="flex-1 rounded-xl border border-line px-3 py-2 text-xs font-bold"
-              onClick={() => {
-                if (!newItem.label.trim()) return;
-                setDraftItems((current) => [...current, newItem]);
-                setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
-              }}
-            >
-              Adicionar item
-            </button>
-            <button className="flex-1 rounded-xl bg-studio-green px-3 py-2 text-xs font-bold text-white" onClick={() => onSaveItems(draftItems)}>
-              Salvar itens
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              value={discountType ?? "value"}
-              onChange={(event) => setDiscountType(event.target.value === "pct" ? "pct" : "value")}
-              className="rounded-xl border border-line px-3 py-2 text-xs"
-            >
-              <option value="value">Desconto em R$</option>
-              <option value="pct">Desconto em %</option>
-            </select>
-            <input
-              type="number"
-              value={discountValue}
-              onChange={(event) => setDiscountValue(Number(event.target.value))}
-              className="rounded-xl border border-line px-3 py-2 text-xs"
-            />
-          </div>
-          <input
-            value={discountReason}
-            onChange={(event) => setDiscountReason(event.target.value)}
-            className="w-full rounded-xl border border-line px-3 py-2 text-xs"
-            placeholder="Motivo do desconto"
-          />
-          <button className="w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-xs font-bold text-studio-green" onClick={() => onSetDiscount(discountType, discountValue, discountReason)}>
-            Aplicar desconto
-          </button>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <button className={`rounded-xl border px-3 py-2 text-xs font-bold ${method === "cash" ? "border-studio-green bg-studio-light text-studio-green" : "border-line text-muted"}`} onClick={() => setMethod("cash")}>
-            <Wallet className="mx-auto mb-1 h-4 w-4" /> Dinheiro
-          </button>
-          <button className={`rounded-xl border px-3 py-2 text-xs font-bold ${method === "pix" ? "border-studio-green bg-studio-light text-studio-green" : "border-line text-muted"}`} onClick={() => setMethod("pix")}>
-            <QrCode className="mx-auto mb-1 h-4 w-4" /> Pix
-          </button>
-          <button className={`rounded-xl border px-3 py-2 text-xs font-bold ${method === "card" ? "border-studio-green bg-studio-light text-studio-green" : "border-line text-muted"}`} onClick={() => setMethod("card")}>
-            <CreditCard className="mx-auto mb-1 h-4 w-4" /> Cartão
-          </button>
-        </div>
-
-        {method === "cash" && (
-          <div className="mt-4 rounded-2xl border border-line p-4">
-            <input
-              type="number"
-              className="w-full rounded-xl border border-line px-3 py-2 text-sm"
-              value={cashAmount}
-              onChange={(event) => setCashAmount(Number(event.target.value))}
-            />
-            <button className="mt-3 w-full rounded-xl bg-studio-green px-3 py-3 text-xs font-bold text-white" onClick={handleRegisterCash} disabled={isFullyPaid}>
-              Registrar recebimento
-            </button>
-          </div>
-        )}
-
-        {method === "pix" && (
-          <div className="mt-4 rounded-2xl border border-line p-4">
-            {!pixPayment && (
-              <button className="w-full rounded-xl bg-studio-green px-3 py-3 text-xs font-bold text-white" onClick={handleCreatePix} disabled={isFullyPaid}>
-                Gerar Pix
-              </button>
-            )}
-            {pixPayment && (
-              <>
-                {pixPayment.qr_code_base64 && (
-                  <Image
-                    src={`data:image/png;base64,${pixPayment.qr_code_base64}`}
-                    alt="QR Code Pix"
-                    width={160}
-                    height={160}
-                    unoptimized
-                    className="mx-auto h-40 w-40 rounded-xl border border-line bg-white p-2"
-                  />
-                )}
-                <p className="mt-3 text-center text-xs font-bold text-studio-green">
-                  Tempo restante: {formatCountdown(pixRemaining)}
-                </p>
-                <div className="mt-2 h-2 rounded-full bg-stone-200">
-                  <div className="h-full rounded-full bg-studio-green transition-all" style={{ width: `${Math.max((pixRemaining / (15 * 60)) * 100, 0)}%` }} />
-                </div>
-                <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2 text-[11px] text-muted break-all">
-                  {pixPayment.qr_code}
-                </div>
-                <button className="mt-3 w-full rounded-xl border border-line px-3 py-2 text-xs font-bold text-studio-green" onClick={handleCopyPix}>
-                  <Copy className="mr-1 inline h-3.5 w-3.5" /> Copiar código Pix
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {method === "card" && (
-          <div className="mt-4 rounded-2xl border border-line p-4">
-            <p className="text-xs font-bold text-studio-text">
-              {pointEnabled ? pointTerminalName || "Maquininha Point configurada" : "Point não configurada"}
-            </p>
-            <p className="text-[11px] text-muted">{pointTerminalModel || "Configure a maquininha em Configurações."}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button className="rounded-xl border border-line px-3 py-2 text-xs font-bold text-studio-green" onClick={() => handlePointCharge("debit")} disabled={!pointEnabled || isFullyPaid}>
-                Cobrar no débito
-              </button>
-              <button className="rounded-xl border border-line px-3 py-2 text-xs font-bold text-studio-green" onClick={() => handlePointCharge("credit")} disabled={!pointEnabled || isFullyPaid}>
-                Cobrar no crédito
-              </button>
-            </div>
-            {pointPayment && (
-              <p className="mt-3 text-xs text-muted">
-                Cobrança enviada ({pointPayment.card_mode === "debit" ? "débito" : "crédito"}). Aguardando confirmação...
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-serif font-bold text-studio-text">Pagamento</h2>
+              <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted mt-1">
+                Registro financeiro da sessão
               </p>
-            )}
+            </div>
+            <button
+              className="rounded-full border border-line px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-gray-500"
+              onClick={onClose}
+            >
+              Fechar
+            </button>
           </div>
-        )}
 
-        {errorText && <p className="mt-3 text-xs font-semibold text-red-600">{errorText}</p>}
+          <section className="mt-5">
+            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+              <Wallet className="w-3.5 h-3.5" />
+              Resumo financeiro
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted block">Total</span>
+                <span className="mt-1 block text-xs font-bold text-studio-text">{formatCurrency(total)}</span>
+              </div>
+              <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted block">Pago</span>
+                <span className="mt-1 block text-xs font-bold text-studio-green">{formatCurrency(paidTotal)}</span>
+              </div>
+              <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted block">A receber</span>
+                <span className="mt-1 block text-xs font-bold text-studio-text">{formatCurrency(remaining)}</span>
+              </div>
+            </div>
+          </section>
 
-        {receiptPromptPaymentId && (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-sm font-bold text-emerald-800">Pagamento confirmado. Deseja enviar o recibo agora?</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-700" onClick={() => setReceiptPromptPaymentId(null)}>
-                Agora não
-              </button>
+          <section className="mt-5 rounded-2xl border border-line px-4 py-4 bg-white">
+            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+              <CreditCard className="w-3.5 h-3.5" />
+              Itens e desconto
+            </div>
+            <div className="space-y-2">
+              {draftItems.map((item, index) => (
+                <div key={`${item.label}-${index}`} className="flex justify-between text-sm text-studio-text">
+                  <span className="truncate pr-3">{item.label}</span>
+                  <span className="font-bold">{formatCurrency(item.amount)}</span>
+                </div>
+              ))}
+              {draftItems.length === 0 && (
+                <p className="text-xs text-muted">Sem itens adicionais.</p>
+              )}
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <input
+                className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
+                placeholder="Novo item"
+                value={newItem.label}
+                onChange={(event) => setNewItem((current) => ({ ...current, label: event.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-line px-3 py-2 text-xs"
+                type="number"
+                value={newItem.amount}
+                onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
+              />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
               <button
-                className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white"
-                onClick={async () => {
-                  await onSendReceipt(receiptPromptPaymentId);
-                  setReceiptPromptPaymentId(null);
+                className="rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
+                onClick={() => {
+                  if (!newItem.label.trim()) return;
+                  setDraftItems((current) => [...current, newItem]);
+                  setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
                 }}
               >
-                Enviar recibo
+                Adicionar item
+              </button>
+              <button
+                className="rounded-xl bg-studio-green px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-white"
+                onClick={() => onSaveItems(draftItems)}
+              >
+                Salvar itens
               </button>
             </div>
-          </div>
-        )}
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <select
+                value={discountType ?? "value"}
+                onChange={(event) => setDiscountType(event.target.value === "pct" ? "pct" : "value")}
+                className="rounded-xl border border-line px-3 py-2 text-xs"
+              >
+                <option value="value">Desconto em R$</option>
+                <option value="pct">Desconto em %</option>
+              </select>
+              <input
+                type="number"
+                value={discountValue}
+                onChange={(event) => setDiscountValue(Number(event.target.value))}
+                className="rounded-xl border border-line px-3 py-2 text-xs"
+              />
+            </div>
+            <input
+              value={discountReason}
+              onChange={(event) => setDiscountReason(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
+              placeholder="Motivo do desconto"
+            />
+            <button
+              className="mt-2 w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
+              onClick={() => onSetDiscount(discountType, discountValue, discountReason)}
+            >
+              Aplicar desconto
+            </button>
+          </section>
+
+          <section className="mt-5">
+            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+              <Wallet className="w-3.5 h-3.5" />
+              Forma de pagamento
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                  method === "cash"
+                    ? "border-studio-green bg-studio-light text-studio-green"
+                    : "border-line text-muted hover:bg-paper"
+                }`}
+                onClick={() => setMethod("cash")}
+              >
+                <Wallet className="mx-auto mb-1 h-3.5 w-3.5" />
+                Dinheiro
+              </button>
+              <button
+                className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                  method === "pix"
+                    ? "border-studio-green bg-studio-light text-studio-green"
+                    : "border-line text-muted hover:bg-paper"
+                }`}
+                onClick={() => setMethod("pix")}
+              >
+                <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
+                Pix
+              </button>
+              <button
+                className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                  method === "card"
+                    ? "border-studio-green bg-studio-light text-studio-green"
+                    : "border-line text-muted hover:bg-paper"
+                }`}
+                onClick={() => setMethod("card")}
+              >
+                <CreditCard className="mx-auto mb-1 h-3.5 w-3.5" />
+                Cartão
+              </button>
+            </div>
+          </section>
+
+          {method === "cash" && (
+            <section className="mt-4 rounded-2xl border border-line px-4 py-4 bg-white">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted mb-2">
+                Recebimento em dinheiro
+              </p>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-line px-3 py-2 text-sm"
+                value={cashAmount}
+                onChange={(event) => setCashAmount(Number(event.target.value))}
+              />
+              <button
+                className="mt-3 w-full h-10 rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
+                onClick={handleRegisterCash}
+                disabled={isFullyPaid}
+              >
+                Registrar recebimento
+              </button>
+            </section>
+          )}
+
+          {method === "pix" && (
+            <section className="mt-4 rounded-2xl border border-line px-4 py-4 bg-white">
+              {!pixPayment && (
+                <button
+                  className="w-full h-10 rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
+                  onClick={handleCreatePix}
+                  disabled={isFullyPaid}
+                >
+                  Gerar Pix
+                </button>
+              )}
+              {pixPayment && (
+                <>
+                  {pixPayment.qr_code_base64 && (
+                    <Image
+                      src={`data:image/png;base64,${pixPayment.qr_code_base64}`}
+                      alt="QR Code Pix"
+                      width={160}
+                      height={160}
+                      unoptimized
+                      className="mx-auto h-40 w-40 rounded-xl border border-line bg-white p-2"
+                    />
+                  )}
+                  <p className="mt-3 text-center text-xs font-bold text-studio-green">
+                    Tempo restante: {formatCountdown(pixRemaining)}
+                  </p>
+                  <div className="mt-2 h-2 rounded-full bg-stone-200">
+                    <div
+                      className="h-full rounded-full bg-studio-green transition-all"
+                      style={{ width: `${Math.max((pixRemaining / (15 * 60)) * 100, 0)}%` }}
+                    />
+                  </div>
+                  <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2 text-[11px] text-muted break-all">
+                    {pixPayment.qr_code}
+                  </div>
+                  <button
+                    className="mt-3 w-full h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
+                    onClick={handleCopyPix}
+                  >
+                    <Copy className="mr-1 inline h-3.5 w-3.5" />
+                    Copiar código Pix
+                  </button>
+                </>
+              )}
+            </section>
+          )}
+
+          {method === "card" && (
+            <section className="mt-4 rounded-2xl border border-line px-4 py-4 bg-white">
+              <p className="text-xs font-bold text-studio-text">
+                {pointEnabled ? pointTerminalName || "Maquininha Point configurada" : "Point não configurada"}
+              </p>
+              <p className="text-[11px] text-muted mt-1">
+                {pointTerminalModel || "Configure a maquininha em Configurações."}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green disabled:opacity-60"
+                  onClick={() => handlePointCharge("debit")}
+                  disabled={!pointEnabled || isFullyPaid}
+                >
+                  Cobrar no débito
+                </button>
+                <button
+                  className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green disabled:opacity-60"
+                  onClick={() => handlePointCharge("credit")}
+                  disabled={!pointEnabled || isFullyPaid}
+                >
+                  Cobrar no crédito
+                </button>
+              </div>
+              {pointPayment && (
+                <p className="mt-3 text-xs text-muted">
+                  Cobrança enviada ({pointPayment.card_mode === "debit" ? "débito" : "crédito"}). Aguardando confirmação...
+                </p>
+              )}
+            </section>
+          )}
+
+          {errorText && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-xs font-semibold text-red-700">
+              {errorText}
+            </div>
+          )}
+
+          {receiptPromptPaymentId && (
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-bold text-emerald-800">Pagamento confirmado. Deseja enviar o recibo agora?</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-[11px] font-extrabold uppercase tracking-wider text-emerald-700"
+                  onClick={() => setReceiptPromptPaymentId(null)}
+                >
+                  Agora não
+                </button>
+                <button
+                  className="h-10 rounded-xl bg-emerald-600 px-3 text-[11px] font-extrabold uppercase tracking-wider text-white"
+                  onClick={async () => {
+                    await onSendReceipt(receiptPromptPaymentId);
+                    setReceiptPromptPaymentId(null);
+                  }}
+                >
+                  Enviar recibo
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {busy && (
