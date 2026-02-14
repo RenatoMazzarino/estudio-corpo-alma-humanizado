@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
 export type ToastTone = "success" | "error" | "info" | "warning";
@@ -46,12 +47,22 @@ const toneIcon: Record<ToastTone, ComponentType<{ className?: string }>> = {
 };
 
 export function Toast({ toast }: { toast: ToastState | null }) {
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(() => {
+    if (typeof document === "undefined") return null;
+    return document.getElementById("app-frame") ?? document.body;
+  });
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById("app-frame") ?? document.body);
+  }, []);
+
   if (!toast) return null;
 
+  const positionClass = portalTarget?.id === "app-frame" ? "absolute" : "fixed";
   const Icon = toneIcon[toast.tone];
   if (toast.kind === "banner") {
-    return (
-      <div className="fixed left-1/2 top-4 z-50 w-[min(92vw,520px)] -translate-x-1/2 px-1">
+    const bannerNode = (
+      <div className={`${positionClass} left-1/2 top-4 z-[90] w-[calc(100%-1rem)] max-w-[520px] -translate-x-1/2 px-1`}>
         <div
           className={`rounded-2xl border px-4 py-3 shadow-float ${bannerToneStyles[toast.tone]}`}
           role="status"
@@ -69,11 +80,13 @@ export function Toast({ toast }: { toast: ToastState | null }) {
         </div>
       </div>
     );
+
+    return portalTarget ? createPortal(bannerNode, portalTarget) : bannerNode;
   }
 
-  return (
+  const toastNode = (
     <div
-      className={`fixed bottom-24 left-1/2 z-50 flex max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-float ${toastToneStyles[toast.tone]}`}
+      className={`${positionClass} bottom-24 left-1/2 z-[90] flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-float ${toastToneStyles[toast.tone]}`}
       role="status"
       aria-live="polite"
     >
@@ -81,6 +94,8 @@ export function Toast({ toast }: { toast: ToastState | null }) {
       <span className="truncate">{toast.message}</span>
     </div>
   );
+
+  return portalTarget ? createPortal(toastNode, portalTarget) : toastNode;
 }
 
 export function useToast(duration = 1800) {

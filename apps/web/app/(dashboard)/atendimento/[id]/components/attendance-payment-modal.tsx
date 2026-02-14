@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Copy, CreditCard, Loader2, QrCode, Wallet } from "lucide-react";
+import Image from "next/image";
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
 
 type InternalStatus = "paid" | "pending" | "failed";
@@ -105,6 +107,7 @@ export function AttendancePaymentModal({
   const [errorText, setErrorText] = useState<string | null>(null);
   const [receiptPromptPaymentId, setReceiptPromptPaymentId] = useState<string | null>(null);
   const [pixRemaining, setPixRemaining] = useState(0);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   const paidTotal = useMemo(
     () => payments.filter((payment) => payment.status === "paid").reduce((acc, item) => acc + Number(item.amount ?? 0), 0),
@@ -143,6 +146,10 @@ export function AttendancePaymentModal({
     }, 1000);
     return () => window.clearInterval(interval);
   }, [open, pixPayment]);
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById("app-frame"));
+  }, []);
 
   useEffect(() => {
     if (!open || !pixPayment || method !== "pix") return;
@@ -229,8 +236,8 @@ export function AttendancePaymentModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-60">
+  const modalNode = (
+    <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-[80]`}>
       <button className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-label="Fechar modal" />
       <div className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-105 rounded-t-3xl bg-white p-4 pb-6 max-h-[90vh] overflow-y-auto">
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
@@ -354,9 +361,12 @@ export function AttendancePaymentModal({
             {pixPayment && (
               <>
                 {pixPayment.qr_code_base64 && (
-                  <img
+                  <Image
                     src={`data:image/png;base64,${pixPayment.qr_code_base64}`}
                     alt="QR Code Pix"
+                    width={160}
+                    height={160}
+                    unoptimized
                     className="mx-auto h-40 w-40 rounded-xl border border-line bg-white p-2"
                   />
                 )}
@@ -423,7 +433,7 @@ export function AttendancePaymentModal({
       </div>
 
       {busy && (
-        <div className="absolute inset-0 z-70 flex items-center justify-center bg-black/35 backdrop-blur-sm">
+        <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/35 backdrop-blur-sm">
           <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-float">
             <Loader2 className="mx-auto h-6 w-6 animate-spin text-studio-green" />
             <p className="mt-3 text-sm font-bold text-studio-text">{stageMessages[stageIndex]}</p>
@@ -432,4 +442,6 @@ export function AttendancePaymentModal({
       )}
     </div>
   );
+
+  return portalTarget ? createPortal(modalNode, portalTarget) : modalNode;
 }

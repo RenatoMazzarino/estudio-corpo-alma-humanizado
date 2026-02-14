@@ -31,6 +31,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { ModuleHeader } from "./ui/module-header";
 import { ModulePage } from "./ui/module-page";
 import { FloatingActionMenu } from "./ui/floating-action-menu";
@@ -116,6 +117,7 @@ export function MobileAgenda({
   } | null>(null);
   const [isActionPending, setIsActionPending] = useState(false);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const { toast, showToast } = useToast();
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
@@ -280,6 +282,10 @@ export function MobileAgenda({
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
+  }, []);
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById("app-frame"));
   }, []);
 
   useEffect(() => {
@@ -1418,67 +1424,71 @@ export function MobileAgenda({
         </main>
       </ModulePage>
 
-      {actionSheet && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <button
-            type="button"
-            aria-label="Fechar ações"
-            onClick={() => setActionSheet(null)}
-            className="absolute inset-0 bg-black/40"
-          />
-          <div className="relative w-full max-w-105 rounded-t-3xl bg-white p-5 shadow-float">
-            <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
-              Ações do agendamento
-            </div>
-            <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
-            <div className="text-xs text-muted">
-              {actionSheet.serviceName} • {format(parseDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
-            </div>
-
-            <div className="mt-4 space-y-2">
+      {actionSheet &&
+        (() => {
+          const actionSheetNode = (
+            <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center`}>
               <button
                 type="button"
-                onClick={() => {
-                  const nextReturn = actionSheet.returnTo;
-                  setActionSheet(null);
-                  router.push(
-                    `/novo?appointmentId=${actionSheet.id}&returnTo=${encodeURIComponent(nextReturn)}`
-                  );
-                }}
-                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm font-extrabold text-studio-text hover:bg-studio-light transition"
-              >
-                Editar agendamento
-              </button>
-              <button
-                type="button"
-                disabled={isActionPending}
-                onClick={async () => {
-                  setIsActionPending(true);
-                  const result = await cancelAppointment(actionSheet.id);
-                  if (!result.ok) {
-                    showToast(feedbackFromError(result.error, "agenda"));
-                  } else {
-                    showToast(feedbackById("appointment_deleted"));
-                    setActionSheet(null);
-                    router.refresh();
-                  }
-                  setIsActionPending(false);
-                }}
-                className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-100 transition disabled:opacity-60"
-              >
-                Excluir agendamento
-              </button>
-              <button
-                type="button"
+                aria-label="Fechar ações"
                 onClick={() => setActionSheet(null)}
-                className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
-              >
-                Cancelar
-              </button>
+                className="absolute inset-0 bg-black/40"
+              />
+              <div className="relative w-full max-w-105 rounded-t-3xl bg-white p-5 shadow-float">
+                <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
+                  Ações do agendamento
+                </div>
+                <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
+                <div className="text-xs text-muted">
+                  {actionSheet.serviceName} •{" "}
+                  {format(parseDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextReturn = actionSheet.returnTo;
+                      setActionSheet(null);
+                      router.push(`/novo?appointmentId=${actionSheet.id}&returnTo=${encodeURIComponent(nextReturn)}`);
+                    }}
+                    className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm font-extrabold text-studio-text hover:bg-studio-light transition"
+                  >
+                    Editar agendamento
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isActionPending}
+                    onClick={async () => {
+                      setIsActionPending(true);
+                      const result = await cancelAppointment(actionSheet.id);
+                      if (!result.ok) {
+                        showToast(feedbackFromError(result.error, "agenda"));
+                      } else {
+                        showToast(feedbackById("appointment_deleted"));
+                        setActionSheet(null);
+                        router.refresh();
+                      }
+                      setIsActionPending(false);
+                    }}
+                    className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-100 transition disabled:opacity-60"
+                  >
+                    Excluir agendamento
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActionSheet(null)}
+                    className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+
+          return portalTarget ? createPortal(actionSheetNode, portalTarget) : actionSheetNode;
+        })()}
 
       <AgendaSearchModal
         open={isSearchOpen}

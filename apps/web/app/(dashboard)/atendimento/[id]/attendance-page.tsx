@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { format, isToday } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { ChevronLeft, Clock3, MapPin, Minimize2 } from "lucide-react";
+import { useEffect, useMemo, useState, type UIEvent } from "react";
+import { ChevronLeft, Pause, Play } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import type { AttendanceOverview, CheckoutItem } from "../../../../lib/attendance/attendance-types";
 import {
   createAttendancePixPayment,
@@ -14,6 +14,7 @@ import {
   getAttendancePointPaymentStatus,
   recordPayment,
   saveEvolution,
+  structureEvolutionFromAudio,
   sendMessage,
   setCheckoutItems,
   setDiscount,
@@ -27,12 +28,15 @@ import { Toast, useToast } from "../../../../components/ui/toast";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 import { applyAutoMessageTemplate } from "../../../../src/shared/auto-messages.utils";
 import type { AutoMessageTemplates } from "../../../../src/shared/auto-messages.types";
+import { ModuleHeader } from "../../../../components/ui/module-header";
+import { ModulePage } from "../../../../components/ui/module-page";
 
 interface AttendancePageProps {
   data: AttendanceOverview;
   pointEnabled: boolean;
   pointTerminalName: string;
   pointTerminalModel: string;
+  checklistEnabled: boolean;
   publicBaseUrl: string;
   messageTemplates: AutoMessageTemplates;
 }
@@ -43,6 +47,13 @@ function formatTime(totalSeconds: number) {
   const seconds = totalSeconds % 60;
   const prefix = hours > 0 ? `${hours.toString().padStart(2, "0")}:` : "";
   return `${prefix}${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatSignedCountdown(totalSeconds: number) {
+  const isNegative = totalSeconds < 0;
+  const absolute = Math.abs(totalSeconds);
+  const base = formatTime(absolute);
+  return isNegative ? `-${base}` : base;
 }
 
 function getInitials(name: string) {
@@ -73,6 +84,7 @@ export function AttendancePage({
   pointEnabled,
   pointTerminalName,
   pointTerminalModel,
+  checklistEnabled,
   publicBaseUrl,
   messageTemplates,
 }: AttendancePageProps) {
@@ -103,33 +115,27 @@ export function AttendancePage({
     return draft ?? published ?? null;
   }, [data.evolution]);
 
-  const [summary, setSummary] = useState(initialEvolution?.summary ?? "");
-  const [complaint, setComplaint] = useState(initialEvolution?.complaint ?? "");
-  const [techniques, setTechniques] = useState(initialEvolution?.techniques ?? "");
-  const [recommendations, setRecommendations] = useState(initialEvolution?.recommendations ?? "");
+  const [evolutionText, setEvolutionText] = useState(initialEvolution?.evolution_text ?? "");
 
   useEffect(() => {
-    setSummary(initialEvolution?.summary ?? "");
-    setComplaint(initialEvolution?.complaint ?? "");
-    setTechniques(initialEvolution?.techniques ?? "");
-    setRecommendations(initialEvolution?.recommendations ?? "");
+    setEvolutionText(initialEvolution?.evolution_text ?? "");
   }, [initialEvolution]);
 
   useEffect(() => {
-    const scrollContainer = document.querySelector("[data-shell-scroll]");
-    if (!scrollContainer) return;
-    const onScroll = () => {
-      const top = (scrollContainer as HTMLElement).scrollTop ?? 0;
-      setHeaderCompact(top > 50);
+    const handlePopState = () => {
+      setBubbleVisible(true);
     };
-    scrollContainer.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => scrollContainer.removeEventListener("scroll", onScroll);
-  }, []);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [setBubbleVisible]);
 
   const isActiveSession = session?.appointmentId === appointment.id;
   const isTimerRunning = isActiveSession && !isPaused;
+  const hasSessionStarted =
+    Boolean(attendance.timer_started_at) || isActiveSession || appointment.status === "in_progress";
+  const canToggleTimerFromHeader = hasSessionStarted && appointment.status !== "completed";
   const plannedMinutes = appointment.service_duration_minutes ?? appointment.total_duration_minutes ?? 30;
+  const plannedSeconds = plannedMinutes * 60;
 
   const currentElapsed = computeElapsedSeconds({
     startedAt: attendance.timer_started_at,
@@ -137,30 +143,30 @@ export function AttendancePage({
     pausedTotalSeconds: attendance.paused_total_seconds,
   });
 
-  const timerLabel = formatTime(isActiveSession ? elapsedSeconds : currentElapsed);
-  const startDate = new Date(appointment.start_time);
-  const dayLabel = isToday(startDate) ? "Hoje" : format(startDate, "dd MMM", { locale: ptBR });
-  const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
+  const elapsedForCounter = isActiveSession ? elapsedSeconds : currentElapsed;
+  const countdownSeconds = plannedSeconds - elapsedForCounter;
+  const countdownLabel = formatSignedCountdown(countdownSeconds);
+  const counterProgress =
+    plannedSeconds > 0 ? Math.min((elapsedForCounter / plannedSeconds) * 100, 100) : 0;
+  const isOvertime = countdownSeconds < 0;
   const clientName = appointment.clients?.name ?? "Cliente";
+  const clientId = appointment.clients?.id ?? null;
   const clientInitials = getInitials(clientName);
   const contactPhone = appointment.clients?.phone ?? null;
+  const clientAvatarUrl = appointment.clients?.avatar_url ?? null;
+  const clientTags = Array.isArray(appointment.clients?.health_tags)
+    ? appointment.clients.health_tags
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    : [];
+  const visibleClientTags = clientTags.slice(0, 3);
+  const hiddenClientTagsCount = Math.max(clientTags.length - visibleClientTags.length, 0);
 
-  const addressLine = [
-    appointment.address_logradouro ?? appointment.clients?.address_logradouro,
-    appointment.address_numero ?? appointment.clients?.address_numero,
-    appointment.address_complemento ?? appointment.clients?.address_complemento,
-    appointment.address_bairro ?? appointment.clients?.address_bairro,
-    appointment.address_cidade ?? appointment.clients?.address_cidade,
-    appointment.address_estado ?? appointment.clients?.address_estado,
-  ]
-    .filter((value) => value && value.trim().length > 0)
-    .join(", ");
-
-  const paidTotal = data.payments
-    .filter((payment) => payment.status === "paid")
-    .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
-  const total = Number(checkout?.total ?? 0);
-  const remaining = Math.max(total - paidTotal, 0);
+  const handleBodyScroll = (event: UIEvent<HTMLElement>) => {
+    const top = event.currentTarget.scrollTop;
+    setHeaderCompact(top > 24);
+  };
 
   const handleToggleTimer = async () => {
     if (!isActiveSession) {
@@ -191,10 +197,7 @@ export function AttendancePage({
       appointmentId: appointment.id,
       status,
       payload: {
-        summary,
-        complaint,
-        techniques,
-        recommendations,
+        text: evolutionText,
       },
     });
     if (!result.ok) {
@@ -208,6 +211,26 @@ export function AttendancePage({
       })
     );
     router.refresh();
+  };
+
+  const handleStructureWithFlora = async (transcript: string) => {
+    const result = await structureEvolutionFromAudio({
+      appointmentId: appointment.id,
+      transcript,
+    });
+
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      return;
+    }
+
+    setEvolutionText(result.data.structuredText);
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Flora estruturou a evolução com base no áudio.",
+      })
+    );
   };
 
   const handleSaveItems = async (
@@ -388,7 +411,7 @@ export function AttendancePage({
     const result = await finishAttendance({ appointmentId: appointment.id });
     if (!result.ok) {
       showToast(feedbackFromError(result.error, "attendance"));
-      return;
+      return false;
     }
     stopSession();
     showToast(
@@ -397,153 +420,173 @@ export function AttendancePage({
         message: "Atendimento finalizado.",
       })
     );
+    return true;
+  };
+
+  const handlePrimaryAction = async () => {
+    if (!hasSessionStarted) {
+      await handleToggleTimer();
+      return;
+    }
+
+    if (appointment.status === "completed") {
+      setPaymentModalOpen(true);
+      return;
+    }
+
+    const finished = await handleFinish();
+    if (!finished) return;
+    setPaymentModalOpen(true);
     router.refresh();
   };
 
+  const handleBack = () => {
+    // Mantém o contador flutuante visível ao sair da tela de atendimento.
+    setBubbleVisible(true);
+    if (returnTo) {
+      router.push(decodeURIComponent(returnTo));
+    } else {
+      router.back();
+    }
+  };
+
   return (
-    <div className="-mx-4 -mt-4">
-      <div className="min-h-dvh bg-paper flex flex-col">
-        <header className="sticky top-0 z-30 rounded-b-[32px] border-b border-line bg-white shadow-soft">
-          <div className="px-5 pt-8 pb-4">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => {
-                  if (returnTo) {
-                    router.push(decodeURIComponent(returnTo));
-                  } else {
-                    router.back();
-                  }
-                }}
-                className="w-10 h-10 rounded-full bg-white/80 backdrop-blur text-gray-600 flex items-center justify-center shadow-sm hover:bg-white transition"
-                title="Voltar"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setBubbleVisible(true)}
-                className="w-10 h-10 rounded-full bg-white/80 backdrop-blur text-gray-600 flex items-center justify-center shadow-sm hover:bg-white transition"
-                title="Minimizar"
-              >
-                <Minimize2 className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between">
-              <span className="inline-flex items-center rounded-full bg-studio-light px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-studio-green">
-                Em atendimento
-              </span>
-              <div className="flex items-center gap-2 rounded-2xl border border-line bg-paper px-3 py-2">
-                <span className="text-sm font-black text-studio-text tabular-nums">{timerLabel}</span>
+    <div className="-mx-4 -mt-4 h-dvh overflow-hidden">
+      <ModulePage
+        className="h-full overflow-hidden"
+        contentClassName="overflow-hidden"
+        header={
+          <ModuleHeader
+            className="rounded-b-[28px]"
+            compact={headerCompact}
+            title={
+              <div className="flex items-center gap-3 min-w-0">
                 <button
-                  onClick={handleToggleTimer}
-                  className="h-9 w-9 rounded-xl border border-studio-green/20 bg-studio-green text-white text-xs font-black"
+                  onClick={handleBack}
+                  className="h-10 w-10 shrink-0 rounded-full border border-line bg-white text-gray-600 flex items-center justify-center shadow-sm hover:bg-studio-light transition"
+                  title="Voltar"
                 >
-                  {isTimerRunning ? "II" : ">"}
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-              </div>
-            </div>
-
-            <div
-              className={`transition-all duration-200 overflow-hidden ${
-                headerCompact ? "max-h-0 opacity-0 -translate-y-1" : "max-h-96 opacity-100 translate-y-0"
-              }`}
-            >
-              <div className="mt-4 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold">
-                  {clientInitials}
-                </div>
+                {clientAvatarUrl ? (
+                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-line">
+                    <Image src={clientAvatarUrl} alt={clientName} fill sizes="44px" className="object-cover" unoptimized />
+                  </div>
+                ) : (
+                  <div className="h-11 w-11 shrink-0 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold text-base">
+                    {clientInitials}
+                  </div>
+                )}
                 <div className="min-w-0">
-                  <p className="text-2xl font-serif font-bold text-studio-text leading-tight truncate">
-                    {clientName}
-                  </p>
-                  <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">
-                    {appointment.service_name} • {plannedMinutes} min
-                  </p>
+                  {clientId ? (
+                    <Link href={`/clientes/${clientId}`} className="block">
+                      <p className="truncate text-lg font-bold text-studio-text hover:text-studio-green transition">
+                        {clientName}
+                      </p>
+                    </Link>
+                  ) : (
+                    <p className="truncate text-lg font-bold text-studio-text">{clientName}</p>
+                  )}
+                  {!headerCompact && (
+                    <p className="truncate text-[11px] font-extrabold uppercase tracking-widest text-muted">
+                      {appointment.service_name}
+                    </p>
+                  )}
                 </div>
               </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 px-5 pt-5 pb-44 space-y-5">
-          <div className="rounded-3xl border border-line bg-white p-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Informações da sessão</p>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl border border-line bg-paper p-3">
-                <p className="font-serif text-lg font-bold text-studio-text">{dayLabel}</p>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Data</p>
+            }
+            rightSlot={
+              headerCompact ? (
+                <span
+                  className={`rounded-xl border border-line bg-paper px-3 py-1 text-sm font-black tabular-nums ${
+                    isOvertime ? "text-red-600" : "text-studio-text"
+                  }`}
+                >
+                  {countdownLabel}
+                </span>
+              ) : null
+            }
+            bottomSlot={
+              headerCompact ? undefined : (
+              <div className="rounded-2xl border border-line bg-paper px-3 py-3">
+                {visibleClientTags.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {visibleClientTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-studio-green/25 bg-studio-light px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-studio-green"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {hiddenClientTagsCount > 0 && (
+                      <span className="rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-muted">
+                        +{hiddenClientTagsCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span
+                    className={`text-2xl font-black tabular-nums leading-none ${
+                      isOvertime ? "text-red-600" : "text-studio-text"
+                    }`}
+                  >
+                    {countdownLabel}
+                  </span>
+                  {canToggleTimerFromHeader ? (
+                    <button
+                      onClick={handleToggleTimer}
+                      className="h-10 w-10 rounded-xl border border-studio-green/20 bg-studio-green text-white flex items-center justify-center"
+                    >
+                      {isTimerRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                      Inicie no rodapé
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-200">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      isOvertime ? "bg-red-500 animate-pulse" : "bg-studio-green animate-pulse"
+                    }`}
+                    style={{ width: `${isOvertime ? 100 : counterProgress}%` }}
+                  />
+                </div>
               </div>
-              <div className="rounded-2xl border border-line bg-paper p-3">
-                <p className="font-serif text-lg font-bold text-studio-text">{timeLabel}</p>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Horário</p>
-              </div>
-              <div className="rounded-2xl border border-line bg-paper p-3">
-                <p className="font-serif text-lg font-bold text-studio-text">
-                  {Math.max(1, Math.round((isActiveSession ? elapsedSeconds : currentElapsed) / 60))} min
-                </p>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Duração</p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-              <MapPin className="w-4 h-4 text-studio-green" />
-              <span className="truncate">
-                {appointment.is_home_visit ? addressLine || "Atendimento em domicílio" : "Atendimento no estúdio"}
-              </span>
-            </div>
-          </div>
-
-          <SessionStage
-            attendance={attendance}
-            checklist={data.checklist}
-            onToggleChecklist={handleToggleChecklist}
-            evolution={data.evolution}
-            summary={summary}
-            complaint={complaint}
-            techniques={techniques}
-            recommendations={recommendations}
-            onChange={(field, value) => {
-              if (field === "summary") setSummary(value);
-              if (field === "complaint") setComplaint(value);
-              if (field === "techniques") setTechniques(value);
-              if (field === "recommendations") setRecommendations(value);
-            }}
-            onSaveDraft={() => handleSaveEvolution("draft")}
-            onPublish={() => handleSaveEvolution("published")}
+              )
+            }
           />
-        </main>
+        }
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          <main onScroll={handleBodyScroll} className="flex-1 overflow-y-auto px-5 pt-5 pb-6">
+            <SessionStage
+              attendance={attendance}
+              checklistEnabled={checklistEnabled}
+              checklist={data.checklist}
+              onToggleChecklist={handleToggleChecklist}
+              evolution={data.evolution}
+              clientHistory={data.clientHistory}
+              evolutionText={evolutionText}
+              onChangeEvolutionText={setEvolutionText}
+              onStructureWithFlora={handleStructureWithFlora}
+              onSaveDraft={() => handleSaveEvolution("draft")}
+              onPublish={() => handleSaveEvolution("published")}
+            />
+          </main>
 
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
-          <div className="w-full max-w-103.5 rounded-t-2xl border-t border-line bg-white/95 px-4 py-3 pb-4 backdrop-blur">
-            <div className="grid grid-cols-1 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentModalOpen(true)}
-                className="h-11 rounded-2xl border border-studio-green/30 bg-white text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-              >
-                Pagamento
-              </button>
-              <button
-                type="button"
-                onClick={handleFinish}
-                className="h-11 rounded-2xl bg-studio-text text-[11px] font-extrabold uppercase tracking-wider text-white"
-              >
-                Finalizar sessão
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSaveEvolution("published")}
-                className="h-11 rounded-2xl bg-studio-green text-[11px] font-extrabold uppercase tracking-wider text-white"
-              >
-                Concluir
-              </button>
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-semibold text-muted">
-              <Clock3 className="h-3.5 w-3.5" />
-              <span>Faltam {formatTime(Math.max(0, plannedMinutes * 60 - (isActiveSession ? elapsedSeconds : currentElapsed)))}</span>
-              <span>•</span>
-              <span>A receber {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(remaining)}</span>
-            </div>
-          </div>
+          <footer className="shrink-0 border-t border-line bg-white/95 px-4 py-3 pb-4 backdrop-blur">
+            <button
+              type="button"
+              onClick={handlePrimaryAction}
+              className="h-12 w-full rounded-2xl bg-studio-green text-[11px] font-extrabold uppercase tracking-wider text-white"
+            >
+              {hasSessionStarted ? "Encerrar e cobrar" : "Iniciar atendimento"}
+            </button>
+          </footer>
         </div>
 
         <AttendancePaymentModal
@@ -564,9 +607,8 @@ export function AttendancePage({
           onPollPointStatus={handlePollPointStatus}
           onSendReceipt={handleSendReceipt}
         />
-
         <Toast toast={toast} />
-      </div>
+      </ModulePage>
     </div>
   );
 }
