@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview Atendimento V1 Unificado</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --studio-green: #5D6E56;
+      --studio-text: #2C3333;
+      --studio-pink: #C0A4B0;
+      --studio-light: #F3F6F4;
+      --studio-bg: #FAF9F6;
+      --text-muted: #868E96;
+      --line-color: rgba(44, 51, 51, 0.06);
+      --shadow-soft: 0 4px 20px -2px rgba(93, 110, 86, 0.15);
+      --shadow-float: 0 18px 35px -15px rgba(0, 0, 0, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Lato", sans-serif;
+      background: var(--studio-bg);
+      color: var(--studio-text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .layout {
+      width: min(412px, 100%);
+      height: min(900px, 95vh);
+      background: white;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: var(--shadow-float);
+      position: relative;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .header {
+      background: white;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line-color);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .chip {
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--studio-green);
+      background: rgba(93, 110, 86, 0.12);
+      border: 1px solid rgba(93, 110, 86, 0.18);
+      border-radius: 999px;
+      padding: 6px 12px;
+    }
+
+    .timer-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid var(--line-color);
+      border-radius: 18px;
+      padding: 8px 12px;
+      font-weight: 900;
+      color: var(--studio-text);
+      font-size: 12px;
+    }
+
+    .timer-play {
+      border: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: var(--studio-green);
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .client-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--studio-light);
+      color: var(--studio-green);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 14px;
+      border: 1px solid var(--line-color);
+    }
+
+    .title-main {
+      margin: 0;
+      font-family: "Playfair Display", serif;
+      font-size: 24px;
+      line-height: 1.2;
+      color: var(--studio-text);
+      font-weight: 700;
+    }
+
+    .title-sub {
+      margin: 4px 0 0;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .content {
+      overflow: auto;
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .section {
+      background: white;
+      border: 1px solid var(--line-color);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .section-title-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line-color);
+    }
+
+    .check-item:last-child { border-bottom: 0; }
+
+    .check-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      color: var(--studio-text);
+    }
+
+    .check-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--studio-green);
+      opacity: 0.6;
+      flex-shrink: 0;
+    }
+
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line-color);
+      border-radius: 14px;
+      padding: 12px;
+      font: inherit;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 100px;
+      background: white;
+      color: var(--studio-text);
+    }
+
+    .footer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(250, 249, 246, 0.98);
+      border-top: 1px solid var(--line-color);
+      padding: 12px 16px 16px;
+      display: grid;
+      gap: 10px;
+      backdrop-filter: blur(6px);
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      height: 44px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: var(--studio-green); color: white; }
+    .btn-primary:active { opacity: 0.85; }
+    .btn-secondary { background: white; color: var(--studio-green); border: 1px solid rgba(93, 110, 86, 0.25); }
+    .btn-secondary:active { background: #f5f5f5; }
+    .btn-dark { background: var(--studio-text); color: white; }
+    .btn-dark:active { opacity: 0.85; }
+
+    .modal-wrap {
+      position: absolute;
+      inset: 0;
+      display: none;
+      z-index: 20;
+    }
+
+    .modal-wrap.open { display: flex; flex-direction: column; }
+
+    .backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+    }
+
+    .sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      max-height: 90%;
+      overflow-y: auto;
+      background: white;
+      border-radius: 24px 24px 0 0;
+      border-top: 1px solid var(--line-color);
+      box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.1);
+      padding: 16px 20px 20px;
+    }
+
+    .sheet-handle {
+      width: 48px;
+      height: 4px;
+      border-radius: 2px;
+      background: #d0ccc7;
+      margin: 0 auto 12px;
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line-color);
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-family: "Playfair Display", serif;
+      font-size: 22px;
+      color: var(--studio-text);
+      font-weight: 700;
+    }
+
+    .sheet-sub {
+      margin: 4px 0 0;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .close-btn {
+      border: 1px solid var(--line-color);
+      background: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 900;
+      color: var(--studio-text);
+      font-size: 16px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .method-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .method-btn {
+      border: 1px solid var(--line-color);
+      background: white;
+      border-radius: 12px;
+      padding: 10px 8px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .method-btn.active {
+      border-color: var(--studio-green);
+      color: var(--studio-green);
+      background: rgba(93, 110, 86, 0.1);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 10px 0;
+    }
+
+    .line strong { color: var(--studio-text); font-weight: 700; }
+
+    .qr-box {
+      border: 1px dashed #d0ccc7;
+      border-radius: 16px;
+      background: var(--studio-light);
+      padding: 16px;
+      text-align: center;
+      margin: 12px 0;
+    }
+
+    .fake-qr {
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 12px;
+      border-radius: 10px;
+      background:
+        repeating-linear-gradient(90deg, #1f2325 0 8px, #fff 8px 16px),
+        repeating-linear-gradient(180deg, #1f2325 0 8px, #fff 8px 16px);
+      filter: contrast(1.35);
+    }
+
+    .countdown {
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--studio-green);
+    }
+
+    .bar {
+      margin-top: 8px;
+      height: 6px;
+      border-radius: 3px;
+      background: #e8e4d9;
+      overflow: hidden;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--studio-green);
+      transition: width 1s linear;
+    }
+
+    .pix-code {
+      margin-top: 10px;
+      border: 1px solid var(--line-color);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      word-break: break-all;
+      background: white;
+      font-family: monospace;
+    }
+
+    .point-box {
+      border: 1px solid var(--line-color);
+      border-radius: 14px;
+      background: white;
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .point-name {
+      font-weight: 900;
+      color: var(--studio-text);
+      font-size: 13px;
+    }
+
+    .point-model {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .btn-row {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .btn-soft {
+      border: 1px solid rgba(93, 110, 86, 0.25);
+      background: white;
+      color: var(--studio-green);
+      border-radius: 12px;
+      height: 40px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .post-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line-color);
+      margin-bottom: 12px;
+    }
+
+    .post-name {
+      margin: 0;
+      font-family: "Playfair Display", serif;
+      font-size: 20px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .status-pill {
+      margin-left: auto;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: #dceee0;
+      color: #16A34A;
+      border: 1px solid #bfe8c6;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .meta-item {
+      border: 1px solid var(--line-color);
+      border-radius: 14px;
+      padding: 12px;
+      background: white;
+      text-align: center;
+    }
+
+    .meta-item b {
+      display: block;
+      color: var(--studio-text);
+      font-family: "Playfair Display", serif;
+      font-size: 18px;
+      line-height: 1.1;
+      font-weight: 700;
+    }
+
+    .meta-item span {
+      display: block;
+      margin-top: 4px;
+      font-size: 9px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 900;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 9px;
+      font-weight: 900;
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid #e8e4d9;
+      background: #faf8f2;
+      color: var(--text-muted);
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 90px;
+      background: #2C3333;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 999px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 60;
+    }
+
+    .toast.show { opacity: 1; }
+
+    .modal-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      z-index: 101;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-dialog.open { display: flex; }
+
+    .modal-content {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      width: min(90%, 320px);
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-float);
+    }
+
+    .modal-title {
+      margin: 0 0 16px;
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--studio-text);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line-color);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--studio-text);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--studio-green);
+      box-shadow: 0 0 0 3px rgba(93, 110, 86, 0.1);
+    }
+
+    .modal-footer {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn-cancel {
+      border: 1px solid var(--line-color);
+      background: white;
+      color: var(--studio-text);
+      border-radius: 10px;
+      height: 40px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .btn-confirm {
+      border: 0;
+      background: var(--studio-green);
+      color: white;
+      border-radius: 10px;
+      height: 40px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header class="header">
+      <div class="header-top">
+        <span class="chip">Em atendimento</span>
+        <div class="timer-box">
+          <span id="timerText">00:37:21</span>
+          <button class="timer-play">▶</button>
+        </div>
+      </div>
+      <div class="client-title">
+        <div class="avatar">RM</div>
+        <div>
+          <h1 class="title-main">Renato Mazzarino</h1>
+          <p class="title-sub">Massagem Deep Tissue • 60 min</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" style="padding-bottom: 140px;">
+      <section class="section">
+        <div class="section-title">
+          <span>✓</span> Checklist de atendimento
+        </div>
+        <div class="check-item">
+          <span class="check-label"><span class="check-dot"></span>Preparar maca e lençóis</span>
+          <strong style="color: var(--studio-green);">OK</strong>
+        </div>
+        <div class="check-item">
+          <span class="check-label"><span class="check-dot"></span>Óleos e itens higienizados</span>
+          <strong style="color: var(--studio-green);">OK</strong>
+        </div>
+        <div class="check-item">
+          <span class="check-label"><span class="check-dot"></span>Confirmar conforto e temperatura</span>
+          <strong style="color: var(--text-muted);">Pendente</strong>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">📝 Evolução da Sessão</div>
+        <textarea placeholder="Sumário e observações clínicas...">Queixa principal em cervical. Sessão focada em liberação miofascial com sucesso. Cliente respondeu bem durante aplicação.</textarea>
+      </section>
+
+      <section class="section">
+        <div class="section-title">ℹ Informações da Sessão</div>
+        <div class="line"><span>Horário</span><strong>14:30 - 15:30</strong></div>
+        <div class="line"><span>Duração</span><strong>58 minutos</strong></div>
+        <div class="line"><span>Local</span><strong>No Estúdio</strong></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <button class="btn btn-secondary" id="openPayment">Pagamento</button>
+      <button class="btn btn-dark" id="openPost">Finalizar Sessão</button>
+      <button class="btn btn-primary">Concluir</button>
+    </footer>
+
+    <div id="paymentModal" class="modal-wrap">
+      <div class="backdrop" data-close="paymentModal"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div>
+            <h3 class="sheet-title">Pagamento</h3>
+            <p class="sheet-sub">Registre o recebimento do serviço</p>
+          </div>
+          <button class="close-btn" data-close="paymentModal">✕</button>
+        </div>
+
+        <div class="section">
+          <div class="section-title" style="margin: 0;">💰 Resumo Financeiro</div>
+          <div class="line"><span>Total do serviço</span><strong id="totalService">R$ 180,00</strong></div>
+          <div class="line"><span>Itens adicionais</span><strong id="totalItems" style="color: var(--studio-green);">R$ 0,00</strong></div>
+          <div class="line"><span>Desconto</span><strong id="discountAmount" style="color: #dc2626;">R$ 0,00</strong></div>
+          <div class="line" style="border-top: 1px solid var(--line-color); padding-top: 10px; margin-top: 10px;"><span style="font-weight: 700;">Total a receber</span><strong id="finalTotal" style="color: var(--studio-green); font-size: 14px;">R$ 180,00</strong></div>
+          <div class="line"><span>Já recebido</span><strong style="color: var(--studio-green);">R$ 0,00</strong></div>
+        </div>
+
+        <div class="method-grid" style="margin-top: 12px; grid-template-columns: 1fr 1fr;">
+          <button class="method-btn" id="addItemBtn" style="grid-column: auto;">➕ Adicionar Item</button>
+          <button class="method-btn" id="addDiscountBtn" style="grid-column: auto;">🏷 Desconto</button>
+        </div>
+
+        <div class="method-grid">
+          <button class="method-btn active" data-method="cash">Dinheiro</button>
+          <button class="method-btn" data-method="pix">PIX</button>
+          <button class="method-btn" data-method="card">Cartão</button>
+        </div>
+
+        <div class="panel active" data-panel="cash">
+          <div class="section" style="margin-top: 0;">
+            <div class="section-title" style="margin: 0 0 12px;">💵 Pagamento em Dinheiro</div>
+            <div class="line"><span>Valor recebido</span><strong>R$ 180,00</strong></div>
+            <button class="btn btn-primary" style="width:100%; margin-top: 12px;">Registrar Recebimento</button>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="pix">
+          <div class="section" style="margin-top: 0;">
+            <div class="section-title" style="margin: 0 0 12px;">📱 PIX QR Code</div>
+            <div class="qr-box">
+              <div class="fake-qr"></div>
+              <div class="countdown">Tempo restante: <span id="pixCountdown">14:59</span></div>
+              <div class="bar"><span id="pixBar" style="width: 100%;"></span></div>
+            </div>
+            <div class="pix-code" id="pixCode">00020126580014BR.GOV.BCB.PIX0136a18f47f4-6f89-4a2f-8f21-7df4eecf07f05204000053039865405180.005802BR5924ESTUDIO CORPO ALMA6009SAO PAULO62070503***6304ABCD</div>
+            <div class="btn-row">
+              <button class="btn-soft" id="copyPix">Copiar</button>
+              <button class="btn-soft">Já recebeu?</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" data-panel="card">
+          <div class="section" style="margin-top: 0;">
+            <div class="section-title" style="margin: 0 0 12px;">🏪 Cartão (Débito/Crédito)</div>
+            <div class="point-box">
+              <div class="point-name">Point Smart - Sala 01</div>
+              <div class="point-model">Terminal Point padrão • conexão online</div>
+              <div class="btn-row">
+                <button class="btn-soft">Débito</button>
+                <button class="btn-soft">Crédito</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="postModal" class="modal-wrap">
+      <div class="backdrop" data-close="postModal"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div>
+            <h3 class="sheet-title">Atendimento Concluído</h3>
+            <p class="sheet-sub">Avalie a sessão realizada</p>
+          </div>
+          <button class="close-btn" data-close="postModal">✕</button>
+        </div>
+
+        <div class="post-head">
+          <div class="avatar">RM</div>
+          <div>
+            <p class="post-name">Renato Mazzarino</p>
+            <p class="title-sub">Massagem Deep Tissue</p>
+          </div>
+          <span class="status-pill">Pagto. Parcial</span>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><b>14 Out</b><span>Data</span></div>
+          <div class="meta-item"><b>14:30</b><span>Horário</span></div>
+          <div class="meta-item"><b>58 min</b><span>Duração</span></div>
+        </div>
+
+        <section class="section">
+          <div class="section-title">📍 Logística</div>
+          <div class="line"><span>Local</span><strong>Estúdio</strong></div>
+          <div class="line"><span>Sala</span><strong>Sala 02 - Massagem</strong></div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">💰 Financeiro</div>
+          <div class="line"><span>Status</span><strong style="color: var(--text-muted);">Parcial</strong></div>
+          <div class="line"><span>Pago</span><strong>R$ 90,00</strong></div>
+          <div class="line"><span>Método</span><strong>PIX</strong></div>
+          <div style="margin-top: 12px;">
+            <span class="tag">Recibo pendente</span>
+            <span class="tag">Cobrança enviada</span>
+          </div>
+          <div class="btn-row" style="margin-top: 12px;">
+            <button class="btn-soft">Reenviar cobrança</button>
+            <button class="btn-soft">Enviar recibo</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">⭐ Avaliação do Cliente</div>
+          <div class="line"><span>Pesquisa enviada</span><strong>Sim</strong></div>
+          <div class="line"><span>Nota</span><strong style="color: var(--studio-green);">10.0</strong></div>
+          <div class="btn-row" style="margin-top: 12px;">
+            <button class="btn-soft">Reenviar</button>
+            <button class="btn-soft">Ver feedback</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">📋 Evolução & Follow-up</div>
+          <div class="line"><span>Próximo contato</span><strong>Em 30 dias</strong></div>
+          <div class="line"><span>Evolução clínica</span><strong style="color: var(--studio-green);">Publicada</strong></div>
+          <button class="btn btn-primary" style="width:100%; margin-top: 12px;">Editar Evolução</button>
+        </section>
+      </div>
+    </div>
+
+    <div class="toast" id="toast">Copiado</div>
+
+    <!-- Modal Adicionar Item -->
+    <div id="addItemDialog" class="modal-dialog">
+      <div class="modal-content">
+        <h3 class="modal-title">Adicionar Item</h3>
+        <div class="form-group">
+          <label class="form-label">Descrição do item</label>
+          <input type="text" id="itemDescription" class="form-input" placeholder="Ex: Drenagem Linfática">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor (R$)</label>
+          <input type="number" id="itemValue" class="form-input" placeholder="0,00" min="0" step="0.01">
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeAddItemDialog()">Cancelar</button>
+          <button class="btn-confirm" onclick="confirmAddItem()">Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Desconto -->
+    <div id="discountDialog" class="modal-dialog">
+      <div class="modal-content">
+        <h3 class="modal-title">Aplicar Desconto</h3>
+        <div class="form-group">
+          <label class="form-label">Tipo de desconto</label>
+          <select id="discountType" class="form-input" onchange="updateDiscountMode()">
+            <option value="percent">Percentual (%)</option>
+            <option value="fixed">Valor fixo (R$)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="discountLabel">Percentual</label>
+          <input type="number" id="discountValue" class="form-input" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Motivo do desconto (opcional)</label>
+          <input type="text" id="discountReason" class="form-input" placeholder="Ex: Promoção">
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeDiscountDialog()">Cancelar</button>
+          <button class="btn-confirm" onclick="confirmDiscount()">Aplicar</button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      select.form-input {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232C3333' d='M1 4l5 4 5-4'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        padding-right: 30px;
+      }
+    </style>
+  </div>
+
+  <script>
+    // Estado global
+    const state = {
+      baseTotal: 180,
+      items: [],
+      discount: {
+        type: 'percent',
+        value: 0,
+        reason: ''
+      }
+    };
+
+    const openPayment = document.getElementById("openPayment");
+    const openPost = document.getElementById("openPost");
+    const paymentModal = document.getElementById("paymentModal");
+    const postModal = document.getElementById("postModal");
+    const closeButtons = document.querySelectorAll("[data-close]");
+    const methodButtons = document.querySelectorAll("[data-method]");
+    const panels = document.querySelectorAll("[data-panel]");
+    const copyPix = document.getElementById("copyPix");
+    const pixCode = document.getElementById("pixCode");
+    const toast = document.getElementById("toast");
+    const addItemBtn = document.getElementById("addItemBtn");
+    const addDiscountBtn = document.getElementById("addDiscountBtn");
+
+    function openModal(el) { el.classList.add("open"); }
+    function closeModal(el) { el.classList.remove("open"); }
+
+    openPayment.addEventListener("click", () => openModal(paymentModal));
+    openPost.addEventListener("click", () => openModal(postModal));
+
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-close");
+        const el = document.getElementById(target);
+        if (el) closeModal(el);
+      });
+    });
+
+    methodButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const method = btn.getAttribute("data-method");
+        methodButtons.forEach((x) => x.classList.remove("active"));
+        btn.classList.add("active");
+        panels.forEach((panel) => {
+          panel.classList.toggle("active", panel.getAttribute("data-panel") === method);
+        });
+      });
+    });
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1400);
+    }
+
+    copyPix.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pixCode.textContent || "");
+        showToast("Pix copiado");
+      } catch {
+        showToast("Não foi possível copiar");
+      }
+    });
+
+    // ========== FUNÇÕES DE ITEM ==========
+    addItemBtn.addEventListener("click", () => {
+      document.getElementById("addItemDialog").classList.add("open");
+    });
+
+    function closeAddItemDialog() {
+      document.getElementById("addItemDialog").classList.remove("open");
+      document.getElementById("itemDescription").value = "";
+      document.getElementById("itemValue").value = "";
+    }
+
+    function confirmAddItem() {
+      const description = document.getElementById("itemDescription").value.trim();
+      const value = parseFloat(document.getElementById("itemValue").value) || 0;
+
+      if (!description) {
+        showToast("Digite a descrição do item");
+        return;
+      }
+
+      if (value <= 0) {
+        showToast("Digite um valor válido");
+        return;
+      }
+
+      state.items.push({ description, value });
+      updateTotals();
+      closeAddItemDialog();
+      showToast("Item adicionado");
+    }
+
+    // ========== FUNÇÕES DE DESCONTO ==========
+    addDiscountBtn.addEventListener("click", () => {
+      document.getElementById("discountDialog").classList.add("open");
+      document.getElementById("discountType").value = state.discount.type;
+      document.getElementById("discountValue").value = state.discount.value;
+      document.getElementById("discountReason").value = state.discount.reason;
+      updateDiscountMode();
+    });
+
+    function closeDiscountDialog() {
+      document.getElementById("discountDialog").classList.remove("open");
+    }
+
+    function updateDiscountMode() {
+      const type = document.getElementById("discountType").value;
+      const label = document.getElementById("discountLabel");
+      const input = document.getElementById("discountValue");
+
+      if (type === 'percent') {
+        label.textContent = "Percentual (%)";
+        input.placeholder = "0";
+        input.max = "100";
+      } else {
+        label.textContent = "Valor (R$)";
+        input.placeholder = "0,00";
+        input.removeAttribute("max");
+      }
+    }
+
+    function confirmDiscount() {
+      const type = document.getElementById("discountType").value;
+      const value = parseFloat(document.getElementById("discountValue").value) || 0;
+      const reason = document.getElementById("discountReason").value.trim();
+
+      if (type === 'percent' && (value < 0 || value > 100)) {
+        showToast("Percentual deve ser entre 0 e 100");
+        return;
+      }
+
+      if (value < 0) {
+        showToast("Valor deve ser positivo");
+        return;
+      }
+
+      state.discount = { type, value, reason };
+      updateTotals();
+      closeDiscountDialog();
+      showToast("Desconto aplicado");
+    }
+
+    // ========== CALCULAR TOTAIS ==========
+    function updateTotals() {
+      const itemsTotal = state.items.reduce((sum, item) => sum + item.value, 0);
+      const subtotal = state.baseTotal + itemsTotal;
+
+      let discountAmount = 0;
+      if (state.discount.type === 'percent') {
+        discountAmount = (subtotal * state.discount.value) / 100;
+      } else {
+        discountAmount = Math.min(state.discount.value, subtotal);
+      }
+
+      const finalTotal = Math.max(0, subtotal - discountAmount);
+
+      // Atualizar UI
+      document.getElementById("totalService").textContent = `R$ ${state.baseTotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById("totalItems").textContent = `R$ ${itemsTotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById("discountAmount").textContent = `R$ ${discountAmount.toFixed(2).replace('.', ',')}`;
+      document.getElementById("finalTotal").textContent = `R$ ${finalTotal.toFixed(2).replace('.', ',')}`;
+
+      // Listar items
+      updateItemsList();
+    }
+
+    function updateItemsList() {
+      const itemsList = document.getElementById("itemsList");
+      if (!itemsList) {
+        // Criar lista se não existir
+        const section = document.querySelector(".method-grid").parentElement;
+        const list = document.createElement("div");
+        list.id = "itemsList";
+        section.insertBefore(list, document.querySelector(".method-grid"));
+      }
+
+      const list = document.getElementById("itemsList");
+      list.innerHTML = state.items
+        .map((item, idx) => `
+          <div style="background: var(--studio-light); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--studio-text);">${item.description}</div>
+              <div style="font-size: 10px; color: var(--text-muted);">+ R$ ${item.value.toFixed(2).replace('.', ',')}</div>
+            </div>
+            <button class="btn-soft" style="padding: 4px 8px; height: auto; font-size: 11px;" onclick="removeItem(${idx})">✕</button>
+          </div>
+        `)
+        .join("");
+
+      if (state.discount.value > 0) {
+        const discountText = state.discount.type === 'percent' 
+          ? `${state.discount.value}% ${state.discount.reason ? '- ' + state.discount.reason : ''}`
+          : `R$ ${state.discount.value.toFixed(2).replace('.', ',')} ${state.discount.reason ? '- ' + state.discount.reason : ''}`;
+        
+        list.innerHTML += `
+          <div style="background: rgba(220, 38, 38, 0.1); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: #dc2626;">Desconto</div>
+              <div style="font-size: 10px; color: var(--text-muted);">${discountText}</div>
+            </div>
+            <button class="btn-soft" style="padding: 4px 8px; height: auto; font-size: 11px;" onclick="removeDiscount()">✕</button>
+          </div>
+        `;
+      }
+    }
+
+    function removeItem(idx) {
+      state.items.splice(idx, 1);
+      updateTotals();
+      showToast("Item removido");
+    }
+
+    function removeDiscount() {
+      state.discount = { type: 'percent', value: 0, reason: '' };
+      updateTotals();
+      showToast("Desconto removido");
+    }
+
+    // Simulação de contador do QR
+    let remaining = 15 * 60;
+    const countdown = document.getElementById("pixCountdown");
+    const bar = document.getElementById("pixBar");
+    setInterval(() => {
+      if (remaining <= 0) return;
+      remaining -= 1;
+      const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const ss = String(remaining % 60).padStart(2, "0");
+      countdown.textContent = mm + ":" + ss;
+      const pct = Math.max((remaining / (15 * 60)) * 100, 0);
+      bar.style.width = pct + "%";
+    }, 1000);
+  </script>
+</body>
+</html>
