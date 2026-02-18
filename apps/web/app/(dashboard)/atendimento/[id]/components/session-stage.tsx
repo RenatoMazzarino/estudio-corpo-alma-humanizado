@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Mic, Music2, Sparkles, Square } from "lucide-react";
+import { ChevronDown, Mic, Music2, Pause, Play, Sparkles, Square } from "lucide-react";
 import type {
   AttendanceRow,
   ChecklistItem,
@@ -35,6 +35,19 @@ type SpeechRecognitionLike = {
 };
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+type SpotifyControllerLike = {
+  pause?: () => void;
+  play?: () => void;
+  resume?: () => void;
+  destroy?: () => void;
+};
+type SpotifyIframeApiLike = {
+  createController: (
+    element: HTMLElement,
+    options: { uri: string; width: number; height: number },
+    callback: (controller: SpotifyControllerLike) => void
+  ) => void;
+};
 
 interface SessionStageProps {
   attendance: AttendanceRow;
@@ -97,18 +110,19 @@ export function SessionStage({
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const recordingTranscriptRef = useRef("");
   const evolutionTextRef = useRef(evolutionText);
+  const spotifyControllerRef = useRef<SpotifyControllerLike | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isStructuring, setIsStructuring] = useState(false);
   const [dictationError, setDictationError] = useState<string | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<ClientHistoryEntry | null>(null);
   const [isChecklistOpen, setIsChecklistOpen] = useState(true);
+  const [spotifyReady, setSpotifyReady] = useState(false);
+  const [isSpotifyPlaying, setIsSpotifyPlaying] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const spotifyPlaylistUrl = useMemo(() => DEFAULT_SPOTIFY_PLAYLIST_URL.trim(), []);
   const spotifyPlaylistId = useMemo(() => extractSpotifyPlaylistId(spotifyPlaylistUrl), [spotifyPlaylistUrl]);
-  const spotifyEmbedUrl = spotifyPlaylistId
-    ? `https://open.spotify.com/embed/playlist/${spotifyPlaylistId}?utm_source=generator&theme=0`
-    : null;
+  const spotifyPlaylistUri = spotifyPlaylistId ? `spotify:playlist:${spotifyPlaylistId}` : null;
 
   useEffect(() => {
     evolutionTextRef.current = evolutionText;
@@ -123,6 +137,68 @@ export function SessionStage({
   useEffect(() => {
     setPortalTarget(document.getElementById("app-frame"));
   }, []);
+
+  useEffect(() => {
+    if (!spotifyPlaylistUri) return;
+    const host = document.getElementById("attendance-spotify-controller");
+    if (!host) return;
+
+    let cancelled = false;
+    const windowWithSpotify = window as Window & {
+      SpotifyIframeApi?: SpotifyIframeApiLike;
+      onSpotifyIframeApiReady?: (api: SpotifyIframeApiLike) => void;
+    };
+
+    const initController = () => {
+      const api = windowWithSpotify.SpotifyIframeApi;
+      if (!api || cancelled) return;
+
+      host.innerHTML = "";
+      api.createController(
+        host,
+        {
+          uri: spotifyPlaylistUri,
+          width: 0,
+          height: 0,
+        },
+        (controller) => {
+          if (cancelled) {
+            controller.destroy?.();
+            return;
+          }
+          spotifyControllerRef.current = controller;
+          setSpotifyReady(true);
+        }
+      );
+    };
+
+    if (windowWithSpotify.SpotifyIframeApi) {
+      initController();
+    } else {
+      const previousReady = windowWithSpotify.onSpotifyIframeApiReady;
+      windowWithSpotify.onSpotifyIframeApiReady = (api) => {
+        previousReady?.(api);
+        initController();
+      };
+
+      if (!document.querySelector('script[data-spotify-iframe-api="attendance"]')) {
+        const script = document.createElement("script");
+        script.src = "https://open.spotify.com/embed/iframe-api/v1";
+        script.async = true;
+        script.dataset.spotifyIframeApi = "attendance";
+        document.body.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      setSpotifyReady(false);
+      setIsSpotifyPlaying(false);
+      spotifyControllerRef.current?.destroy?.();
+      spotifyControllerRef.current = null;
+      host.innerHTML = "";
+    };
+  }, [spotifyPlaylistUri]);
 
   const publishedHistory = useMemo(
     () =>
@@ -153,6 +229,26 @@ export function SessionStage({
   const handleOpenSpotify = () => {
     if (!spotifyPlaylistUrl) return;
     window.open(spotifyPlaylistUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleSpotifyPlay = () => {
+    const controller = spotifyControllerRef.current;
+    if (controller?.resume) {
+      controller.resume();
+      setIsSpotifyPlaying(true);
+      return;
+    }
+    if (controller?.play) {
+      controller.play();
+      setIsSpotifyPlaying(true);
+      return;
+    }
+    handleOpenSpotify();
+  };
+
+  const handleSpotifyPause = () => {
+    spotifyControllerRef.current?.pause?.();
+    setIsSpotifyPlaying(false);
   };
 
   const handleStructureWithFlora = async () => {
@@ -244,19 +340,37 @@ export function SessionStage({
             onClick={handleOpenSpotify}
             className="h-8 shrink-0 rounded-lg border border-studio-green/25 bg-white px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-studio-green"
           >
-            Abrir
+            Abrir app
           </button>
         </div>
-        {spotifyEmbedUrl ? (
-          <div className="mt-2 overflow-hidden rounded-xl border border-line bg-black/2">
-            <iframe
-              title="Playlist Spotify"
-              src={spotifyEmbedUrl}
-              width="100%"
-              height="80"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-            />
+        {spotifyPlaylistUri ? (
+          <div className="mt-3">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleSpotifyPlay}
+                className="h-9 rounded-xl border border-studio-green/25 bg-studio-light text-[10px] font-extrabold uppercase tracking-wider text-studio-green inline-flex items-center justify-center gap-1.5"
+              >
+                <Play className="h-3.5 w-3.5" />
+                Play
+              </button>
+              <button
+                type="button"
+                onClick={handleSpotifyPause}
+                className="h-9 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center gap-1.5"
+              >
+                <Pause className="h-3.5 w-3.5" />
+                Pause
+              </button>
+            </div>
+            <p className="mt-2 text-[10px] font-semibold text-muted">
+              {spotifyReady
+                ? isSpotifyPlaying
+                  ? "Reprodução em andamento."
+                  : "Player pronto para iniciar."
+                : "Conectando ao Spotify..."}
+            </p>
+            <div id="attendance-spotify-controller" className="sr-only" aria-hidden="true" />
           </div>
         ) : (
           <p className="mt-2 text-[11px] text-muted">
