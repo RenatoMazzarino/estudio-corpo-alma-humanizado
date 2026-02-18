@@ -7,6 +7,7 @@ import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
 import { updateSettings, upsertBusinessHours, deleteInvalidBusinessHours } from "../../../src/modules/settings/repository";
 import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
+import { disconnectSpotifyIntegration } from "../../../src/modules/integrations/spotify/server";
 
 const DEFAULT_ATTENDANCE_CHECKLIST = [
   "Separar materiais e itens de higiene",
@@ -55,6 +56,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   const mp_point_terminal_model = (formData.get("mp_point_terminal_model") as string | null)?.trim() ?? "";
   const mp_point_terminal_external_id =
     (formData.get("mp_point_terminal_external_id") as string | null)?.trim() ?? "";
+  const spotify_enabled = formData.get("spotify_enabled") === "on";
+  const spotify_playlist_url = (formData.get("spotify_playlist_url") as string | null)?.trim() ?? "";
   const attendance_checklist_enabled = formData.get("attendance_checklist_enabled") === "on";
   const attendance_checklist_items_raw =
     (formData.get("attendance_checklist_items") as string | null) ?? "";
@@ -78,6 +81,17 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
     return fail(new AppError("URL pública inválida (use http/https)", "VALIDATION_ERROR", 400));
   }
 
+  if (spotify_playlist_url) {
+    const isSpotifyUrl =
+      /^https:\/\/open\.spotify\.com\/playlist\/[A-Za-z0-9]+/i.test(spotify_playlist_url) ||
+      /^spotify:playlist:[A-Za-z0-9]+/i.test(spotify_playlist_url);
+    if (!isSpotifyUrl) {
+      return fail(
+        new AppError("Playlist do Spotify inválida. Use link da playlist ou URI spotify:playlist.", "VALIDATION_ERROR", 400)
+      );
+    }
+  }
+
   const legacyTotal = buffer_before_minutes + buffer_after_minutes;
   const { error } = await updateSettings(FIXED_TENANT_ID, {
     buffer_before_minutes,
@@ -91,6 +105,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
     mp_point_terminal_name: mp_point_terminal_name || null,
     mp_point_terminal_model: mp_point_terminal_model || null,
     mp_point_terminal_external_id: mp_point_terminal_external_id || null,
+    spotify_enabled,
+    spotify_playlist_url: spotify_playlist_url || null,
     attendance_checklist_enabled,
     attendance_checklist_items: normalizedChecklistItems,
   });
@@ -101,6 +117,15 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   revalidatePath("/configuracoes");
   revalidatePath("/");
 
+  return ok({ ok: true });
+}
+
+export async function disconnectSpotify(): Promise<ActionResult<{ ok: true }>> {
+  const result = await disconnectSpotifyIntegration();
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/atendimento");
   return ok({ ok: true });
 }
 

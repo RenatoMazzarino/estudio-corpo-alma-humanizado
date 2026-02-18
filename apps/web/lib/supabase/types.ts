@@ -1256,6 +1256,14 @@ export type Database = {
           mp_point_terminal_name: string | null
           public_base_url: string | null
           signal_percentage: number | null
+          spotify_access_token: string | null
+          spotify_account_id: string | null
+          spotify_account_name: string | null
+          spotify_connected_at: string | null
+          spotify_enabled: boolean
+          spotify_playlist_url: string | null
+          spotify_refresh_token: string | null
+          spotify_token_expires_at: string | null
           tenant_id: string
           updated_at: string | null
           whatsapp_notification_number: string | null
@@ -1276,6 +1284,14 @@ export type Database = {
           mp_point_terminal_name?: string | null
           public_base_url?: string | null
           signal_percentage?: number | null
+          spotify_access_token?: string | null
+          spotify_account_id?: string | null
+          spotify_account_name?: string | null
+          spotify_connected_at?: string | null
+          spotify_enabled?: boolean
+          spotify_playlist_url?: string | null
+          spotify_refresh_token?: string | null
+          spotify_token_expires_at?: string | null
           tenant_id?: string
           updated_at?: string | null
           whatsapp_notification_number?: string | null
@@ -1296,6 +1312,14 @@ export type Database = {
           mp_point_terminal_name?: string | null
           public_base_url?: string | null
           signal_percentage?: number | null
+          spotify_access_token?: string | null
+          spotify_account_id?: string | null
+          spotify_account_name?: string | null
+          spotify_connected_at?: string | null
+          spotify_enabled?: boolean
+          spotify_playlist_url?: string | null
+          spotify_refresh_token?: string | null
+          spotify_token_expires_at?: string | null
           tenant_id?: string
           updated_at?: string | null
           whatsapp_notification_number?: string | null

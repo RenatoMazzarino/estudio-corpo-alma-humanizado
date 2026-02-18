@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   configurePointTerminal,
+  disconnectSpotify,
   fetchPointDevices,
   saveBusinessHours,
   saveSettings,
@@ -28,6 +29,10 @@ interface SettingsFormProps {
   pointTerminalName: string;
   pointTerminalModel: string;
   pointTerminalExternalId: string;
+  spotifyEnabled: boolean;
+  spotifyPlaylistUrl: string;
+  spotifyConnected: boolean;
+  spotifyAccountName: string;
   attendanceChecklistEnabled: boolean;
   attendanceChecklistItems: string[];
 }
@@ -53,6 +58,10 @@ export function SettingsForm({
   pointTerminalName,
   pointTerminalModel,
   pointTerminalExternalId,
+  spotifyEnabled,
+  spotifyPlaylistUrl,
+  spotifyConnected,
+  spotifyAccountName,
   attendanceChecklistEnabled,
   attendanceChecklistItems,
 }: SettingsFormProps) {
@@ -65,6 +74,11 @@ export function SettingsForm({
   const [pointTerminalNameValue, setPointTerminalNameValue] = useState(pointTerminalName);
   const [pointTerminalModelValue, setPointTerminalModelValue] = useState(pointTerminalModel);
   const [pointTerminalExternalIdValue, setPointTerminalExternalIdValue] = useState(pointTerminalExternalId);
+  const [spotifyEnabledValue, setSpotifyEnabledValue] = useState(spotifyEnabled);
+  const [spotifyPlaylistUrlValue, setSpotifyPlaylistUrlValue] = useState(spotifyPlaylistUrl);
+  const [spotifyConnectedValue, setSpotifyConnectedValue] = useState(spotifyConnected);
+  const [spotifyAccountNameValue, setSpotifyAccountNameValue] = useState(spotifyAccountName);
+  const [spotifyDisconnecting, setSpotifyDisconnecting] = useState(false);
   const [attendanceChecklistEnabledValue, setAttendanceChecklistEnabledValue] = useState(
     attendanceChecklistEnabled
   );
@@ -139,6 +153,25 @@ export function SettingsForm({
       })
     );
     setPointConfigLoading(false);
+  };
+
+  const handleDisconnectSpotify = async () => {
+    setSpotifyDisconnecting(true);
+    const result = await disconnectSpotify();
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "generic"));
+      setSpotifyDisconnecting(false);
+      return;
+    }
+    setSpotifyConnectedValue(false);
+    setSpotifyAccountNameValue("");
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Spotify desconectado com sucesso.",
+      })
+    );
+    setSpotifyDisconnecting(false);
   };
 
   return (
@@ -239,6 +272,64 @@ export function SettingsForm({
             placeholder="https://seu-dominio.com"
             className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-3 text-sm"
           />
+        </div>
+
+        <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Spotify (atendimento)</h3>
+            <label className="inline-flex items-center gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                name="spotify_enabled"
+                checked={spotifyEnabledValue}
+                onChange={(event) => setSpotifyEnabledValue(event.target.checked)}
+              />
+              Habilitado
+            </label>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase">Playlist padrão</label>
+            <input
+              type="text"
+              name="spotify_playlist_url"
+              value={spotifyPlaylistUrlValue}
+              onChange={(event) => setSpotifyPlaylistUrlValue(event.target.value)}
+              placeholder="https://open.spotify.com/playlist/..."
+              className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
+            />
+            <p className="mt-1 text-[10px] text-gray-500">
+              Usada como fallback quando não existir playback ativo.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-stone-200 bg-white px-3 py-2">
+            <p className="text-[11px] font-bold text-gray-600">
+              Status: {spotifyConnectedValue ? "Conectado" : "Desconectado"}
+            </p>
+            <p className="text-[10px] text-gray-500">
+              {spotifyConnectedValue
+                ? `Conta: ${spotifyAccountNameValue || "Conta conectada"}`
+                : "Clique em Conectar Spotify para autorizar a conta."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <a
+              href="/api/integrations/spotify/connect?returnTo=/configuracoes"
+              className="h-10 rounded-xl border border-studio-green bg-studio-green text-xs font-bold text-white inline-flex items-center justify-center"
+            >
+              Conectar Spotify
+            </a>
+            <button
+              type="button"
+              onClick={handleDisconnectSpotify}
+              disabled={!spotifyConnectedValue || spotifyDisconnecting}
+              className="h-10 rounded-xl border border-stone-200 bg-white text-xs font-bold text-gray-700 disabled:opacity-50"
+            >
+              {spotifyDisconnecting ? "Desconectando..." : "Desconectar"}
+            </button>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
