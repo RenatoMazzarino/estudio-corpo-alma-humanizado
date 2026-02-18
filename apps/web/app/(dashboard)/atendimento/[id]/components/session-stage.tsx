@@ -134,6 +134,7 @@ export function SessionStage({
   const [spotifyReady, setSpotifyReady] = useState(false);
   const [isSpotifyPlaying, setIsSpotifyPlaying] = useState(false);
   const [currentTrackLabel, setCurrentTrackLabel] = useState("Nenhuma faixa em reprodução.");
+  const [spotifyError, setSpotifyError] = useState<string | null>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const spotifyPlaylistUrl = useMemo(() => DEFAULT_SPOTIFY_PLAYLIST_URL.trim(), []);
   const spotifyPlaylistId = useMemo(() => extractSpotifyPlaylistId(spotifyPlaylistUrl), [spotifyPlaylistUrl]);
@@ -159,6 +160,7 @@ export function SessionStage({
     if (!host) return;
 
     let cancelled = false;
+    let readyTimeout: ReturnType<typeof setTimeout> | null = null;
     const windowWithSpotify = window as Window & {
       SpotifyIframeApi?: SpotifyIframeApiLike;
       onSpotifyIframeApiReady?: (api: SpotifyIframeApiLike) => void;
@@ -217,8 +219,8 @@ export function SessionStage({
         host,
         {
           uri: spotifyPlaylistUri,
-          width: 0,
-          height: 0,
+          width: 320,
+          height: 80,
         },
         (controller) => {
           if (cancelled) {
@@ -227,7 +229,12 @@ export function SessionStage({
           }
           spotifyControllerRef.current = controller;
           controller.addListener?.("playback_update", handlePlaybackUpdate);
+          if (readyTimeout) {
+            clearTimeout(readyTimeout);
+            readyTimeout = null;
+          }
           setSpotifyReady(true);
+          setSpotifyError(null);
           setCurrentTrackLabel("Playlist conectada.");
         }
       );
@@ -251,11 +258,18 @@ export function SessionStage({
       }
     }
 
+    readyTimeout = setTimeout(() => {
+      if (cancelled || spotifyControllerRef.current) return;
+      setSpotifyError("Não foi possível conectar ao player neste navegador.");
+    }, 5000);
+
     return () => {
       cancelled = true;
+      if (readyTimeout) clearTimeout(readyTimeout);
       setSpotifyReady(false);
       setIsSpotifyPlaying(false);
       setCurrentTrackLabel("Nenhuma faixa em reprodução.");
+      setSpotifyError(null);
       lastTrackUriRef.current = null;
       spotifyControllerRef.current?.destroy?.();
       spotifyControllerRef.current = null;
@@ -464,10 +478,13 @@ export function SessionStage({
                 ? isSpotifyPlaying
                   ? "Reprodução em andamento."
                   : "Player pronto para iniciar."
-                : "Conectando ao Spotify..."}
+                : spotifyError ?? "Conectando ao Spotify..."}
             </p>
-            <div className="h-1 w-full overflow-hidden opacity-0 pointer-events-none">
-              <div id="attendance-spotify-controller" className="h-20 w-full" aria-hidden="true" />
+            <p className="mt-1 text-[10px] text-muted">
+              Este player controla a playlist configurada para atendimento.
+            </p>
+            <div className="absolute -left-[9999px] top-0 h-20 w-80 overflow-hidden opacity-0 pointer-events-none">
+              <div id="attendance-spotify-controller" className="h-20 w-80" aria-hidden="true" />
             </div>
           </div>
         ) : (
