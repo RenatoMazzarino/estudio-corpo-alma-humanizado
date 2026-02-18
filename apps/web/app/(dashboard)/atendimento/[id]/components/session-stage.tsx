@@ -39,6 +39,10 @@ type SpotifyControllerLike = {
   pause?: () => void;
   play?: () => void;
   resume?: () => void;
+  next?: () => void;
+  previous?: () => void;
+  addListener?: (eventName: string, callback: (event: unknown) => void) => void;
+  removeListener?: (eventName: string, callback: (event: unknown) => void) => void;
   destroy?: () => void;
 };
 type SpotifyIframeApiLike = {
@@ -94,6 +98,15 @@ function extractSpotifyPlaylistId(rawUrl: string) {
   }
 }
 
+function spotifyUriToOpenUrl(uri: string) {
+  const parts = uri.split(":");
+  if (parts.length < 3) return null;
+  const type = parts[1]?.trim();
+  const id = parts[2]?.trim();
+  if (!type || !id) return null;
+  return `https://open.spotify.com/${type}/${id}`;
+}
+
 export function SessionStage({
   attendance,
   checklistEnabled,
@@ -111,6 +124,7 @@ export function SessionStage({
   const recordingTranscriptRef = useRef("");
   const evolutionTextRef = useRef(evolutionText);
   const spotifyControllerRef = useRef<SpotifyControllerLike | null>(null);
+  const lastTrackUriRef = useRef<string | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isStructuring, setIsStructuring] = useState(false);
@@ -119,6 +133,7 @@ export function SessionStage({
   const [isChecklistOpen, setIsChecklistOpen] = useState(true);
   const [spotifyReady, setSpotifyReady] = useState(false);
   const [isSpotifyPlaying, setIsSpotifyPlaying] = useState(false);
+  const [currentTrackLabel, setCurrentTrackLabel] = useState("Nenhuma faixa em reprodução.");
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const spotifyPlaylistUrl = useMemo(() => DEFAULT_SPOTIFY_PLAYLIST_URL.trim(), []);
   const spotifyPlaylistId = useMemo(() => extractSpotifyPlaylistId(spotifyPlaylistUrl), [spotifyPlaylistUrl]);
@@ -149,6 +164,50 @@ export function SessionStage({
       onSpotifyIframeApiReady?: (api: SpotifyIframeApiLike) => void;
     };
 
+    const handlePlaybackUpdate = (event: unknown) => {
+      const payload = ((event as { data?: unknown } | undefined)?.data ?? event) as {
+        isPaused?: boolean;
+        paused?: boolean;
+        currentTrackIndex?: number;
+        index?: number;
+        playingURI?: string;
+        currentURI?: string;
+        trackList?: Array<{ uri?: string; title?: string }>;
+      };
+
+      const paused = Boolean(payload.isPaused ?? payload.paused ?? false);
+      setIsSpotifyPlaying(!paused);
+
+      const trackIndex = payload.currentTrackIndex ?? payload.index ?? 0;
+      const currentTrack = payload.trackList?.[trackIndex];
+      const currentUri = currentTrack?.uri ?? payload.playingURI ?? payload.currentURI ?? null;
+
+      if (!currentUri) return;
+      if (lastTrackUriRef.current === currentUri) return;
+      lastTrackUriRef.current = currentUri;
+      if (currentTrack?.title?.trim()) {
+        setCurrentTrackLabel(currentTrack.title.trim());
+        return;
+      }
+
+      const trackUrl = spotifyUriToOpenUrl(currentUri);
+      if (!trackUrl) {
+        setCurrentTrackLabel("Faixa em reprodução");
+        return;
+      }
+
+      void fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(trackUrl)}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: { title?: string } | null) => {
+          if (data?.title?.trim()) {
+            setCurrentTrackLabel(data.title.trim());
+            return;
+          }
+          setCurrentTrackLabel("Faixa em reprodução");
+        })
+        .catch(() => setCurrentTrackLabel("Faixa em reprodução"));
+    };
+
     const initController = () => {
       const api = windowWithSpotify.SpotifyIframeApi;
       if (!api || cancelled) return;
@@ -167,7 +226,9 @@ export function SessionStage({
             return;
           }
           spotifyControllerRef.current = controller;
+          controller.addListener?.("playback_update", handlePlaybackUpdate);
           setSpotifyReady(true);
+          setCurrentTrackLabel("Playlist conectada.");
         }
       );
     };
@@ -194,6 +255,8 @@ export function SessionStage({
       cancelled = true;
       setSpotifyReady(false);
       setIsSpotifyPlaying(false);
+      setCurrentTrackLabel("Nenhuma faixa em reprodução.");
+      lastTrackUriRef.current = null;
       spotifyControllerRef.current?.destroy?.();
       spotifyControllerRef.current = null;
       host.innerHTML = "";
@@ -249,6 +312,22 @@ export function SessionStage({
   const handleSpotifyPause = () => {
     spotifyControllerRef.current?.pause?.();
     setIsSpotifyPlaying(false);
+  };
+
+  const handleSpotifyNext = () => {
+    if (spotifyControllerRef.current?.next) {
+      spotifyControllerRef.current.next();
+      return;
+    }
+    handleOpenSpotify();
+  };
+
+  const handleSpotifyPrevious = () => {
+    if (spotifyControllerRef.current?.previous) {
+      spotifyControllerRef.current.previous();
+      return;
+    }
+    handleOpenSpotify();
   };
 
   const handleStructureWithFlora = async () => {
@@ -345,7 +424,16 @@ export function SessionStage({
         </div>
         {spotifyPlaylistUri ? (
           <div className="mt-3">
-            <div className="grid grid-cols-2 gap-2">
+            <p className="mb-2 truncate text-[11px] font-semibold text-studio-text">{currentTrackLabel}</p>
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={handleSpotifyPrevious}
+                className="h-9 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center"
+                aria-label="Faixa anterior"
+              >
+                ◀◀
+              </button>
               <button
                 type="button"
                 onClick={handleSpotifyPlay}
@@ -362,6 +450,14 @@ export function SessionStage({
                 <Pause className="h-3.5 w-3.5" />
                 Pause
               </button>
+              <button
+                type="button"
+                onClick={handleSpotifyNext}
+                className="h-9 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center"
+                aria-label="Próxima faixa"
+              >
+                ▶▶
+              </button>
             </div>
             <p className="mt-2 text-[10px] font-semibold text-muted">
               {spotifyReady
@@ -370,7 +466,9 @@ export function SessionStage({
                   : "Player pronto para iniciar."
                 : "Conectando ao Spotify..."}
             </p>
-            <div id="attendance-spotify-controller" className="sr-only" aria-hidden="true" />
+            <div className="h-1 w-full overflow-hidden opacity-0 pointer-events-none">
+              <div id="attendance-spotify-controller" className="h-20 w-full" aria-hidden="true" />
+            </div>
           </div>
         ) : (
           <p className="mt-2 text-[11px] text-muted">
