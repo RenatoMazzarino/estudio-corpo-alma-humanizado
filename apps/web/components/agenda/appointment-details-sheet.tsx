@@ -8,12 +8,14 @@ import {
   Bell,
   CheckCircle2,
   Eye,
+  Sparkles,
   Wallet,
   MapPin,
   MessageSquare,
   StickyNote,
   ThumbsUp,
   User,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import type { AttendanceOverview, AppointmentMessage, MessageType } from "../../lib/attendance/attendance-types";
@@ -32,7 +34,6 @@ interface AppointmentDetailsSheetProps {
   messageTemplates: AutoMessageTemplates;
   onClose: () => void;
   onStartSession: () => void;
-  onOpenAttendance: () => void;
   onSendCreatedMessage: () => void;
   onSendReminder: () => void;
   onSendSurvey: () => void;
@@ -41,6 +42,8 @@ interface AppointmentDetailsSheetProps {
   onConfirmClient: () => void;
   onCancelAppointment: () => void;
   onRecordPayment?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
+  onSaveEvolution?: (text: string) => Promise<{ ok: boolean }>;
+  onStructureEvolution?: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
   onNotify?: (feedback: UserFeedback) => void;
 }
 
@@ -109,7 +112,6 @@ export function AppointmentDetailsSheet({
   messageTemplates,
   onClose,
   onStartSession,
-  onOpenAttendance,
   onSendCreatedMessage,
   onSendReminder,
   onSendSurvey,
@@ -118,6 +120,8 @@ export function AppointmentDetailsSheet({
   onConfirmClient,
   onCancelAppointment,
   onRecordPayment,
+  onSaveEvolution,
+  onStructureEvolution,
   onNotify,
 }: AppointmentDetailsSheetProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -125,6 +129,10 @@ export function AppointmentDetailsSheet({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+  const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
+  const [evolutionDraft, setEvolutionDraft] = useState("");
+  const [evolutionSaving, setEvolutionSaving] = useState(false);
+  const [evolutionStructuring, setEvolutionStructuring] = useState(false);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -137,14 +145,21 @@ export function AppointmentDetailsSheet({
     if (!open) {
       setCancelDialogOpen(false);
       setDragOffset(0);
+      setEvolutionModalOpen(false);
+      setEvolutionSaving(false);
+      setEvolutionStructuring(false);
       dragOffsetRef.current = 0;
       return;
     }
     setCancelDialogOpen(false);
     setDragOffset(0);
     setPaymentMethod("pix");
+    setEvolutionModalOpen(false);
+    setEvolutionSaving(false);
+    setEvolutionStructuring(false);
+    setEvolutionDraft(details?.evolution?.[0]?.evolution_text?.trim() ?? "");
     dragOffsetRef.current = 0;
-  }, [open, details?.appointment?.id]);
+  }, [open, details?.appointment?.id, details?.evolution]);
 
   const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     dragStartRef.current = event.clientY;
@@ -290,6 +305,8 @@ export function AppointmentDetailsSheet({
     details?.post?.follow_up_note?.trim() && details.post.follow_up_note.trim().length > 0
       ? details.post.follow_up_note.trim()
       : "Sem observação registrada";
+  const latestEvolutionText = details?.evolution?.[0]?.evolution_text?.trim() ?? "";
+  const evolutionPreviewText = latestEvolutionText || "Sem evolução registrada nesta sessão.";
   const paymentDateLabel = paidAt ? format(new Date(paidAt), "dd/MM", { locale: ptBR }) : "";
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -377,6 +394,26 @@ export function AppointmentDetailsSheet({
       service_name: serviceName,
       receipt_link_block: receiptLine,
     }).trim();
+  };
+
+  const handleStructureEvolution = async () => {
+    if (!onStructureEvolution || !evolutionDraft.trim()) return;
+    setEvolutionStructuring(true);
+    const result = await onStructureEvolution(evolutionDraft);
+    if (result.ok && result.structuredText) {
+      setEvolutionDraft(result.structuredText);
+    }
+    setEvolutionStructuring(false);
+  };
+
+  const handleSaveEvolution = async () => {
+    if (!onSaveEvolution) return;
+    setEvolutionSaving(true);
+    const result = await onSaveEvolution(evolutionDraft);
+    setEvolutionSaving(false);
+    if (result.ok) {
+      setEvolutionModalOpen(false);
+    }
   };
 
   return createPortal(
@@ -626,16 +663,27 @@ export function AppointmentDetailsSheet({
                     <Eye className="w-3.5 h-3.5" />
                     Follow-up e evolução
                   </div>
-                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-2">
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted">Próximo contato</span>
                       <span className="font-bold text-studio-text">{followUpDateLabel}</span>
                     </div>
                     <div className="text-xs text-muted">{followUpNoteLabel}</div>
+
+                    <div className="rounded-xl border border-line bg-paper p-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted mb-1">
+                        Evolução da sessão
+                      </p>
+                      <p className="max-h-24 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-studio-text">
+                        {evolutionPreviewText}
+                      </p>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={onOpenAttendance}
-                      className="mt-2 w-full h-10 rounded-xl bg-studio-green text-[10px] font-extrabold uppercase tracking-wide text-white"
+                      onClick={() => setEvolutionModalOpen(true)}
+                      disabled={actionPending}
+                      className="mt-1 w-full h-10 rounded-xl bg-studio-green text-[10px] font-extrabold uppercase tracking-wide text-white disabled:opacity-60"
                     >
                       Editar evolução
                     </button>
@@ -959,27 +1007,82 @@ export function AppointmentDetailsSheet({
           )}
         </div>
 
-        <div className="border-t border-line px-6 py-4 bg-white/95 backdrop-blur">
-          {isCompleted ? (
+        {isCompleted && evolutionModalOpen && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center px-4">
             <button
               type="button"
-              onClick={onOpenAttendance}
-              disabled={!details || actionPending}
-              className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-60"
-            >
-              Abrir evolução
-            </button>
-          ) : (
+              aria-label="Fechar edição de evolução"
+              onClick={() => setEvolutionModalOpen(false)}
+              className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            />
+            <div className="relative z-10 w-full max-w-96 rounded-3xl border border-line bg-white shadow-float">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-studio-text">Evolução</p>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                    Edite sem sair do pós-atendimento
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEvolutionModalOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-studio-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 p-4">
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleStructureEvolution()}
+                    disabled={!onStructureEvolution || !evolutionDraft.trim() || evolutionStructuring || evolutionSaving || actionPending}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-studio-green/30 bg-white text-studio-green disabled:opacity-50"
+                    aria-label="Organizar com Flora"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <textarea
+                  value={evolutionDraft}
+                  onChange={(event) => setEvolutionDraft(event.target.value)}
+                  className="min-h-44 w-full resize-y rounded-2xl border border-line bg-paper p-4 text-sm text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  placeholder="Descreva a evolução da sessão..."
+                />
+
+                <p className="text-[11px] font-semibold text-muted">
+                  {evolutionStructuring
+                    ? "Flora está organizando o texto..."
+                    : "Edite livremente e, se quiser, use a varinha para estruturar."}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSaveEvolution()}
+                  disabled={!onSaveEvolution || evolutionSaving || evolutionStructuring || actionPending}
+                  className="h-11 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
+                >
+                  {evolutionSaving ? "Salvando..." : "Salvar evolução"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isCompleted && (
+          <div className="border-t border-line px-6 py-4 bg-white/95 backdrop-blur">
             <button
               type="button"
               onClick={onStartSession}
               disabled={!details || actionPending}
               className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-60"
             >
-              Iniciar sessão
+              Ver atendimento
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {cancelDialogOpen && (

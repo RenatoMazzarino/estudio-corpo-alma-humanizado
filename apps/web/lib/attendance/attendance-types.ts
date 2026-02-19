@@ -48,7 +48,10 @@ export interface ClientHistoryEntry {
   appointment_id: string;
   start_time: string;
   service_name: string;
+  is_home_visit: boolean | null;
   appointment_status: string | null;
+  appointment_payment_status: string | null;
+  timeline: "past" | "future";
   evolution_text: string | null;
 }
 

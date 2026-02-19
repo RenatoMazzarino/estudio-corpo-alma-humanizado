@@ -46,8 +46,10 @@ import {
   confirmPre,
   getAttendance,
   recordPayment,
+  saveEvolution,
   sendMessage,
   sendReminder24h,
+  structureEvolutionFromAudio,
 } from "../app/(dashboard)/atendimento/[id]/actions";
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
 import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
@@ -129,6 +131,7 @@ export function MobileAgenda({
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const createdToastShown = useRef(false);
+  const autoOpenedAppointmentRef = useRef<string | null>(null);
   const timeColumnWidth = 72;
   const timeColumnGap = 16;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -357,6 +360,12 @@ export function MobileAgenda({
     [showToast]
   );
 
+  const openDetailsForAppointment = useCallback((appointmentId: string) => {
+    setLoadingAppointmentId(appointmentId);
+    setDetailsAppointmentId(appointmentId);
+    setDetailsOpen(true);
+  }, []);
+
   useEffect(() => {
     if (!detailsOpen || !detailsAppointmentId) {
       setDetailsData(null);
@@ -364,6 +373,40 @@ export function MobileAgenda({
     }
     fetchAttendanceDetails(detailsAppointmentId);
   }, [detailsOpen, detailsAppointmentId, fetchAttendanceDetails]);
+
+  useEffect(() => {
+    const appointmentToOpen = searchParams.get("openAppointment");
+    if (!appointmentToOpen) {
+      autoOpenedAppointmentRef.current = null;
+      return;
+    }
+    if (autoOpenedAppointmentRef.current === appointmentToOpen) {
+      return;
+    }
+
+    const targetAppointment = appointments.find((item) => item.id === appointmentToOpen);
+    if (!targetAppointment) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("openAppointment");
+      params.delete("fromAttendance");
+      router.replace(`/?${params.toString()}`, { scroll: false });
+      return;
+    }
+
+    const targetDate = parseDate(targetAppointment.start_time);
+    if (isValid(targetDate) && !isSameDay(targetDate, selectedDateRef.current)) {
+      setSelectedDate(targetDate);
+      setCurrentMonth(startOfMonth(targetDate));
+    }
+
+    autoOpenedAppointmentRef.current = appointmentToOpen;
+    openDetailsForAppointment(appointmentToOpen);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("openAppointment");
+    params.delete("fromAttendance");
+    router.replace(`/?${params.toString()}`, { scroll: false });
+  }, [appointments, openDetailsForAppointment, parseDate, router, searchParams]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -523,7 +566,10 @@ export function MobileAgenda({
   };
 
   const getServiceDuration = (item: DayItem) => {
-    if (item.finished_at) {
+    // For blocked slots, duration comes from start/end interval.
+    // For appointments, keep planned duration so the card height stays stable
+    // even after finishing earlier/later than expected.
+    if (item.type === "block" && item.finished_at) {
       const startTime = parseDate(item.start_time);
       const endTime = parseDate(item.finished_at);
       const diffMinutes = Math.max(15, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
@@ -861,6 +907,56 @@ export function MobileAgenda({
     setDetailsActionPending(false);
   };
 
+  const handleSaveEvolutionFromDetails = async (text: string) => {
+    if (!detailsData) return { ok: false as const };
+    setDetailsActionPending(true);
+    const result = await saveEvolution({
+      appointmentId: detailsData.appointment.id,
+      payload: {
+        text,
+      },
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      setDetailsActionPending(false);
+      return { ok: false as const };
+    }
+
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Evolução salva.",
+      })
+    );
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+    return { ok: true as const };
+  };
+
+  const handleStructureEvolutionFromDetails = async (text: string) => {
+    if (!detailsData) return { ok: false as const, structuredText: null };
+    setDetailsActionPending(true);
+    const result = await structureEvolutionFromAudio({
+      appointmentId: detailsData.appointment.id,
+      transcript: text,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      setDetailsActionPending(false);
+      return { ok: false as const, structuredText: null };
+    }
+
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Flora organizou a evolução.",
+      })
+    );
+    setDetailsActionPending(false);
+    return { ok: true as const, structuredText: result.data.structuredText };
+  };
+
   const handleOpenAttendance = () => {
     if (!detailsData) return;
     const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
@@ -1168,7 +1264,7 @@ export function MobileAgenda({
                           } as const;
 
                           let endLabel = "";
-                          if (item.finished_at) {
+                          if (isBlock && item.finished_at) {
                             endLabel = format(parseDate(item.finished_at), "HH:mm");
                           } else if (durationMinutes) {
                             endLabel = format(addMinutes(startTimeDate, durationMinutes), "HH:mm");
@@ -1238,13 +1334,7 @@ export function MobileAgenda({
                                       hasPreBuffer={hasPreBuffer}
                                       hasPostBuffer={hasPostBuffer}
                                       loading={loadingAppointmentId === item.id}
-                                      onOpen={() =>
-                                        (() => {
-                                          setLoadingAppointmentId(item.id);
-                                          setDetailsAppointmentId(item.id);
-                                          setDetailsOpen(true);
-                                        })()
-                                      }
+                                      onOpen={() => openDetailsForAppointment(item.id)}
                                       onLongPress={() => {
                                         setActionSheet({
                                           id: item.id,
@@ -1533,7 +1623,6 @@ export function MobileAgenda({
           setDetailsActionPending(false);
         }}
         onStartSession={handleOpenAttendance}
-        onOpenAttendance={handleOpenAttendance}
         onSendCreatedMessage={() => handleSendMessage("created_confirmation")}
         onSendReminder={handleSendReminder}
         onSendSurvey={handleSendSurvey}
@@ -1542,6 +1631,8 @@ export function MobileAgenda({
         onConfirmClient={handleConfirmClient}
         onCancelAppointment={handleCancelAppointment}
         onRecordPayment={handleRecordPayment}
+        onSaveEvolution={handleSaveEvolutionFromDetails}
+        onStructureEvolution={handleStructureEvolutionFromDetails}
         onNotify={(feedback) => showToast(feedback)}
       />
 

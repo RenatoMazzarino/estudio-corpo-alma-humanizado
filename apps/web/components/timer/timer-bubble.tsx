@@ -1,20 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Pause, Play, X } from "lucide-react";
+import { MoveUpRight, Pause, Play, X } from "lucide-react";
 import { useTimer } from "./use-timer";
+import { TimerProgressRing } from "./timer-progress-ring";
 
-function formatTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const prefix = hours > 0 ? `${hours.toString().padStart(2, "0")}:` : "";
-  return `${prefix}${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
+function formatTimeSigned(totalSeconds: number) {
+  const isNegative = totalSeconds < 0;
+  const absolute = Math.abs(totalSeconds);
+  const hours = Math.floor(absolute / 3600);
+  const minutes = Math.floor((absolute % 3600) / 60);
+  const seconds = absolute % 60;
+  const prefix = isNegative ? "-" : "";
+  const hourChunk = hours > 0 ? `${hours.toString().padStart(2, "0")}:` : "";
+  return `${prefix}${hourChunk}${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export function TimerBubble() {
@@ -32,12 +36,29 @@ export function TimerBubble() {
   const pathname = usePathname();
   const router = useRouter();
   const bubbleRef = useRef<HTMLDivElement | null>(null);
-  const dragState = useRef<{ offsetX: number; offsetY: number; dragging: boolean }>({
+  const dragState = useRef<{ offsetX: number; offsetY: number; dragging: boolean; pointerId: number | null }>({
     offsetX: 0,
     offsetY: 0,
     dragging: false,
+    pointerId: null,
   });
+
   const [mounted, setMounted] = useState(false);
+
+  const showBubble = Boolean(session && bubbleVisible);
+
+  const totalSeconds = session ? Math.max(1, session.totalDurationMinutes * 60) : 1;
+  const currentElapsed = session ? elapsedSeconds : 0;
+  const remainingSeconds = totalSeconds - currentElapsed;
+  const isOvertime = remainingSeconds < 0;
+  const ringProgress = session ? progress : 0;
+  const paused = Boolean(session?.pausedAt) || isPaused;
+
+  const title = paused ? "Sessão pausada" : "Sessão ativa";
+  const subtitle = isOvertime ? "Tempo excedido" : "Tempo restante";
+  const timeLabel = formatTimeSigned(remainingSeconds);
+  const sessionPath = session?.appointmentId ? `/atendimento/${session.appointmentId}` : null;
+  const canOpenSession = Boolean(sessionPath && !pathname.startsWith(sessionPath));
 
   useEffect(() => {
     setMounted(true);
@@ -54,127 +75,128 @@ export function TimerBubble() {
       x: Math.max(12, parentRect.width - rect.width - 16),
       y: Math.max(12, parentRect.height - rect.height - 120),
     });
-  }, [bubblePosition, setBubblePosition]);
+  }, [bubblePosition, setBubblePosition, showBubble]);
 
-  useEffect(() => {
-    function handleMove(event: PointerEvent) {
-      if (!dragState.current.dragging || !bubbleRef.current) return;
-      const parent = bubbleRef.current.parentElement;
-      if (!parent) return;
-      const parentRect = parent.getBoundingClientRect();
-      const rect = bubbleRef.current.getBoundingClientRect();
-      const bottomNavOffset = pathname.startsWith("/atendimento") ? 120 : 8;
-      const nextX = clamp(
-        event.clientX - parentRect.left - dragState.current.offsetX,
-        8,
-        parentRect.width - rect.width - 8
-      );
-      const nextY = clamp(
-        event.clientY - parentRect.top - dragState.current.offsetY,
-        8,
-        parentRect.height - rect.height - bottomNavOffset
-      );
-      setBubblePosition({ x: nextX, y: nextY });
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragState.current.dragging || !bubbleRef.current) return;
+    if (dragState.current.pointerId !== event.pointerId) return;
+    const parent = bubbleRef.current.parentElement;
+    if (!parent) return;
+    const parentRect = parent.getBoundingClientRect();
+    const rect = bubbleRef.current.getBoundingClientRect();
+    const bottomNavOffset = pathname.startsWith("/atendimento") ? 120 : 8;
+    const nextX = clamp(
+      event.clientX - parentRect.left - dragState.current.offsetX,
+      8,
+      parentRect.width - rect.width - 8
+    );
+    const nextY = clamp(
+      event.clientY - parentRect.top - dragState.current.offsetY,
+      8,
+      parentRect.height - rect.height - bottomNavOffset
+    );
+    setBubblePosition({ x: nextX, y: nextY });
+    event.preventDefault();
+  };
+
+  const handlePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragState.current.pointerId !== event.pointerId) return;
+    dragState.current.dragging = false;
+    dragState.current.pointerId = null;
+    if (bubbleRef.current?.hasPointerCapture(event.pointerId)) {
+      bubbleRef.current.releasePointerCapture(event.pointerId);
     }
+  };
 
-    function handleUp() {
-      dragState.current.dragging = false;
-    }
+  const handleTogglePause = () => {
+    if (!session) return;
+    void togglePause();
+  };
 
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", handleUp);
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-    };
-  }, [setBubblePosition, pathname]);
+  const handleClose = () => {
+    setBubbleVisible(false);
+  };
 
-  if (!mounted || !session) return null;
-
-  const showBubble = bubbleVisible;
-  if (!showBubble) return null;
-
-  const radius = 46;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - progress);
+  if (!mounted || !showBubble) return null;
 
   return (
     <div
       ref={bubbleRef}
-      className={`absolute z-40 h-28 w-28 rounded-full shadow-float backdrop-blur-md border border-studio-green/20 bg-white/80 ${
-        session && !isPaused
-          ? "after:content-[''] after:absolute after:-inset-1.5 after:rounded-full after:border-2 after:border-studio-green/30 after:animate-pulse"
-          : ""
-      }`}
+      className="absolute z-40 w-44 touch-none select-none rounded-[30px] border border-studio-green/20 bg-white/95 p-3 shadow-float backdrop-blur-md"
       style={bubblePosition ? { left: bubblePosition.x, top: bubblePosition.y } : undefined}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
       onPointerDown={(event) => {
-        if (!bubbleRef.current) return;
         const target = event.target as HTMLElement;
         if (target.closest("button")) return;
+        if (!bubbleRef.current) return;
         const rect = bubbleRef.current.getBoundingClientRect();
         dragState.current.dragging = true;
+        dragState.current.pointerId = event.pointerId;
         dragState.current.offsetX = event.clientX - rect.left;
         dragState.current.offsetY = event.clientY - rect.top;
+        bubbleRef.current.setPointerCapture(event.pointerId);
+        event.preventDefault();
       }}
+      onDragStart={(event) => event.preventDefault()}
     >
-      <svg className="absolute inset-0" viewBox="0 0 120 120">
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="rgba(106,128,108,0.16)"
-          strokeWidth="8"
-        />
-        <circle
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="none"
-          stroke="rgba(106,128,108,0.95)"
-          strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          transform="rotate(-90 60 60)"
-        />
-      </svg>
+      <button
+        type="button"
+        onClick={handleClose}
+        onPointerDown={(event) => event.stopPropagation()}
+        className="absolute -top-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full border border-line bg-white text-muted shadow-soft"
+        aria-label="Fechar contador"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">{title}</p>
+      </div>
+
+      <div className="mt-2 flex justify-center">
+        <TimerProgressRing progress={ringProgress} pulseActive={!paused}>
+          <div className="text-center">
+            <p
+              className={`text-2xl font-black tabular-nums leading-none ${
+                isOvertime ? "text-red-600" : "text-studio-text"
+              }`}
+            >
+              {timeLabel}
+            </p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">{subtitle}</p>
+          </div>
+        </TimerProgressRing>
+      </div>
+
+      {canOpenSession && (
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            setBubbleVisible(false);
+            router.push(sessionPath!);
           }}
-          onPointerDown={(event) => {
-            event.stopPropagation();
-          }}
-          className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white shadow-soft border border-line text-muted flex items-center justify-center"
-          aria-label="Fechar contador"
+          onPointerDown={(event) => event.stopPropagation()}
+          className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-line bg-paper text-[10px] font-extrabold uppercase tracking-[0.12em] text-studio-green"
         >
-          <X size={12} />
+          Voltar ao atendimento
+          <MoveUpRight className="h-3 w-3" />
         </button>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              togglePause();
-            }}
-            className="w-9 h-9 rounded-2xl bg-studio-light text-studio-green flex items-center justify-center border border-studio-green/10 hover:bg-white transition"
-            aria-label={isPaused ? "Retomar" : "Pausar"}
-          >
-            {isPaused ? <Play size={14} /> : <Pause size={14} />}
-          </button>
-          <span className="text-lg font-black text-studio-text tabular-nums">{formatTime(elapsedSeconds)}</span>
-        </div>
-        <button
-          onClick={() => router.push(`/atendimento/${session.appointmentId}?stage=session`)}
-          className="text-[10px] font-extrabold text-muted uppercase tracking-widest hover:text-studio-green transition"
-        >
-          Voltar
-        </button>
-      </div>
+      )}
+
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          handleTogglePause();
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+        className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-studio-green/20 bg-studio-light text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
+      >
+        {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+        {paused ? "Retomar" : "Pausar"}
+      </button>
     </div>
   );
 }

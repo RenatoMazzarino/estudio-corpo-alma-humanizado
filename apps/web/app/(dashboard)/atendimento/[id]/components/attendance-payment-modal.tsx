@@ -416,13 +416,13 @@ export function AttendancePaymentModal({
   const resolveReceiptPrompt = async (sendReceipt: boolean) => {
     const paymentId = receiptPromptPaymentId;
     if (!paymentId || resolvingReceiptPrompt) return;
+    setReceiptPromptPaymentId(null);
     setResolvingReceiptPrompt(true);
     try {
       if (sendReceipt) {
         await onSendReceipt(paymentId);
       }
       await onReceiptPromptResolved?.({ paymentId, sentReceipt: sendReceipt });
-      setReceiptPromptPaymentId(null);
     } finally {
       setResolvingReceiptPrompt(false);
     }

@@ -49,6 +49,17 @@ function normalizeChecklistTemplate(value: Json | null | undefined): string[] {
     .slice(0, 20);
 }
 
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
+
+function getBrazilDayKey(dateTime: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BRAZIL_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(dateTime));
+}
+
 export async function getAttendanceOverview(tenantId: string, appointmentId: string): Promise<AttendanceOverview | null> {
   const supabase = createServiceClient();
 
@@ -161,7 +172,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   if (clientId) {
     const { data: historyAppointmentsData } = await supabase
       .from("appointments")
-      .select("id, start_time, service_name, status")
+      .select("id, start_time, service_name, is_home_visit, status, payment_status")
       .eq("tenant_id", tenantId)
       .eq("client_id", clientId)
       .order("start_time", { ascending: false })
@@ -189,13 +200,30 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
       }
     }
 
+    const currentAppointmentDayKey = getBrazilDayKey(appointment.start_time);
+    const currentAppointmentTime = new Date(appointment.start_time).getTime();
+
     clientHistory = historyAppointments.map((item) => {
       const entry = evolutionByAppointment.get(item.id);
+      const itemDayKey = getBrazilDayKey(item.start_time);
+      const itemTime = new Date(item.start_time).getTime();
+      const timeline: "past" | "future" =
+        itemDayKey < currentAppointmentDayKey
+          ? "past"
+          : itemDayKey > currentAppointmentDayKey
+            ? "future"
+            : itemTime < currentAppointmentTime
+              ? "past"
+              : "future";
+
       return {
         appointment_id: item.id,
         start_time: item.start_time,
         service_name: item.service_name,
+        is_home_visit: item.is_home_visit ?? null,
         appointment_status: item.status ?? null,
+        appointment_payment_status: item.payment_status ?? null,
+        timeline,
         evolution_text: entry?.evolution_text ?? null,
       };
     });

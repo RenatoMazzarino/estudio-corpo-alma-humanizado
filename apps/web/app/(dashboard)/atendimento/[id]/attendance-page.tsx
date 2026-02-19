@@ -470,9 +470,10 @@ export function AttendancePage({
       receipt_link_block: `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`,
     }).trim();
 
+    // Não bloquear a navegação da tela no retorno do WhatsApp.
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
 
-    const result = await sendMessage({
+    void sendMessage({
       appointmentId: appointment.id,
       type: "payment_receipt",
       channel: "whatsapp",
@@ -481,14 +482,13 @@ export function AttendancePage({
         payment_id: paymentId,
         receipt_link: receiptLink,
       },
+    }).then((result) => {
+      if (!result.ok) {
+        showToast(feedbackFromError(result.error, "whatsapp"));
+        return;
+      }
+      showToast(feedbackById("message_recorded"));
     });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "whatsapp"));
-      return;
-    }
-
-    showToast(feedbackById("message_recorded"));
-    router.refresh();
   };
 
   const handleFinish = async () => {
