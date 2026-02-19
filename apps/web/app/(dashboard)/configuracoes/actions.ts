@@ -5,7 +5,17 @@ import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppError } from "../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
-import { updateSettings, upsertBusinessHours, deleteInvalidBusinessHours } from "../../../src/modules/settings/repository";
+import {
+  updateSettings,
+  upsertBusinessHours,
+  deleteInvalidBusinessHours,
+  listPixPaymentKeys,
+  insertPixPaymentKey,
+  setAllPixKeysInactive,
+  setPixPaymentKeyActive,
+  deletePixPaymentKey,
+  type PixPaymentKeyType,
+} from "../../../src/modules/settings/repository";
 import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
 import { disconnectSpotifyIntegration } from "../../../src/modules/integrations/spotify/server";
 
@@ -14,6 +24,101 @@ const DEFAULT_ATTENDANCE_CHECKLIST = [
   "Confirmar endereço/portaria",
   "Rever restrições (anamnese)",
 ];
+
+const PIX_KEY_TYPES: PixPaymentKeyType[] = ["cnpj", "cpf", "email", "phone", "evp"];
+
+function normalizePixKeyType(type: string): PixPaymentKeyType {
+  return PIX_KEY_TYPES.includes(type as PixPaymentKeyType) ? (type as PixPaymentKeyType) : "cnpj";
+}
+
+function mapPixKeysForResponse(
+  keys: Array<{
+    id: string;
+    key_type: string;
+    key_value: string;
+    label: string | null;
+    is_active: boolean;
+  }>
+) {
+  return keys.map((item) => ({
+    id: item.id,
+    key_type: normalizePixKeyType(item.key_type),
+    key_value: item.key_value,
+    label: item.label,
+    is_active: item.is_active,
+  }));
+}
+
+function getPixTypeLabel(type: PixPaymentKeyType) {
+  switch (type) {
+    case "cnpj":
+      return "CNPJ";
+    case "cpf":
+      return "CPF";
+    case "email":
+      return "E-mail";
+    case "phone":
+      return "Telefone";
+    case "evp":
+      return "Aleatória (EVP)";
+    default:
+      return "Chave";
+  }
+}
+
+function normalizePixKeyValue(type: PixPaymentKeyType, rawValue: string) {
+  const value = rawValue.trim();
+  if (!value) {
+    throw new AppError("Informe a chave Pix.", "VALIDATION_ERROR", 400);
+  }
+
+  if (type === "cnpj") {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 14) {
+      throw new AppError("CNPJ inválido para chave Pix.", "VALIDATION_ERROR", 400);
+    }
+    return digits;
+  }
+
+  if (type === "cpf") {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 11) {
+      throw new AppError("CPF inválido para chave Pix.", "VALIDATION_ERROR", 400);
+    }
+    return digits;
+  }
+
+  if (type === "phone") {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length < 10 || digits.length > 13) {
+      throw new AppError("Telefone inválido para chave Pix.", "VALIDATION_ERROR", 400);
+    }
+    return `+${digits}`;
+  }
+
+  if (type === "email") {
+    const normalized = value.toLowerCase();
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+    if (!valid) {
+      throw new AppError("E-mail inválido para chave Pix.", "VALIDATION_ERROR", 400);
+    }
+    return normalized;
+  }
+
+  const normalized = value.toLowerCase();
+  const evpRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!evpRegex.test(normalized)) {
+    throw new AppError("Chave aleatória (EVP) inválida.", "VALIDATION_ERROR", 400);
+  }
+  return normalized;
+}
+
+async function fetchPixKeysForTenant() {
+  const { data, error } = await listPixPaymentKeys(FIXED_TENANT_ID);
+  const mapped = mapSupabaseError(error);
+  if (mapped) return fail(mapped);
+  return ok(data ?? []);
+}
 
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
   const payload = [];
@@ -165,4 +270,156 @@ export async function configurePointTerminal(payload: {
   revalidatePath("/configuracoes");
   revalidatePath("/");
   return ok({ ok: true });
+}
+
+export async function addPixKey(payload: {
+  keyType: PixPaymentKeyType;
+  keyValue: string;
+  label?: string | null;
+  makeActive?: boolean;
+}): Promise<
+  ActionResult<{
+    keys: Array<{
+      id: string;
+      key_type: PixPaymentKeyType;
+      key_value: string;
+      label: string | null;
+      is_active: boolean;
+    }>;
+  }>
+> {
+  if (!PIX_KEY_TYPES.includes(payload.keyType)) {
+    return fail(new AppError("Tipo de chave Pix inválido.", "VALIDATION_ERROR", 400));
+  }
+
+  let normalizedValue = "";
+  try {
+    normalizedValue = normalizePixKeyValue(payload.keyType, payload.keyValue);
+  } catch (error) {
+    if (error instanceof AppError) return fail(error);
+    return fail(new AppError("Não foi possível validar a chave Pix.", "VALIDATION_ERROR", 400));
+  }
+
+  const currentKeysResult = await fetchPixKeysForTenant();
+  if (!currentKeysResult.ok) return currentKeysResult;
+  const currentKeys = currentKeysResult.data;
+
+  const shouldActivate =
+    Boolean(payload.makeActive) || currentKeys.length === 0 || !currentKeys.some((item) => item.is_active);
+
+  if (shouldActivate) {
+    const { error: clearError } = await setAllPixKeysInactive(FIXED_TENANT_ID);
+    const mappedClear = mapSupabaseError(clearError);
+    if (mappedClear) return fail(mappedClear);
+  }
+
+  const label = payload.label?.trim() || `${getPixTypeLabel(payload.keyType)} principal`;
+  const { error: insertError } = await insertPixPaymentKey({
+    tenantId: FIXED_TENANT_ID,
+    keyType: payload.keyType,
+    keyValue: normalizedValue,
+    label,
+    isActive: shouldActivate,
+  });
+
+  const mappedInsert = mapSupabaseError(insertError);
+  if (mappedInsert) return fail(mappedInsert);
+
+  const nextKeysResult = await fetchPixKeysForTenant();
+  if (!nextKeysResult.ok) return nextKeysResult;
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/atendimento");
+
+  return ok({
+    keys: mapPixKeysForResponse(nextKeysResult.data),
+  });
+}
+
+export async function activatePixKey(payload: {
+  keyId: string;
+}): Promise<
+  ActionResult<{
+    keys: Array<{
+      id: string;
+      key_type: PixPaymentKeyType;
+      key_value: string;
+      label: string | null;
+      is_active: boolean;
+    }>;
+  }>
+> {
+  const keyId = payload.keyId?.trim();
+  if (!keyId) {
+    return fail(new AppError("Selecione uma chave Pix válida.", "VALIDATION_ERROR", 400));
+  }
+
+  const { error: clearError } = await setAllPixKeysInactive(FIXED_TENANT_ID);
+  const mappedClear = mapSupabaseError(clearError);
+  if (mappedClear) return fail(mappedClear);
+
+  const { error: activateError } = await setPixPaymentKeyActive(FIXED_TENANT_ID, keyId);
+  const mappedActivate = mapSupabaseError(activateError);
+  if (mappedActivate) return fail(mappedActivate);
+
+  const nextKeysResult = await fetchPixKeysForTenant();
+  if (!nextKeysResult.ok) return nextKeysResult;
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/atendimento");
+
+  return ok({
+    keys: mapPixKeysForResponse(nextKeysResult.data),
+  });
+}
+
+export async function removePixKey(payload: {
+  keyId: string;
+}): Promise<
+  ActionResult<{
+    keys: Array<{
+      id: string;
+      key_type: PixPaymentKeyType;
+      key_value: string;
+      label: string | null;
+      is_active: boolean;
+    }>;
+  }>
+> {
+  const keyId = payload.keyId?.trim();
+  if (!keyId) {
+    return fail(new AppError("Chave Pix inválida para remoção.", "VALIDATION_ERROR", 400));
+  }
+
+  const { data: deletedRow, error: deleteError } = await deletePixPaymentKey(FIXED_TENANT_ID, keyId);
+  const mappedDelete = mapSupabaseError(deleteError);
+  if (mappedDelete) return fail(mappedDelete);
+
+  const keysResult = await fetchPixKeysForTenant();
+  if (!keysResult.ok) return keysResult;
+
+  if (deletedRow?.is_active && keysResult.data.length > 0) {
+    const firstKey = keysResult.data[0];
+    if (!firstKey) {
+      return fail(new AppError("Não foi possível definir a chave Pix ativa.", "UNKNOWN", 500));
+    }
+
+    const { error: clearError } = await setAllPixKeysInactive(FIXED_TENANT_ID);
+    const mappedClear = mapSupabaseError(clearError);
+    if (mappedClear) return fail(mappedClear);
+
+    const { error: activateError } = await setPixPaymentKeyActive(FIXED_TENANT_ID, firstKey.id);
+    const mappedActivate = mapSupabaseError(activateError);
+    if (mappedActivate) return fail(mappedActivate);
+  }
+
+  const nextKeysResult = await fetchPixKeysForTenant();
+  if (!nextKeysResult.ok) return nextKeysResult;
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/atendimento");
+
+  return ok({
+    keys: mapPixKeysForResponse(nextKeysResult.data),
+  });
 }

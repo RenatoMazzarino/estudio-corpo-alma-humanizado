@@ -1294,6 +1294,47 @@ export type Database = {
           },
         ]
       }
+      pix_payment_keys: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key_type: string
+          key_value: string
+          label: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_type: string
+          key_value: string
+          label?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_type?: string
+          key_value?: string
+          label?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_payment_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
@@ -1571,4 +1612,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

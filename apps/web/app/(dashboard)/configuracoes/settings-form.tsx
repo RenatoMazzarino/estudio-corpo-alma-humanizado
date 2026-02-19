@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import {
+  activatePixKey,
+  addPixKey,
   configurePointTerminal,
   disconnectSpotify,
   fetchPointDevices,
+  removePixKey,
   saveBusinessHours,
   saveSettings,
 } from "./actions";
@@ -33,6 +36,13 @@ interface SettingsFormProps {
   spotifyPlaylistUrl: string;
   spotifyConnected: boolean;
   spotifyAccountName: string;
+  pixPaymentKeys: Array<{
+    id: string;
+    keyType: "cnpj" | "cpf" | "email" | "phone" | "evp";
+    keyValue: string;
+    label: string;
+    isActive: boolean;
+  }>;
   attendanceChecklistEnabled: boolean;
   attendanceChecklistItems: string[];
 }
@@ -62,6 +72,7 @@ export function SettingsForm({
   spotifyPlaylistUrl,
   spotifyConnected,
   spotifyAccountName,
+  pixPaymentKeys,
   attendanceChecklistEnabled,
   attendanceChecklistItems,
 }: SettingsFormProps) {
@@ -79,6 +90,11 @@ export function SettingsForm({
   const [spotifyConnectedValue, setSpotifyConnectedValue] = useState(spotifyConnected);
   const [spotifyAccountNameValue, setSpotifyAccountNameValue] = useState(spotifyAccountName);
   const [spotifyDisconnecting, setSpotifyDisconnecting] = useState(false);
+  const [pixKeysValue, setPixKeysValue] = useState(pixPaymentKeys);
+  const [pixKeyTypeValue, setPixKeyTypeValue] = useState<"cnpj" | "cpf" | "email" | "phone" | "evp">("cnpj");
+  const [pixKeyInputValue, setPixKeyInputValue] = useState("");
+  const [pixKeyLabelValue, setPixKeyLabelValue] = useState("");
+  const [pixSaving, setPixSaving] = useState(false);
   const [attendanceChecklistEnabledValue, setAttendanceChecklistEnabledValue] = useState(
     attendanceChecklistEnabled
   );
@@ -172,6 +188,109 @@ export function SettingsForm({
       })
     );
     setSpotifyDisconnecting(false);
+  };
+
+  const handleAddPixKey = async () => {
+    setPixSaving(true);
+    const result = await addPixKey({
+      keyType: pixKeyTypeValue,
+      keyValue: pixKeyInputValue,
+      label: pixKeyLabelValue,
+      makeActive: pixKeysValue.length === 0,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "generic"));
+      setPixSaving(false);
+      return;
+    }
+
+    setPixKeysValue(
+      result.data.keys.map((item) => ({
+        id: item.id,
+        keyType: item.key_type,
+        keyValue: item.key_value,
+        label: item.label ?? "",
+        isActive: item.is_active,
+      }))
+    );
+    setPixKeyInputValue("");
+    setPixKeyLabelValue("");
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Chave Pix cadastrada.",
+      })
+    );
+    setPixSaving(false);
+  };
+
+  const handleActivatePixKey = async (keyId: string) => {
+    setPixSaving(true);
+    const result = await activatePixKey({ keyId });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "generic"));
+      setPixSaving(false);
+      return;
+    }
+    setPixKeysValue(
+      result.data.keys.map((item) => ({
+        id: item.id,
+        keyType: item.key_type,
+        keyValue: item.key_value,
+        label: item.label ?? "",
+        isActive: item.is_active,
+      }))
+    );
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Chave Pix ativa atualizada.",
+      })
+    );
+    setPixSaving(false);
+  };
+
+  const handleRemovePixKey = async (keyId: string) => {
+    setPixSaving(true);
+    const result = await removePixKey({ keyId });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "generic"));
+      setPixSaving(false);
+      return;
+    }
+    setPixKeysValue(
+      result.data.keys.map((item) => ({
+        id: item.id,
+        keyType: item.key_type,
+        keyValue: item.key_value,
+        label: item.label ?? "",
+        isActive: item.is_active,
+      }))
+    );
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Chave Pix removida.",
+      })
+    );
+    setPixSaving(false);
+  };
+
+  const formatPixTypeLabel = (type: "cnpj" | "cpf" | "email" | "phone" | "evp") => {
+    switch (type) {
+      case "cnpj":
+        return "CNPJ";
+      case "cpf":
+        return "CPF";
+      case "email":
+        return "E-mail";
+      case "phone":
+        return "Telefone";
+      case "evp":
+        return "Aleatória";
+      default:
+        return "Chave";
+    }
   };
 
   return (
@@ -330,6 +449,112 @@ export function SettingsForm({
               {spotifyDisconnecting ? "Desconectando..." : "Desconectar"}
             </button>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Pix por chave (checkout interno)</h3>
+            <span className="text-[11px] text-gray-500">
+              {pixKeysValue.find((item) => item.isActive)?.label || "Nenhuma chave ativa"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <select
+              value={pixKeyTypeValue}
+              onChange={(event) =>
+                setPixKeyTypeValue(event.target.value as "cnpj" | "cpf" | "email" | "phone" | "evp")
+              }
+              className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
+            >
+              <option value="cnpj">CNPJ</option>
+              <option value="cpf">CPF</option>
+              <option value="email">E-mail</option>
+              <option value="phone">Telefone</option>
+              <option value="evp">Aleatória (EVP)</option>
+            </select>
+            <input
+              type="text"
+              value={pixKeyInputValue}
+              onChange={(event) => setPixKeyInputValue(event.target.value)}
+              placeholder="Digite a chave"
+              className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm sm:col-span-2"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input
+              type="text"
+              value={pixKeyLabelValue}
+              onChange={(event) => setPixKeyLabelValue(event.target.value)}
+              placeholder="Rótulo (ex.: CNPJ principal)"
+              className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAddPixKey}
+              disabled={pixSaving}
+              className="h-10 rounded-xl border border-studio-green bg-studio-green text-xs font-bold text-white disabled:opacity-60"
+            >
+              {pixSaving ? "Salvando..." : "Adicionar chave"}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {pixKeysValue.length === 0 ? (
+              <p className="text-[11px] text-gray-500">Nenhuma chave cadastrada.</p>
+            ) : (
+              pixKeysValue.map((pixKey) => (
+                <div
+                  key={pixKey.id}
+                  className={`rounded-xl border px-3 py-2 ${
+                    pixKey.isActive ? "border-studio-green bg-white" : "border-stone-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-studio-text truncate">
+                        {pixKey.label || `${formatPixTypeLabel(pixKey.keyType)} sem rótulo`}
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        {formatPixTypeLabel(pixKey.keyType)}: {pixKey.keyValue}
+                      </p>
+                    </div>
+                    {pixKey.isActive ? (
+                      <span className="rounded-full border border-studio-green/30 bg-studio-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-studio-green">
+                        Ativa
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    {!pixKey.isActive ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleActivatePixKey(pixKey.id)}
+                        disabled={pixSaving}
+                        className="h-8 rounded-lg border border-studio-green px-3 text-[10px] font-bold uppercase tracking-wide text-studio-green disabled:opacity-60"
+                      >
+                        Usar esta chave
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void handleRemovePixKey(pixKey.id)}
+                      disabled={pixSaving}
+                      className="h-8 rounded-lg border border-stone-200 px-3 text-[10px] font-bold uppercase tracking-wide text-gray-600 disabled:opacity-60"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <p className="text-[11px] text-gray-500">
+            A chave ativa será usada no checkout interno em &quot;PIX Chave&quot;.
+          </p>
         </div>
 
         <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">

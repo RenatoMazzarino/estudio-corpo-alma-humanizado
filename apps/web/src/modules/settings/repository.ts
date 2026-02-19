@@ -4,6 +4,8 @@ import type { PostgrestError } from "@supabase/supabase-js";
 
 export type SettingsRow = Database["public"]["Tables"]["settings"]["Row"];
 export type BusinessHourRow = Database["public"]["Tables"]["business_hours"]["Row"];
+export type PixPaymentKeyRow = Database["public"]["Tables"]["pix_payment_keys"]["Row"];
+export type PixPaymentKeyType = "cnpj" | "cpf" | "email" | "phone" | "evp";
 
 type SettingsMutationResult = { error: PostgrestError | null };
 
@@ -68,4 +70,65 @@ export async function updateSettings(
     .single();
 
   return { error: insertResult.error };
+}
+
+export async function listPixPaymentKeys(tenantId: string) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("pix_payment_keys")
+    .select("id, tenant_id, key_type, key_value, label, is_active, created_at, updated_at")
+    .eq("tenant_id", tenantId)
+    .order("is_active", { ascending: false })
+    .order("created_at", { ascending: true });
+}
+
+export async function insertPixPaymentKey(payload: {
+  tenantId: string;
+  keyType: PixPaymentKeyType;
+  keyValue: string;
+  label?: string | null;
+  isActive?: boolean;
+}) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("pix_payment_keys")
+    .insert({
+      tenant_id: payload.tenantId,
+      key_type: payload.keyType,
+      key_value: payload.keyValue,
+      label: payload.label ?? null,
+      is_active: payload.isActive ?? false,
+    })
+    .select("id, tenant_id, key_type, key_value, label, is_active, created_at, updated_at")
+    .single();
+}
+
+export async function setAllPixKeysInactive(tenantId: string) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("pix_payment_keys")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("tenant_id", tenantId);
+}
+
+export async function setPixPaymentKeyActive(tenantId: string, keyId: string) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("pix_payment_keys")
+    .update({ is_active: true, updated_at: new Date().toISOString() })
+    .eq("tenant_id", tenantId)
+    .eq("id", keyId)
+    .select("id")
+    .single();
+}
+
+export async function deletePixPaymentKey(tenantId: string, keyId: string) {
+  const supabase = createServiceClient();
+  return supabase
+    .from("pix_payment_keys")
+    .delete()
+    .eq("tenant_id", tenantId)
+    .eq("id", keyId)
+    .select("id, is_active")
+    .single();
 }
