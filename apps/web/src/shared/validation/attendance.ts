@@ -47,7 +47,6 @@ const evolutionPayload = z.object({
 
 export const saveEvolutionSchema = appointmentIdSchema.extend({
   payload: evolutionPayload,
-  status: z.enum(["draft", "published"]),
 });
 
 export const setCheckoutItemsSchema = appointmentIdSchema.extend({

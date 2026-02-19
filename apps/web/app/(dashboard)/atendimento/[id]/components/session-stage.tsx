@@ -2,39 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Mic, Music2, Pause, Play, RotateCw, SkipBack, SkipForward, Sparkles, Square } from "lucide-react";
+import { ChevronDown, Mic, Music2, Pause, Pencil, Play, RotateCw, SkipBack, SkipForward, Sparkles, Square } from "lucide-react";
 import type {
-  AttendanceRow,
   ChecklistItem,
   ClientHistoryEntry,
-  EvolutionEntry,
 } from "../../../../../lib/attendance/attendance-types";
-import { StageStatusBadge } from "./stage-status";
-
-type SpeechRecognitionResultLike = {
-  isFinal: boolean;
-  0: {
-    transcript?: string;
-  };
-};
-
-type SpeechRecognitionEventLike = {
-  resultIndex: number;
-  results: SpeechRecognitionResultLike[];
-};
-
-type SpeechRecognitionLike = {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 type SpotifyPlayerAction = "play" | "pause" | "next" | "previous";
 type SpotifyPlayerSnapshot = {
   connected: boolean;
@@ -50,17 +22,16 @@ type SpotifyPlayerSnapshot = {
 };
 
 interface SessionStageProps {
-  attendance: AttendanceRow;
   checklistEnabled: boolean;
   checklist: ChecklistItem[];
   onToggleChecklist: (itemId: string, completed: boolean) => void;
-  evolution: EvolutionEntry[];
+  hasSavedEvolution: boolean;
   clientHistory: ClientHistoryEntry[];
   evolutionText: string;
   onChangeEvolutionText: (value: string) => void;
+  onTranscribeAudio: (payload: { audioBase64: string; mimeType: string }) => Promise<string | null>;
   onStructureWithFlora: (transcript: string) => Promise<void>;
-  onSaveDraft: () => void;
-  onPublish: () => void;
+  onSaveEvolution: () => Promise<boolean>;
 }
 
 const DEFAULT_SPOTIFY_PLAYLIST_URL =
@@ -94,26 +65,55 @@ function extractSpotifyPlaylistId(rawUrl: string) {
   }
 }
 
+function pickRecordingMimeType() {
+  if (typeof MediaRecorder === "undefined") return "";
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+  ];
+  return candidates.find((mime) => MediaRecorder.isTypeSupported(mime)) ?? "";
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const raw = typeof reader.result === "string" ? reader.result : "";
+      const base64 = raw.includes(",") ? raw.split(",")[1] : raw;
+      if (!base64) {
+        reject(new Error("Falha ao processar áudio."));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Falha ao processar áudio."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function SessionStage({
-  attendance,
   checklistEnabled,
   checklist,
   onToggleChecklist,
-  evolution,
+  hasSavedEvolution,
   clientHistory,
   evolutionText,
   onChangeEvolutionText,
+  onTranscribeAudio,
   onStructureWithFlora,
-  onSaveDraft,
-  onPublish,
+  onSaveEvolution,
 }: SessionStageProps) {
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const recordingTranscriptRef = useRef("");
-  const evolutionTextRef = useRef(evolutionText);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isStructuring, setIsStructuring] = useState(false);
-  const [dictationError, setDictationError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(!hasSavedEvolution);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<ClientHistoryEntry | null>(null);
   const [isChecklistOpen, setIsChecklistOpen] = useState(true);
   const [spotifyState, setSpotifyState] = useState<SpotifyPlayerSnapshot | null>(null);
@@ -125,12 +125,14 @@ export function SessionStage({
   const spotifyPlaylistConfigured = useMemo(() => Boolean(extractSpotifyPlaylistId(spotifyPlaylistUrl)), [spotifyPlaylistUrl]);
 
   useEffect(() => {
-    evolutionTextRef.current = evolutionText;
-  }, [evolutionText]);
-
-  useEffect(() => {
     return () => {
-      recognitionRef.current?.stop();
+      try {
+        mediaRecorderRef.current?.stop();
+      } catch {
+        // noop
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
     };
   }, []);
 
@@ -209,14 +211,10 @@ export function SessionStage({
     };
   }, [fetchSpotifyState]);
 
-  const publishedHistory = useMemo(
-    () =>
-      evolution
-        .filter((entry) => entry.status === "published")
-        .sort((a, b) => (b.version ?? 0) - (a.version ?? 0)),
-    [evolution]
-  );
-  const lastPublished = publishedHistory[0] ?? null;
+  useEffect(() => {
+    setIsEditing(!hasSavedEvolution);
+  }, [hasSavedEvolution]);
+
   const completedChecklistCount = useMemo(
     () => checklist.filter((item) => Boolean(item.completed_at)).length,
     [checklist]
@@ -227,6 +225,7 @@ export function SessionStage({
   const spotifyCanTogglePlayback = spotifyConnected && !spotifyActionBusy;
   const spotifyToggleAction: SpotifyPlayerAction = spotifyState?.isPlaying ? "pause" : "play";
   const spotifyToggleLabel = spotifyState?.isPlaying ? "Pausar" : "Play";
+  const noteLocked = hasSavedEvolution && !isEditing;
 
   const checklistSourceLabel = (source: string | null) => {
     if (!source) return "manual";
@@ -237,8 +236,12 @@ export function SessionStage({
     return normalized;
   };
 
-  const stopDictation = () => {
-    recognitionRef.current?.stop();
+  const stopAudioRecording = () => {
+    try {
+      mediaRecorderRef.current?.stop();
+    } catch {
+      setIsRecording(false);
+    }
   };
 
   const handleOpenSpotify = () => {
@@ -329,7 +332,7 @@ export function SessionStage({
   };
 
   const handleStructureWithFlora = async () => {
-    if (!evolutionText.trim()) return;
+    if (!evolutionText.trim() || noteLocked) return;
     setIsStructuring(true);
     try {
       await onStructureWithFlora(evolutionText);
@@ -338,66 +341,88 @@ export function SessionStage({
     }
   };
 
-  const startDictation = async () => {
-    setDictationError(null);
+  const handleSaveEvolution = async () => {
+    if (isRecording || isTranscribing || isStructuring) return;
+    const saved = await onSaveEvolution();
+    if (saved) {
+      setIsEditing(false);
+      setRecordingError(null);
+    }
+  };
 
-    const speechWindow = window as Window & {
-      SpeechRecognition?: SpeechRecognitionConstructor;
-      webkitSpeechRecognition?: SpeechRecognitionConstructor;
-    };
+  const startAudioRecording = async () => {
+    if (noteLocked) return;
+    setRecordingError(null);
 
-    const SpeechRecognitionCtor =
-      speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
-
-    if (!SpeechRecognitionCtor) {
-      setDictationError("Seu navegador não suporta ditado por voz nesta tela.");
+    if (
+      typeof window === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof navigator.mediaDevices.getUserMedia !== "function" ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setRecordingError("Seu navegador não suporta gravação de áudio nesta tela.");
       return;
     }
 
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "pt-BR";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recordingTranscriptRef.current = "";
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
 
-    recognition.onresult = (event) => {
-      let chunk = "";
-      for (let index = event.resultIndex; index < event.results.length; index++) {
-        const result = event.results[index];
-        const text = result?.[0]?.transcript?.trim();
-        if (result?.isFinal && text) {
-          chunk += `${text} `;
+      const mimeType = pickRecordingMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
-      }
+      };
 
-      if (!chunk.trim()) return;
+      recorder.onerror = () => {
+        setRecordingError("Não foi possível gravar o áudio. Tente novamente.");
+      };
 
-      recordingTranscriptRef.current = `${recordingTranscriptRef.current} ${chunk}`.trim();
-      onChangeEvolutionText(
-        `${evolutionTextRef.current}${evolutionTextRef.current.trim().length > 0 ? "\n" : ""}${chunk.trim()}`.trim()
-      );
-    };
+      recorder.onstop = async () => {
+        setIsRecording(false);
 
-    recognition.onerror = (event) => {
-      setDictationError(event.error ? `Falha no ditado (${event.error}).` : "Falha no ditado.");
-    };
+        const streamTracks = mediaStreamRef.current?.getTracks() ?? [];
+        streamTracks.forEach((track) => track.stop());
+        mediaStreamRef.current = null;
 
-    recognition.onend = async () => {
-      setIsRecording(false);
-      const transcript = recordingTranscriptRef.current.trim();
-      if (!transcript) return;
+        const finalMimeType = recorder.mimeType || mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
+        audioChunksRef.current = [];
 
-      setIsStructuring(true);
-      try {
-        await onStructureWithFlora(transcript);
-      } finally {
-        setIsStructuring(false);
-      }
-    };
+        if (audioBlob.size < 1024) {
+          setRecordingError("Áudio muito curto. Grave novamente.");
+          return;
+        }
 
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsRecording(true);
+        setIsTranscribing(true);
+        try {
+          const audioBase64 = await blobToBase64(audioBlob);
+          const transcript = (await onTranscribeAudio({ audioBase64, mimeType: finalMimeType }))?.trim() ?? "";
+          if (!transcript) {
+            setRecordingError("Não foi possível transcrever este áudio.");
+            return;
+          }
+
+          const currentText = evolutionText.trim();
+          const nextText = currentText ? `${currentText}\n\n${transcript}` : transcript;
+          onChangeEvolutionText(nextText);
+        } catch {
+          setRecordingError("Falha ao transcrever o áudio.");
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      recorder.start(250);
+      setIsRecording(true);
+    } catch {
+      setRecordingError("Não foi possível acessar o microfone.");
+    }
   };
 
   return (
@@ -550,15 +575,24 @@ export function SessionStage({
       <div className="rounded-3xl border border-white bg-white p-5 shadow-soft">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-serif font-bold text-studio-text">Evolução da sessão</h2>
-            <p className="mt-1 text-xs text-muted">Texto livre + ditado por voz.</p>
+            <h2 className="text-lg font-serif font-bold text-studio-text">Evolução</h2>
+            <p className="mt-1 text-xs text-muted">Grave áudio ou escreva manualmente. Estruture com IA quando quiser.</p>
           </div>
           <div className="flex items-center gap-2">
-            <StageStatusBadge status={attendance.session_status} variant="compact" />
+            {noteLocked && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                aria-label="Editar evolução"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-studio-text"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={handleStructureWithFlora}
-              disabled={!evolutionText.trim() || isStructuring}
+              disabled={!evolutionText.trim() || isStructuring || isTranscribing || noteLocked}
               aria-label="Organizar texto com Flora"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-studio-green/30 bg-white text-studio-green disabled:opacity-50"
             >
@@ -566,63 +600,68 @@ export function SessionStage({
             </button>
             <button
               type="button"
-              onClick={isRecording ? stopDictation : startDictation}
+              onClick={isRecording ? stopAudioRecording : startAudioRecording}
+              disabled={isStructuring || isTranscribing || noteLocked}
               aria-label={isRecording ? "Parar gravação" : "Iniciar gravação"}
               className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
                 isRecording
                   ? "animate-pulse border-red-200 bg-red-50 text-red-600"
                   : "border-studio-green/30 bg-white text-studio-green"
-              }`}
+              } disabled:opacity-50`}
             >
               {isRecording ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
             </button>
           </div>
         </div>
 
-        <textarea
-          className="mt-4 w-full min-h-44 bg-paper rounded-2xl p-4 text-sm text-studio-text border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-y"
-          placeholder="Descreva a evolução da sessão..."
-          value={evolutionText}
-          onChange={(event) => onChangeEvolutionText(event.target.value)}
-        />
+        <div className="relative mt-4">
+          <textarea
+            className={`w-full min-h-44 rounded-2xl p-4 text-sm text-studio-text border border-line resize-y ${
+              noteLocked ? "bg-stone-50" : "bg-paper focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+            }`}
+            placeholder={noteLocked ? "Clique no ícone de edição para atualizar a evolução." : "Descreva a evolução da sessão..."}
+            value={evolutionText}
+            onChange={(event) => {
+              if (!noteLocked) onChangeEvolutionText(event.target.value);
+            }}
+            readOnly={noteLocked}
+          />
+          {isTranscribing && (
+            <div className="absolute inset-0 rounded-2xl bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold text-studio-text">
+                <RotateCw className="h-3.5 w-3.5 animate-spin text-studio-green" />
+                Transcrevendo seu áudio com Flora...
+              </div>
+            </div>
+          )}
+        </div>
         <div className="mt-2 flex items-center justify-between gap-2">
           <p className="text-[11px] font-semibold text-muted">
-            {isStructuring
+            {isTranscribing
+              ? "Áudio recebido. Flora está transcrevendo sem estruturar."
+              : isStructuring
               ? "Flora está organizando sua evolução..."
               : isRecording
                 ? "Gravando. Toque no quadrado para encerrar."
-                : "Use o microfone para ditar ou a varinha para organizar o texto."}
+                : noteLocked
+                  ? "Evolução salva para esta sessão. Clique no lápis para editar."
+                : "Use o microfone para gravar e depois a varinha para estruturar, se quiser."}
           </p>
         </div>
-        {dictationError && <p className="mt-2 text-xs text-red-600">{dictationError}</p>}
+        {recordingError && <p className="mt-2 text-xs text-red-600">{recordingError}</p>}
 
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={onSaveDraft}
-            type="button"
-            className="flex-1 h-12 rounded-2xl bg-paper border border-gray-200 text-gray-700 font-extrabold text-xs hover:bg-gray-50 transition"
-          >
-            Salvar rascunho
-          </button>
-          <button
-            onClick={onPublish}
-            type="button"
-            className="flex-1 h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs shadow-lg shadow-green-200 active:scale-95 transition"
-          >
-            Publicar evolução
-          </button>
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-dashed border-line bg-paper px-3 py-2">
-          <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Última publicação</p>
-          {lastPublished ? (
-            <p className="mt-1 line-clamp-2 text-xs text-studio-text">
-              v{lastPublished.version}: {lastPublished.evolution_text || "Registro publicado"}
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-muted">Nenhuma publicação ainda.</p>
-          )}
-        </div>
+        {isEditing && (
+          <div className="mt-4">
+            <button
+              onClick={() => void handleSaveEvolution()}
+              type="button"
+              disabled={isRecording || isTranscribing || isStructuring}
+              className="h-12 w-full rounded-2xl bg-studio-green text-white font-extrabold text-xs shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-50"
+            >
+              Salvar evolução
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="rounded-3xl border border-white bg-white p-5 shadow-soft">

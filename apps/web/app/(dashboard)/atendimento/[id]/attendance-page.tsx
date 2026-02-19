@@ -15,6 +15,7 @@ import {
   recordPayment,
   saveEvolution,
   structureEvolutionFromAudio,
+  transcribeEvolutionFromAudio,
   sendMessage,
   setCheckoutItems,
   setDiscount,
@@ -109,11 +110,7 @@ export function AttendancePage({
   const attendance = data.attendance;
   const checkout = data.checkout;
 
-  const initialEvolution = useMemo(() => {
-    const draft = data.evolution.find((entry) => entry.status === "draft");
-    const published = data.evolution.find((entry) => entry.status === "published");
-    return draft ?? published ?? null;
-  }, [data.evolution]);
+  const initialEvolution = useMemo(() => data.evolution[0] ?? null, [data.evolution]);
 
   const [evolutionText, setEvolutionText] = useState(initialEvolution?.evolution_text ?? "");
 
@@ -192,25 +189,48 @@ export function AttendancePage({
     router.refresh();
   };
 
-  const handleSaveEvolution = async (status: "draft" | "published") => {
+  const hasSavedEvolution = Boolean(initialEvolution);
+
+  const handleSaveEvolution = async () => {
     const result = await saveEvolution({
       appointmentId: appointment.id,
-      status,
       payload: {
         text: evolutionText,
       },
     });
     if (!result.ok) {
       showToast(feedbackFromError(result.error, "attendance"));
-      return;
+      return false;
     }
     showToast(
       feedbackById("generic_saved", {
         tone: "success",
-        message: status === "published" ? "Evolução publicada." : "Rascunho salvo.",
+        message: "Evolução salva.",
       })
     );
     router.refresh();
+    return true;
+  };
+
+  const handleTranscribeAudio = async (payload: { audioBase64: string; mimeType: string }) => {
+    const result = await transcribeEvolutionFromAudio({
+      appointmentId: appointment.id,
+      audioBase64: payload.audioBase64,
+      mimeType: payload.mimeType,
+    });
+
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      return null;
+    }
+
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Áudio transcrito. Revise e edite antes de estruturar.",
+      })
+    );
+    return result.data.transcript;
   };
 
   const handleStructureWithFlora = async (transcript: string) => {
@@ -564,17 +584,16 @@ export function AttendancePage({
         <div className="flex min-h-0 flex-1 flex-col">
           <main onScroll={handleBodyScroll} className="flex-1 overflow-y-auto px-5 pt-5 pb-6">
             <SessionStage
-              attendance={attendance}
               checklistEnabled={checklistEnabled}
               checklist={data.checklist}
               onToggleChecklist={handleToggleChecklist}
-              evolution={data.evolution}
+              hasSavedEvolution={hasSavedEvolution}
               clientHistory={data.clientHistory}
               evolutionText={evolutionText}
               onChangeEvolutionText={setEvolutionText}
+              onTranscribeAudio={handleTranscribeAudio}
               onStructureWithFlora={handleStructureWithFlora}
-              onSaveDraft={() => handleSaveEvolution("draft")}
-              onPublish={() => handleSaveEvolution("published")}
+              onSaveEvolution={handleSaveEvolution}
             />
           </main>
 

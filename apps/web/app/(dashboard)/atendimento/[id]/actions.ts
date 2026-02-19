@@ -39,7 +39,7 @@ import {
   type PointCardMode,
 } from "../../../../src/modules/payments/mercadopago-orders";
 import { getSettings } from "../../../../src/modules/settings/repository";
-import { runFloraText } from "../../../../src/shared/ai/flora";
+import { runFloraAudioTranscription, runFloraText } from "../../../../src/shared/ai/flora";
 
 async function insertMessageLog(params: {
   appointmentId: string;
@@ -128,11 +128,6 @@ async function updatePaymentStatus(appointmentId: string) {
 
   const paymentStatus = paid >= total && total > 0 ? "paid" : paid > 0 ? "partial" : "pending";
 
-  await supabase
-    .from("appointment_checkout")
-    .update({ payment_status: paymentStatus })
-    .eq("appointment_id", appointmentId);
-
   await updateAppointment(FIXED_TENANT_ID, appointmentId, {
     payment_status: paymentStatus,
   });
@@ -156,9 +151,6 @@ export async function confirmPre(payload: { appointmentId: string; channel?: str
     .from("appointment_attendances")
     .update({
       confirmed_at: now,
-      confirmed_channel: parsed.data.channel ?? "manual",
-      pre_status: "done",
-      session_status: "available",
     })
     .eq("appointment_id", parsed.data.appointmentId);
 
@@ -193,9 +185,6 @@ export async function cancelPreConfirmation(payload: { appointmentId: string }):
     .from("appointment_attendances")
     .update({
       confirmed_at: null,
-      confirmed_channel: null,
-      pre_status: "available",
-      session_status: "available",
     })
     .eq("appointment_id", parsed.data.appointmentId);
 
@@ -389,7 +378,6 @@ export async function saveEvolution(payload: {
   payload: {
     text?: string | null;
   };
-  status: "draft" | "published";
 }): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = saveEvolutionSchema.safeParse(payload);
   if (!parsed.success) {
@@ -398,68 +386,62 @@ export async function saveEvolution(payload: {
 
   const supabase = createServiceClient();
   const evolutionText = parsed.data.payload.text?.trim() ?? null;
-  const { data: existingDraft } = await supabase
+  const { data: existingEntry, error: existingEntryError } = await supabase
     .from("appointment_evolution_entries")
     .select("id")
     .eq("appointment_id", parsed.data.appointmentId)
-    .eq("status", "draft")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (parsed.data.status === "draft" && existingDraft) {
+  const mappedExistingEntryError = mapSupabaseError(existingEntryError);
+  if (mappedExistingEntryError) return fail(mappedExistingEntryError);
+
+  if (existingEntry) {
     const { error } = await supabase
       .from("appointment_evolution_entries")
       .update({
         evolution_text: evolutionText,
       })
-      .eq("id", existingDraft.id);
+      .eq("id", existingEntry.id);
 
     const mapped = mapSupabaseError(error);
     if (mapped) return fail(mapped);
   } else {
-    const { data: versionData } = await supabase
-      .from("appointment_evolution_entries")
-      .select("version")
-      .eq("appointment_id", parsed.data.appointmentId)
-      .order("version", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const insertPayload = {
+      appointment_id: parsed.data.appointmentId,
+      tenant_id: FIXED_TENANT_ID,
+      evolution_text: evolutionText,
+    };
 
-    const nextVersion = (versionData?.version ?? 0) + 1;
+    let { error } = await supabase.from("appointment_evolution_entries").insert(insertPayload as never);
 
-    const { error } = await supabase
-      .from("appointment_evolution_entries")
-      .insert({
-        appointment_id: parsed.data.appointmentId,
-        tenant_id: FIXED_TENANT_ID,
-        version: nextVersion,
-        status: parsed.data.status,
-        evolution_text: evolutionText,
-      });
+    const insertErrorText = `${error?.message ?? ""} ${error?.details ?? ""}`.toLowerCase();
+    const needsLegacyVersionFallback =
+      !!error &&
+      ["version", "appointment_evolution_entries_unique", "null value in column"].some((pattern) =>
+        insertErrorText.includes(pattern)
+      );
+
+    if (needsLegacyVersionFallback) {
+      const legacyInsert = await supabase.from("appointment_evolution_entries").insert({
+        ...insertPayload,
+        version: 1,
+        status: "draft",
+      } as never);
+      error = legacyInsert.error;
+    }
 
     const mapped = mapSupabaseError(error);
     if (mapped) return fail(mapped);
   }
 
-  if (parsed.data.status === "published") {
-    await insertAttendanceEvent({
-      tenantId: FIXED_TENANT_ID,
-      appointmentId: parsed.data.appointmentId,
-      eventType: "evolution_published",
-    });
-
-    const { error: attendanceError } = await supabase
-      .from("appointment_attendances")
-      .update({
-        checkout_status: "available",
-        session_status: "in_progress",
-      })
-      .eq("appointment_id", parsed.data.appointmentId);
-
-    const mappedAttendanceError = mapSupabaseError(attendanceError);
-    if (mappedAttendanceError) return fail(mappedAttendanceError);
-  }
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "evolution_saved",
+    payload: { has_text: Boolean(evolutionText) },
+  });
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
   return ok({ appointmentId: parsed.data.appointmentId });
@@ -512,6 +494,51 @@ export async function structureEvolutionFromAudio(payload: {
   });
 
   return ok({ transcript, structuredText });
+}
+
+export async function transcribeEvolutionFromAudio(payload: {
+  appointmentId: string;
+  audioBase64: string;
+  mimeType?: string | null;
+}): Promise<ActionResult<{ transcript: string }>> {
+  const parsed = z
+    .object({
+      appointmentId: z.string().uuid(),
+      audioBase64: z.string().min(100),
+      mimeType: z.string().optional().nullable(),
+    })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const mimeType = (parsed.data.mimeType ?? "audio/webm").trim() || "audio/webm";
+
+  const transcriptRaw = await runFloraAudioTranscription({
+    audioBase64: parsed.data.audioBase64,
+    mimeType,
+  });
+
+  const transcript = transcriptRaw?.trim() ?? "";
+  if (!transcript) {
+    return fail(
+      new AppError(
+        "Não foi possível transcrever o áudio. Tente gravar novamente em ambiente mais silencioso.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "evolution_audio_transcribed",
+    payload: { transcript_length: transcript.length, mime_type: mimeType },
+  });
+
+  return ok({ transcript });
 }
 
 export async function setCheckoutItems(payload: {
@@ -855,19 +882,11 @@ export async function confirmCheckout(payload: { appointmentId: string }): Promi
 
   const { error } = await supabase
     .from("appointment_checkout")
-    .update({ confirmed_at: new Date().toISOString(), payment_status: "paid" })
+    .update({ confirmed_at: new Date().toISOString() })
     .eq("appointment_id", parsed.data.appointmentId);
 
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
-
-  const { error: attendanceError } = await supabase
-    .from("appointment_attendances")
-    .update({ checkout_status: "done", post_status: "available", current_stage: "post" })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mappedAttendanceError = mapSupabaseError(attendanceError);
-  if (mappedAttendanceError) return fail(mappedAttendanceError);
 
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
@@ -904,9 +923,6 @@ export async function startTimer(payload: { appointmentId: string; plannedSecond
       timer_status: "running",
       timer_started_at: startedAt,
       timer_paused_at: null,
-      session_status: "in_progress",
-      pre_status: "done",
-      current_stage: "session",
       planned_seconds: parsed.data.plannedSeconds ?? undefined,
     },
     { onConflict: "appointment_id" }
@@ -1090,13 +1106,8 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
   const { error } = await supabase
     .from("appointment_attendances")
     .update({
-      post_status: "done",
-      checkout_status: "done",
-      session_status: "done",
-      pre_status: "done",
       timer_status: "finished",
       actual_seconds: actualSeconds,
-      current_stage: "hub",
     })
     .eq("appointment_id", parsed.data.appointmentId);
 
