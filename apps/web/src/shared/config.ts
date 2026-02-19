@@ -1,3 +1,9 @@
 export const DEFAULT_PUBLIC_BASE_URL =
   process.env.NEXT_PUBLIC_PUBLIC_BASE_URL ??
   "https://public.corpoealmahumanizado.com.br";
+
+export const ATTENDANCE_PIX_RECEIVER_NAME =
+  process.env.NEXT_PUBLIC_ATTENDANCE_PIX_RECEIVER_NAME ?? "ESTUDIO CORPO ALMA";
+export const ATTENDANCE_PIX_RECEIVER_CITY =
+  process.env.NEXT_PUBLIC_ATTENDANCE_PIX_RECEIVER_CITY ?? "SAO PAULO";
+export const ATTENDANCE_PIX_TXID = process.env.NEXT_PUBLIC_ATTENDANCE_PIX_TXID ?? "***";

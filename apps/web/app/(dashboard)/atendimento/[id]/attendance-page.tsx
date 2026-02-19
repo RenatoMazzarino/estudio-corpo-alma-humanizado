@@ -31,6 +31,7 @@ import { applyAutoMessageTemplate } from "../../../../src/shared/auto-messages.u
 import type { AutoMessageTemplates } from "../../../../src/shared/auto-messages.types";
 import { ModuleHeader } from "../../../../components/ui/module-header";
 import { ModulePage } from "../../../../components/ui/module-page";
+import { SlideConfirmButton } from "./components/slide-confirm-button";
 
 interface AttendancePageProps {
   data: AttendanceOverview;
@@ -39,6 +40,8 @@ interface AttendancePageProps {
   pointTerminalModel: string;
   checklistEnabled: boolean;
   publicBaseUrl: string;
+  pixKeyValue: string;
+  pixKeyType: "cnpj" | "cpf" | "email" | "phone" | "evp" | null;
   messageTemplates: AutoMessageTemplates;
 }
 
@@ -55,6 +58,37 @@ function formatSignedCountdown(totalSeconds: number) {
   const absolute = Math.abs(totalSeconds);
   const base = formatTime(absolute);
   return isNegative ? `-${base}` : base;
+}
+
+function getHeaderPaymentStatusMeta(status: string | null | undefined) {
+  switch (status) {
+    case "paid":
+      return { label: "Pago", className: "border-emerald-200 bg-emerald-50 text-emerald-700" };
+    case "partial":
+      return { label: "Parcial", className: "border-amber-200 bg-amber-50 text-amber-700" };
+    case "refunded":
+      return { label: "Estornado", className: "border-slate-300 bg-slate-100 text-slate-700" };
+    default:
+      return { label: "Pendente", className: "border-orange-200 bg-orange-50 text-orange-700" };
+  }
+}
+
+function formatAppointmentContext(startTime: string, serviceName: string) {
+  const date = new Date(startTime);
+  if (Number.isNaN(date.getTime())) return serviceName;
+
+  const dateLabel = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+  const timeLabel = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  return `${dateLabel} • ${timeLabel} • ${serviceName}`;
 }
 
 function getInitials(name: string) {
@@ -80,6 +114,15 @@ function normalizePhoneForWhatsapp(phone: string | null | undefined) {
   return digits.startsWith("55") ? digits : `55${digits}`;
 }
 
+function formatDateToUrlParam(dateValue: string) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function AttendancePage({
   data,
   pointEnabled,
@@ -87,6 +130,8 @@ export function AttendancePage({
   pointTerminalModel,
   checklistEnabled,
   publicBaseUrl,
+  pixKeyValue,
+  pixKeyType,
   messageTemplates,
 }: AttendancePageProps) {
   const router = useRouter();
@@ -159,6 +204,10 @@ export function AttendancePage({
     : [];
   const visibleClientTags = clientTags.slice(0, 3);
   const hiddenClientTagsCount = Math.max(clientTags.length - visibleClientTags.length, 0);
+  const primarySlideLabel = hasSessionStarted ? "Encerrar e cobrar" : "Iniciar atendimento";
+  const primarySlideHint = "Arraste para a direita";
+  const headerAppointmentContext = formatAppointmentContext(appointment.start_time, appointment.service_name);
+  const headerPaymentStatus = getHeaderPaymentStatusMeta(appointment.payment_status);
 
   const handleBodyScroll = (event: UIEvent<HTMLElement>) => {
     const top = event.currentTarget.scrollTop;
@@ -284,6 +333,21 @@ export function AttendancePage({
     const result = await recordPayment({
       appointmentId: appointment.id,
       method: "cash",
+      amount,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      return { ok: false, paymentId: null };
+    }
+    showToast(feedbackById("payment_recorded"));
+    router.refresh();
+    return { ok: true, paymentId: result.data.paymentId };
+  };
+
+  const handleRegisterPixKeyPayment = async (amount: number) => {
+    const result = await recordPayment({
+      appointmentId: appointment.id,
+      method: "pix",
       amount,
     });
     if (!result.ok) {
@@ -443,6 +507,25 @@ export function AttendancePage({
     return true;
   };
 
+  const buildAgendaReturnUrl = () => {
+    const fallbackDate = formatDateToUrlParam(appointment.start_time);
+    const fallback = fallbackDate ? `/?view=day&date=${fallbackDate}` : "/?view=day";
+    const rawTarget = returnTo ? decodeURIComponent(returnTo) : fallback;
+    const target = rawTarget.startsWith("/") ? rawTarget : `/${rawTarget}`;
+    const [pathnameRaw, queryRaw = ""] = target.split("?");
+    const pathname = pathnameRaw || "/";
+    const params = new URLSearchParams(queryRaw);
+    params.set("openAppointment", appointment.id);
+    params.set("fromAttendance", "1");
+    return `${pathname}?${params.toString()}`;
+  };
+
+  const handleReceiptPromptResolved = async () => {
+    setPaymentModalOpen(false);
+    setBubbleVisible(true);
+    router.push(buildAgendaReturnUrl());
+  };
+
   const handlePrimaryAction = async () => {
     if (!hasSessionStarted) {
       await handleToggleTimer();
@@ -471,7 +554,7 @@ export function AttendancePage({
   };
 
   return (
-    <div className="-mx-4 -mt-4 h-dvh overflow-hidden">
+    <div className="-mx-4 h-full overflow-hidden">
       <ModulePage
         className="h-full overflow-hidden"
         contentClassName="overflow-hidden"
@@ -480,7 +563,7 @@ export function AttendancePage({
             className="rounded-b-[28px]"
             compact={headerCompact}
             title={
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex min-w-0 items-center gap-3">
                 <button
                   onClick={handleBack}
                   className="h-10 w-10 shrink-0 rounded-full border border-line bg-white text-gray-600 flex items-center justify-center shadow-sm hover:bg-studio-light transition"
@@ -497,7 +580,8 @@ export function AttendancePage({
                     {clientInitials}
                   </div>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
                   {clientId ? (
                     <Link href={`/clientes/${clientId}`} className="block">
                       <p className="truncate text-lg font-bold text-studio-text hover:text-studio-green transition">
@@ -507,24 +591,28 @@ export function AttendancePage({
                   ) : (
                     <p className="truncate text-lg font-bold text-studio-text">{clientName}</p>
                   )}
-                  {!headerCompact && (
-                    <p className="truncate text-[11px] font-extrabold uppercase tracking-widest text-muted">
-                      {appointment.service_name}
+                    {headerCompact && (
+                      <span
+                        className={`shrink-0 rounded-xl border border-line bg-paper px-3 py-1 text-sm font-black tabular-nums ${
+                          isOvertime ? "text-red-600" : "text-studio-text"
+                        }`}
+                      >
+                        {countdownLabel}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
+                    <p className="min-w-0 flex-1 truncate text-[11px] font-extrabold uppercase tracking-widest text-muted">
+                      {headerAppointmentContext}
                     </p>
-                  )}
+                    <span
+                      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] ${headerPaymentStatus.className}`}
+                    >
+                      Pagamento: {headerPaymentStatus.label}
+                    </span>
+                  </div>
                 </div>
               </div>
-            }
-            rightSlot={
-              headerCompact ? (
-                <span
-                  className={`rounded-xl border border-line bg-paper px-3 py-1 text-sm font-black tabular-nums ${
-                    isOvertime ? "text-red-600" : "text-studio-text"
-                  }`}
-                >
-                  {countdownLabel}
-                </span>
-              ) : null
             }
             bottomSlot={
               headerCompact ? undefined : (
@@ -597,14 +685,12 @@ export function AttendancePage({
             />
           </main>
 
-          <footer className="shrink-0 border-t border-line bg-white/95 px-4 py-3 pb-4 backdrop-blur">
-            <button
-              type="button"
-              onClick={handlePrimaryAction}
-              className="h-12 w-full rounded-2xl bg-studio-green text-[11px] font-extrabold uppercase tracking-wider text-white"
-            >
-              {hasSessionStarted ? "Encerrar e cobrar" : "Iniciar atendimento"}
-            </button>
+          <footer className="shrink-0 border-t border-line bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+            <SlideConfirmButton
+              label={primarySlideLabel}
+              hint={primarySlideHint}
+              onConfirm={handlePrimaryAction}
+            />
           </footer>
         </div>
 
@@ -613,6 +699,8 @@ export function AttendancePage({
           checkout={checkout}
           items={data.checkoutItems}
           payments={data.payments}
+          pixKeyValue={pixKeyValue}
+          pixKeyType={pixKeyType}
           pointEnabled={pointEnabled}
           pointTerminalName={pointTerminalName}
           pointTerminalModel={pointTerminalModel}
@@ -620,11 +708,13 @@ export function AttendancePage({
           onSaveItems={handleSaveItems}
           onSetDiscount={handleSetDiscount}
           onRegisterCashPayment={handleRegisterCashPayment}
+          onRegisterPixKeyPayment={handleRegisterPixKeyPayment}
           onCreatePixPayment={handleCreatePixPayment}
           onPollPixStatus={handlePollPixStatus}
           onCreatePointPayment={handleCreatePointPayment}
           onPollPointStatus={handlePollPointStatus}
           onSendReceipt={handleSendReceipt}
+          onReceiptPromptResolved={handleReceiptPromptResolved}
         />
         <Toast toast={toast} />
       </ModulePage>

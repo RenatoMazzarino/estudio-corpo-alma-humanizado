@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, CreditCard, Loader2, QrCode, Wallet } from "lucide-react";
+import { Copy, CreditCard, Loader2, QrCode, Trash2, Wallet } from "lucide-react";
 import Image from "next/image";
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
+import {
+  ATTENDANCE_PIX_RECEIVER_CITY,
+  ATTENDANCE_PIX_RECEIVER_NAME,
+  ATTENDANCE_PIX_TXID,
+} from "../../../../../src/shared/config";
+import { buildPixBrCode } from "../../../../../src/shared/pix/brcode";
 
 type InternalStatus = "paid" | "pending" | "failed";
 type PointCardMode = "debit" | "credit";
@@ -31,6 +37,8 @@ interface AttendancePaymentModalProps {
   checkout: CheckoutRow | null;
   items: CheckoutItem[];
   payments: PaymentRow[];
+  pixKeyValue: string;
+  pixKeyType: "cnpj" | "cpf" | "email" | "phone" | "evp" | null;
   pointEnabled: boolean;
   pointTerminalName: string;
   pointTerminalModel: string;
@@ -38,6 +46,7 @@ interface AttendancePaymentModalProps {
   onSaveItems: (items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>) => Promise<void>;
   onSetDiscount: (type: "value" | "pct" | null, value: number | null, reason?: string) => Promise<void>;
   onRegisterCashPayment: (amount: number) => Promise<{ ok: boolean; paymentId?: string | null }>;
+  onRegisterPixKeyPayment: (amount: number) => Promise<{ ok: boolean; paymentId?: string | null }>;
   onCreatePixPayment: (amount: number, attempt: number) => Promise<{ ok: boolean; data?: PixPaymentData }>;
   onPollPixStatus: () => Promise<{ ok: boolean; status: InternalStatus }>;
   onCreatePointPayment: (
@@ -48,6 +57,7 @@ interface AttendancePaymentModalProps {
     orderId: string
   ) => Promise<{ ok: boolean; status: InternalStatus; paymentId?: string | null }>;
   onSendReceipt: (paymentId: string) => Promise<void>;
+  onReceiptPromptResolved?: (payload: { paymentId: string; sentReceipt: boolean }) => Promise<void> | void;
 }
 
 const stageMessages = [
@@ -72,11 +82,44 @@ function formatCountdown(totalSeconds: number) {
   return `${mm}:${ss}`;
 }
 
+function normalizePixKeyForCharge(
+  value: string,
+  type: "cnpj" | "cpf" | "email" | "phone" | "evp" | null
+) {
+  if (type === "cnpj" || type === "cpf") {
+    return value.replace(/\D/g, "");
+  }
+  if (type === "phone") {
+    const digits = value.replace(/\D/g, "");
+    return digits.startsWith("+") ? digits : `+${digits}`;
+  }
+  return value.trim();
+}
+
+function formatPixTypeLabel(type: "cnpj" | "cpf" | "email" | "phone" | "evp" | null) {
+  switch (type) {
+    case "cnpj":
+      return "CNPJ";
+    case "cpf":
+      return "CPF";
+    case "email":
+      return "E-mail";
+    case "phone":
+      return "Telefone";
+    case "evp":
+      return "Aleatória (EVP)";
+    default:
+      return "Chave";
+  }
+}
+
 export function AttendancePaymentModal({
   open,
   checkout,
   items,
   payments,
+  pixKeyValue,
+  pixKeyType,
   pointEnabled,
   pointTerminalName,
   pointTerminalModel,
@@ -84,13 +127,15 @@ export function AttendancePaymentModal({
   onSaveItems,
   onSetDiscount,
   onRegisterCashPayment,
+  onRegisterPixKeyPayment,
   onCreatePixPayment,
   onPollPixStatus,
   onCreatePointPayment,
   onPollPointStatus,
   onSendReceipt,
+  onReceiptPromptResolved,
 }: AttendancePaymentModalProps) {
-  const [method, setMethod] = useState<"cash" | "pix" | "card">("cash");
+  const [method, setMethod] = useState<"cash" | "pix_mp" | "pix_key" | "card">("cash");
   const [draftItems, setDraftItems] = useState(
     items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount }))
   );
@@ -104,13 +149,20 @@ export function AttendancePaymentModal({
   const [cashAmount, setCashAmount] = useState<number>(0);
   const [pixPayment, setPixPayment] = useState<PixPaymentData | null>(null);
   const [pixAttempt, setPixAttempt] = useState(0);
+  const [pixKeyCode, setPixKeyCode] = useState("");
+  const [pixKeyQrDataUrl, setPixKeyQrDataUrl] = useState<string | null>(null);
+  const [pixKeyGenerating, setPixKeyGenerating] = useState(false);
+  const [pixKeyError, setPixKeyError] = useState<string | null>(null);
   const [pointPayment, setPointPayment] = useState<PointPaymentData | null>(null);
   const [busy, setBusy] = useState(false);
   const [stageIndex, setStageIndex] = useState(0);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [receiptPromptPaymentId, setReceiptPromptPaymentId] = useState<string | null>(null);
+  const [resolvingReceiptPrompt, setResolvingReceiptPrompt] = useState(false);
   const [pixRemaining, setPixRemaining] = useState(0);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const normalizedPixKeyValue = normalizePixKeyForCharge(pixKeyValue, pixKeyType);
+  const pixKeyConfigured = normalizedPixKeyValue.length > 0;
 
   const paidTotal = useMemo(
     () => payments.filter((payment) => payment.status === "paid").reduce((acc, item) => acc + Number(item.amount ?? 0), 0),
@@ -129,11 +181,22 @@ export function AttendancePaymentModal({
     () => normalizedItems.reduce((acc, item) => acc + item.amount * (item.qty ?? 1), 0),
     [normalizedItems]
   );
-  const serviceAmount = useMemo(
-    () => normalizedItems.filter((item) => item.type === "service").reduce((acc, item) => acc + item.amount * (item.qty ?? 1), 0),
-    [normalizedItems]
+  const indexedItems = useMemo(() => normalizedItems.map((item, index) => ({ item, index })), [normalizedItems]);
+  const serviceItems = useMemo(
+    () => indexedItems.filter(({ item }) => item.type === "service"),
+    [indexedItems]
   );
-  const extraItems = useMemo(() => normalizedItems.filter((item) => item.type !== "service"), [normalizedItems]);
+  const displacementItems = useMemo(
+    () => indexedItems.filter(({ item }) => item.type === "fee" && /desloc/i.test(item.label)),
+    [indexedItems]
+  );
+  const otherItems = useMemo(
+    () =>
+      indexedItems.filter(
+        ({ item }) => !(item.type === "service" || (item.type === "fee" && /desloc/i.test(item.label)))
+      ),
+    [indexedItems]
+  );
   const appliedDiscountAmount = useMemo(() => {
     if (!appliedDiscountType || appliedDiscountValue <= 0) return 0;
     if (appliedDiscountType === "pct") {
@@ -155,6 +218,8 @@ export function AttendancePaymentModal({
     setDiscountValueInput(checkout?.discount_value ?? 0);
     setDiscountReasonInput(checkout?.discount_reason ?? "");
     setErrorText(null);
+    setResolvingReceiptPrompt(false);
+    setPixKeyError(null);
   }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
 
   useEffect(() => {
@@ -187,7 +252,7 @@ export function AttendancePaymentModal({
   }, []);
 
   useEffect(() => {
-    if (!open || !pixPayment || method !== "pix") return;
+    if (!open || !pixPayment || method !== "pix_mp") return;
     const interval = window.setInterval(async () => {
       const result = await onPollPixStatus();
       if (!result.ok) return;
@@ -201,6 +266,63 @@ export function AttendancePaymentModal({
     }, 4000);
     return () => window.clearInterval(interval);
   }, [method, onPollPixStatus, open, pixPayment]);
+
+  useEffect(() => {
+    if (!open || method !== "pix_key") return;
+    if (!pixKeyConfigured) {
+      setPixKeyCode("");
+      setPixKeyQrDataUrl(null);
+      setPixKeyError("Configure a chave Pix CNPJ para usar esta forma de cobrança.");
+      return;
+    }
+    if (remaining <= 0) {
+      setPixKeyCode("");
+      setPixKeyQrDataUrl(null);
+      setPixKeyError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const generatePixKeyCharge = async () => {
+      setPixKeyGenerating(true);
+      setPixKeyError(null);
+      try {
+        const payload = buildPixBrCode({
+          pixKey: normalizedPixKeyValue,
+          amount: remaining,
+          merchantName: ATTENDANCE_PIX_RECEIVER_NAME,
+          merchantCity: ATTENDANCE_PIX_RECEIVER_CITY,
+          txid: ATTENDANCE_PIX_TXID,
+          description: "Atendimento Estudio Corpo e Alma",
+        });
+
+        const qrcode = await import("qrcode");
+        const qrDataUrl = await qrcode.toDataURL(payload, {
+          width: 280,
+          margin: 1,
+          errorCorrectionLevel: "M",
+        });
+
+        if (cancelled) return;
+        setPixKeyCode(payload);
+        setPixKeyQrDataUrl(qrDataUrl);
+      } catch {
+        if (cancelled) return;
+        setPixKeyCode("");
+        setPixKeyQrDataUrl(null);
+        setPixKeyError("Não foi possível gerar o Pix por chave agora.");
+      } finally {
+        if (!cancelled) {
+          setPixKeyGenerating(false);
+        }
+      }
+    };
+
+    void generatePixKeyCharge();
+    return () => {
+      cancelled = true;
+    };
+  }, [method, normalizedPixKeyValue, open, pixKeyConfigured, remaining]);
 
   useEffect(() => {
     if (!open || !pointPayment || method !== "card") return;
@@ -240,6 +362,11 @@ export function AttendancePaymentModal({
     await navigator.clipboard.writeText(pixPayment.qr_code);
   };
 
+  const handleCopyPixKey = async () => {
+    if (!pixKeyCode) return;
+    await navigator.clipboard.writeText(pixKeyCode);
+  };
+
   const handleRegisterCash = async () => {
     if (cashAmount <= 0) return;
     setBusy(true);
@@ -248,6 +375,21 @@ export function AttendancePaymentModal({
     setBusy(false);
     if (!result.ok) {
       setErrorText("Não foi possível registrar o pagamento em dinheiro.");
+      return;
+    }
+    if (result.paymentId) {
+      setReceiptPromptPaymentId(result.paymentId);
+    }
+  };
+
+  const handleRegisterPixKey = async () => {
+    if (remaining <= 0) return;
+    setBusy(true);
+    setErrorText(null);
+    const result = await onRegisterPixKeyPayment(remaining);
+    setBusy(false);
+    if (!result.ok) {
+      setErrorText("Não foi possível registrar o pagamento Pix por chave.");
       return;
     }
     if (result.paymentId) {
@@ -271,6 +413,21 @@ export function AttendancePaymentModal({
     }
   };
 
+  const resolveReceiptPrompt = async (sendReceipt: boolean) => {
+    const paymentId = receiptPromptPaymentId;
+    if (!paymentId || resolvingReceiptPrompt) return;
+    setResolvingReceiptPrompt(true);
+    try {
+      if (sendReceipt) {
+        await onSendReceipt(paymentId);
+      }
+      await onReceiptPromptResolved?.({ paymentId, sentReceipt: sendReceipt });
+      setReceiptPromptPaymentId(null);
+    } finally {
+      setResolvingReceiptPrompt(false);
+    }
+  };
+
   const handleAddItem = async () => {
     const label = newItem.label.trim();
     const amount = Number(newItem.amount ?? 0);
@@ -278,6 +435,17 @@ export function AttendancePaymentModal({
     const nextItems = [...normalizedItems, { ...newItem, label, qty: 1, amount }];
     setDraftItems(nextItems);
     setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
+    await onSaveItems(nextItems);
+  };
+
+  const isRemovableItem = (item: { type: CheckoutItem["type"]; label: string }) =>
+    item.type !== "service" && !(item.type === "fee" && /desloc/i.test(item.label));
+
+  const handleRemoveItem = async (indexToRemove: number) => {
+    const target = normalizedItems[indexToRemove];
+    if (!target || !isRemovableItem(target)) return;
+    const nextItems = normalizedItems.filter((_, index) => index !== indexToRemove);
+    setDraftItems(nextItems);
     await onSaveItems(nextItems);
   };
 
@@ -327,124 +495,140 @@ export function AttendancePaymentModal({
             </button>
           </div>
 
-          <section className="mt-5">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <Wallet className="w-3.5 h-3.5" />
-              Descritivo da cobrança
-            </div>
-            <div className="rounded-2xl border border-line bg-white px-4 py-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-studio-text">
-                  <span>Valor do serviço</span>
-                  <span className="font-bold">{formatCurrency(serviceAmount)}</span>
-                </div>
-
-                {paidTotal > 0 && (
-                  <div className="flex items-center justify-between text-sm text-studio-text">
-                    <span>Sinal pago</span>
-                    <span className="font-bold text-studio-green">- {formatCurrency(paidTotal)}</span>
-                  </div>
-                )}
-
-                {extraItems.map((item, index) => (
-                  <div key={`${item.label}-${index}`} className="flex items-center justify-between text-sm text-studio-text">
-                    <span className="truncate pr-3">
-                      {item.label}
-                      {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
-                    </span>
-                    <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
-                  </div>
-                ))}
-
-                {appliedDiscountAmount > 0 && (
-                  <div className="flex items-center justify-between text-sm text-studio-text">
-                    <span className="truncate pr-3">
-                      {appliedDiscountReason
-                        ? `Desconto • ${appliedDiscountReason}`
-                        : appliedDiscountType === "pct"
-                          ? `Desconto aplicado (${appliedDiscountValue}%)`
-                          : "Desconto aplicado"}
-                    </span>
-                    <span className="font-bold text-studio-green">- {formatCurrency(appliedDiscountAmount)}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 border-t border-dashed border-line pt-3 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted">Valor total a cobrar</span>
-                <span className="text-lg font-black text-studio-text">{formatCurrency(remaining)}</span>
-              </div>
-            </div>
-          </section>
-
           <section className="mt-5 rounded-2xl border border-line px-4 py-4 bg-white">
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <CreditCard className="w-3.5 h-3.5" />
-              Itens e desconto
-            </div>
-            <div className="space-y-2">
-              {draftItems.map((item, index) => (
-                <div key={`${item.label}-${index}`} className="flex justify-between text-sm text-studio-text">
-                  <span className="truncate pr-3">{item.label}</span>
-                  <span className="font-bold">{formatCurrency(item.amount)}</span>
-                </div>
-              ))}
-              {draftItems.length === 0 && (
-                <p className="text-xs text-muted">Sem itens adicionais.</p>
-              )}
+              <Wallet className="w-3.5 h-3.5" />
+              Composição da cobrança
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <input
-                className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
-                placeholder="Novo item"
-                value={newItem.label}
-                onChange={(event) => setNewItem((current) => ({ ...current, label: event.target.value }))}
-              />
-              <input
-                className="rounded-xl border border-line px-3 py-2 text-xs"
-                type="number"
-                value={newItem.amount}
-                onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
-              />
+            <div className="space-y-2">
+              {serviceItems.map(({ item, index }) => (
+                <div key={`service-${index}`} className="flex items-center justify-between gap-3 text-sm text-studio-text">
+                  <span className="truncate pr-3">
+                    {item.label}
+                    {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
+                  </span>
+                  <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
+                </div>
+              ))}
+
+              {displacementItems.map(({ item, index }) => (
+                <div key={`displacement-${index}`} className="flex items-center justify-between gap-3 text-sm text-studio-text">
+                  <span className="truncate pr-3">
+                    {item.label}
+                    {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
+                  </span>
+                  <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
+                </div>
+              ))}
+
+              {otherItems.map(({ item, index }) => (
+                <div key={`extra-${index}`} className="flex items-center justify-between gap-3 text-sm text-studio-text">
+                  <span className="truncate pr-3">
+                    {item.label}
+                    {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
+                    {isRemovableItem(item) && (
+                      <button
+                        type="button"
+                        onClick={() => void handleRemoveItem(index)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-red-600"
+                        aria-label={`Remover item ${item.label}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="mt-2">
+
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Adicionar item</p>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <input
+                  className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
+                  placeholder="Novo item"
+                  value={newItem.label}
+                  onChange={(event) => setNewItem((current) => ({ ...current, label: event.target.value }))}
+                />
+                <input
+                  className="rounded-xl border border-line px-3 py-2 text-xs"
+                  type="number"
+                  value={newItem.amount}
+                  onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
+                />
+              </div>
               <button
-                className="w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
+                className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
                 onClick={handleAddItem}
               >
                 Adicionar item
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <select
-                value={discountTypeInput}
-                onChange={(event) => setDiscountTypeInput(event.target.value === "pct" ? "pct" : "value")}
-                className="rounded-xl border border-line px-3 py-2 text-xs"
-              >
-                <option value="value">Desconto em R$</option>
-                <option value="pct">Desconto em %</option>
-              </select>
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Desconto</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <select
+                  value={discountTypeInput}
+                  onChange={(event) => setDiscountTypeInput(event.target.value === "pct" ? "pct" : "value")}
+                  className="rounded-xl border border-line px-3 py-2 text-xs"
+                >
+                  <option value="value">Desconto em R$</option>
+                  <option value="pct">Desconto em %</option>
+                </select>
+                <input
+                  type="number"
+                  value={discountValueInput}
+                  onChange={(event) => setDiscountValueInput(Number(event.target.value))}
+                  className="rounded-xl border border-line px-3 py-2 text-xs"
+                />
+              </div>
               <input
-                type="number"
-                value={discountValueInput}
-                onChange={(event) => setDiscountValueInput(Number(event.target.value))}
-                className="rounded-xl border border-line px-3 py-2 text-xs"
+                value={discountReasonInput}
+                onChange={(event) => setDiscountReasonInput(event.target.value)}
+                className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
+                placeholder="Motivo do desconto"
               />
+              <button
+                className="mt-2 w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
+                onClick={handleApplyDiscount}
+              >
+                Aplicar desconto
+              </button>
             </div>
-            <input
-              value={discountReasonInput}
-              onChange={(event) => setDiscountReasonInput(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
-              placeholder="Motivo do desconto"
-            />
-            <button
-              className="mt-2 w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-              onClick={handleApplyDiscount}
-            >
-              Aplicar desconto
-            </button>
+
+            <div className="mt-4 border-t border-dashed border-line pt-3 space-y-2">
+              {appliedDiscountAmount > 0 && (
+                <div className="flex items-center justify-between text-sm text-studio-text">
+                  <span className="truncate pr-3">
+                    {appliedDiscountReason
+                      ? `Desconto • ${appliedDiscountReason}`
+                      : appliedDiscountType === "pct"
+                        ? `Desconto aplicado (${appliedDiscountValue}%)`
+                        : "Desconto aplicado"}
+                  </span>
+                  <span className="font-bold text-studio-green">- {formatCurrency(appliedDiscountAmount)}</span>
+                </div>
+              )}
+              {paidTotal > 0 && (
+                <div className="flex items-center justify-between text-sm text-studio-text">
+                  <span>Já pago</span>
+                  <span className="font-bold text-studio-green">- {formatCurrency(paidTotal)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-muted">
+                <span>Total do checkout</span>
+                <span className="text-base font-black text-studio-text">{formatCurrency(total)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-muted">
+                <span>Valor a cobrar agora</span>
+                <span className="text-lg font-black text-studio-text">{formatCurrency(remaining)}</span>
+              </div>
+            </div>
           </section>
 
           <section className="mt-5">
@@ -452,7 +636,7 @@ export function AttendancePaymentModal({
               <Wallet className="w-3.5 h-3.5" />
               Forma de pagamento
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
                   method === "cash"
@@ -466,14 +650,25 @@ export function AttendancePaymentModal({
               </button>
               <button
                 className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                  method === "pix"
+                  method === "pix_mp"
                     ? "border-studio-green bg-studio-light text-studio-green"
                     : "border-line text-muted hover:bg-paper"
                 }`}
-                onClick={() => setMethod("pix")}
+                onClick={() => setMethod("pix_mp")}
               >
                 <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
-                Pix
+                PIX MP
+              </button>
+              <button
+                className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                  method === "pix_key"
+                    ? "border-studio-green bg-studio-light text-studio-green"
+                    : "border-line text-muted hover:bg-paper"
+                }`}
+                onClick={() => setMethod("pix_key")}
+              >
+                <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
+                PIX Chave
               </button>
               <button
                 className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
@@ -510,7 +705,7 @@ export function AttendancePaymentModal({
             </section>
           )}
 
-          {method === "pix" && (
+          {method === "pix_mp" && (
             <section className="mt-4 rounded-2xl border border-line px-4 py-4 bg-white">
               {!pixPayment && (
                 <button
@@ -518,7 +713,7 @@ export function AttendancePaymentModal({
                   onClick={handleCreatePix}
                   disabled={isFullyPaid}
                 >
-                  Gerar Pix
+                  Gerar PIX MP
                 </button>
               )}
               {pixPayment && (
@@ -554,6 +749,62 @@ export function AttendancePaymentModal({
                   </button>
                 </>
               )}
+            </section>
+          )}
+
+          {method === "pix_key" && (
+            <section className="mt-4 rounded-2xl border border-line px-4 py-4 bg-white">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                Pix por chave CNPJ (sem API MP)
+              </p>
+              <p className="mt-1 text-[11px] text-muted">
+                {pixKeyConfigured
+                  ? `${formatPixTypeLabel(pixKeyType)} ativa: ${normalizedPixKeyValue}`
+                  : "Nenhuma chave Pix ativa configurada."}
+              </p>
+
+              {pixKeyGenerating && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs text-studio-text">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-studio-green" />
+                  Gerando QR Pix da chave...
+                </div>
+              )}
+
+              {pixKeyQrDataUrl && (
+                <Image
+                  src={pixKeyQrDataUrl}
+                  alt="QR Code Pix por chave"
+                  width={160}
+                  height={160}
+                  unoptimized
+                  className="mx-auto mt-3 h-40 w-40 rounded-xl border border-line bg-white p-2"
+                />
+              )}
+
+              {pixKeyCode && (
+                <>
+                  <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2 text-[11px] text-muted break-all">
+                    {pixKeyCode}
+                  </div>
+                  <button
+                    className="mt-3 w-full h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
+                    onClick={handleCopyPixKey}
+                  >
+                    <Copy className="mr-1 inline h-3.5 w-3.5" />
+                    Copiar código Pix chave
+                  </button>
+                </>
+              )}
+
+              <button
+                className="mt-3 w-full h-10 rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
+                onClick={handleRegisterPixKey}
+                disabled={isFullyPaid || !pixKeyConfigured || !pixKeyCode || pixKeyGenerating}
+              >
+                Registrar pagamento Pix chave
+              </button>
+
+              {pixKeyError && <p className="mt-2 text-xs font-semibold text-red-700">{pixKeyError}</p>}
             </section>
           )}
 
@@ -601,16 +852,15 @@ export function AttendancePaymentModal({
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
                   className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-[11px] font-extrabold uppercase tracking-wider text-emerald-700"
-                  onClick={() => setReceiptPromptPaymentId(null)}
+                  onClick={() => void resolveReceiptPrompt(false)}
+                  disabled={resolvingReceiptPrompt}
                 >
                   Agora não
                 </button>
                 <button
                   className="h-10 rounded-xl bg-emerald-600 px-3 text-[11px] font-extrabold uppercase tracking-wider text-white"
-                  onClick={async () => {
-                    await onSendReceipt(receiptPromptPaymentId);
-                    setReceiptPromptPaymentId(null);
-                  }}
+                  onClick={() => void resolveReceiptPrompt(true)}
+                  disabled={resolvingReceiptPrompt}
                 >
                   Enviar recibo
                 </button>
