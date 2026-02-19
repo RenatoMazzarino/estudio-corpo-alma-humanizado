@@ -5,6 +5,7 @@ export type TimerStatus = "idle" | "running" | "paused" | "finished";
 export interface AttendanceRow {
   appointment_id: string;
   tenant_id?: string;
+  // Legacy fields kept for compile compatibility with old stage components.
   current_stage: StageKey;
   pre_status: StageStatus;
   session_status: StageStatus;
@@ -38,8 +39,6 @@ export interface EvolutionEntry {
   id: string;
   appointment_id: string;
   tenant_id?: string;
-  version: number;
-  status: "draft" | "published";
   evolution_text: string | null;
   created_by: string | null;
   created_at: string;
@@ -51,8 +50,6 @@ export interface ClientHistoryEntry {
   service_name: string;
   appointment_status: string | null;
   evolution_text: string | null;
-  evolution_status: "draft" | "published" | null;
-  evolution_version: number | null;
 }
 
 export interface CheckoutRow {
@@ -63,7 +60,8 @@ export interface CheckoutRow {
   discount_reason: string | null;
   subtotal: number;
   total: number;
-  payment_status: "pending" | "partial" | "paid" | "failed" | "void";
+  // Legacy field kept as optional while old components still exist in the repo.
+  payment_status?: "pending" | "partial" | "paid" | "failed" | "void";
   confirmed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -147,6 +145,9 @@ export interface AppointmentDetails {
   finished_at: string | null;
   status: string | null;
   payment_status?: string | null;
+  signal_status?: "pending" | "paid" | "waived" | "refunded" | null;
+  signal_required_amount?: number | null;
+  signal_paid_amount?: number | null;
   price: number | null;
   displacement_fee?: number | null;
   displacement_distance_km?: number | null;

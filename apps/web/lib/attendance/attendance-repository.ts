@@ -14,7 +14,6 @@ import type {
   AppointmentMessage,
   AppointmentEvent,
 } from "./attendance-types";
-import { deriveStageFromStatus } from "./attendance-domain";
 
 type CheckoutItemInsert = Database["public"]["Tables"]["appointment_checkout_items"]["Insert"];
 
@@ -56,7 +55,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   const { data: appointmentData, error: appointmentError } = await supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, payment_status, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+      `id, service_name, start_time, finished_at, status, payment_status, signal_status, signal_required_amount, signal_paid_amount, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
         clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
        services ( duration_minutes, price )`
@@ -92,43 +91,21 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   let attendance: AttendanceRow;
   if (attendanceData) {
     attendance = attendanceData as AttendanceRow;
-    if (appointment.status === "pending" && attendance.session_status === "locked") {
-      const { data: updated } = await supabase
-        .from("appointment_attendances")
-        .update({ session_status: "available" })
-        .eq("appointment_id", appointmentId)
-        .select("*")
-        .single();
-      if (updated) {
-        attendance = updated as AttendanceRow;
-      }
-    }
   } else {
-    const stageDefaults = deriveStageFromStatus(appointment.status);
+    const timerStatus =
+      appointment.status === "completed" ? "finished" : appointment.status === "in_progress" ? "running" : "idle";
     const { data: inserted } = await supabase
       .from("appointment_attendances")
       .insert({
         appointment_id: appointmentId,
         tenant_id: tenantId,
-        current_stage: stageDefaults.currentStage,
-        pre_status: stageDefaults.preStatus,
-        session_status: stageDefaults.sessionStatus,
-        checkout_status: stageDefaults.checkoutStatus,
-        post_status: stageDefaults.postStatus,
         confirmed_at: appointment.status === "confirmed" ? new Date().toISOString() : null,
-        confirmed_channel: appointment.status === "confirmed" ? "auto" : null,
-        timer_status: stageDefaults.timerStatus,
+        timer_status: timerStatus,
         timer_started_at: appointment.status === "in_progress" ? appointment.start_time : null,
         timer_paused_at: null,
         paused_total_seconds: 0,
         planned_seconds: plannedSeconds,
         actual_seconds: actualSeconds,
-        stage_lock_reason:
-          appointment.status === "canceled_by_client" ||
-          appointment.status === "canceled_by_studio" ||
-          appointment.status === "no_show"
-            ? "cancelled"
-            : null,
       })
       .select("*")
       .single();
@@ -172,9 +149,10 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
 
   const { data: evolutionData } = await supabase
     .from("appointment_evolution_entries")
-    .select("*")
+    .select("id, appointment_id, tenant_id, evolution_text, created_by, created_at")
     .eq("appointment_id", appointmentId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(1);
 
   const evolution = (evolutionData ?? []) as EvolutionEntry[];
 
@@ -192,15 +170,12 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     const historyAppointments = (historyAppointmentsData ?? []).filter((item) => item.id !== appointmentId);
     const historyAppointmentIds = historyAppointments.map((item) => item.id);
 
-    const evolutionByAppointment = new Map<
-      string,
-      { evolution_text: string | null; status: "draft" | "published"; version: number }
-    >();
+    const evolutionByAppointment = new Map<string, { evolution_text: string | null }>();
 
     if (historyAppointmentIds.length > 0) {
       const { data: historyEvolutionData } = await supabase
         .from("appointment_evolution_entries")
-        .select("appointment_id, evolution_text, status, version, created_at")
+        .select("appointment_id, evolution_text, created_at")
         .in("appointment_id", historyAppointmentIds)
         .order("created_at", { ascending: false });
 
@@ -209,17 +184,6 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
         if (!existing) {
           evolutionByAppointment.set(item.appointment_id, {
             evolution_text: item.evolution_text ?? null,
-            status: item.status === "published" ? "published" : "draft",
-            version: item.version ?? 1,
-          });
-          continue;
-        }
-
-        if (existing.status !== "published" && item.status === "published") {
-          evolutionByAppointment.set(item.appointment_id, {
-            evolution_text: item.evolution_text ?? null,
-            status: "published",
-            version: item.version ?? existing.version,
           });
         }
       }
@@ -233,8 +197,6 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
         service_name: item.service_name,
         appointment_status: item.status ?? null,
         evolution_text: entry?.evolution_text ?? null,
-        evolution_status: entry?.status ?? null,
-        evolution_version: entry?.version ?? null,
       };
     });
   }
@@ -263,7 +225,6 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
         tenant_id: tenantId,
         subtotal,
         total: subtotal,
-        payment_status: "pending",
       })
       .select("*")
       .single();

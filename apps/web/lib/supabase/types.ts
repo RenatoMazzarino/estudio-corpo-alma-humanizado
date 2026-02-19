@@ -7,167 +7,16 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
-      appointments: {
-        Row: {
-          address_bairro: string | null
-          address_cep: string | null
-          address_cidade: string | null
-          address_complemento: string | null
-          address_estado: string | null
-          address_logradouro: string | null
-          address_numero: string | null
-          actual_duration_minutes: number | null
-          client_address_id: string | null
-          client_id: string | null
-          created_at: string
-          displacement_distance_km: number | null
-          displacement_fee: number | null
-          finished_at: string | null
-          id: string
-          is_home_visit: boolean | null
-          internal_notes: string | null
-          payment_status: string | null
-          price_override: number | null
-          price: number | null
-          service_id: string | null
-          service_name: string
-          start_time: string
-          started_at: string | null
-          status: string | null
-          tenant_id: string
-          total_duration_minutes: number | null
-        }
-        Insert: {
-          address_bairro?: string | null
-          address_cep?: string | null
-          address_cidade?: string | null
-          address_complemento?: string | null
-          address_estado?: string | null
-          address_logradouro?: string | null
-          address_numero?: string | null
-          actual_duration_minutes?: number | null
-          client_address_id?: string | null
-          client_id?: string | null
-          created_at?: string
-          displacement_distance_km?: number | null
-          displacement_fee?: number | null
-          finished_at?: string | null
-          id?: string
-          is_home_visit?: boolean | null
-          internal_notes?: string | null
-          payment_status?: string | null
-          price_override?: number | null
-          price?: number | null
-          service_id?: string | null
-          service_name: string
-          start_time: string
-          started_at?: string | null
-          status?: string | null
-          tenant_id: string
-          total_duration_minutes?: number | null
-        }
-        Update: {
-          address_bairro?: string | null
-          address_cep?: string | null
-          address_cidade?: string | null
-          address_complemento?: string | null
-          address_estado?: string | null
-          address_logradouro?: string | null
-          address_numero?: string | null
-          actual_duration_minutes?: number | null
-          client_address_id?: string | null
-          client_id?: string | null
-          created_at?: string
-          displacement_distance_km?: number | null
-          displacement_fee?: number | null
-          finished_at?: string | null
-          id?: string
-          is_home_visit?: boolean | null
-          internal_notes?: string | null
-          payment_status?: string | null
-          price_override?: number | null
-          price?: number | null
-          service_id?: string | null
-          service_name?: string
-          start_time?: string
-          started_at?: string | null
-          status?: string | null
-          tenant_id?: string
-          total_duration_minutes?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointments_client_address_id_fkey"
-            columns: ["client_address_id"]
-            isOneToOne: false
-            referencedRelation: "client_addresses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointments_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       appointment_attendances: {
         Row: {
           actual_seconds: number
           appointment_id: string
-          checkout_status: string
           confirmed_at: string | null
-          confirmed_channel: string | null
           created_at: string
-          current_stage: string
           paused_total_seconds: number
           planned_seconds: number | null
-          post_status: string
-          pre_status: string
-          session_status: string
-          stage_lock_reason: string | null
           tenant_id: string
           timer_paused_at: string | null
           timer_started_at: string | null
@@ -177,17 +26,10 @@ export type Database = {
         Insert: {
           actual_seconds?: number
           appointment_id: string
-          checkout_status?: string
           confirmed_at?: string | null
-          confirmed_channel?: string | null
           created_at?: string
-          current_stage?: string
           paused_total_seconds?: number
           planned_seconds?: number | null
-          post_status?: string
-          pre_status?: string
-          session_status?: string
-          stage_lock_reason?: string | null
           tenant_id?: string
           timer_paused_at?: string | null
           timer_started_at?: string | null
@@ -197,17 +39,10 @@ export type Database = {
         Update: {
           actual_seconds?: number
           appointment_id?: string
-          checkout_status?: string
           confirmed_at?: string | null
-          confirmed_channel?: string | null
           created_at?: string
-          current_stage?: string
           paused_total_seconds?: number
           planned_seconds?: number | null
-          post_status?: string
-          pre_status?: string
-          session_status?: string
-          stage_lock_reason?: string | null
           tenant_id?: string
           timer_paused_at?: string | null
           timer_started_at?: string | null
@@ -287,7 +122,6 @@ export type Database = {
           discount_reason: string | null
           discount_type: string | null
           discount_value: number | null
-          payment_status: string
           subtotal: number
           tenant_id: string
           total: number
@@ -300,7 +134,6 @@ export type Database = {
           discount_reason?: string | null
           discount_type?: string | null
           discount_value?: number | null
-          payment_status?: string
           subtotal?: number
           tenant_id?: string
           total?: number
@@ -313,7 +146,6 @@ export type Database = {
           discount_reason?: string | null
           discount_type?: string | null
           discount_value?: number | null
-          payment_status?: string
           subtotal?: number
           tenant_id?: string
           total?: number
@@ -435,6 +267,48 @@ export type Database = {
           },
         ]
       }
+      appointment_evolution_entries: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          created_by: string | null
+          evolution_text: string | null
+          id: string
+          tenant_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          created_by?: string | null
+          evolution_text?: string | null
+          id?: string
+          tenant_id?: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          created_by?: string | null
+          evolution_text?: string | null
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_evolution_entries_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_evolution_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_messages: {
         Row: {
           appointment_id: string
@@ -483,61 +357,13 @@ export type Database = {
           },
         ]
       }
-      appointment_evolution_entries: {
-        Row: {
-          appointment_id: string
-          created_at: string
-          created_by: string | null
-          evolution_text: string | null
-          id: string
-          status: string
-          tenant_id: string
-          version: number
-        }
-        Insert: {
-          appointment_id: string
-          created_at?: string
-          created_by?: string | null
-          evolution_text?: string | null
-          id?: string
-          status?: string
-          tenant_id?: string
-          version: number
-        }
-        Update: {
-          appointment_id?: string
-          created_at?: string
-          created_by?: string | null
-          evolution_text?: string | null
-          id?: string
-          status?: string
-          tenant_id?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointment_evolution_entries_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "appointment_evolution_entries_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       appointment_payments: {
         Row: {
           amount: number
           appointment_id: string
-          card_mode: string | null
           card_brand: string | null
           card_last4: string | null
+          card_mode: string | null
           created_at: string
           id: string
           installments: number | null
@@ -555,9 +381,9 @@ export type Database = {
         Insert: {
           amount: number
           appointment_id: string
-          card_mode?: string | null
           card_brand?: string | null
           card_last4?: string | null
+          card_mode?: string | null
           created_at?: string
           id?: string
           installments?: number | null
@@ -575,9 +401,9 @@ export type Database = {
         Update: {
           amount?: number
           appointment_id?: string
-          card_mode?: string | null
           card_brand?: string | null
           card_last4?: string | null
+          card_mode?: string | null
           created_at?: string
           id?: string
           installments?: number | null
@@ -670,6 +496,134 @@ export type Database = {
           },
         ]
       }
+      appointments: {
+        Row: {
+          actual_duration_minutes: number | null
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
+          client_address_id: string | null
+          client_id: string | null
+          created_at: string
+          displacement_distance_km: number | null
+          displacement_fee: number
+          finished_at: string | null
+          id: string
+          internal_notes: string | null
+          is_home_visit: boolean | null
+          payment_status: string | null
+          price: number | null
+          price_override: number | null
+          service_id: string | null
+          service_name: string
+          signal_paid_amount: number
+          signal_required_amount: number
+          signal_status: string
+          start_time: string
+          started_at: string | null
+          status: string | null
+          tenant_id: string
+          total_duration_minutes: number | null
+        }
+        Insert: {
+          actual_duration_minutes?: number | null
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          client_address_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          displacement_distance_km?: number | null
+          displacement_fee?: number
+          finished_at?: string | null
+          id?: string
+          internal_notes?: string | null
+          is_home_visit?: boolean | null
+          payment_status?: string | null
+          price?: number | null
+          price_override?: number | null
+          service_id?: string | null
+          service_name: string
+          signal_paid_amount?: number
+          signal_required_amount?: number
+          signal_status?: string
+          start_time: string
+          started_at?: string | null
+          status?: string | null
+          tenant_id: string
+          total_duration_minutes?: number | null
+        }
+        Update: {
+          actual_duration_minutes?: number | null
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          client_address_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          displacement_distance_km?: number | null
+          displacement_fee?: number
+          finished_at?: string | null
+          id?: string
+          internal_notes?: string | null
+          is_home_visit?: boolean | null
+          payment_status?: string | null
+          price?: number | null
+          price_override?: number | null
+          service_id?: string | null
+          service_name?: string
+          signal_paid_amount?: number
+          signal_required_amount?: number
+          signal_status?: string
+          start_time?: string
+          started_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          total_duration_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_address_id_fkey"
+            columns: ["client_address_id"]
+            isOneToOne: false
+            referencedRelation: "client_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       availability_blocks: {
         Row: {
           block_type: string
@@ -717,7 +671,7 @@ export type Database = {
       business_hours: {
         Row: {
           close_time: string
-          created_at: string | null
+          created_at: string
           day_of_week: number
           id: string
           is_closed: boolean | null
@@ -726,7 +680,7 @@ export type Database = {
         }
         Insert: {
           close_time: string
-          created_at?: string | null
+          created_at?: string
           day_of_week: number
           id?: string
           is_closed?: boolean | null
@@ -735,7 +689,7 @@ export type Database = {
         }
         Update: {
           close_time?: string
-          created_at?: string | null
+          created_at?: string
           day_of_week?: number
           id?: string
           is_closed?: boolean | null
@@ -745,125 +699,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "business_hours_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      clients: {
-        Row: {
-          address_bairro: string | null
-          address_cep: string | null
-          address_cidade: string | null
-          address_complemento: string | null
-          address_estado: string | null
-          address_logradouro: string | null
-          address_numero: string | null
-          anamnese_url: string | null
-          avatar_url: string | null
-          como_conheceu: string | null
-          cpf: string | null
-          contraindications: string | null
-          created_at: string
-          clinical_history: string | null
-          data_nascimento: string | null
-          email: string | null
-          endereco_completo: string | null
-          extra_data: Json
-          guardian_cpf: string | null
-          guardian_name: string | null
-          guardian_phone: string | null
-          health_tags: string[] | null
-          id: string
-          initials: string | null
-          is_minor: boolean
-          is_vip: boolean
-          marketing_opt_in: boolean
-          name: string
-          needs_attention: boolean
-          observacoes_gerais: string | null
-          phone: string | null
-          preferences_notes: string | null
-          profissao: string | null
-          tenant_id: string
-        }
-        Insert: {
-          address_bairro?: string | null
-          address_cep?: string | null
-          address_cidade?: string | null
-          address_complemento?: string | null
-          address_estado?: string | null
-          address_logradouro?: string | null
-          address_numero?: string | null
-          anamnese_url?: string | null
-          avatar_url?: string | null
-          como_conheceu?: string | null
-          cpf?: string | null
-          contraindications?: string | null
-          created_at?: string
-          clinical_history?: string | null
-          data_nascimento?: string | null
-          email?: string | null
-          endereco_completo?: string | null
-          extra_data?: Json
-          guardian_cpf?: string | null
-          guardian_name?: string | null
-          guardian_phone?: string | null
-          health_tags?: string[] | null
-          id?: string
-          initials?: string | null
-          is_minor?: boolean
-          is_vip?: boolean
-          marketing_opt_in?: boolean
-          name: string
-          needs_attention?: boolean
-          observacoes_gerais?: string | null
-          phone?: string | null
-          preferences_notes?: string | null
-          profissao?: string | null
-          tenant_id: string
-        }
-        Update: {
-          address_bairro?: string | null
-          address_cep?: string | null
-          address_cidade?: string | null
-          address_complemento?: string | null
-          address_estado?: string | null
-          address_logradouro?: string | null
-          address_numero?: string | null
-          anamnese_url?: string | null
-          avatar_url?: string | null
-          como_conheceu?: string | null
-          cpf?: string | null
-          contraindications?: string | null
-          created_at?: string
-          clinical_history?: string | null
-          data_nascimento?: string | null
-          email?: string | null
-          endereco_completo?: string | null
-          extra_data?: Json
-          guardian_cpf?: string | null
-          guardian_name?: string | null
-          guardian_phone?: string | null
-          health_tags?: string[] | null
-          id?: string
-          initials?: string | null
-          is_minor?: boolean
-          is_vip?: boolean
-          marketing_opt_in?: boolean
-          name?: string
-          needs_attention?: boolean
-          observacoes_gerais?: string | null
-          phone?: string | null
-          preferences_notes?: string | null
-          profissao?: string | null
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clients_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1080,6 +915,131 @@ export type Database = {
           },
           {
             foreignKeyName: "client_phones_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address_bairro: string | null
+          address_cep: string | null
+          address_cidade: string | null
+          address_complemento: string | null
+          address_estado: string | null
+          address_logradouro: string | null
+          address_numero: string | null
+          anamnese_url: string | null
+          avatar_url: string | null
+          birth_date: string | null
+          clinical_history: string | null
+          como_conheceu: string | null
+          contraindications: string | null
+          cpf: string | null
+          created_at: string
+          data_nascimento: string | null
+          email: string | null
+          endereco_completo: string | null
+          extra_data: Json
+          guardian_cpf: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
+          health_tags: string[] | null
+          id: string
+          initials: string | null
+          is_minor: boolean
+          is_vip: boolean
+          marketing_opt_in: boolean
+          name: string
+          needs_attention: boolean
+          notes: string | null
+          observacoes_gerais: string | null
+          phone: string | null
+          preferences_notes: string | null
+          profissao: string | null
+          tenant_id: string
+        }
+        Insert: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          anamnese_url?: string | null
+          avatar_url?: string | null
+          birth_date?: string | null
+          clinical_history?: string | null
+          como_conheceu?: string | null
+          contraindications?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          endereco_completo?: string | null
+          extra_data?: Json
+          guardian_cpf?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          health_tags?: string[] | null
+          id?: string
+          initials?: string | null
+          is_minor?: boolean
+          is_vip?: boolean
+          marketing_opt_in?: boolean
+          name: string
+          needs_attention?: boolean
+          notes?: string | null
+          observacoes_gerais?: string | null
+          phone?: string | null
+          preferences_notes?: string | null
+          profissao?: string | null
+          tenant_id: string
+        }
+        Update: {
+          address_bairro?: string | null
+          address_cep?: string | null
+          address_cidade?: string | null
+          address_complemento?: string | null
+          address_estado?: string | null
+          address_logradouro?: string | null
+          address_numero?: string | null
+          anamnese_url?: string | null
+          avatar_url?: string | null
+          birth_date?: string | null
+          clinical_history?: string | null
+          como_conheceu?: string | null
+          contraindications?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          endereco_completo?: string | null
+          extra_data?: Json
+          guardian_cpf?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
+          health_tags?: string[] | null
+          id?: string
+          initials?: string | null
+          is_minor?: boolean
+          is_vip?: boolean
+          marketing_opt_in?: boolean
+          name?: string
+          needs_attention?: boolean
+          notes?: string | null
+          observacoes_gerais?: string | null
+          phone?: string | null
+          preferences_notes?: string | null
+          profissao?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1416,12 +1376,12 @@ export type Database = {
           client_name: string
           client_phone?: string
           is_home_visit?: boolean
-          p_address_label?: string
           p_address_bairro?: string
           p_address_cep?: string
           p_address_cidade?: string
           p_address_complemento?: string
           p_address_estado?: string
+          p_address_label?: string
           p_address_logradouro?: string
           p_address_numero?: string
           p_client_address_id?: string
@@ -1436,26 +1396,49 @@ export type Database = {
         }
         Returns: string
       }
-      create_public_appointment: {
-        Args: {
-          client_name: string
-          client_phone: string
-          is_home_visit?: boolean
-          p_address_bairro?: string
-          p_address_cep?: string
-          p_address_cidade?: string
-          p_address_complemento?: string
-          p_address_estado?: string
-          p_address_logradouro?: string
-          p_address_numero?: string
-          p_displacement_distance_km?: number
-          p_displacement_fee?: number
-          p_start_time: string
-          service_id: string
-          tenant_slug: string
-        }
-        Returns: string
-      }
+      create_public_appointment:
+        | {
+            Args: {
+              client_name: string
+              client_phone: string
+              is_home_visit?: boolean
+              p_address_bairro?: string
+              p_address_cep?: string
+              p_address_cidade?: string
+              p_address_complemento?: string
+              p_address_estado?: string
+              p_address_logradouro?: string
+              p_address_numero?: string
+              p_displacement_distance_km?: number
+              p_displacement_fee?: number
+              p_start_time: string
+              service_id: string
+              tenant_slug: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              client_name: string
+              client_phone: string
+              is_home_visit?: boolean
+              p_address_bairro?: string
+              p_address_cep?: string
+              p_address_cidade?: string
+              p_address_complemento?: string
+              p_address_estado?: string
+              p_address_logradouro?: string
+              p_address_numero?: string
+              p_client_email: string
+              p_displacement_distance_km?: number
+              p_displacement_fee?: number
+              p_start_time: string
+              service_id: string
+              tenant_slug: string
+            }
+            Returns: string
+          }
+      normalize_phone_digits: { Args: { value: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
@@ -1584,10 +1567,8 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
 } as const
+

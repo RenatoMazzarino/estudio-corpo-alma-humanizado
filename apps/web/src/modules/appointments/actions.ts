@@ -95,11 +95,6 @@ export async function startAppointment(id: string): Promise<ActionResult<{ id: s
     {
       appointment_id: id,
       tenant_id: FIXED_TENANT_ID,
-      current_stage: "session",
-      pre_status: "done",
-      session_status: "in_progress",
-      checkout_status: "locked",
-      post_status: "locked",
       timer_status: "running",
       timer_started_at: timerStartedAt,
       timer_paused_at: null,
@@ -157,15 +152,10 @@ export async function finishAppointment(id: string): Promise<ActionResult<{ id: 
   await supabase
     .from("appointment_attendances")
     .update({
-      pre_status: "done",
-      session_status: "done",
-      checkout_status: "done",
-      post_status: "done",
       timer_status: "finished",
       actual_seconds: updatedAppointment.actual_duration_minutes
         ? updatedAppointment.actual_duration_minutes * 60
         : undefined,
-      current_stage: "hub",
     })
     .eq("appointment_id", id);
 
@@ -191,12 +181,8 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
   await supabase
     .from("appointment_attendances")
     .update({
-      pre_status: "locked",
-      session_status: "locked",
-      checkout_status: "locked",
-      post_status: "locked",
-      stage_lock_reason: "cancelled",
-      current_stage: "hub",
+      timer_status: "idle",
+      timer_paused_at: null,
     })
     .eq("appointment_id", id);
 
@@ -914,17 +900,12 @@ export async function finishAdminAppointment(
   await supabase
     .from("appointment_attendances")
     .update({
-      pre_status: "done",
-      session_status: "done",
-      checkout_status: "done",
-      post_status: "done",
       timer_status: "finished",
       actual_seconds: parsed.data.actualDurationMinutes
         ? parsed.data.actualDurationMinutes * 60
         : updatedAppointment.actual_duration_minutes
           ? updatedAppointment.actual_duration_minutes * 60
           : undefined,
-      current_stage: "hub",
     })
     .eq("appointment_id", parsed.data.appointmentId);
 
