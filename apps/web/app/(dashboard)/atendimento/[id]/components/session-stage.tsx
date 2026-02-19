@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Mic, Music2, Pause, Play, Sparkles, Square } from "lucide-react";
+import { ChevronDown, Mic, Music2, Pause, Play, RotateCw, SkipBack, SkipForward, Sparkles, Square } from "lucide-react";
 import type {
   AttendanceRow,
   ChecklistItem,
@@ -120,6 +120,7 @@ export function SessionStage({
   const [spotifyLoading, setSpotifyLoading] = useState(false);
   const [spotifyActionBusy, setSpotifyActionBusy] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const spotifyFetchInFlightRef = useRef(false);
   const spotifyPlaylistUrl = useMemo(() => DEFAULT_SPOTIFY_PLAYLIST_URL.trim(), []);
   const spotifyPlaylistConfigured = useMemo(() => Boolean(extractSpotifyPlaylistId(spotifyPlaylistUrl)), [spotifyPlaylistUrl]);
 
@@ -137,8 +138,10 @@ export function SessionStage({
     setPortalTarget(document.getElementById("app-frame"));
   }, []);
 
-  const fetchSpotifyState = useCallback(async () => {
-    setSpotifyLoading(true);
+  const fetchSpotifyState = useCallback(async (silent = false) => {
+    if (spotifyFetchInFlightRef.current) return;
+    spotifyFetchInFlightRef.current = true;
+    if (!silent) setSpotifyLoading(true);
     try {
       const response = await fetch("/api/integrations/spotify/player/state", {
         method: "GET",
@@ -183,16 +186,27 @@ export function SessionStage({
         message: "Falha ao carregar estado do Spotify.",
       });
     } finally {
-      setSpotifyLoading(false);
+      spotifyFetchInFlightRef.current = false;
+      if (!silent) setSpotifyLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void fetchSpotifyState();
-    const interval = window.setInterval(() => {
-      void fetchSpotifyState();
-    }, 5000);
-    return () => window.clearInterval(interval);
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === "visible") {
+        void fetchSpotifyState(true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+    window.addEventListener("focus", handleFocusOrVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+      window.removeEventListener("focus", handleFocusOrVisible);
+    };
   }, [fetchSpotifyState]);
 
   const publishedHistory = useMemo(
@@ -207,6 +221,12 @@ export function SessionStage({
     () => checklist.filter((item) => Boolean(item.completed_at)).length,
     [checklist]
   );
+  const spotifyConnected = Boolean(spotifyState?.connected && spotifyState?.enabled);
+  const spotifyHasDevice = Boolean(spotifyState?.hasActiveDevice);
+  const spotifyCanSkip = spotifyConnected && spotifyHasDevice && !spotifyActionBusy;
+  const spotifyCanTogglePlayback = spotifyConnected && !spotifyActionBusy;
+  const spotifyToggleAction: SpotifyPlayerAction = spotifyState?.isPlaying ? "pause" : "play";
+  const spotifyToggleLabel = spotifyState?.isPlaying ? "Pausar" : "Play";
 
   const checklistSourceLabel = (source: string | null) => {
     if (!source) return "manual";
@@ -302,7 +322,9 @@ export function SessionStage({
       );
     } finally {
       setSpotifyActionBusy(false);
-      void fetchSpotifyState();
+      window.setTimeout(() => {
+        void fetchSpotifyState(true);
+      }, 1200);
     }
   };
 
@@ -390,79 +412,91 @@ export function SessionStage({
               Player Spotify
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleOpenSpotify}
-            className="h-8 shrink-0 rounded-lg border border-studio-green/25 bg-white px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-studio-green"
-          >
-            Abrir app
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void fetchSpotifyState(true)}
+              disabled={spotifyLoading || spotifyActionBusy}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-studio-text disabled:opacity-50"
+              aria-label="Atualizar estado do player"
+            >
+              <RotateCw className={`h-3.5 w-3.5 ${spotifyLoading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenSpotify}
+              className="h-8 shrink-0 rounded-lg border border-studio-green/25 bg-white px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-studio-green"
+            >
+              Abrir app
+            </button>
+          </div>
         </div>
-        <div className="mt-3">
-          <p className="mb-1 truncate text-[11px] font-semibold text-studio-text">
+
+        <div className="mt-3 rounded-2xl border border-line bg-paper p-3">
+          <p className="truncate text-sm font-bold text-studio-text">
             {spotifyState?.trackName
               ? spotifyState.artistName
                 ? `${spotifyState.trackName} • ${spotifyState.artistName}`
                 : spotifyState.trackName
               : "Nenhuma faixa em reprodução."}
           </p>
-          <div className="grid grid-cols-4 gap-2">
+          <p className="mt-1 truncate text-[11px] text-muted">
+            {spotifyState?.deviceName
+              ? `Dispositivo: ${spotifyState.deviceName}`
+              : spotifyConnected
+                ? "Conta conectada"
+                : "Conta não conectada"}
+          </p>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => void handleSpotifyAction("previous")}
-              disabled={spotifyActionBusy}
-              className="h-9 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center"
+              disabled={!spotifyCanSkip}
+              className="h-10 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center disabled:opacity-50"
               aria-label="Faixa anterior"
             >
-              ◀◀
+              <SkipBack className="h-4 w-4" />
             </button>
             <button
               type="button"
-              onClick={() => void handleSpotifyAction("play")}
-              disabled={spotifyActionBusy}
-              className="h-9 rounded-xl border border-studio-green/25 bg-studio-light text-[10px] font-extrabold uppercase tracking-wider text-studio-green inline-flex items-center justify-center gap-1.5"
+              onClick={() => void handleSpotifyAction(spotifyToggleAction)}
+              disabled={!spotifyCanTogglePlayback}
+              className="h-10 rounded-xl border border-studio-green/25 bg-studio-light text-[10px] font-extrabold uppercase tracking-wider text-studio-green inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
-              <Play className="h-3.5 w-3.5" />
-              Play
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSpotifyAction("pause")}
-              disabled={spotifyActionBusy}
-              className="h-9 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center gap-1.5"
-            >
-              <Pause className="h-3.5 w-3.5" />
-              Pause
+              {spotifyToggleAction === "pause" ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {spotifyToggleLabel}
             </button>
             <button
               type="button"
               onClick={() => void handleSpotifyAction("next")}
-              disabled={spotifyActionBusy}
-              className="h-9 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center"
+              disabled={!spotifyCanSkip}
+              className="h-10 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center disabled:opacity-50"
               aria-label="Próxima faixa"
             >
-              ▶▶
+              <SkipForward className="h-4 w-4" />
             </button>
           </div>
-          <p className="mt-2 text-[10px] font-semibold text-muted">
-            {spotifyLoading
-              ? "Sincronizando Spotify..."
-              : spotifyState?.connected
-                ? spotifyState.isPlaying
-                  ? `Tocando agora${spotifyState.deviceName ? ` no dispositivo ${spotifyState.deviceName}` : ""}.`
-                  : spotifyState.hasActiveDevice
-                    ? "Player conectado. Toque em play para retomar."
-                    : "Abra o Spotify no celular e inicie uma música para habilitar os controles."
-                : spotifyState?.message ?? "Spotify não conectado."}
-          </p>
-          <p className="mt-1 text-[10px] text-muted">
-            {spotifyState?.message && spotifyState.connected
-              ? spotifyState.message
-              : spotifyPlaylistConfigured
-                ? "Este player usa a conta Spotify conectada em Configurações."
-                : "Defina uma playlist padrão em Configurações para fallback de reprodução."}
-          </p>
         </div>
+
+        <p className="mt-2 text-[10px] font-semibold text-muted">
+          {spotifyLoading
+            ? "Sincronizando Spotify..."
+            : spotifyConnected
+              ? spotifyState?.isPlaying
+                ? `Tocando agora${spotifyState?.deviceName ? ` no dispositivo ${spotifyState.deviceName}` : ""}.`
+                : spotifyHasDevice
+                  ? "Player conectado. Toque em play para retomar."
+                  : "Abra o Spotify no celular e inicie uma música para habilitar os controles."
+              : spotifyState?.message ?? "Spotify não conectado."}
+        </p>
+        <p className="mt-1 text-[10px] text-muted">
+          {spotifyState?.message && spotifyConnected
+            ? spotifyState.message
+            : spotifyPlaylistConfigured
+              ? "Conta conectada. Use os controles para tocar, pausar e trocar a faixa."
+              : "Defina uma playlist padrão em Configurações para fallback de reprodução."}
+        </p>
       </div>
 
       {checklistEnabled && (
@@ -630,7 +664,7 @@ export function SessionStage({
       {selectedHistory &&
         (portalTarget
           ? createPortal(
-              <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/45 p-4">
+              <div className="absolute inset-0 z-90 flex items-center justify-center bg-black/45 p-4">
                 <div className="w-full max-w-xl rounded-3xl border border-line bg-white p-5 shadow-2xl">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-lg font-serif font-bold text-studio-text">Anotações da sessão</h3>
@@ -655,7 +689,7 @@ export function SessionStage({
               portalTarget
             )
           : (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4">
+          <div className="fixed inset-0 z-90 flex items-center justify-center bg-black/45 p-4">
             <div className="w-full max-w-xl rounded-3xl border border-line bg-white p-5 shadow-2xl">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-serif font-bold text-studio-text">Anotações da sessão</h3>

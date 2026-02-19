@@ -71,7 +71,7 @@ export default async function ConfiguracoesPage() {
         pointTerminalExternalId={settingsData?.mp_point_terminal_external_id ?? ""}
         spotifyEnabled={settingsData?.spotify_enabled ?? false}
         spotifyPlaylistUrl={settingsData?.spotify_playlist_url ?? ""}
-        spotifyConnected={Boolean(settingsData?.spotify_refresh_token)}
+        spotifyConnected={Boolean(settingsData?.spotify_account_id || settingsData?.spotify_refresh_token)}
         spotifyAccountName={settingsData?.spotify_account_name ?? ""}
         attendanceChecklistEnabled={settingsData?.attendance_checklist_enabled ?? true}
         attendanceChecklistItems={attendanceChecklistItems}

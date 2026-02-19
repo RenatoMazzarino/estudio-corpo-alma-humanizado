@@ -4,6 +4,21 @@ import { getSpotifyClientId, getSpotifyScopes, resolveSpotifyRedirectUri } from 
 
 export const dynamic = "force-dynamic";
 
+function resolveRequestOrigin(request: NextRequest) {
+  const host =
+    request.headers.get("x-forwarded-host")?.trim() ||
+    request.headers.get("host")?.trim();
+  const proto =
+    request.headers.get("x-forwarded-proto")?.trim() ||
+    request.nextUrl.protocol.replace(":", "");
+
+  if (host && proto) {
+    return `${proto}://${host}`;
+  }
+
+  return request.nextUrl.origin;
+}
+
 export async function GET(request: NextRequest) {
   const clientId = getSpotifyClientId();
   if (!clientId) {
@@ -13,7 +28,8 @@ export async function GET(request: NextRequest) {
   }
 
   const state = randomUUID();
-  const redirectUri = resolveSpotifyRedirectUri(request.nextUrl.origin);
+  const requestOrigin = resolveRequestOrigin(request);
+  const redirectUri = resolveSpotifyRedirectUri(requestOrigin);
   const returnTo = request.nextUrl.searchParams.get("returnTo") || "/configuracoes";
 
   const authorizationUrl = new URL("https://accounts.spotify.com/authorize");

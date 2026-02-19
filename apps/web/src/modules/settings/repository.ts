@@ -1,8 +1,11 @@
 import { createPublicClient, createServiceClient } from "../../../lib/supabase/service";
 import type { Database } from "../../../lib/supabase/types";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export type SettingsRow = Database["public"]["Tables"]["settings"]["Row"];
 export type BusinessHourRow = Database["public"]["Tables"]["business_hours"]["Row"];
+
+type SettingsMutationResult = { error: PostgrestError | null };
 
 export async function getSettings(tenantId: string) {
   const supabase = createServiceClient();
@@ -41,7 +44,28 @@ export async function deleteInvalidBusinessHours(tenantId: string) {
   return supabase.from("business_hours").delete().eq("tenant_id", tenantId).is("day_of_week", null);
 }
 
-export async function updateSettings(tenantId: string, payload: Partial<SettingsRow>) {
+export async function updateSettings(
+  tenantId: string,
+  payload: Partial<SettingsRow>
+): Promise<SettingsMutationResult> {
   const supabase = createServiceClient();
-  return supabase.from("settings").update(payload).eq("tenant_id", tenantId);
+  const updateResult = await supabase
+    .from("settings")
+    .update(payload)
+    .eq("tenant_id", tenantId)
+    .select("tenant_id");
+
+  if (updateResult.error) return { error: updateResult.error };
+  if ((updateResult.data?.length ?? 0) > 0) return { error: null };
+
+  const insertResult = await supabase
+    .from("settings")
+    .insert({
+      tenant_id: tenantId,
+      ...payload,
+    })
+    .select("tenant_id")
+    .single();
+
+  return { error: insertResult.error };
 }

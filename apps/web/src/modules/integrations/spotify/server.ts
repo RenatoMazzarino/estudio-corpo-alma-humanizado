@@ -57,6 +57,8 @@ export function getSpotifyScopes() {
     "user-read-playback-state",
     "user-read-currently-playing",
     "user-modify-playback-state",
+    "playlist-read-private",
+    "playlist-read-collaborative",
   ];
 }
 
@@ -124,14 +126,19 @@ async function exchangeSpotifyCode(params: {
     redirect_uri: params.redirectUri,
   });
 
-  const response = await fetch(`${SPOTIFY_ACCOUNTS_API}/api/token`, {
-    method: "POST",
-    headers: {
-      Authorization: buildSpotifyAuthHeader(clientId, clientSecret),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${SPOTIFY_ACCOUNTS_API}/api/token`, {
+      method: "POST",
+      headers: {
+        Authorization: buildSpotifyAuthHeader(clientId, clientSecret),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+  } catch {
+    return fail(new AppError("Falha de rede ao autenticar com Spotify.", "SUPABASE_ERROR", 502));
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -158,14 +165,19 @@ async function refreshSpotifyToken(refreshToken: string): Promise<ActionResult<S
     refresh_token: refreshToken,
   });
 
-  const response = await fetch(`${SPOTIFY_ACCOUNTS_API}/api/token`, {
-    method: "POST",
-    headers: {
-      Authorization: buildSpotifyAuthHeader(clientId, clientSecret),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${SPOTIFY_ACCOUNTS_API}/api/token`, {
+      method: "POST",
+      headers: {
+        Authorization: buildSpotifyAuthHeader(clientId, clientSecret),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+  } catch {
+    return fail(new AppError("Falha de rede ao renovar token do Spotify.", "SUPABASE_ERROR", 502));
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -181,13 +193,18 @@ async function refreshSpotifyToken(refreshToken: string): Promise<ActionResult<S
 }
 
 async function fetchSpotifyUserProfile(accessToken: string): Promise<ActionResult<{ id: string; displayName: string | null }>> {
-  const response = await fetch(`${SPOTIFY_WEB_API}/me`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${SPOTIFY_WEB_API}/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+  } catch {
+    return fail(new AppError("Falha de rede ao buscar perfil do Spotify.", "SUPABASE_ERROR", 502));
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -207,15 +224,20 @@ async function spotifyApiRequest<T>(params: {
   method?: "GET" | "POST" | "PUT";
   body?: Record<string, unknown> | null;
 }) {
-  const response = await fetch(`${SPOTIFY_WEB_API}${params.path}`, {
-    method: params.method ?? "GET",
-    headers: {
-      Authorization: `Bearer ${params.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: params.body ? JSON.stringify(params.body) : undefined,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${SPOTIFY_WEB_API}${params.path}`, {
+      method: params.method ?? "GET",
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: params.body ? JSON.stringify(params.body) : undefined,
+      cache: "no-store",
+    });
+  } catch {
+    return fail(new AppError("Falha de rede ao consultar Spotify.", "SUPABASE_ERROR", 502));
+  }
 
   if (response.status === 204) {
     return ok(null as T | null);
@@ -228,7 +250,12 @@ async function spotifyApiRequest<T>(params: {
 
   const text = await response.text();
   if (!text) return ok(null as T | null);
-  return ok(JSON.parse(text) as T);
+
+  try {
+    return ok(JSON.parse(text) as T);
+  } catch {
+    return fail(new AppError("Resposta inesperada do Spotify.", "SUPABASE_ERROR", 502));
+  }
 }
 
 async function ensureSpotifyAccessToken(): Promise<ActionResult<SpotifyConnection>> {
@@ -270,11 +297,20 @@ async function ensureSpotifyAccessToken(): Promise<ActionResult<SpotifyConnectio
 
   const tokenData = refreshResult.data;
   const nextExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-  await updateSettings(FIXED_TENANT_ID, {
+  const { error: refreshUpdateError } = await updateSettings(FIXED_TENANT_ID, {
     spotify_access_token: tokenData.access_token,
     spotify_refresh_token: tokenData.refresh_token ?? refreshToken,
     spotify_token_expires_at: nextExpiresAt,
   });
+  if (refreshUpdateError) {
+    return fail(
+      new AppError(
+        `Falha ao salvar token Spotify atualizado: ${refreshUpdateError.message}`,
+        "SUPABASE_ERROR",
+        500
+      )
+    );
+  }
 
   return ok({
     accessToken: tokenData.access_token,
@@ -325,7 +361,7 @@ export async function connectSpotifyFromAuthorizationCode(params: {
   if (!profileResult.ok) return fail(profileResult.error);
 
   const nextExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-  await updateSettings(FIXED_TENANT_ID, {
+  const { error: connectUpdateError } = await updateSettings(FIXED_TENANT_ID, {
     spotify_enabled: true,
     spotify_access_token: tokenData.access_token,
     spotify_refresh_token: tokenData.refresh_token ?? null,
@@ -334,12 +370,21 @@ export async function connectSpotifyFromAuthorizationCode(params: {
     spotify_account_id: profileResult.data.id,
     spotify_account_name: profileResult.data.displayName,
   });
+  if (connectUpdateError) {
+    return fail(
+      new AppError(
+        `Falha ao persistir conexão Spotify: ${connectUpdateError.message}`,
+        "SUPABASE_ERROR",
+        500
+      )
+    );
+  }
 
   return ok({ accountName: profileResult.data.displayName });
 }
 
 export async function disconnectSpotifyIntegration(): Promise<ActionResult<{ ok: true }>> {
-  await updateSettings(FIXED_TENANT_ID, {
+  const { error: disconnectUpdateError } = await updateSettings(FIXED_TENANT_ID, {
     spotify_enabled: false,
     spotify_access_token: null,
     spotify_refresh_token: null,
@@ -348,6 +393,15 @@ export async function disconnectSpotifyIntegration(): Promise<ActionResult<{ ok:
     spotify_account_id: null,
     spotify_account_name: null,
   });
+  if (disconnectUpdateError) {
+    return fail(
+      new AppError(
+        `Falha ao limpar conexão Spotify: ${disconnectUpdateError.message}`,
+        "SUPABASE_ERROR",
+        500
+      )
+    );
+  }
   return ok({ ok: true });
 }
 
@@ -453,7 +507,12 @@ export async function sendSpotifyPlayerAction(action: SpotifyPlayerAction): Prom
   let selectedDeviceId: string | null = null;
   if (devicesResult.ok && devicesResult.data?.devices?.length) {
     const active = devicesResult.data.devices.find((device) => device.is_active);
-    selectedDeviceId = active?.id ?? devicesResult.data.devices[0]?.id ?? null;
+    selectedDeviceId = active?.id ?? null;
+
+    // "play" pode iniciar no único device disponível quando nenhum está ativo.
+    if (!selectedDeviceId && action === "play" && devicesResult.data.devices.length === 1) {
+      selectedDeviceId = devicesResult.data.devices[0]?.id ?? null;
+    }
   }
 
   if (!selectedDeviceId && action !== "play") {
@@ -467,6 +526,16 @@ export async function sendSpotifyPlayerAction(action: SpotifyPlayerAction): Prom
       })
     );
   }
+
+  const playerBeforeAction =
+    action === "next" || action === "previous"
+      ? await spotifyApiRequest<{
+          item?: { id?: string } | null;
+        }>({
+          accessToken: connection.accessToken,
+          path: "/me/player",
+        })
+      : null;
 
   const encodedDevice = selectedDeviceId ? `?device_id=${encodeURIComponent(selectedDeviceId)}` : "";
   const commandPath =
@@ -511,6 +580,28 @@ export async function sendSpotifyPlayerAction(action: SpotifyPlayerAction): Prom
         playlistUrl: connection.playlistUrl,
       })
     );
+  }
+
+  if ((action === "next" || action === "previous") && playerBeforeAction?.ok) {
+    const beforeTrackId = playerBeforeAction.data?.item?.id ?? null;
+    if (beforeTrackId) {
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      const playerAfterAction = await spotifyApiRequest<{
+        item?: { id?: string } | null;
+      }>({
+        accessToken: connection.accessToken,
+        path: "/me/player",
+      });
+      const afterTrackId = playerAfterAction.ok ? playerAfterAction.data?.item?.id ?? null : null;
+
+      if (afterTrackId && afterTrackId === beforeTrackId) {
+        await spotifyApiRequest<unknown>({
+          accessToken: connection.accessToken,
+          path: commandPath,
+          method,
+        });
+      }
+    }
   }
 
   return getSpotifyPlayerState();
