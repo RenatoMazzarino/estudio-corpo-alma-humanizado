@@ -33,16 +33,6 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
   });
 
   if (!parsed.success) {
-    console.error("[services.upsert] validation error", {
-      serviceId: id,
-      tenantId: FIXED_TENANT_ID,
-      accepts_home_visit,
-      issues: parsed.error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-        code: issue.code,
-      })),
-    });
     return fail(new AppError("Dados inválidos para serviço", "VALIDATION_ERROR", 400, parsed.error));
   }
 
@@ -59,55 +49,7 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
   };
 
   const serviceId = parsed.data.id ?? undefined;
-  let error: Awaited<ReturnType<typeof upsertServiceRepo>>["error"] = null;
-  try {
-    const result = await upsertServiceRepo(FIXED_TENANT_ID, payload, serviceId);
-    error = result.error;
-  } catch (cause) {
-    console.error("[services.upsert] unexpected error", {
-      serviceId,
-      tenantId: FIXED_TENANT_ID,
-      payload: {
-        name: payload.name,
-        accepts_home_visit: payload.accepts_home_visit,
-        price: payload.price,
-        duration_minutes: payload.duration_minutes,
-        buffer_before_minutes: payload.buffer_before_minutes,
-        buffer_after_minutes: payload.buffer_after_minutes,
-        custom_buffer_minutes: payload.custom_buffer_minutes,
-      },
-      cause,
-    });
-
-    if (cause instanceof AppError) {
-      return fail(cause);
-    }
-
-    return fail(new AppError("Não foi possível salvar o serviço", "UNKNOWN", 500, cause));
-  }
-
-  if (error) {
-    console.error("[services.upsert] supabase error", {
-      serviceId,
-      tenantId: FIXED_TENANT_ID,
-      payload: {
-        name: payload.name,
-        accepts_home_visit: payload.accepts_home_visit,
-        price: payload.price,
-        duration_minutes: payload.duration_minutes,
-        buffer_before_minutes: payload.buffer_before_minutes,
-        buffer_after_minutes: payload.buffer_after_minutes,
-        custom_buffer_minutes: payload.custom_buffer_minutes,
-      },
-      error: {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      },
-    });
-  }
-
+  const { error } = await upsertServiceRepo(FIXED_TENANT_ID, payload, serviceId);
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 
