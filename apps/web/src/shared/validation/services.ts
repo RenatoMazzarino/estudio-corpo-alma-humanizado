@@ -23,8 +23,17 @@ export const upsertServiceSchema = z.object({
   price: z.preprocess(numberFromInput, z.number().nonnegative()),
   duration_minutes: z.preprocess(numberFromInput, z.number().int().positive()),
   accepts_home_visit: z.boolean(),
-  buffer_before_minutes: z.preprocess(optionalNumberFromInput, z.number().int().nonnegative()).optional(),
-  buffer_after_minutes: z.preprocess(optionalNumberFromInput, z.number().int().nonnegative()).optional(),
-  custom_buffer_minutes: z.preprocess(optionalNumberFromInput, z.number().int().nonnegative()).optional(),
+  buffer_before_minutes: z.preprocess(
+    optionalNumberFromInput,
+    z.number().int().nonnegative().optional()
+  ),
+  buffer_after_minutes: z.preprocess(
+    optionalNumberFromInput,
+    z.number().int().nonnegative().optional()
+  ),
+  custom_buffer_minutes: z.preprocess(
+    optionalNumberFromInput,
+    z.number().int().nonnegative().optional()
+  ),
   description: z.string().optional().nullable(),
 });
