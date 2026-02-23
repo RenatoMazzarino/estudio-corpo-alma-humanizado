@@ -484,6 +484,19 @@ async function upsertAppointmentPayment(params: {
   rawPayload?: Json | null;
 }) {
   const supabase = createServiceClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("appointment_payments")
+    .select(
+      "provider_order_id, point_terminal_id, card_mode, payment_method_id, installments, card_last4, card_brand"
+    )
+    .eq("provider_ref", params.providerRef)
+    .eq("tenant_id", params.tenantId)
+    .maybeSingle();
+
+  if (existingError) {
+    return fail(new AppError("Não foi possível consultar o pagamento atual.", "SUPABASE_ERROR", 500, existingError));
+  }
+
   const { error } = await supabase.from("appointment_payments").upsert(
     {
       appointment_id: params.appointmentId,
@@ -492,14 +505,14 @@ async function upsertAppointmentPayment(params: {
       amount: params.amount,
       status: params.status,
       provider_ref: params.providerRef,
-      provider_order_id: params.providerOrderId,
-      point_terminal_id: params.pointTerminalId ?? null,
-      card_mode: params.cardMode ?? null,
+      provider_order_id: params.providerOrderId ?? existing?.provider_order_id ?? null,
+      point_terminal_id: params.pointTerminalId ?? existing?.point_terminal_id ?? null,
+      card_mode: params.cardMode ?? existing?.card_mode ?? null,
       paid_at: params.status === "paid" ? new Date().toISOString() : null,
-      payment_method_id: params.paymentMethodId ?? null,
-      installments: params.installments ?? null,
-      card_last4: params.cardLast4 ?? null,
-      card_brand: params.cardBrand ?? null,
+      payment_method_id: params.paymentMethodId ?? existing?.payment_method_id ?? null,
+      installments: params.installments ?? existing?.installments ?? null,
+      card_last4: params.cardLast4 ?? existing?.card_last4 ?? null,
+      card_brand: params.cardBrand ?? existing?.card_brand ?? null,
       raw_payload: params.rawPayload ?? null,
     },
     { onConflict: "provider_ref,tenant_id" }
@@ -1043,15 +1056,26 @@ export async function getOrderById(orderId: string): Promise<ActionResult<PointO
 export async function getPointOrderStatus({
   orderId,
   tenantId,
+  expectedAppointmentId,
 }: {
   orderId: string;
   tenantId: string;
+  expectedAppointmentId?: string;
 }): Promise<ActionResult<PointOrderStatusResult>> {
   const statusResult = await getOrderById(orderId);
   if (!statusResult.ok) return statusResult;
 
   const statusData = statusResult.data;
   const appointmentId = statusData.appointment_id;
+  if (expectedAppointmentId && appointmentId && appointmentId !== expectedAppointmentId) {
+    return fail(
+      new AppError("A cobrança consultada pertence a outro atendimento.", "VALIDATION_ERROR", 409, {
+        expectedAppointmentId,
+        receivedAppointmentId: appointmentId,
+        orderId,
+      })
+    );
+  }
 
   if (appointmentId) {
     const upsertResult = await upsertAppointmentPayment({

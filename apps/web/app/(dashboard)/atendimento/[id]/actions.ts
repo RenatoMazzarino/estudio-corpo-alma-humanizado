@@ -927,12 +927,29 @@ export async function getAttendancePointPaymentStatus(payload: {
   const result = await getPointOrderStatus({
     orderId: parsed.data.orderId,
     tenantId: FIXED_TENANT_ID,
+    expectedAppointmentId: parsed.data.appointmentId,
   });
   if (!result.ok) return result;
 
+  const resolvedAppointmentId = result.data.appointment_id ?? parsed.data.appointmentId;
+  if (resolvedAppointmentId !== parsed.data.appointmentId) {
+    return fail(
+      new AppError(
+        "Esta cobrança da maquininha pertence a outro atendimento.",
+        "VALIDATION_ERROR",
+        409,
+        {
+          expectedAppointmentId: parsed.data.appointmentId,
+          receivedAppointmentId: resolvedAppointmentId,
+          orderId: parsed.data.orderId,
+        }
+      )
+    );
+  }
+
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
+    appointmentId: resolvedAppointmentId,
     eventType: "payment_point_charge_status",
     payload: {
       payment_id: result.data.id,
@@ -943,7 +960,7 @@ export async function getAttendancePointPaymentStatus(payload: {
     },
   });
 
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  revalidatePath(`/atendimento/${resolvedAppointmentId}`);
   return ok(result.data);
 }
 
