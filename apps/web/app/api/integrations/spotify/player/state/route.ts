@@ -4,11 +4,12 @@ import {
   isSameOriginInteractiveRequest,
   sanitizeSpotifyUiErrorMessage,
 } from "../../../../../../src/modules/integrations/spotify/http-guards";
+import { hasSpotifyDashboardAccess } from "../../auth-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  if (!isSameOriginInteractiveRequest(request)) {
+  if (!isSameOriginInteractiveRequest(request) || !(await hasSpotifyDashboardAccess())) {
     return NextResponse.json(
       {
         ok: false,

@@ -6,6 +6,7 @@ import {
   resolveRequestOrigin,
   sanitizeSpotifyReturnTo,
 } from "../../../../../src/modules/integrations/spotify/http-guards";
+import { hasSpotifyDashboardAccess } from "../auth-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!isSameOriginInteractiveRequest(request)) {
+  if (!isSameOriginInteractiveRequest(request) || !(await hasSpotifyDashboardAccess())) {
     return NextResponse.redirect(
       new URL("/configuracoes?spotify=forbidden", request.nextUrl.origin)
     );
