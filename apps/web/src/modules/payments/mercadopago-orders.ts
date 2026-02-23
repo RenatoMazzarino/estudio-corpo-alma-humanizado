@@ -91,6 +91,11 @@ type MercadoPagoOrderResponse = {
   status?: string;
   status_detail?: string;
   external_reference?: string | null;
+  config?: {
+    point?: {
+      terminal_id?: string | null;
+    } | null;
+  } | null;
   created_date?: string;
   date_created?: string;
   date_of_expiration?: string;
@@ -103,6 +108,11 @@ type MercadoPagoOrderResponse = {
     external_reference?: string | null;
     status?: string;
     status_detail?: string;
+    config?: {
+      point?: {
+        terminal_id?: string | null;
+      } | null;
+    } | null;
     transactions?: {
       payments?: MercadoPagoOrderPayment[] | null;
     } | null;
@@ -432,6 +442,10 @@ function resolveOrderPayment(order: MercadoPagoOrderResponse | null) {
   const statusDetail =
     firstPayment?.status_detail ?? order?.status_detail ?? order?.data?.status_detail ?? null;
   const amount = parseNumericAmount(firstPayment?.amount ?? firstPayment?.paid_amount, 0);
+  const pointTerminalId =
+    (typeof order?.config?.point?.terminal_id === "string" && order.config.point.terminal_id.trim()) ||
+    (typeof order?.data?.config?.point?.terminal_id === "string" && order.data.config.point.terminal_id.trim()) ||
+    null;
 
   return {
     orderId,
@@ -440,6 +454,7 @@ function resolveOrderPayment(order: MercadoPagoOrderResponse | null) {
     providerStatus,
     statusDetail,
     amount,
+    pointTerminalId,
     paymentMethodId: firstPayment?.payment_method?.id ?? null,
     paymentTypeId: firstPayment?.payment_method?.type ?? null,
     installments:
@@ -1047,7 +1062,7 @@ export async function getOrderById(orderId: string): Promise<ActionResult<PointO
     internal_status: mapProviderStatusToInternal(orderData.providerStatus),
     status_detail: orderData.statusDetail,
     transaction_amount: parseNumericAmount(orderData.amount, 0),
-    point_terminal_id: null,
+    point_terminal_id: orderData.pointTerminalId,
     card_mode: cardMode,
     appointment_id: orderData.externalReference,
   });
