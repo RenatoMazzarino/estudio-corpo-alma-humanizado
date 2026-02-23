@@ -126,7 +126,7 @@ const defaultPixTtlMs = 24 * 60 * 60 * 1000;
 
 export function normalizeMercadoPagoToken(value: string | undefined | null) {
   if (!value) return "";
-  const trimmed = value.trim().replace(/^["']|["']$/g, "");
+  const trimmed = value.trim().replace(/^(["'])|(["'])$/g, "");
   return trimmed.replace(/^Bearer\s+/i, "");
 }
 

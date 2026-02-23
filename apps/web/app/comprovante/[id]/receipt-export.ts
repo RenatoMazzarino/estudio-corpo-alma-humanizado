@@ -3,8 +3,9 @@ import { toBlob, toCanvas } from "html-to-image";
 const isIOSDevice = (userAgent: string) => /iPad|iPhone|iPod/i.test(userAgent);
 
 export const renderReceiptImageBlob = async (node: HTMLElement) => {
-  if (typeof document !== "undefined" && document.fonts?.ready) {
-    await document.fonts.ready;
+  const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+  if (fonts) {
+    await fonts.ready;
   }
 
   await new Promise<void>((resolve) => {
