@@ -4,7 +4,10 @@ import {
   isSameOriginInteractiveRequest,
   sanitizeSpotifyUiErrorMessage,
 } from "../../../../../../src/modules/integrations/spotify/http-guards";
-import { hasSpotifyDashboardAccess } from "../../auth-guard";
+import {
+  buildDashboardUnauthorizedJson,
+  getDashboardApiAccess,
+} from "../../auth-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +19,12 @@ function parseAction(value: unknown): SpotifyPlayerAction | null {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isSameOriginInteractiveRequest(request) || !(await hasSpotifyDashboardAccess())) {
-    return NextResponse.json(
-      {
-        ok: false,
+  const auth = await getDashboardApiAccess(request);
+  if (!isSameOriginInteractiveRequest(request) || !auth.access.ok) {
+    return buildDashboardUnauthorizedJson(request, {
+      loginPath: auth.loginPath,
+      message: "Sua sessão expirou. Faça login para continuar.",
+      extra: {
         connected: false,
         enabled: false,
         hasActiveDevice: false,
@@ -29,10 +34,8 @@ export async function POST(request: NextRequest) {
         trackUrl: null,
         playlistUrl: null,
         deviceName: null,
-        message: "Acesso não autorizado.",
       },
-      { status: 403 }
-    );
+    });
   }
 
   try {

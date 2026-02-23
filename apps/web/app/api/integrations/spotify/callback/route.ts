@@ -4,7 +4,10 @@ import {
   resolveRequestOrigin,
   sanitizeSpotifyReturnTo,
 } from "../../../../../src/modules/integrations/spotify/http-guards";
-import { hasSpotifyDashboardAccess } from "../auth-guard";
+import {
+  buildDashboardLoginRedirect,
+  getDashboardApiAccess,
+} from "../auth-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +19,9 @@ function resolveReturnUrl(request: NextRequest, status: "connected" | "error" | 
 }
 
 export async function GET(request: NextRequest) {
-  if (!(await hasSpotifyDashboardAccess())) {
-    return NextResponse.redirect(new URL("/configuracoes?spotify=forbidden", request.nextUrl.origin));
+  const auth = await getDashboardApiAccess(request, "/configuracoes");
+  if (!auth.access.ok) {
+    return buildDashboardLoginRedirect(request, auth.loginPath);
   }
 
   const code = request.nextUrl.searchParams.get("code");

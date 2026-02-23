@@ -6,21 +6,23 @@ import {
   resolveRequestOrigin,
   sanitizeSpotifyReturnTo,
 } from "../../../../../src/modules/integrations/spotify/http-guards";
-import { hasSpotifyDashboardAccess } from "../auth-guard";
+import {
+  buildDashboardLoginRedirect,
+  getDashboardApiAccess,
+} from "../auth-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const auth = await getDashboardApiAccess(request, "/configuracoes");
+  if (!isSameOriginInteractiveRequest(request) || !auth.access.ok) {
+    return buildDashboardLoginRedirect(request, auth.loginPath);
+  }
+
   const clientId = getSpotifyClientId();
   if (!clientId) {
     return NextResponse.redirect(
       new URL("/configuracoes?spotify=missing_client_id", request.nextUrl.origin)
-    );
-  }
-
-  if (!isSameOriginInteractiveRequest(request) || !(await hasSpotifyDashboardAccess())) {
-    return NextResponse.redirect(
-      new URL("/configuracoes?spotify=forbidden", request.nextUrl.origin)
     );
   }
 

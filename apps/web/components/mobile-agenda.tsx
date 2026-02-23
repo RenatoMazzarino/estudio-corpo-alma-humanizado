@@ -120,6 +120,13 @@ export function MobileAgenda({
   const [isActionPending, setIsActionPending] = useState(false);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  const redirectToLogin = useCallback((loginUrl?: string | null) => {
+    if (typeof window === "undefined") return;
+    const fallbackNext = `${window.location.pathname}${window.location.search}`;
+    const fallbackLogin = `/auth/login?reason=forbidden&next=${encodeURIComponent(fallbackNext)}`;
+    window.location.assign(loginUrl?.trim() || fallbackLogin);
+  }, []);
   const { toast, showToast } = useToast();
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
@@ -310,8 +317,15 @@ export function MobileAgenda({
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
           signal: controller.signal,
         });
+        const data = (await response.json()) as SearchResults & {
+          loginRequired?: boolean;
+          loginUrl?: string | null;
+        };
+        if (response.status === 401 || data.loginRequired) {
+          redirectToLogin(data.loginUrl);
+          return;
+        }
         if (!response.ok) return;
-        const data = (await response.json()) as SearchResults;
         setSearchResults({
           appointments: data.appointments ?? [],
           clients: data.clients ?? [],
@@ -328,7 +342,7 @@ export function MobileAgenda({
       clearTimeout(handle);
       controller.abort();
     };
-  }, [searchTerm, isSearchOpen, searchMode]);
+  }, [searchTerm, isSearchOpen, searchMode, redirectToLogin]);
 
   useEffect(() => {
     if (searchParams.get("created") !== "1") {

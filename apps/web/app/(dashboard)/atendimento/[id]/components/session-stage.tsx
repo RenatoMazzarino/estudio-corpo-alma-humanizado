@@ -181,6 +181,13 @@ export function SessionStage({
   const spotifyPlaylistUrl = useMemo(() => DEFAULT_SPOTIFY_PLAYLIST_URL.trim(), []);
   const spotifyPlaylistConfigured = useMemo(() => Boolean(extractSpotifyPlaylistId(spotifyPlaylistUrl)), [spotifyPlaylistUrl]);
 
+  const redirectToLogin = useCallback((loginUrl?: string | null) => {
+    if (typeof window === "undefined") return;
+    const fallbackNext = `${window.location.pathname}${window.location.search}`;
+    const fallbackLogin = `/auth/login?reason=forbidden&next=${encodeURIComponent(fallbackNext)}`;
+    window.location.assign(loginUrl?.trim() || fallbackLogin);
+  }, []);
+
   useEffect(() => {
     return () => {
       try {
@@ -208,6 +215,8 @@ export function SessionStage({
       });
       const payload = (await response.json()) as {
         ok?: boolean;
+        loginRequired?: boolean;
+        loginUrl?: string | null;
         connected?: boolean;
         enabled?: boolean;
         hasActiveDevice?: boolean;
@@ -219,6 +228,10 @@ export function SessionStage({
         deviceName?: string | null;
         message?: string | null;
       };
+      if (response.status === 401 || payload.loginRequired) {
+        redirectToLogin(payload.loginUrl);
+        return;
+      }
       setSpotifyState({
         connected: Boolean(payload.connected),
         enabled: Boolean(payload.enabled),
@@ -248,7 +261,7 @@ export function SessionStage({
       spotifyFetchInFlightRef.current = false;
       if (!silent) setSpotifyLoading(false);
     }
-  }, []);
+  }, [redirectToLogin]);
 
   useEffect(() => {
     void fetchSpotifyState();
@@ -376,6 +389,8 @@ export function SessionStage({
       });
       const payload = (await response.json()) as {
         ok?: boolean;
+        loginRequired?: boolean;
+        loginUrl?: string | null;
         message?: string | null;
         connected?: boolean;
         enabled?: boolean;
@@ -387,6 +402,11 @@ export function SessionStage({
         playlistUrl?: string | null;
         deviceName?: string | null;
       };
+
+      if (response.status === 401 || payload.loginRequired) {
+        redirectToLogin(payload.loginUrl);
+        return;
+      }
 
       if (payload.ok) {
         setSpotifyState({
