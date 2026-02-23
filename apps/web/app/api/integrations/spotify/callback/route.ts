@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectSpotifyFromAuthorizationCode, resolveSpotifyRedirectUri } from "../../../../../src/modules/integrations/spotify/server";
+import {
+  resolveRequestOrigin,
+  sanitizeSpotifyReturnTo,
+} from "../../../../../src/modules/integrations/spotify/http-guards";
 
 export const dynamic = "force-dynamic";
 
-function resolveRequestOrigin(request: NextRequest) {
-  const host =
-    request.headers.get("x-forwarded-host")?.trim() ||
-    request.headers.get("host")?.trim();
-  const proto =
-    request.headers.get("x-forwarded-proto")?.trim() ||
-    request.nextUrl.protocol.replace(":", "");
-
-  if (host && proto) {
-    return `${proto}://${host}`;
-  }
-
-  return request.nextUrl.origin;
-}
-
 function resolveReturnUrl(request: NextRequest, status: "connected" | "error" | "state_invalid") {
-  const cookieReturn = request.cookies.get("spotify_oauth_return_to")?.value || "/configuracoes";
+  const cookieReturn = sanitizeSpotifyReturnTo(request.cookies.get("spotify_oauth_return_to")?.value);
   const target = new URL(cookieReturn, resolveRequestOrigin(request));
   target.searchParams.set("spotify", status);
   return target;

@@ -11,9 +11,8 @@ import {
   deleteInvalidBusinessHours,
   listPixPaymentKeys,
   insertPixPaymentKey,
-  setAllPixKeysInactive,
-  setPixPaymentKeyActive,
-  deletePixPaymentKey,
+  activatePixPaymentKeyAtomically,
+  deletePixPaymentKeyAndRebalanceAtomically,
   type PixPaymentKeyType,
 } from "../../../src/modules/settings/repository";
 import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
@@ -307,23 +306,24 @@ export async function addPixKey(payload: {
   const shouldActivate =
     Boolean(payload.makeActive) || currentKeys.length === 0 || !currentKeys.some((item) => item.is_active);
 
-  if (shouldActivate) {
-    const { error: clearError } = await setAllPixKeysInactive(FIXED_TENANT_ID);
-    const mappedClear = mapSupabaseError(clearError);
-    if (mappedClear) return fail(mappedClear);
-  }
-
   const label = payload.label?.trim() || `${getPixTypeLabel(payload.keyType)} principal`;
-  const { error: insertError } = await insertPixPaymentKey({
+  const insertResult = await insertPixPaymentKey({
     tenantId: FIXED_TENANT_ID,
     keyType: payload.keyType,
     keyValue: normalizedValue,
     label,
-    isActive: shouldActivate,
+    // Inserimos inativa e promovemos via função transacional quando necessário.
+    isActive: false,
   });
 
-  const mappedInsert = mapSupabaseError(insertError);
+  const mappedInsert = mapSupabaseError(insertResult.error);
   if (mappedInsert) return fail(mappedInsert);
+
+  if (shouldActivate && insertResult.data?.id) {
+    const activation = await activatePixPaymentKeyAtomically(FIXED_TENANT_ID, insertResult.data.id);
+    const mappedActivation = mapSupabaseError(activation.error);
+    if (mappedActivation) return fail(mappedActivation);
+  }
 
   const nextKeysResult = await fetchPixKeysForTenant();
   if (!nextKeysResult.ok) return nextKeysResult;
@@ -354,12 +354,8 @@ export async function activatePixKey(payload: {
     return fail(new AppError("Selecione uma chave Pix válida.", "VALIDATION_ERROR", 400));
   }
 
-  const { error: clearError } = await setAllPixKeysInactive(FIXED_TENANT_ID);
-  const mappedClear = mapSupabaseError(clearError);
-  if (mappedClear) return fail(mappedClear);
-
-  const { error: activateError } = await setPixPaymentKeyActive(FIXED_TENANT_ID, keyId);
-  const mappedActivate = mapSupabaseError(activateError);
+  const activation = await activatePixPaymentKeyAtomically(FIXED_TENANT_ID, keyId);
+  const mappedActivate = mapSupabaseError(activation.error);
   if (mappedActivate) return fail(mappedActivate);
 
   const nextKeysResult = await fetchPixKeysForTenant();
@@ -391,26 +387,15 @@ export async function removePixKey(payload: {
     return fail(new AppError("Chave Pix inválida para remoção.", "VALIDATION_ERROR", 400));
   }
 
-  const { data: deletedRow, error: deleteError } = await deletePixPaymentKey(FIXED_TENANT_ID, keyId);
+  const { data: deleteRows, error: deleteError } = await deletePixPaymentKeyAndRebalanceAtomically(
+    FIXED_TENANT_ID,
+    keyId
+  );
   const mappedDelete = mapSupabaseError(deleteError);
   if (mappedDelete) return fail(mappedDelete);
 
-  const keysResult = await fetchPixKeysForTenant();
-  if (!keysResult.ok) return keysResult;
-
-  if (deletedRow?.is_active && keysResult.data.length > 0) {
-    const firstKey = keysResult.data[0];
-    if (!firstKey) {
-      return fail(new AppError("Não foi possível definir a chave Pix ativa.", "UNKNOWN", 500));
-    }
-
-    const { error: clearError } = await setAllPixKeysInactive(FIXED_TENANT_ID);
-    const mappedClear = mapSupabaseError(clearError);
-    if (mappedClear) return fail(mappedClear);
-
-    const { error: activateError } = await setPixPaymentKeyActive(FIXED_TENANT_ID, firstKey.id);
-    const mappedActivate = mapSupabaseError(activateError);
-    if (mappedActivate) return fail(mappedActivate);
+  if (!deleteRows || deleteRows.length === 0) {
+    return fail(new AppError("Chave Pix não encontrada para remoção.", "NOT_FOUND", 404));
   }
 
   const nextKeysResult = await fetchPixKeysForTenant();

@@ -122,6 +122,18 @@ export async function setPixPaymentKeyActive(tenantId: string, keyId: string) {
     .single();
 }
 
+export async function activatePixPaymentKeyAtomically(tenantId: string, keyId: string) {
+  const supabase = createServiceClient();
+  const rpc = supabase.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: PostgrestError | null }>;
+  return rpc("activate_pix_payment_key", {
+    p_tenant_id: tenantId,
+    p_key_id: keyId,
+  });
+}
+
 export async function deletePixPaymentKey(tenantId: string, keyId: string) {
   const supabase = createServiceClient();
   return supabase
@@ -131,4 +143,24 @@ export async function deletePixPaymentKey(tenantId: string, keyId: string) {
     .eq("id", keyId)
     .select("id, is_active")
     .single();
+}
+
+export async function deletePixPaymentKeyAndRebalanceAtomically(tenantId: string, keyId: string) {
+  const supabase = createServiceClient();
+  const rpc = supabase.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{
+    data:
+      | Array<{
+          deleted_was_active: boolean | null;
+          next_active_key_id: string | null;
+        }>
+      | null;
+    error: PostgrestError | null;
+  }>;
+  return rpc("remove_pix_payment_key_and_rebalance", {
+    p_tenant_id: tenantId,
+    p_key_id: keyId,
+  });
 }

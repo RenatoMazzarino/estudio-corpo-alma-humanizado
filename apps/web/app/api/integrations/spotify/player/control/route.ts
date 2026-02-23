@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendSpotifyPlayerAction, type SpotifyPlayerAction } from "../../../../../../src/modules/integrations/spotify/server";
+import { isSameOriginInteractiveRequest } from "../../../../../../src/modules/integrations/spotify/http-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,25 @@ function parseAction(value: unknown): SpotifyPlayerAction | null {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginInteractiveRequest(request)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        connected: false,
+        enabled: false,
+        hasActiveDevice: false,
+        isPlaying: false,
+        trackName: null,
+        artistName: null,
+        trackUrl: null,
+        playlistUrl: null,
+        deviceName: null,
+        message: "Acesso não autorizado.",
+      },
+      { status: 403 }
+    );
+  }
+
   try {
     let payload: unknown;
     try {

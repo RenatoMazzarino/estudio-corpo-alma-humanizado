@@ -1,23 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSpotifyClientId, getSpotifyScopes, resolveSpotifyRedirectUri } from "../../../../../src/modules/integrations/spotify/server";
+import {
+  isSameOriginInteractiveRequest,
+  resolveRequestOrigin,
+  sanitizeSpotifyReturnTo,
+} from "../../../../../src/modules/integrations/spotify/http-guards";
 
 export const dynamic = "force-dynamic";
-
-function resolveRequestOrigin(request: NextRequest) {
-  const host =
-    request.headers.get("x-forwarded-host")?.trim() ||
-    request.headers.get("host")?.trim();
-  const proto =
-    request.headers.get("x-forwarded-proto")?.trim() ||
-    request.nextUrl.protocol.replace(":", "");
-
-  if (host && proto) {
-    return `${proto}://${host}`;
-  }
-
-  return request.nextUrl.origin;
-}
 
 export async function GET(request: NextRequest) {
   const clientId = getSpotifyClientId();
@@ -27,10 +17,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (!isSameOriginInteractiveRequest(request)) {
+    return NextResponse.redirect(
+      new URL("/configuracoes?spotify=forbidden", request.nextUrl.origin)
+    );
+  }
+
   const state = randomUUID();
   const requestOrigin = resolveRequestOrigin(request);
   const redirectUri = resolveSpotifyRedirectUri(requestOrigin);
-  const returnTo = request.nextUrl.searchParams.get("returnTo") || "/configuracoes";
+  const returnTo = sanitizeSpotifyReturnTo(request.nextUrl.searchParams.get("returnTo"));
 
   const authorizationUrl = new URL("https://accounts.spotify.com/authorize");
   authorizationUrl.searchParams.set("response_type", "code");
