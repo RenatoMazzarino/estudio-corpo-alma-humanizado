@@ -88,6 +88,21 @@ async function recalcCheckoutTotals(appointmentId: string) {
   return totals;
 }
 
+function roundCurrency(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+async function getCheckoutChargeSnapshot(appointmentId: string) {
+  await recalcCheckoutTotals(appointmentId);
+  const { paid, total, paymentStatus } = await updatePaymentStatus(appointmentId);
+  return {
+    paid: roundCurrency(paid),
+    total: roundCurrency(total),
+    remaining: roundCurrency(Math.max(total - paid, 0)),
+    paymentStatus,
+  };
+}
+
 function fallbackStructuredEvolution(rawText: string) {
   const normalized = rawText.trim();
   if (!normalized) return "";
@@ -622,6 +637,22 @@ export async function recordPayment(payload: {
   }
 
   const supabase = createServiceClient();
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  if (chargeSnapshot.remaining <= 0) {
+    return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
+  }
+
+  const requestedAmount = roundCurrency(parsed.data.amount);
+  if (requestedAmount > chargeSnapshot.remaining + 0.01) {
+    return fail(
+      new AppError(
+        "O valor informado é maior que o saldo atual do atendimento. Atualize o checkout e tente novamente.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
   let transactionId = parsed.data.transactionId ?? null;
 
   if (!transactionId) {
@@ -632,7 +663,7 @@ export async function recordPayment(payload: {
       type: "income",
       category: "Serviço",
       description,
-      amount: parsed.data.amount,
+      amount: requestedAmount,
       payment_method: parsed.data.method,
     });
 
@@ -647,7 +678,7 @@ export async function recordPayment(payload: {
       appointment_id: parsed.data.appointmentId,
       tenant_id: FIXED_TENANT_ID,
       method: parsed.data.method,
-      amount: parsed.data.amount,
+      amount: requestedAmount,
       status: "paid",
       paid_at: new Date().toISOString(),
       transaction_id: transactionId,
@@ -664,7 +695,7 @@ export async function recordPayment(payload: {
     tenantId: FIXED_TENANT_ID,
     appointmentId: parsed.data.appointmentId,
     eventType: "payment_recorded",
-    payload: { method: parsed.data.method, amount: parsed.data.amount },
+    payload: { method: parsed.data.method, amount: requestedAmount },
   });
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
@@ -705,10 +736,16 @@ export async function createAttendancePixPayment(payload: {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  if (chargeSnapshot.remaining <= 0) {
+    return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
+  }
+  const chargeAmount = chargeSnapshot.remaining;
+
   const result = await createPixOrderForAppointment({
     appointmentId: parsed.data.appointmentId,
     tenantId: FIXED_TENANT_ID,
-    amount: parsed.data.amount,
+    amount: chargeAmount,
     payerName: parsed.data.payerName,
     payerPhone: parsed.data.payerPhone,
     payerEmail: parsed.data.payerEmail,
@@ -793,10 +830,16 @@ export async function createAttendancePointPayment(payload: {
     );
   }
 
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  if (chargeSnapshot.remaining <= 0) {
+    return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
+  }
+  const chargeAmount = chargeSnapshot.remaining;
+
   const result = await createPointOrderForAppointment({
     appointmentId: parsed.data.appointmentId,
     tenantId: FIXED_TENANT_ID,
-    amount: parsed.data.amount,
+    amount: chargeAmount,
     terminalId,
     cardMode: parsed.data.cardMode,
   });

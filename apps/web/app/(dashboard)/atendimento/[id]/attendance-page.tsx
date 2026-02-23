@@ -308,10 +308,11 @@ export function AttendancePage({
     const result = await setCheckoutItems({ appointmentId: appointment.id, items });
     if (!result.ok) {
       showToast(feedbackFromError(result.error, "attendance"));
-      return;
+      return false;
     }
     showToast(feedbackById("generic_saved", { tone: "success", message: "Itens atualizados." }));
     router.refresh();
+    return true;
   };
 
   const handleSetDiscount = async (type: "value" | "pct" | null, value: number | null, reason?: string) => {
@@ -323,10 +324,11 @@ export function AttendancePage({
     });
     if (!result.ok) {
       showToast(feedbackFromError(result.error, "attendance"));
-      return;
+      return false;
     }
     showToast(feedbackById("generic_saved", { tone: "success", message: "Desconto aplicado." }));
     router.refresh();
+    return true;
   };
 
   const handleRegisterCashPayment = async (amount: number) => {

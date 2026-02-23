@@ -43,8 +43,10 @@ interface AttendancePaymentModalProps {
   pointTerminalName: string;
   pointTerminalModel: string;
   onClose: () => void;
-  onSaveItems: (items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>) => Promise<void>;
-  onSetDiscount: (type: "value" | "pct" | null, value: number | null, reason?: string) => Promise<void>;
+  onSaveItems: (
+    items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>
+  ) => Promise<boolean>;
+  onSetDiscount: (type: "value" | "pct" | null, value: number | null, reason?: string) => Promise<boolean>;
   onRegisterCashPayment: (amount: number) => Promise<{ ok: boolean; paymentId?: string | null }>;
   onRegisterPixKeyPayment: (amount: number) => Promise<{ ok: boolean; paymentId?: string | null }>;
   onCreatePixPayment: (amount: number, attempt: number) => Promise<{ ok: boolean; data?: PixPaymentData }>;
@@ -155,6 +157,7 @@ export function AttendancePaymentModal({
   const [pixKeyError, setPixKeyError] = useState<string | null>(null);
   const [pointPayment, setPointPayment] = useState<PointPaymentData | null>(null);
   const [busy, setBusy] = useState(false);
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
   const [stageIndex, setStageIndex] = useState(0);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [receiptPromptPaymentId, setReceiptPromptPaymentId] = useState<string | null>(null);
@@ -220,6 +223,7 @@ export function AttendancePaymentModal({
     setErrorText(null);
     setResolvingReceiptPrompt(false);
     setPixKeyError(null);
+    setCheckoutSaving(false);
   }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
 
   useEffect(() => {
@@ -433,9 +437,15 @@ export function AttendancePaymentModal({
     const amount = Number(newItem.amount ?? 0);
     if (!label || amount <= 0) return;
     const nextItems = [...normalizedItems, { ...newItem, label, qty: 1, amount }];
-    setDraftItems(nextItems);
-    setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
-    await onSaveItems(nextItems);
+    setCheckoutSaving(true);
+    try {
+      const saved = await onSaveItems(nextItems);
+      if (!saved) return;
+      setDraftItems(nextItems);
+      setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
+    } finally {
+      setCheckoutSaving(false);
+    }
   };
 
   const isRemovableItem = (item: { type: CheckoutItem["type"]; label: string }) =>
@@ -445,8 +455,14 @@ export function AttendancePaymentModal({
     const target = normalizedItems[indexToRemove];
     if (!target || !isRemovableItem(target)) return;
     const nextItems = normalizedItems.filter((_, index) => index !== indexToRemove);
-    setDraftItems(nextItems);
-    await onSaveItems(nextItems);
+    setCheckoutSaving(true);
+    try {
+      const saved = await onSaveItems(nextItems);
+      if (!saved) return;
+      setDraftItems(nextItems);
+    } finally {
+      setCheckoutSaving(false);
+    }
   };
 
   const handleApplyDiscount = async () => {
@@ -455,16 +471,26 @@ export function AttendancePaymentModal({
     const nextType: "value" | "pct" | null = safeValue > 0 ? discountTypeInput : null;
     const nextReason = discountReasonInput.trim();
 
-    setAppliedDiscountType(nextType);
-    setAppliedDiscountValue(safeValue);
-    setAppliedDiscountReason(nextReason);
+    setCheckoutSaving(true);
+    try {
+      const saved = await onSetDiscount(nextType, safeValue > 0 ? safeValue : null, nextReason || undefined);
+      if (!saved) return;
 
-    const nextDiscountAmount =
-      nextType === "pct" ? Math.min(subtotal, subtotal * (safeValue / 100)) : nextType === "value" ? Math.min(subtotal, safeValue) : 0;
-    const nextTotal = Math.max(subtotal - nextDiscountAmount, 0);
-    setCashAmount(Math.max(nextTotal - paidTotal, 0));
+      setAppliedDiscountType(nextType);
+      setAppliedDiscountValue(safeValue);
+      setAppliedDiscountReason(nextReason);
 
-    await onSetDiscount(nextType, safeValue > 0 ? safeValue : null, nextReason || undefined);
+      const nextDiscountAmount =
+        nextType === "pct"
+          ? Math.min(subtotal, subtotal * (safeValue / 100))
+          : nextType === "value"
+            ? Math.min(subtotal, safeValue)
+            : 0;
+      const nextTotal = Math.max(subtotal - nextDiscountAmount, 0);
+      setCashAmount(Math.max(nextTotal - paidTotal, 0));
+    } finally {
+      setCheckoutSaving(false);
+    }
   };
 
   const modalNode = (
@@ -531,12 +557,13 @@ export function AttendancePaymentModal({
                   <div className="flex items-center gap-2">
                     <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
                     {isRemovableItem(item) && (
-                      <button
-                        type="button"
-                        onClick={() => void handleRemoveItem(index)}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-red-600"
-                        aria-label={`Remover item ${item.label}`}
-                      >
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveItem(index)}
+                          disabled={checkoutSaving}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-red-600"
+                          aria-label={`Remover item ${item.label}`}
+                        >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -552,20 +579,23 @@ export function AttendancePaymentModal({
                   className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
                   placeholder="Novo item"
                   value={newItem.label}
+                  disabled={checkoutSaving}
                   onChange={(event) => setNewItem((current) => ({ ...current, label: event.target.value }))}
                 />
                 <input
                   className="rounded-xl border border-line px-3 py-2 text-xs"
                   type="number"
                   value={newItem.amount}
+                  disabled={checkoutSaving}
                   onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
                 />
               </div>
               <button
                 className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
                 onClick={handleAddItem}
+                disabled={checkoutSaving}
               >
-                Adicionar item
+                {checkoutSaving ? "Salvando..." : "Adicionar item"}
               </button>
             </div>
 
@@ -574,6 +604,7 @@ export function AttendancePaymentModal({
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <select
                   value={discountTypeInput}
+                  disabled={checkoutSaving}
                   onChange={(event) => setDiscountTypeInput(event.target.value === "pct" ? "pct" : "value")}
                   className="rounded-xl border border-line px-3 py-2 text-xs"
                 >
@@ -583,12 +614,14 @@ export function AttendancePaymentModal({
                 <input
                   type="number"
                   value={discountValueInput}
+                  disabled={checkoutSaving}
                   onChange={(event) => setDiscountValueInput(Number(event.target.value))}
                   className="rounded-xl border border-line px-3 py-2 text-xs"
                 />
               </div>
               <input
                 value={discountReasonInput}
+                disabled={checkoutSaving}
                 onChange={(event) => setDiscountReasonInput(event.target.value)}
                 className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
                 placeholder="Motivo do desconto"
@@ -596,8 +629,9 @@ export function AttendancePaymentModal({
               <button
                 className="mt-2 w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
                 onClick={handleApplyDiscount}
+                disabled={checkoutSaving}
               >
-                Aplicar desconto
+                {checkoutSaving ? "Salvando..." : "Aplicar desconto"}
               </button>
             </div>
 
