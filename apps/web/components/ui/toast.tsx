@@ -26,10 +26,10 @@ type ToastState = {
 };
 
 const toastToneStyles: Record<ToastTone, string> = {
-  success: "bg-studio-green text-white",
-  error: "bg-red-500 text-white",
-  info: "bg-studio-text text-white",
-  warning: "bg-amber-500 text-white",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  error: "border-red-200 bg-red-50 text-red-700",
+  info: "border-stone-200 bg-white text-studio-text",
+  warning: "border-amber-200 bg-amber-50 text-amber-800",
 };
 
 const bannerToneStyles: Record<ToastTone, string> = {
@@ -62,7 +62,7 @@ export function Toast({ toast }: { toast: ToastState | null }) {
   const Icon = toneIcon[toast.tone];
   if (toast.kind === "banner") {
     const bannerNode = (
-      <div className={`${positionClass} left-1/2 top-4 z-[90] w-[calc(100%-1rem)] max-w-[520px] -translate-x-1/2 px-1`}>
+      <div className={`${positionClass} left-1/2 top-4 z-90 w-[calc(100%-1rem)] max-w-[520px] -translate-x-1/2 px-1`}>
         <div
           className={`rounded-2xl border px-4 py-3 shadow-float ${bannerToneStyles[toast.tone]}`}
           role="status"
@@ -86,19 +86,28 @@ export function Toast({ toast }: { toast: ToastState | null }) {
 
   const toastNode = (
     <div
-      className={`${positionClass} bottom-24 left-1/2 z-[90] flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow-float ${toastToneStyles[toast.tone]}`}
+      className={`${positionClass} left-1/2 top-4 z-90 w-[calc(100%-1rem)] max-w-[520px] -translate-x-1/2 px-1`}
       role="status"
       aria-live="polite"
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{toast.message}</span>
+      <div
+        className={`flex items-start gap-2.5 rounded-2xl border px-4 py-3 shadow-float ${toastToneStyles[toast.tone]}`}
+      >
+        <Icon className="mt-0.5 h-4.5 w-4.5 shrink-0" />
+        <div className="min-w-0">
+          {toast.title ? (
+            <p className="text-[11px] font-extrabold uppercase tracking-wide">{toast.title}</p>
+          ) : null}
+          <p className="text-sm font-semibold leading-snug">{toast.message}</p>
+        </div>
+      </div>
     </div>
   );
 
   return portalTarget ? createPortal(toastNode, portalTarget) : toastNode;
 }
 
-export function useToast(duration = 1800) {
+export function useToast(duration = 2200) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -114,13 +123,13 @@ export function useToast(duration = 1800) {
     (input: string | ToastInput, tone: ToastTone = "info") => {
       const nextToast: ToastState =
         typeof input === "string"
-          ? { message: input, tone, kind: "toast", durationMs: duration }
+          ? { message: input, tone, kind: "banner", durationMs: duration }
           : {
               id: input.id,
               title: input.title,
               message: input.message,
               tone: input.tone ?? tone,
-              kind: input.kind ?? "toast",
+              kind: input.kind ?? "banner",
               durationMs: input.durationMs ?? duration,
             };
 

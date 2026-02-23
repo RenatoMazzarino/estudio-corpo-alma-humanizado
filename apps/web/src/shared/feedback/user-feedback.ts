@@ -53,6 +53,10 @@ export type FeedbackId =
   | "payment_credentials_invalid"
   | "payment_pending"
   | "payment_recorded"
+  | "payment_already_settled"
+  | "payment_amount_outdated"
+  | "payment_point_not_configured"
+  | "payment_pix_key_not_configured"
   | "message_recorded"
   | "reminder_recorded"
   | "appointment_cancelled"
@@ -194,6 +198,30 @@ const feedbackCatalog: Record<FeedbackId, UserFeedback> = {
     message: "Pagamento registrado com sucesso.",
     tone: "success",
   },
+  payment_already_settled: {
+    message: "Este atendimento já está quitado. Atualize a tela para conferir o status.",
+    tone: "info",
+    kind: "banner",
+    durationMs: 2600,
+  },
+  payment_amount_outdated: {
+    message: "O valor da cobrança mudou. Atualizamos o checkout para você revisar antes de cobrar.",
+    tone: "warning",
+    kind: "banner",
+    durationMs: 3200,
+  },
+  payment_point_not_configured: {
+    message: "Nenhuma maquininha Point está configurada. Ajuste em Configurações para cobrar no cartão.",
+    tone: "warning",
+    kind: "banner",
+    durationMs: 3400,
+  },
+  payment_pix_key_not_configured: {
+    message: "Configure uma chave Pix ativa em Configurações para usar o Pix por chave.",
+    tone: "warning",
+    kind: "banner",
+    durationMs: 3400,
+  },
   message_recorded: {
     message: "Mensagem registrada.",
     tone: "success",
@@ -256,6 +284,10 @@ const mapMessagePattern = (message: string): FeedbackId | null => {
   if (text.includes("invalid_transaction_amount")) return "payment_invalid_amount";
   if (text.includes("invalid_credentials")) return "payment_credentials_invalid";
   if (text.includes("unsupported_properties")) return "payment_service_unavailable";
+  if (text.includes("ja esta com pagamento quitado")) return "payment_already_settled";
+  if (text.includes("maior que o saldo atual do atendimento")) return "payment_amount_outdated";
+  if (text.includes("nenhuma maquininha point configurada")) return "payment_point_not_configured";
+  if (text.includes("configure uma chave pix ativa")) return "payment_pix_key_not_configured";
   if (text.includes("cartao nao aprovado") || text.includes("pagamento recusado")) {
     return "payment_card_declined";
   }
@@ -275,6 +307,12 @@ const mapCodeFallback = (errorCode: string | undefined, context: FeedbackContext
     if (errorCode === "VALIDATION_ERROR") return "payment_invalid_amount";
     if (errorCode === "CONFIG_ERROR" || errorCode === "UNAUTHORIZED") return "payment_credentials_invalid";
     if (errorCode === "SUPABASE_ERROR") return "payment_service_unavailable";
+  }
+
+  if (context === "attendance") {
+    if (errorCode === "VALIDATION_ERROR") return "validation_invalid_data";
+    if (errorCode === "NOT_FOUND") return "not_found";
+    if (errorCode === "CONFIG_ERROR") return "generic_unavailable";
   }
 
   if (context === "address") {

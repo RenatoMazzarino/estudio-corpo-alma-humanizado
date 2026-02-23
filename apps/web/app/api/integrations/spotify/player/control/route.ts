@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendSpotifyPlayerAction, type SpotifyPlayerAction } from "../../../../../../src/modules/integrations/spotify/server";
-import { isSameOriginInteractiveRequest } from "../../../../../../src/modules/integrations/spotify/http-guards";
+import {
+  isSameOriginInteractiveRequest,
+  sanitizeSpotifyUiErrorMessage,
+} from "../../../../../../src/modules/integrations/spotify/http-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
           trackUrl: null,
           playlistUrl: null,
           deviceName: null,
-          message: result.error.message,
+          message: sanitizeSpotifyUiErrorMessage(result.error, "Não foi possível controlar o Spotify agora."),
         },
         { status: 200 }
       );
