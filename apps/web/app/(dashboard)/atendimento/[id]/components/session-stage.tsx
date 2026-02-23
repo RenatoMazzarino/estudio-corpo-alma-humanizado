@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarClock, CalendarDays, ChevronDown, Clock3, MapPin, Mic, NotebookPen, Pause, Pencil, Play, RotateCw, SkipBack, SkipForward, Sparkles, Square, SquareCheckBig, Wallet } from "lucide-react";
 import type {
@@ -360,6 +360,19 @@ export function SessionStage({
 
   const closeHistoryNotesModal = () => {
     setSelectedHistory(null);
+  };
+
+  const handleHistoryNotesBackdropClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      closeHistoryNotesModal();
+    }
+  };
+
+  const handleHistoryNotesBackdropKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape" || event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      closeHistoryNotesModal();
+    }
   };
 
   const stopAudioRecording = () => {
@@ -1010,10 +1023,19 @@ export function SessionStage({
       {selectedHistory &&
         (portalTarget
           ? createPortal(
-              <div className="absolute inset-0 z-90 flex items-center justify-center bg-black/45 p-4" onClick={closeHistoryNotesModal}>
+              <div
+                className="absolute inset-0 z-90 flex items-center justify-center bg-black/45 p-4"
+                onClick={handleHistoryNotesBackdropClick}
+                onKeyDown={handleHistoryNotesBackdropKeyDown}
+                role="button"
+                tabIndex={0}
+                aria-label="Fechar anotações da sessão"
+              >
                 <div
                   className="w-full max-w-xl rounded-3xl border border-line bg-white p-5 shadow-2xl"
-                  onClick={(event) => event.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Anotações da sessão"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-lg font-serif font-bold text-studio-text">Anotações da sessão</h3>
@@ -1041,10 +1063,19 @@ export function SessionStage({
               portalTarget
             )
           : (
-          <div className="fixed inset-0 z-90 flex items-center justify-center bg-black/45 p-4" onClick={closeHistoryNotesModal}>
+          <div
+            className="fixed inset-0 z-90 flex items-center justify-center bg-black/45 p-4"
+            onClick={handleHistoryNotesBackdropClick}
+            onKeyDown={handleHistoryNotesBackdropKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label="Fechar anotações da sessão"
+          >
             <div
               className="w-full max-w-xl rounded-3xl border border-line bg-white p-5 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Anotações da sessão"
             >
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-serif font-bold text-studio-text">Anotações da sessão</h3>
