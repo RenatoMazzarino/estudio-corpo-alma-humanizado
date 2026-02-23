@@ -40,6 +40,7 @@ import {
 } from "../../../../src/modules/payments/mercadopago-orders";
 import { getSettings } from "../../../../src/modules/settings/repository";
 import { runFloraAudioTranscription, runFloraText } from "../../../../src/shared/ai/flora";
+import { requireDashboardAccessForServerAction } from "../../../../src/modules/auth/dashboard-access";
 
 async function insertMessageLog(params: {
   appointmentId: string;
@@ -151,10 +152,14 @@ async function updatePaymentStatus(appointmentId: string) {
 }
 
 export async function getAttendance(appointmentId: string) {
+
+  await requireDashboardAccessForServerAction();
   return getAttendanceOverview(FIXED_TENANT_ID, appointmentId);
 }
 
 export async function confirmPre(payload: { appointmentId: string; channel?: string }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = confirmPreSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -190,6 +195,8 @@ export async function confirmPre(payload: { appointmentId: string; channel?: str
 }
 
 export async function cancelPreConfirmation(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = appointmentIdSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -224,6 +231,8 @@ export async function cancelPreConfirmation(payload: { appointmentId: string }):
 }
 
 export async function sendReminder24h(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -253,6 +262,8 @@ export async function sendMessage(payload: {
   channel?: string | null;
   payload?: Json | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = sendMessageSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -285,6 +296,8 @@ export async function recordMessageStatus(payload: {
   messageId: string;
   status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
 }): Promise<ActionResult<{ messageId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = recordMessageStatusSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -319,6 +332,8 @@ export async function recordMessageStatus(payload: {
 }
 
 export async function saveInternalNotes(payload: { appointmentId: string; internalNotes?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = internalNotesSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -342,6 +357,8 @@ export async function saveInternalNotes(payload: { appointmentId: string; intern
 }
 
 export async function toggleChecklistItem(payload: { appointmentId: string; itemId: string; completed: boolean }): Promise<ActionResult<{ itemId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = checklistToggleSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -365,6 +382,8 @@ export async function upsertChecklist(payload: {
   appointmentId: string;
   items: Array<{ id?: string; label: string; sortOrder: number; completed?: boolean }>;
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = checklistUpsertSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -394,6 +413,8 @@ export async function saveEvolution(payload: {
     text?: string | null;
   };
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = saveEvolutionSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -466,6 +487,8 @@ export async function structureEvolutionFromAudio(payload: {
   appointmentId: string;
   transcript: string;
 }): Promise<ActionResult<{ transcript: string; structuredText: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -516,6 +539,8 @@ export async function transcribeEvolutionFromAudio(payload: {
   audioBase64: string;
   mimeType?: string | null;
 }): Promise<ActionResult<{ transcript: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -560,6 +585,8 @@ export async function setCheckoutItems(payload: {
   appointmentId: string;
   items: Array<{ type: "service" | "fee" | "addon" | "adjustment"; label: string; qty?: number; amount: number; metadata?: Record<string, unknown> }>;
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = setCheckoutItemsSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -601,6 +628,8 @@ export async function setDiscount(payload: {
   value: number | null;
   reason?: string | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = setDiscountSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -631,6 +660,8 @@ export async function recordPayment(payload: {
   amount: number;
   transactionId?: string | null;
 }): Promise<ActionResult<{ paymentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = recordPaymentSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -721,6 +752,7 @@ export async function createAttendancePixPayment(payload: {
   created_at: string;
   expires_at: string;
 }>> {
+  await requireDashboardAccessForServerAction();
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -772,6 +804,8 @@ export async function createAttendancePixPayment(payload: {
 export async function getAttendancePixPaymentStatus(payload: {
   appointmentId: string;
 }): Promise<ActionResult<{ internal_status: "paid" | "pending" | "failed" }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = appointmentIdSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -799,6 +833,7 @@ export async function createAttendancePointPayment(payload: {
   point_terminal_id: string;
   card_mode: PointCardMode;
 }>> {
+  await requireDashboardAccessForServerAction();
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -877,6 +912,7 @@ export async function getAttendancePointPaymentStatus(payload: {
   card_mode: PointCardMode | null;
   appointment_id: string | null;
 }>> {
+  await requireDashboardAccessForServerAction();
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -912,6 +948,8 @@ export async function getAttendancePointPaymentStatus(payload: {
 }
 
 export async function confirmCheckout(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = appointmentIdSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -942,6 +980,8 @@ export async function confirmCheckout(payload: { appointmentId: string }): Promi
 }
 
 export async function startTimer(payload: { appointmentId: string; plannedSeconds?: number | null }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = timerStartSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -990,6 +1030,8 @@ export async function startTimer(payload: { appointmentId: string; plannedSecond
 }
 
 export async function pauseTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = timerPauseSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -1016,6 +1058,8 @@ export async function pauseTimer(payload: { appointmentId: string }): Promise<Ac
 }
 
 export async function resumeTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = timerResumeSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -1068,6 +1112,8 @@ export async function syncTimer(payload: {
   plannedSeconds: number | null;
   actualSeconds?: number | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = timerSyncSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -1101,6 +1147,8 @@ export async function savePost(payload: {
   surveyScore?: number | null;
   kpiTotalSeconds?: number | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = savePostSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -1128,6 +1176,8 @@ export async function savePost(payload: {
 }
 
 export async function finishAttendance(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = finishAttendanceSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -1193,6 +1243,8 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
 }
 
 export async function sendSurvey(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -1221,6 +1273,8 @@ export async function sendSurvey(payload: { appointmentId: string; message?: str
 }
 
 export async function recordSurveyAnswer(payload: { appointmentId: string; score: number }): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = appointmentIdSchema.extend({ score: savePostSchema.shape.surveyScore }).safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));

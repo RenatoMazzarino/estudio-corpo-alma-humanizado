@@ -7,8 +7,11 @@ import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { upsertServiceSchema } from "../../shared/validation/services";
 import { deleteService as deleteServiceRepo, upsertService as upsertServiceRepo } from "./repository";
 import { revalidatePath } from "next/cache";
+import { requireDashboardAccessForServerAction } from "../auth/dashboard-access";
 
 export async function upsertService(formData: FormData): Promise<ActionResult<{ id?: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const rawId = formData.get("id") as string | null;
   const id = rawId && rawId.trim().length > 0 ? rawId : null;
   const name = formData.get("name") as string | null;
@@ -58,6 +61,8 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
 }
 
 export async function deleteService(id: string): Promise<ActionResult<{ id: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const { error } = await deleteServiceRepo(FIXED_TENANT_ID, id);
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);

@@ -17,6 +17,7 @@ import {
 } from "../../../src/modules/settings/repository";
 import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
 import { disconnectSpotifyIntegration } from "../../../src/modules/integrations/spotify/server";
+import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 
 const DEFAULT_ATTENDANCE_CHECKLIST = [
   "Separar materiais e itens de higiene",
@@ -120,6 +121,8 @@ async function fetchPixKeysForTenant() {
 }
 
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
+
+  await requireDashboardAccessForServerAction();
   const payload = [];
 
   for (let day = 0; day <= 6; day++) {
@@ -150,6 +153,8 @@ export async function saveBusinessHours(formData: FormData): Promise<ActionResul
 }
 
 export async function saveSettings(formData: FormData): Promise<ActionResult<{ ok: true }>> {
+
+  await requireDashboardAccessForServerAction();
   const buffer_before_minutes = Number(formData.get("buffer_before_minutes"));
   const buffer_after_minutes = Number(formData.get("buffer_after_minutes"));
   const signal_percentage = Number(formData.get("signal_percentage"));
@@ -225,6 +230,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
 }
 
 export async function disconnectSpotify(): Promise<ActionResult<{ ok: true }>> {
+
+  await requireDashboardAccessForServerAction();
   const result = await disconnectSpotifyIntegration();
   if (!result.ok) return fail(result.error);
 
@@ -236,6 +243,7 @@ export async function disconnectSpotify(): Promise<ActionResult<{ ok: true }>> {
 export async function fetchPointDevices(): Promise<ActionResult<{
   devices: Array<{ id: string; name: string; model: string | null; external_id: string | null; status: string | null }>;
 }>> {
+  await requireDashboardAccessForServerAction();
   const result = await listPointDevices();
   if (!result.ok) return fail(result.error);
   return ok({ devices: result.data });
@@ -247,6 +255,8 @@ export async function configurePointTerminal(payload: {
   terminalName?: string | null;
   terminalModel?: string | null;
 }): Promise<ActionResult<{ ok: true }>> {
+
+  await requireDashboardAccessForServerAction();
   const terminalId = payload.terminalId?.trim();
   const externalId = payload.externalId?.trim();
   if (!terminalId || !externalId) {
@@ -287,6 +297,7 @@ export async function addPixKey(payload: {
     }>;
   }>
 > {
+  await requireDashboardAccessForServerAction();
   if (!PIX_KEY_TYPES.includes(payload.keyType)) {
     return fail(new AppError("Tipo de chave Pix inválido.", "VALIDATION_ERROR", 400));
   }
@@ -349,6 +360,7 @@ export async function activatePixKey(payload: {
     }>;
   }>
 > {
+  await requireDashboardAccessForServerAction();
   const keyId = payload.keyId?.trim();
   if (!keyId) {
     return fail(new AppError("Selecione uma chave Pix válida.", "VALIDATION_ERROR", 400));
@@ -382,6 +394,7 @@ export async function removePixKey(payload: {
     }>;
   }>
 > {
+  await requireDashboardAccessForServerAction();
   const keyId = payload.keyId?.trim();
   if (!keyId) {
     return fail(new AppError("Chave Pix inválida para remoção.", "VALIDATION_ERROR", 400));

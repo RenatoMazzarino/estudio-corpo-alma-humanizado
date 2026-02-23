@@ -22,6 +22,7 @@ import {
   replaceClientHealthItems,
 } from "./repository";
 import { createServiceClient } from "../../../lib/supabase/service";
+import { requireDashboardAccessForServerAction } from "../auth/dashboard-access";
 
 function buildAddressLine(payload: {
   cep?: string | null;
@@ -155,6 +156,8 @@ type ImportContactPayload = {
 };
 
 export async function createClientAction(formData: FormData): Promise<void> {
+
+  await requireDashboardAccessForServerAction();
   const name = formData.get("name") as string | null;
   const phoneField = (formData.get("phone") as string | null) || null;
   const is_vip = formData.get("is_vip") === "on";
@@ -409,6 +412,8 @@ export async function createClientAction(formData: FormData): Promise<void> {
 }
 
 export async function updateClientNotes(clientId: string, notes: string): Promise<ActionResult<{ id: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = updateClientNotesSchema.safeParse({ clientId, notes });
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos para observações", "VALIDATION_ERROR", 400, parsed.error));
@@ -426,6 +431,8 @@ export async function updateClientNotes(clientId: string, notes: string): Promis
 }
 
 export async function updateClientProfileAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const clientId = formData.get("clientId") as string | null;
   const name = formData.get("name") as string | null;
   const phone = (formData.get("phone") as string | null) || null;
@@ -632,6 +639,8 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
 }
 
 export async function deleteClientAction(clientId: string): Promise<ActionResult<{ id: string }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = z.object({ clientId: z.string().uuid() }).safeParse({ clientId });
   if (!parsed.success) {
     return fail(new AppError("Cliente inválido", "VALIDATION_ERROR", 400, parsed.error));
@@ -648,6 +657,8 @@ export async function deleteClientAction(clientId: string): Promise<ActionResult
 export async function importClientsFromContacts(
   contacts: ImportContactPayload[]
 ): Promise<ActionResult<{ created: number; skipped: number }>> {
+
+  await requireDashboardAccessForServerAction();
   if (!Array.isArray(contacts) || contacts.length === 0) {
     return ok({ created: 0, skipped: 0 });
   }

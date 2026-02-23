@@ -32,7 +32,7 @@ export default function MenuPage() {
             <ChevronRight size={20} className="text-gray-300 group-hover:text-studio-green transition-colors" />
         </Link>
 
-        <Link
+        <a
           href="/auth/logout"
           className="flex items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-stone-100 hover:shadow-md transition-all group active:scale-95"
         >
@@ -44,7 +44,7 @@ export default function MenuPage() {
             <p className="text-xs text-gray-500 font-medium">Trocar conta Google do painel</p>
           </div>
           <ChevronRight size={20} className="text-gray-300 group-hover:text-red-400 transition-colors" />
-        </Link>
+        </a>
 
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { getAvailableSlots as getAvailableSlotsImpl } from "../../../src/modules/appointments/availability";
 import { listAvailabilityBlocksInRange } from "../../../src/modules/appointments/repository";
 import { startOfDay, endOfDay } from "date-fns";
+import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 
 interface GetSlotsParams {
   tenantId: string;
@@ -13,6 +14,8 @@ interface GetSlotsParams {
 }
 
 export async function getAvailableSlots(params: GetSlotsParams): Promise<string[]> {
+
+  await requireDashboardAccessForServerAction();
   return getAvailableSlotsImpl(params);
 }
 
@@ -24,6 +27,8 @@ interface GetBlockStatusParams {
 export async function getDateBlockStatus(
   params: GetBlockStatusParams
 ): Promise<{ hasBlocks: boolean; hasShift: boolean }> {
+
+  await requireDashboardAccessForServerAction();
   const base = new Date(`${params.date}T00:00:00`);
   const start = startOfDay(base).toISOString();
   const end = endOfDay(base).toISOString();

@@ -1,4 +1,6 @@
 import type { User } from "@supabase/supabase-js";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { createClient as createServerClient } from "../../../lib/supabase/server";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
@@ -149,7 +151,7 @@ async function touchDashboardAccessLastLogin(row: DashboardAccessRow) {
     .eq("tenant_id", row.tenant_id);
 }
 
-async function authorizeSupabaseUser(user: User): Promise<DashboardAccessResult> {
+export async function authorizeDashboardSupabaseUser(user: User): Promise<DashboardAccessResult> {
   const email = normalizeEmail(user.email);
   if (!email) {
     return { ok: false, reason: "missing_email" };
@@ -205,7 +207,7 @@ export async function getDashboardAccessForCurrentUser(): Promise<DashboardAcces
     return { ok: false, reason: "unauthenticated" };
   }
 
-  return authorizeSupabaseUser(user);
+  return authorizeDashboardSupabaseUser(user);
 }
 
 export function getDashboardAuthRedirectPath(params?: {
@@ -226,4 +228,24 @@ export function getDashboardAuthRedirectPath(params?: {
 
 export function sanitizeDashboardNextPath(raw: string | null | undefined, fallback = "/") {
   return sanitizeInternalPath(raw, fallback);
+}
+
+export async function requireDashboardAccessForServerAction(next: string = "/") {
+  let resolvedNext = next;
+  try {
+    const headerStore = await headers();
+    const referer = headerStore.get("referer")?.trim();
+    if (referer) {
+      const refererUrl = new URL(referer);
+      resolvedNext = sanitizeDashboardNextPath(`${refererUrl.pathname}${refererUrl.search}`, next);
+    }
+  } catch {
+    resolvedNext = next;
+  }
+
+  const access = await getDashboardAccessForCurrentUser();
+  if (!access.ok) {
+    redirect(getDashboardAuthRedirectPath({ next: resolvedNext, reason: "forbidden" }));
+  }
+  return access.data;
 }

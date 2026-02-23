@@ -4,11 +4,20 @@ import { getDashboardAuthRedirectPath } from "../../../src/modules/auth/dashboar
 
 export const dynamic = "force-dynamic";
 
+function resolveRequestOrigin(request: NextRequest) {
+  const host = request.headers.get("host")?.trim();
+  const proto =
+    request.headers.get("x-forwarded-proto")?.trim() ||
+    request.nextUrl.protocol.replace(":", "");
+  if (host && proto) return `${proto}://${host}`;
+  return request.nextUrl.origin;
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  const requestOrigin = resolveRequestOrigin(request);
   return NextResponse.redirect(
-    new URL(getDashboardAuthRedirectPath({ reason: "signed_out" }), request.nextUrl.origin)
+    new URL(getDashboardAuthRedirectPath({ reason: "signed_out" }), requestOrigin)
   );
 }
-
