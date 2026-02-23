@@ -213,6 +213,12 @@ function getPaymentId(request: Request, body: Record<string, unknown> | null) {
   );
 }
 
+function parseMercadoPagoResourceId(value: unknown) {
+  const normalized = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+  if (!/^\d+$/.test(normalized)) return null;
+  return normalized;
+}
+
 export async function POST(request: Request) {
   const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
   const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
@@ -238,7 +244,7 @@ export async function POST(request: Request) {
     );
   }
   const notificationType = resolveNotificationType(request, body);
-  const resourceId = getPaymentId(request, body);
+  const resourceId = parseMercadoPagoResourceId(getPaymentId(request, body));
 
   if (!resourceId) {
     return NextResponse.json({ ok: true });
@@ -316,7 +322,12 @@ export async function POST(request: Request) {
         : null;
     transactionAmount = parseNumericAmount(firstPayment.amount, 0);
 
-    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${firstPayment.id}`, {
+    const firstPaymentId = parseMercadoPagoResourceId(firstPayment.id);
+    if (!firstPaymentId) {
+      return NextResponse.json({ ok: true, skipped: "order_with_invalid_payment_id" });
+    }
+
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${firstPaymentId}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
