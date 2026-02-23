@@ -38,67 +38,81 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const isSignedOut = (params?.reason ?? "").trim() === "signed_out";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-studio-bg px-4 py-6">
-      <div className="pointer-events-none absolute inset-0 opacity-70">
-        <div className="absolute -top-24 -left-16 h-56 w-56 rounded-full bg-studio-green/10 blur-3xl" />
-        <div className="absolute top-32 -right-12 h-44 w-44 rounded-full bg-dom/10 blur-3xl" />
-        <div className="absolute bottom-8 left-8 h-32 w-32 rounded-full bg-studio-green/5 blur-2xl" />
-      </div>
+    <div className="app-viewport flex items-stretch justify-center overflow-hidden bg-neutral-900">
+      <div className="app-frame relative overflow-hidden bg-studio-bg shadow-2xl">
+        <div className="pointer-events-none absolute inset-0 opacity-70">
+          <div className="absolute -top-24 -left-16 h-56 w-56 rounded-full bg-studio-green/10 blur-3xl" />
+          <div className="absolute top-28 -right-16 h-48 w-48 rounded-full bg-dom/10 blur-3xl" />
+          <div className="absolute bottom-10 left-6 h-32 w-32 rounded-full bg-studio-green/5 blur-2xl" />
+        </div>
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center">
-        <div className="w-full overflow-hidden rounded-[30px] border border-white/80 bg-white shadow-float">
-          <div className="relative border-b border-line bg-gradient-to-br from-studio-green to-studio-green/90 px-6 pb-6 pt-7 text-white">
-            <div className="absolute inset-x-0 top-0 h-16 bg-white/5" />
-            <div className="relative flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 backdrop-blur">
-                <Image src="/brand/icon.png" alt="Estúdio Corpo & Alma" width={28} height={28} className="h-7 w-7" />
+        <div className="relative flex h-full flex-col px-4 pb-6 pt-6">
+          <div className="safe-top safe-top-6 rounded-3xl border border-white/85 bg-white/95 p-5 shadow-soft backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-studio-light ring-1 ring-studio-green/10">
+                <Image
+                  src="/brand/icon.png"
+                  alt="Logo Estúdio Corpo & Alma Humanizado"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7"
+                />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/80">Painel do estúdio</p>
-                <h1 className="truncate font-playfair text-[26px] font-semibold leading-tight">Corpo & Alma</h1>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">Login do painel</p>
+                <h1 className="font-playfair text-[22px] font-semibold leading-tight text-studio-text">
+                  Estúdio Corpo & Alma Humanizado
+                </h1>
               </div>
             </div>
-            <p className="relative mt-4 text-sm leading-relaxed text-white/90">
-              Acesso privado do estúdio. Entre com Google para continuar no painel.
+
+            <p className="mt-4 text-sm leading-relaxed text-studio-text">
+              Entre com sua conta Google autorizada para acessar o painel do estúdio.
             </p>
           </div>
 
-          <div className="space-y-4 p-6">
-            <div
-              className={`rounded-2xl border px-4 py-3 ${
-                isSignedOut
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "border-line bg-paper text-studio-text"
-              }`}
-            >
-              <div className="flex items-start gap-2.5">
-                {isSignedOut ? (
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-studio-green" />
-                )}
-                <p className="text-sm leading-relaxed">{reasonMessage}</p>
+          <div className="mt-4 flex-1">
+            <div className="rounded-3xl border border-line bg-white p-5 shadow-soft">
+              <div
+                className={`rounded-2xl border px-4 py-3 ${
+                  isSignedOut
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                    : "border-line bg-paper text-studio-text"
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  {isSignedOut ? (
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-studio-green" />
+                  )}
+                  <p className="text-sm leading-relaxed">{reasonMessage}</p>
+                </div>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-studio-green/15 bg-studio-green/5 px-4 py-3">
-              <p className="text-xs leading-relaxed text-studio-text">
-                Use <strong className="text-studio-green">apenas login com Google</strong>. Jana: entrar com o e-mail{" "}
-                <strong className="text-studio-green">Janaina41santos@gmail.com</strong>.
+              <div className="mt-4 rounded-2xl border border-studio-green/15 bg-studio-green/5 px-4 py-3">
+                <p className="text-xs leading-relaxed text-studio-text">
+                  Use apenas Google. Para Jana, entrar com{" "}
+                  <strong className="text-studio-green">Janaina41santos@gmail.com</strong>.
+                </p>
+              </div>
+
+              <a
+                href={loginHref}
+                className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-studio-green px-4 text-sm font-extrabold uppercase tracking-[0.12em] text-white shadow-lg shadow-green-900/20 transition active:scale-[0.99]"
+              >
+                <LogIn className="h-4 w-4" />
+                Entrar com Google
+              </a>
+
+              <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
+                Acesso somente para contas autorizadas
               </p>
             </div>
+          </div>
 
-            <a
-              href={loginHref}
-              className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-studio-green px-4 text-sm font-extrabold uppercase tracking-[0.12em] text-white shadow-lg shadow-green-900/20 transition active:scale-[0.99]"
-            >
-              <LogIn className="h-4 w-4" />
-              Entrar com Google
-            </a>
-
-            <p className="text-center text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
-              Acesso liberado somente para contas autorizadas
-            </p>
+          <div className="safe-bottom mt-4 px-1 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+            Painel interno do estúdio
           </div>
         </div>
       </div>
