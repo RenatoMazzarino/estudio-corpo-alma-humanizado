@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles, ChevronRight, Settings } from "lucide-react";
+import { Sparkles, ChevronRight, Settings, LogOut } from "lucide-react";
 
 export default function MenuPage() {
   return (
@@ -30,6 +30,20 @@ export default function MenuPage() {
                 <p className="text-xs text-gray-500 font-medium">Horários e preferências</p>
             </div>
             <ChevronRight size={20} className="text-gray-300 group-hover:text-studio-green transition-colors" />
+        </Link>
+
+        <Link
+          href="/auth/logout"
+          className="flex items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-stone-100 hover:shadow-md transition-all group active:scale-95"
+        >
+          <div className="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <LogOut size={24} />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-bold text-gray-800 text-lg">Sair</h2>
+            <p className="text-xs text-gray-500 font-medium">Trocar conta Google do painel</p>
+          </div>
+          <ChevronRight size={20} className="text-gray-300 group-hover:text-red-400 transition-colors" />
         </Link>
 
       </div>

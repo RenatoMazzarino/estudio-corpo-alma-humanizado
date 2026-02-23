@@ -394,7 +394,9 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await supabase
     .from("appointment_payments")
-    .select("appointment_id, tenant_id, amount")
+    .select(
+      "appointment_id, tenant_id, amount, provider_order_id, payment_method_id, point_terminal_id, card_mode, installments, card_last4, card_brand"
+    )
     .eq("provider_ref", providerRef)
     .maybeSingle();
   if (existingError) {
@@ -434,14 +436,14 @@ export async function POST(request: Request) {
         amount,
         status,
         provider_ref: providerRef,
-        provider_order_id: providerOrderId,
+        provider_order_id: providerOrderId ?? existing?.provider_order_id ?? null,
         paid_at: status === "paid" ? approvedAt ?? new Date().toISOString() : null,
-        payment_method_id: paymentMethodId,
-        point_terminal_id: pointTerminalId,
-        card_mode: cardMode,
-        installments,
-        card_last4: cardLast4,
-        card_brand: cardBrand,
+        payment_method_id: paymentMethodId ?? existing?.payment_method_id ?? null,
+        point_terminal_id: pointTerminalId ?? existing?.point_terminal_id ?? null,
+        card_mode: cardMode ?? existing?.card_mode ?? null,
+        installments: installments ?? existing?.installments ?? null,
+        card_last4: cardLast4 ?? existing?.card_last4 ?? null,
+        card_brand: cardBrand ?? existing?.card_brand ?? null,
         raw_payload: normalizedPaymentPayload as Json,
       },
       { onConflict: "provider_ref,tenant_id" }
