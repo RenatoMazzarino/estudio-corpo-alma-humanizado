@@ -628,9 +628,27 @@ export function MobileAgenda({
     const dayOfWeekLabel = dayOfWeek ? `${dayOfWeek[0]?.toUpperCase() ?? ""}${dayOfWeek.slice(1)}` : "";
     const dateLabel = format(startDate, "dd/MM", { locale: ptBR });
     const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
-    const serviceName = appointment.service_name ?? "";
+    const serviceName = (appointment.service_name ?? "").trim() || "Seu atendimento";
     const dateLine = [dayOfWeekLabel, dateLabel].filter(Boolean).join(", ");
     const serviceSegment = serviceName ? ` 💆‍♀️ Serviço: ${serviceName}` : "";
+    const clientAddress =
+      appointment.clients?.endereco_completo?.trim() ||
+      [
+        appointment.address_logradouro,
+        appointment.address_numero,
+        appointment.address_bairro,
+        appointment.address_cidade,
+        appointment.address_estado,
+      ]
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+        .join(", ");
+    const locationLine = appointment.is_home_visit
+      ? clientAddress
+        ? `No endereço informado: ${clientAddress}`
+        : "Atendimento domiciliar (endereço a confirmar)"
+      : "No estúdio";
+    const confirmationReplyOptions = "1 - Confirmar\n2 - Reagendar\n3 - Falar com a Jana";
 
     if (type === "created_confirmation") {
       return applyAutoMessageTemplate(messageTemplates.created_confirmation, {
@@ -638,6 +656,7 @@ export function MobileAgenda({
         date_line: dateLine,
         time: timeLabel,
         service_name: serviceName,
+        location_line: locationLine,
         service_segment: serviceSegment,
       }).trim();
     }
@@ -649,6 +668,8 @@ export function MobileAgenda({
         service_name: serviceName,
         time: timeLabel,
         date_line: dateLine,
+        location_line: locationLine,
+        confirmation_reply_options: confirmationReplyOptions,
       }).trim();
     }
 

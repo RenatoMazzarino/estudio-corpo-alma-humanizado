@@ -2,9 +2,9 @@ import type { AutoMessageTemplates } from "./auto-messages.types";
 
 export const DEFAULT_AUTO_MESSAGES: AutoMessageTemplates = {
   created_confirmation:
-    "Olá! Tudo bem? Aqui é a Flora, assistente virtual do Estúdio 🌸\n\nQue notícia boa! Já reservei o seu horário na agenda da Jana. Seu momento de autocuidado está garantidíssimo.\n\n🗓 Data: {{date_line}} ⏰ Horário: {{time}}{{service_segment}}\n\nDeixei tudo organizado por aqui. Se precisar remarcar ou tiver alguma dúvida, é só me chamar. Até logo! 💚",
+    "{{greeting}} Tudo bem?\n\nAqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado. 🌿\n\n✅ *Seu agendamento com a Jana foi realizado.*\n\n✨ *Seu cuidado:* {{service_name}}\n🗓️ *Seu momento está reservado para:* {{date_line}}, às {{time}}\n📍 *Nosso ponto de encontro:* {{location_line}}\n\nSe precisar ajustar algo, é só responder por aqui.\n\nFlora | Estúdio Corpo & Alma Humanizado",
   reminder_24h:
-    "Olá! Flora passando para iluminar seu dia ✨\n\nAmanhã é o dia de você se cuidar com a Jana! Ela já está preparando a sala com todo carinho {{service_line}}\n\nPosso deixar confirmado na agenda dela? (É só responder com um 👍 ou \"Sim\")",
+    "{{greeting}} A Flora passando para confirmar seu horário 🙂\n\nAmanhã é o seu momento com a Jana 🙂\n\n✨ *Seu cuidado é:* {{service_name}}\n📅 *Seu momento está reservado para:* {{date_line}} às {{time}}\n📍 *Nosso ponto de encontro:* {{location_line}}\n\nPode responder por aqui com uma das opções abaixo (é só enviar o número):\n{{confirmation_reply_options}}\n\nFlora | Estúdio Corpo & Alma Humanizado",
   signal_charge:
     "Olá! Tudo bem? 🌿\n\nAqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado.\n\nFiquei muito feliz com seu agendamento! Para deixarmos o seu horário de {{service_name}} reservadinho e confirmado para o dia {{date_line}} às {{time}}, precisamos apenas da confirmação do sinal/reserva.\n\n{{payment_link_block}}É rapidinho! Assim que confirmar, eu já te envio o comprovante e garantimos a sua vaga.\n\nQualquer dúvida, estou por aqui! Um abraço 🌸",
   payment_charge:

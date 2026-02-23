@@ -7,8 +7,10 @@ Edite este arquivo para atualizar as mensagens sem precisar alterar código.
 - `{{date_line}}`: "Terça, 03/02"
 - `{{time}}`: "08:00"
 - `{{service_name}}`: nome do serviço
+- `{{location_line}}`: "No estúdio" ou "No endereço informado: ..."
 - `{{service_segment}}`: " 💆‍♀️ Serviço: Nome do Serviço" (ou vazio)
 - `{{service_line}}`: "para o seu Nome do Serviço às 08:00." (ou fallback sem serviço)
+- `{{confirmation_reply_options}}`: opções numeradas para confirmação manual
 - `{{signal_amount}}`: valor do sinal (ex: R$ 50,00)
 - `{{payment_link_block}}`: bloco com link de pagamento (ou vazio)
 - `{{receipt_link_block}}`: bloco com link do recibo (ou vazio)
@@ -16,20 +18,33 @@ Edite este arquivo para atualizar as mensagens sem precisar alterar código.
 ---
 
 ## created_confirmation
-{{greeting}} Tudo bem? Aqui é a Flora, assistente virtual do Estúdio 🌸
+{{greeting}} Tudo bem?
 
-Que notícia boa! Já reservei o seu horário na agenda da Jana. Seu momento de autocuidado está garantidíssimo.
+Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado. 🌿
 
-🗓 Data: {{date_line}} ⏰ Horário: {{time}}{{service_segment}}
+✅ *Seu agendamento com a Jana foi realizado.*
 
-Deixei tudo organizado por aqui. Se precisar remarcar ou tiver alguma dúvida, é só me chamar. Até logo! 💚
+✨ *Seu cuidado:* {{service_name}}
+🗓️ *Seu momento está reservado para:* {{date_line}}, às {{time}}
+📍 *Nosso ponto de encontro:* {{location_line}}
+
+Se precisar ajustar algo, é só responder por aqui.
+
+Flora | Estúdio Corpo & Alma Humanizado
 
 ## reminder_24h
-{{greeting}} Flora passando para iluminar seu dia ✨
+{{greeting}} A Flora passando para confirmar seu horário 🙂
 
-Amanhã é o dia de você se cuidar com a Jana! Ela já está preparando a sala com todo carinho {{service_line}}
+Amanhã é o seu momento com a Jana 🙂
 
-Posso deixar confirmado na agenda dela? (É só responder com um 👍 ou "Sim")
+✨ *Seu cuidado é:* {{service_name}}
+📅 *Seu momento está reservado para:* {{date_line}} às {{time}}
+📍 *Nosso ponto de encontro:* {{location_line}}
+
+Pode responder por aqui com uma das opções abaixo (é só enviar o número):
+{{confirmation_reply_options}}
+
+Flora | Estúdio Corpo & Alma Humanizado
 
 ## signal_charge
 {{greeting}} Tudo bem? 🌿

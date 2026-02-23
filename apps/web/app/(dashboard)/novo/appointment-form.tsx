@@ -157,6 +157,7 @@ function buildCreatedMessage(params: {
   date: string;
   time: string;
   serviceName: string;
+  locationLine?: string;
   template: string;
 }) {
   const name = params.clientName.trim();
@@ -177,6 +178,7 @@ function buildCreatedMessage(params: {
     date_line: dateLine,
     time: timeLabel,
     service_name: params.serviceName,
+    location_line: params.locationLine || "No estúdio",
     service_segment: serviceSegment,
   }).trim();
 }
@@ -753,6 +755,11 @@ export function AppointmentForm({
         date: selectedDate,
         time: selectedTime,
         serviceName: selectedService?.name ?? "",
+        locationLine: isHomeVisit
+          ? addressLabel
+            ? `No endereço informado: ${addressLabel}`
+            : "Atendimento domiciliar (endereço a confirmar)"
+          : "No estúdio",
         template: messageTemplates.created_confirmation,
       });
       const opened = openWhatsappFromForm(messageText);
