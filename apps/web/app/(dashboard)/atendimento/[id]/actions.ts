@@ -823,6 +823,7 @@ export async function createAttendancePointPayment(payload: {
   amount: number;
   cardMode: PointCardMode;
   terminalId?: string | null;
+  attempt?: number;
 }): Promise<ActionResult<{
   id: string;
   order_id: string;
@@ -840,6 +841,7 @@ export async function createAttendancePointPayment(payload: {
       amount: z.number().positive(),
       cardMode: z.enum(["debit", "credit"]),
       terminalId: z.string().optional().nullable(),
+      attempt: z.number().int().min(0).optional(),
     })
     .safeParse(payload);
 
@@ -877,6 +879,7 @@ export async function createAttendancePointPayment(payload: {
     amount: chargeAmount,
     terminalId,
     cardMode: parsed.data.cardMode,
+    attempt: parsed.data.attempt,
   });
   if (!result.ok) return result;
 

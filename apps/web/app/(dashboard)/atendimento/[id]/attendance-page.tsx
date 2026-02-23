@@ -404,11 +404,12 @@ export function AttendancePage({
     return { ok: true as const, status };
   };
 
-  const handleCreatePointPayment = async (amount: number, cardMode: "debit" | "credit") => {
+  const handleCreatePointPayment = async (amount: number, cardMode: "debit" | "credit", attempt: number) => {
     const result = await createAttendancePointPayment({
       appointmentId: appointment.id,
       amount,
       cardMode,
+      attempt,
     });
 
     if (!result.ok) {

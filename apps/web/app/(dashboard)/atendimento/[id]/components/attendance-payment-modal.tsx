@@ -53,7 +53,8 @@ interface AttendancePaymentModalProps {
   onPollPixStatus: () => Promise<{ ok: boolean; status: InternalStatus }>;
   onCreatePointPayment: (
     amount: number,
-    cardMode: PointCardMode
+    cardMode: PointCardMode,
+    attempt: number
   ) => Promise<{ ok: boolean; data?: PointPaymentData }>;
   onPollPointStatus: (
     orderId: string
@@ -156,6 +157,7 @@ export function AttendancePaymentModal({
   const [pixKeyGenerating, setPixKeyGenerating] = useState(false);
   const [pixKeyError, setPixKeyError] = useState<string | null>(null);
   const [pointPayment, setPointPayment] = useState<PointPaymentData | null>(null);
+  const [pointAttempt, setPointAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [checkoutSaving, setCheckoutSaving] = useState(false);
   const [stageIndex, setStageIndex] = useState(0);
@@ -230,6 +232,12 @@ export function AttendancePaymentModal({
     if (!open) return;
     setCashAmount(remaining);
   }, [open, remaining]);
+
+  useEffect(() => {
+    if (!open) return;
+    setPixAttempt(0);
+    setPointAttempt(0);
+  }, [open]);
 
   useEffect(() => {
     if (!busy) {
@@ -403,14 +411,16 @@ export function AttendancePaymentModal({
 
   const handlePointCharge = async (cardMode: PointCardMode) => {
     if (remaining <= 0) return;
+    const nextAttempt = pointAttempt + 1;
     setBusy(true);
     setErrorText(null);
-    const result = await onCreatePointPayment(remaining, cardMode);
+    const result = await onCreatePointPayment(remaining, cardMode, nextAttempt);
     setBusy(false);
     if (!result.ok || !result.data) {
       setErrorText("Não foi possível iniciar a cobrança na maquininha.");
       return;
     }
+    setPointAttempt(nextAttempt);
     setPointPayment(result.data);
     if (result.data.internal_status === "paid") {
       setReceiptPromptPaymentId(result.data.id);

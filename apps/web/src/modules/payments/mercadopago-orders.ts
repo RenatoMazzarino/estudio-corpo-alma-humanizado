@@ -896,12 +896,14 @@ export async function createPointOrderForAppointment({
   amount,
   terminalId,
   cardMode,
+  attempt,
 }: {
   appointmentId: string;
   tenantId: string;
   amount: number;
   terminalId: string;
   cardMode: PointCardMode;
+  attempt?: number;
 }): Promise<ActionResult<PointOrderResult>> {
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
@@ -915,12 +917,14 @@ export async function createPointOrderForAppointment({
     return fail(new AppError("Terminal Point não configurado.", "VALIDATION_ERROR", 400));
   }
 
+  const normalizedAttempt = Number.isFinite(attempt) && Number(attempt) >= 0 ? Math.floor(Number(attempt)) : 0;
   const idempotencyKey = buildIdempotencyKey([
     "point-card",
     appointmentId,
     normalizedTerminalId,
     cardMode,
     Number(amount.toFixed(2)).toFixed(2),
+    String(normalizedAttempt),
   ]);
 
   let response: Response;
