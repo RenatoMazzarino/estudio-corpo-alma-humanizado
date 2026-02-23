@@ -5,6 +5,7 @@ import type {
   AttendanceRow,
   ChecklistItem,
   EvolutionEntry,
+  ClientHistoryEntry,
   CheckoutRow,
   CheckoutItem,
   PaymentRow,
@@ -13,7 +14,6 @@ import type {
   AppointmentMessage,
   AppointmentEvent,
 } from "./attendance-types";
-import { deriveStageFromStatus } from "./attendance-domain";
 
 type CheckoutItemInsert = Database["public"]["Tables"]["appointment_checkout_items"]["Insert"];
 
@@ -40,13 +40,33 @@ function coerceNumber(value: unknown, fallback = 0) {
   return fallback;
 }
 
+function normalizeChecklistTemplate(value: Json | null | undefined): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 20);
+}
+
+const BRAZIL_TIMEZONE = "America/Sao_Paulo";
+
+function getBrazilDayKey(dateTime: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BRAZIL_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(dateTime));
+}
+
 export async function getAttendanceOverview(tenantId: string, appointmentId: string): Promise<AttendanceOverview | null> {
   const supabase = createServiceClient();
 
   const { data: appointmentData, error: appointmentError } = await supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, payment_status, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+      `id, service_name, start_time, finished_at, status, payment_status, signal_status, signal_required_amount, signal_paid_amount, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
         clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
        services ( duration_minutes, price )`
@@ -82,43 +102,21 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   let attendance: AttendanceRow;
   if (attendanceData) {
     attendance = attendanceData as AttendanceRow;
-    if (appointment.status === "pending" && attendance.session_status === "locked") {
-      const { data: updated } = await supabase
-        .from("appointment_attendances")
-        .update({ session_status: "available" })
-        .eq("appointment_id", appointmentId)
-        .select("*")
-        .single();
-      if (updated) {
-        attendance = updated as AttendanceRow;
-      }
-    }
   } else {
-    const stageDefaults = deriveStageFromStatus(appointment.status);
+    const timerStatus =
+      appointment.status === "completed" ? "finished" : appointment.status === "in_progress" ? "running" : "idle";
     const { data: inserted } = await supabase
       .from("appointment_attendances")
       .insert({
         appointment_id: appointmentId,
         tenant_id: tenantId,
-        current_stage: stageDefaults.currentStage,
-        pre_status: stageDefaults.preStatus,
-        session_status: stageDefaults.sessionStatus,
-        checkout_status: stageDefaults.checkoutStatus,
-        post_status: stageDefaults.postStatus,
         confirmed_at: appointment.status === "confirmed" ? new Date().toISOString() : null,
-        confirmed_channel: appointment.status === "confirmed" ? "auto" : null,
-        timer_status: stageDefaults.timerStatus,
+        timer_status: timerStatus,
         timer_started_at: appointment.status === "in_progress" ? appointment.start_time : null,
         timer_paused_at: null,
         paused_total_seconds: 0,
         planned_seconds: plannedSeconds,
         actual_seconds: actualSeconds,
-        stage_lock_reason:
-          appointment.status === "canceled_by_client" ||
-          appointment.status === "canceled_by_studio" ||
-          appointment.status === "no_show"
-            ? "cancelled"
-            : null,
       })
       .select("*")
       .single();
@@ -126,35 +124,110 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     attendance = inserted as AttendanceRow;
   }
 
-  const { data: checklistData } = await supabase
-    .from("appointment_checklist_items")
-    .select("*")
-    .eq("appointment_id", appointmentId)
-    .order("sort_order", { ascending: true });
+  const { data: settingsData } = await supabase
+    .from("settings")
+    .select("attendance_checklist_enabled, attendance_checklist_items")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  const checklistEnabled = settingsData?.attendance_checklist_enabled ?? true;
+  const checklistTemplate = normalizeChecklistTemplate(settingsData?.attendance_checklist_items);
 
-  let checklist = (checklistData ?? []) as ChecklistItem[];
-  if (checklist.length === 0) {
-    const inserts = DEFAULT_CHECKLIST.map((label, index) => ({
-      appointment_id: appointmentId,
-      tenant_id: tenantId,
-      label,
-      sort_order: index + 1,
-      source: "default",
-    }));
-    const { data: inserted } = await supabase
+  let checklist: ChecklistItem[] = [];
+  if (checklistEnabled) {
+    const { data: checklistData } = await supabase
       .from("appointment_checklist_items")
-      .insert(inserts)
-      .select("*");
-    checklist = (inserted ?? []) as ChecklistItem[];
+      .select("*")
+      .eq("appointment_id", appointmentId)
+      .order("sort_order", { ascending: true });
+
+    checklist = (checklistData ?? []) as ChecklistItem[];
+    if (checklist.length === 0) {
+      const seedItems = checklistTemplate.length > 0 ? checklistTemplate : DEFAULT_CHECKLIST;
+      const inserts = seedItems.map((label, index) => ({
+        appointment_id: appointmentId,
+        tenant_id: tenantId,
+        label,
+        sort_order: index + 1,
+        source: checklistTemplate.length > 0 ? "tenant_setting" : "default",
+      }));
+      const { data: inserted } = await supabase
+        .from("appointment_checklist_items")
+        .insert(inserts)
+        .select("*");
+      checklist = (inserted ?? []) as ChecklistItem[];
+    }
   }
 
   const { data: evolutionData } = await supabase
     .from("appointment_evolution_entries")
-    .select("*")
+    .select("id, appointment_id, tenant_id, evolution_text, created_by, created_at")
     .eq("appointment_id", appointmentId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(1);
 
   const evolution = (evolutionData ?? []) as EvolutionEntry[];
+
+  let clientHistory: ClientHistoryEntry[] = [];
+  const clientId = appointment.clients?.id ?? null;
+  if (clientId) {
+    const { data: historyAppointmentsData } = await supabase
+      .from("appointments")
+      .select("id, start_time, service_name, is_home_visit, status, payment_status")
+      .eq("tenant_id", tenantId)
+      .eq("client_id", clientId)
+      .order("start_time", { ascending: false })
+      .limit(20);
+
+    const historyAppointments = (historyAppointmentsData ?? []).filter((item) => item.id !== appointmentId);
+    const historyAppointmentIds = historyAppointments.map((item) => item.id);
+
+    const evolutionByAppointment = new Map<string, { evolution_text: string | null }>();
+
+    if (historyAppointmentIds.length > 0) {
+      const { data: historyEvolutionData } = await supabase
+        .from("appointment_evolution_entries")
+        .select("appointment_id, evolution_text, created_at")
+        .in("appointment_id", historyAppointmentIds)
+        .order("created_at", { ascending: false });
+
+      for (const item of historyEvolutionData ?? []) {
+        const existing = evolutionByAppointment.get(item.appointment_id);
+        if (!existing) {
+          evolutionByAppointment.set(item.appointment_id, {
+            evolution_text: item.evolution_text ?? null,
+          });
+        }
+      }
+    }
+
+    const currentAppointmentDayKey = getBrazilDayKey(appointment.start_time);
+    const currentAppointmentTime = new Date(appointment.start_time).getTime();
+
+    clientHistory = historyAppointments.map((item) => {
+      const entry = evolutionByAppointment.get(item.id);
+      const itemDayKey = getBrazilDayKey(item.start_time);
+      const itemTime = new Date(item.start_time).getTime();
+      const timeline: "past" | "future" =
+        itemDayKey < currentAppointmentDayKey
+          ? "past"
+          : itemDayKey > currentAppointmentDayKey
+            ? "future"
+            : itemTime < currentAppointmentTime
+              ? "past"
+              : "future";
+
+      return {
+        appointment_id: item.id,
+        start_time: item.start_time,
+        service_name: item.service_name,
+        is_home_visit: item.is_home_visit ?? null,
+        appointment_status: item.status ?? null,
+        appointment_payment_status: item.payment_status ?? null,
+        timeline,
+        evolution_text: entry?.evolution_text ?? null,
+      };
+    });
+  }
 
   const { data: checkoutData } = await supabase
     .from("appointment_checkout")
@@ -180,7 +253,6 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
         tenant_id: tenantId,
         subtotal,
         total: subtotal,
-        payment_status: "pending",
       })
       .select("*")
       .single();
@@ -290,6 +362,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
     attendance,
     checklist,
     evolution,
+    clientHistory,
     checkout,
     checkoutItems,
     payments,

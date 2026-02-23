@@ -40,3 +40,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+
+# Ignore VS Code AI/Codacy local instructions
+.github/instructions/

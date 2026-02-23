@@ -7,16 +7,23 @@ import {
 } from "../../../src/modules/appointments/actions";
 import { listClientAddresses } from "../../../src/modules/clients/repository";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 
 export async function createAppointment(formData: FormData): Promise<void> {
+
+  await requireDashboardAccessForServerAction();
   return createAppointmentImpl(formData);
 }
 
 export async function updateAppointment(formData: FormData): Promise<void> {
+
+  await requireDashboardAccessForServerAction();
   return updateAppointmentImpl(formData);
 }
 
 export async function getClientAddresses(clientId: string): Promise<{ data: unknown[]; error?: string | null }> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = z.object({ clientId: z.string().uuid() }).safeParse({ clientId });
   if (!parsed.success) {
     return { data: [], error: "Cliente inválido" };

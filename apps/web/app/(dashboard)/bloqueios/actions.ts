@@ -8,6 +8,7 @@ import { BRAZIL_TZ_OFFSET } from "../../../src/shared/timezone";
 import { AppError } from "../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
+import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 import {
   deleteAvailabilityBlockById,
   insertAvailabilityBlocks,
@@ -30,6 +31,8 @@ const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
 const isValidDate = (value: Date) => !Number.isNaN(value.getTime());
 
 export async function getMonthOverview(monthStr: string) {
+
+  await requireDashboardAccessForServerAction();
   const parsedMonth = monthSchema.safeParse(monthStr);
   const safeMonth = parsedMonth.success ? parsedMonth.data : new Date().toISOString().slice(0, 7);
   const base = parseISO(`${safeMonth}-01T00:00:00${BRAZIL_TZ_OFFSET}`);
@@ -50,6 +53,8 @@ export async function getMonthOverview(monthStr: string) {
 export async function createAvailabilityBlock(
   payload: z.infer<typeof blockSchema>
 ): Promise<ActionResult<{ id?: string; requiresConfirm?: boolean; conflicts?: { appointments: number } }>> {
+
+  await requireDashboardAccessForServerAction();
   const parsed = blockSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Parâmetros inválidos para bloqueio", "VALIDATION_ERROR", 400, parsed.error));
@@ -125,6 +130,8 @@ export async function createAvailabilityBlock(
 }
 
 export async function deleteAvailabilityBlock(id: string): Promise<ActionResult<{ id: string }>> {
+
+  await requireDashboardAccessForServerAction();
   if (!id) return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400));
   const { error } = await deleteAvailabilityBlockById(FIXED_TENANT_ID, id);
   const mapped = mapSupabaseError(error);

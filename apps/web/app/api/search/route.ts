@@ -3,8 +3,24 @@ import { addDays, subDays } from "date-fns";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { searchAppointments } from "../../../src/modules/appointments/repository";
 import { createServiceClient } from "../../../lib/supabase/service";
+import { getDashboardAccessForCurrentUser, getDashboardAuthRedirectPath } from "../../../src/modules/auth/dashboard-access";
 
 export async function GET(request: Request) {
+  const access = await getDashboardAccessForCurrentUser();
+  if (!access.ok) {
+    const requestUrl = new URL(request.url);
+    const loginPath = getDashboardAuthRedirectPath({ next: "/", reason: "forbidden" });
+    return NextResponse.json(
+      {
+        appointments: [],
+        clients: [],
+        loginRequired: true,
+        loginUrl: new URL(loginPath, requestUrl.origin).toString(),
+      },
+      { status: 401 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const query = (searchParams.get("q") ?? "").trim();
   const rawLimit = Number(searchParams.get("limit") ?? 5);

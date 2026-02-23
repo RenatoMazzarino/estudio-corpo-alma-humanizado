@@ -1,4 +1,4 @@
-import type { AttendanceTotals, StageStatus, TimerStatus, StageKey } from "./attendance-types";
+import type { AttendanceTotals } from "./attendance-types";
 
 export function computeElapsedSeconds(params: {
   startedAt: string | null;
@@ -29,66 +29,4 @@ export function computeTotals(params: {
       : Math.min(subtotal, discountValue);
   const total = Math.max(0, subtotal - discount);
   return { subtotal, total };
-}
-
-export function deriveStageFromStatus(status: string | null): {
-  currentStage: StageKey;
-  preStatus: StageStatus;
-  sessionStatus: StageStatus;
-  checkoutStatus: StageStatus;
-  postStatus: StageStatus;
-  timerStatus: TimerStatus;
-} {
-  if (status === "completed") {
-    return {
-      currentStage: "hub",
-      preStatus: "done",
-      sessionStatus: "done",
-      checkoutStatus: "done",
-      postStatus: "done",
-      timerStatus: "finished",
-    };
-  }
-
-  if (status === "in_progress") {
-    return {
-      currentStage: "session",
-      preStatus: "done",
-      sessionStatus: "in_progress",
-      checkoutStatus: "locked",
-      postStatus: "locked",
-      timerStatus: "running",
-    };
-  }
-
-  if (status === "confirmed") {
-    return {
-      currentStage: "hub",
-      preStatus: "done",
-      sessionStatus: "available",
-      checkoutStatus: "locked",
-      postStatus: "locked",
-      timerStatus: "idle",
-    };
-  }
-
-  if (status === "canceled_by_client" || status === "canceled_by_studio" || status === "no_show") {
-    return {
-      currentStage: "hub",
-      preStatus: "locked",
-      sessionStatus: "locked",
-      checkoutStatus: "locked",
-      postStatus: "locked",
-      timerStatus: "idle",
-    };
-  }
-
-  return {
-    currentStage: "hub",
-    preStatus: "available",
-    sessionStatus: "available",
-    checkoutStatus: "locked",
-    postStatus: "locked",
-    timerStatus: "idle",
-  };
 }

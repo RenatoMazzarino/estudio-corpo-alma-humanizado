@@ -25,6 +25,8 @@ const appointmentStatusMap: Record<string, { label: string; dotClass: string }> 
   pending: { label: "Pendente", dotClass: "bg-amber-400" },
   confirmed: { label: "Confirmado", dotClass: "bg-studio-green" },
   in_progress: { label: "Em andamento", dotClass: "bg-sky-500" },
+  completed: { label: "Concluído", dotClass: "bg-emerald-500" },
+  no_show: { label: "No-show", dotClass: "bg-red-500" },
 };
 
 const paymentStatusMap: Record<string, { label: string; compactLabel: string; className: string; textClass: string }> = {
@@ -63,6 +65,7 @@ export function AppointmentCard({
   const paymentClass = paymentInfo?.className ?? "bg-gray-100 text-gray-500";
   const paymentTextClass = paymentInfo?.textClass ?? "text-gray-500";
   const timeRange = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+  const isCompleted = status === "completed";
   const paddingClass = compact ? "p-2" : "p-3";
   const nameClass = compact ? "text-[11px]" : "text-sm";
   const serviceClass = compact ? "text-[10px]" : "text-[11px]";
@@ -126,10 +129,18 @@ export function AppointmentCard({
         }
       }}
       aria-busy={loading}
-      className={`h-full w-full text-left bg-white shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${paddingClass} ${radiusClass} ${
+      className={`h-full w-full text-left shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${paddingClass} ${radiusClass} ${
+        isCompleted ? "bg-emerald-50/85 ring-1 ring-emerald-200" : "bg-white"
+      } ${
         loading ? "opacity-80 cursor-wait" : ""
-      } ${isHomeVisit ? "border-dom" : "border-studio-green"}`}
-      style={{ borderLeftColor: isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)" }}
+      } ${isCompleted ? "border-studio-green" : isHomeVisit ? "border-dom" : "border-studio-green"}`}
+      style={{
+        borderLeftColor: isCompleted
+          ? "var(--color-studio-green)"
+          : isHomeVisit
+            ? "var(--color-dom)"
+            : "var(--color-studio-green)",
+      }}
     >
       {loading && (
         <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10">

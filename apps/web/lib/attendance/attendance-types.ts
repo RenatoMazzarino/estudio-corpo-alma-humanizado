@@ -5,6 +5,7 @@ export type TimerStatus = "idle" | "running" | "paused" | "finished";
 export interface AttendanceRow {
   appointment_id: string;
   tenant_id?: string;
+  // Legacy fields kept for compile compatibility with old stage components.
   current_stage: StageKey;
   pre_status: StageStatus;
   session_status: StageStatus;
@@ -38,15 +39,20 @@ export interface EvolutionEntry {
   id: string;
   appointment_id: string;
   tenant_id?: string;
-  version: number;
-  status: "draft" | "published";
-  summary: string | null;
-  complaint: string | null;
-  techniques: string | null;
-  recommendations: string | null;
-  sections_json: Record<string, unknown> | null;
+  evolution_text: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+export interface ClientHistoryEntry {
+  appointment_id: string;
+  start_time: string;
+  service_name: string;
+  is_home_visit: boolean | null;
+  appointment_status: string | null;
+  appointment_payment_status: string | null;
+  timeline: "past" | "future";
+  evolution_text: string | null;
 }
 
 export interface CheckoutRow {
@@ -57,7 +63,8 @@ export interface CheckoutRow {
   discount_reason: string | null;
   subtotal: number;
   total: number;
-  payment_status: "pending" | "partial" | "paid" | "failed" | "void";
+  // Legacy field kept as optional while old components still exist in the repo.
+  payment_status?: "pending" | "partial" | "paid" | "failed" | "void";
   confirmed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -85,6 +92,9 @@ export interface PaymentRow {
   status: "pending" | "paid" | "failed" | "refunded";
   paid_at: string | null;
   provider_ref: string | null;
+  provider_order_id: string | null;
+  point_terminal_id: string | null;
+  card_mode: "debit" | "credit" | null;
   transaction_id: string | null;
   created_at: string;
 }
@@ -102,7 +112,12 @@ export interface PostRow {
   updated_at: string;
 }
 
-export type MessageType = "created_confirmation" | "reminder_24h" | "post_survey";
+export type MessageType =
+  | "created_confirmation"
+  | "reminder_24h"
+  | "post_survey"
+  | "payment_charge"
+  | "payment_receipt";
 export type MessageStatus = "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
 
 export interface AppointmentMessage {
@@ -133,6 +148,9 @@ export interface AppointmentDetails {
   finished_at: string | null;
   status: string | null;
   payment_status?: string | null;
+  signal_status?: "pending" | "paid" | "waived" | "refunded" | null;
+  signal_required_amount?: number | null;
+  signal_paid_amount?: number | null;
   price: number | null;
   displacement_fee?: number | null;
   displacement_distance_km?: number | null;
@@ -172,6 +190,7 @@ export interface AttendanceOverview {
   attendance: AttendanceRow;
   checklist: ChecklistItem[];
   evolution: EvolutionEntry[];
+  clientHistory: ClientHistoryEntry[];
   checkout: CheckoutRow | null;
   checkoutItems: CheckoutItem[];
   payments: PaymentRow[];

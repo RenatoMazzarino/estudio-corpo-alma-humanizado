@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orientações do Atendimento | Estúdio Corpo & Alma Humanizado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --studio-green: #657966;
+        --studio-green-dark: #4f6151;
+        --studio-paper: #f6f3ed;
+        --studio-paper-2: #faf8f4;
+        --studio-text: #2f3734;
+        --studio-muted: #6f7772;
+        --studio-line: rgba(47, 55, 52, 0.12);
+        --studio-rose: #c9acb7;
+        --studio-shadow: 0 16px 48px rgba(47, 55, 52, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 10% 10%, rgba(101, 121, 102, 0.08), transparent 45%),
+          radial-gradient(circle at 90% 15%, rgba(201, 172, 183, 0.12), transparent 40%),
+          #ece8e1;
+        color: var(--studio-text);
+        font-family: "Lato", sans-serif;
+        padding: 24px;
+      }
+
+      .sheet {
+        width: 1080px;
+        margin: 0 auto;
+        background:
+          radial-gradient(circle at 85% 8%, rgba(201, 172, 183, 0.08), transparent 34%),
+          radial-gradient(circle at 7% 18%, rgba(101, 121, 102, 0.06), transparent 30%),
+          linear-gradient(180deg, var(--studio-paper-2), var(--studio-paper));
+        border: 1px solid rgba(101, 121, 102, 0.12);
+        border-radius: 28px;
+        box-shadow: var(--studio-shadow);
+        padding: 56px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .sheet::before {
+        content: "";
+        position: absolute;
+        top: -48px;
+        right: -48px;
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(101, 121, 102, 0.12), rgba(101, 121, 102, 0));
+        pointer-events: none;
+      }
+
+      .sheet::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(47, 55, 52, 0.035) 1px, transparent 1px);
+        background-size: 20px 20px;
+        opacity: 0.45;
+        pointer-events: none;
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .header {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(101, 121, 102, 0.1);
+        border-radius: 24px;
+        padding: 24px 28px;
+        margin-bottom: 28px;
+        backdrop-filter: blur(6px);
+      }
+
+      .header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .brand-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        background: var(--studio-green);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 10px 24px rgba(79, 97, 81, 0.28);
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .brand-icon img {
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+      }
+
+      .brand-copy {
+        min-width: 0;
+      }
+
+      .eyebrow {
+        margin: 0 0 6px 0;
+        font-size: 12px;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-weight: 900;
+        color: var(--studio-green);
+      }
+
+      .title {
+        margin: 0;
+        font-family: "Playfair Display", serif;
+        font-size: 36px;
+        line-height: 1.08;
+        color: var(--studio-text);
+        font-weight: 700;
+      }
+
+      .subtitle {
+        margin: 8px 0 0 0;
+        color: var(--studio-muted);
+        font-size: 15px;
+        line-height: 1.3;
+      }
+
+      .contact-box {
+        flex-shrink: 0;
+        border-radius: 18px;
+        padding: 14px 16px;
+        background: linear-gradient(180deg, rgba(101, 121, 102, 0.08), rgba(101, 121, 102, 0.04));
+        border: 1px solid rgba(101, 121, 102, 0.14);
+        text-align: right;
+      }
+
+      .contact-label {
+        margin: 0 0 6px 0;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 900;
+        color: var(--studio-muted);
+      }
+
+      .contact-name {
+        margin: 0;
+        font-weight: 900;
+        color: var(--studio-green-dark);
+        font-size: 15px;
+      }
+
+      .contact-phone {
+        margin: 4px 0 0;
+        font-size: 14px;
+        color: var(--studio-text);
+        font-weight: 700;
+      }
+
+      .header-note {
+        margin: 0;
+        border-top: 1px dashed rgba(101, 121, 102, 0.2);
+        padding-top: 14px;
+        font-size: 14px;
+        color: var(--studio-text);
+      }
+
+      .header-note strong {
+        color: var(--studio-green-dark);
+      }
+
+      .grid {
+        column-count: 2;
+        column-gap: 20px;
+      }
+
+      .card {
+        break-inside: avoid;
+        display: block;
+        margin: 0 0 16px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(101, 121, 102, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 8px 20px rgba(47, 55, 52, 0.06);
+        overflow: hidden;
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px 12px;
+        border-bottom: 1px dashed rgba(47, 55, 52, 0.1);
+        background: linear-gradient(180deg, rgba(101, 121, 102, 0.06), rgba(101, 121, 102, 0.02));
+      }
+
+      .index {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 900;
+        color: #fff;
+        background: var(--studio-green);
+        flex-shrink: 0;
+      }
+
+      .card-title {
+        margin: 0;
+        font-family: "Playfair Display", serif;
+        font-size: 22px;
+        line-height: 1.15;
+        color: var(--studio-green-dark);
+        font-weight: 700;
+      }
+
+      .card-body {
+        padding: 14px 16px 16px;
+      }
+
+      .card-body p {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.45;
+        color: var(--studio-text);
+      }
+
+      .card-body strong {
+        color: var(--studio-green-dark);
+      }
+
+      .footer {
+        margin-top: 26px;
+        padding: 20px 22px;
+        background: linear-gradient(180deg, rgba(101, 121, 102, 0.07), rgba(101, 121, 102, 0.03));
+        border: 1px solid rgba(101, 121, 102, 0.14);
+        border-radius: 20px;
+      }
+
+      .footer-main {
+        margin: 0;
+        font-family: "Playfair Display", serif;
+        font-size: 24px;
+        line-height: 1.2;
+        color: var(--studio-green-dark);
+      }
+
+      .footer-sub {
+        margin: 8px 0 0;
+        color: var(--studio-text);
+        font-size: 15px;
+        line-height: 1.35;
+      }
+
+      .footer-sub strong {
+        color: var(--studio-green-dark);
+      }
+
+      @media (max-width: 1120px) {
+        body {
+          padding: 0;
+          background: #fff;
+        }
+
+        .sheet {
+          width: 100%;
+          min-width: 1080px;
+          border-radius: 0;
+          border: 0;
+          box-shadow: none;
+        }
+      }
+
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+
+        body {
+          background: #fff;
+          padding: 0;
+        }
+
+        .sheet {
+          width: 210mm;
+          min-width: 0;
+          border-radius: 0;
+          box-shadow: none;
+          border: 0;
+          padding: 11mm;
+          background: #f8f5ef;
+        }
+
+        .title {
+          font-size: 28px;
+        }
+
+        .subtitle {
+          font-size: 12px;
+        }
+
+        .contact-box {
+          padding: 10px 12px;
+        }
+
+        .contact-name {
+          font-size: 12px;
+        }
+
+        .contact-phone {
+          font-size: 11px;
+        }
+
+        .grid {
+          column-gap: 12px;
+        }
+
+        .card {
+          margin-bottom: 10px;
+          border-radius: 12px;
+          box-shadow: none;
+        }
+
+        .card-head {
+          padding: 8px 10px 7px;
+        }
+
+        .index {
+          width: 20px;
+          height: 20px;
+          font-size: 9px;
+        }
+
+        .card-title {
+          font-size: 15px;
+        }
+
+        .card-body {
+          padding: 8px 10px 9px;
+        }
+
+        .card-body p,
+        .header-note,
+        .footer-sub {
+          font-size: 10px;
+          line-height: 1.3;
+        }
+
+        .footer {
+          margin-top: 12px;
+          padding: 10px 12px;
+          border-radius: 12px;
+        }
+
+        .footer-main {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet" id="card-whatsapp">
+      <div class="content">
+        <header class="header">
+          <div class="header-top">
+            <div class="brand">
+              <div class="brand-icon" aria-hidden="true">
+                <img src="/brand/logo-white.png" alt="" />
+              </div>
+              <div class="brand-copy">
+                <p class="eyebrow">Orientações do Atendimento</p>
+                <h1 class="title">Estúdio Corpo &amp; Alma Humanizado</h1>
+                <p class="subtitle">Toque que alivia, cuidado que transforma.</p>
+              </div>
+            </div>
+            <aside class="contact-box" aria-label="Contato">
+              <p class="contact-label">Contato de Suporte</p>
+              <p class="contact-name">Janaina Santos</p>
+              <p class="contact-phone">WhatsApp: (19) 99944-2184</p>
+            </aside>
+          </div>
+          <p class="header-note">
+            Este material pode ser enviado como <strong>imagem de orientação</strong> junto com a mensagem de
+            confirmação de agendamento e aprovação do sinal.
+          </p>
+        </header>
+
+        <section class="grid" aria-label="Regras e orientações">
+          <article class="card">
+            <div class="card-head">
+              <div class="index">1</div>
+              <h2 class="card-title">Identificação</h2>
+            </div>
+            <div class="card-body">
+              <p><strong>Prestadora:</strong> Estúdio Corpo &amp; Alma Humanizado (Janaina Santos).</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">2</div>
+              <h2 class="card-title">Serviços</h2>
+            </div>
+            <div class="card-body">
+              <p>Massoterapia conforme pacote ou sessão avulsa. Detalhes combinados previamente via WhatsApp.</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">3</div>
+              <h2 class="card-title">Reserva</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Para garantir o horário, solicitamos <strong>sinal de 30%</strong> (abatido do total). A reserva é
+                confirmada após envio do comprovante.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">4</div>
+              <h2 class="card-title">Cancelamento</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                <strong>Com 24h ou mais:</strong> devolução integral ou reagendamento. <strong>Com menos de 24h:</strong>
+                o sinal pode ser retido.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">5</div>
+              <h2 class="card-title">Atrasos</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Tolerância de <strong>15 minutos</strong>. Atrasos do cliente podem reduzir o tempo da sessão para
+                manter a agenda do dia.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">6</div>
+              <h2 class="card-title">Local (Domiciliar)</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                O cliente deve garantir local seguro, limpo e com espaço adequado para a maca. Escadas e acessos
+                difíceis precisam ser avisados antes.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">7</div>
+              <h2 class="card-title">Saúde</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Em caso de <strong>febre, gripe ou quadro infeccioso</strong>, faremos o reagendamento sem custos para
+                segurança de todos.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">8</div>
+              <h2 class="card-title">Privacidade</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Dados e informações do atendimento são sigilosos. Fotos e registros só serão feitos com
+                <strong>autorização prévia</strong>.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">9</div>
+              <h2 class="card-title">Pagamento</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Aceitamos Pix, cartão e dinheiro. O saldo restante deve ser quitado no ato do atendimento, salvo
+                combinação prévia.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">10</div>
+              <h2 class="card-title">Higiene</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Utilizamos materiais descartáveis e seguimos normas de higiene. O ambiente do atendimento também deve
+                estar em condições adequadas.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">11</div>
+              <h2 class="card-title">Crianças e Pets</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Para segurança e melhor relaxamento, pets e crianças devem permanecer em outro cômodo durante a
+                sessão, sempre que possível.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">12</div>
+              <h2 class="card-title">Danos ao Equipamento</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Danos causados ao equipamento por terceiros no local do atendimento são de responsabilidade do cliente.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">13</div>
+              <h2 class="card-title">Menores de Idade</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Atendimento de menores somente com autorização e presença de responsável legal, conforme orientação
+                prévia.
+              </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="index">14</div>
+              <h2 class="card-title">Satisfação e Suporte</h2>
+            </div>
+            <div class="card-body">
+              <p>
+                Dúvidas, ajustes e feedbacks são sempre bem-vindos via WhatsApp para resolução rápida e amigável.
+              </p>
+            </div>
+          </article>
+        </section>
+
+        <footer class="footer">
+          <p class="footer-main">Ao confirmar o agendamento, você concorda com estas orientações.</p>
+          <p class="footer-sub">
+            Se preferir, adapte este conteúdo por tipo de atendimento (estúdio/domiciliar) antes de gerar a imagem
+            final. <strong>Dúvidas? Fale no WhatsApp.</strong>
+          </p>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>

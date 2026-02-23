@@ -8,6 +8,8 @@ Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com 
 - Pagamentos Checkout Transparente (Pix e Cartao)
 - Agenda interna (detalhes, atendimento, bloqueios/escala)
 - Formularios que ainda usavam `alert()` no modulo
+- Atendimento V1 (sessao unificada + checkout modal + recibo)
+- Integracao Spotify no atendimento (estado/controle)
 
 ## Como funciona
 - Fonte unica de mensagens: `apps/web/src/shared/feedback/user-feedback.ts`
@@ -15,6 +17,8 @@ Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com 
 - Canais:
 1. `toast`: aviso curto no rodape, auto fechamento rapido
 2. `banner`: aviso sobreposto no topo, para casos mais importantes
+
+Obs.: evoluimos a exibicao para estilo notificacao no topo da tela (inclusive avisos curtos), preservando o mesmo componente/camada.
 
 ## Regras aplicadas
 1. Sem `alert()`/`window.alert()` no modulo agenda/pagamentos.
@@ -32,6 +36,11 @@ Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com 
 - `payment_pix_failed`
 - `payment_card_declined`
 - `payment_pending`
+- `payment_recorded`
+- `payment_already_settled`
+- `payment_amount_outdated`
+- `payment_point_not_configured`
+- `payment_pix_key_not_configured`
 - `payment_service_unavailable`
 - `payment_credentials_invalid`
 - `payment_invalid_amount`
@@ -75,6 +84,7 @@ Detalhes tecnicos continuam apenas em logs de servidor para diagnostico.
 - `apps/web/app/(public)/agendar/[slug]/public-actions/payments.ts`
 - `apps/web/components/mobile-agenda.tsx`
 - `apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx`
+- `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`
 - `apps/web/components/agenda/appointment-details-sheet.tsx`
 - `apps/web/components/availability-manager.tsx`
 - `apps/web/components/shift-manager.tsx`
@@ -85,4 +95,4 @@ Detalhes tecnicos continuam apenas em logs de servidor para diagnostico.
 ## Resultado esperado para o usuario final
 - Mensagens consistentes
 - Sem "erro tecnico" exposto
-- Fluxo mais limpo (mensagem sobreposta, sem quebrar layout da tela)
+- Fluxo mais limpo (mensagens no topo, estilo notificacao, sem quebrar layout da tela)

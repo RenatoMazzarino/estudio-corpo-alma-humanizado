@@ -9,7 +9,7 @@ export const confirmPreSchema = appointmentIdSchema.extend({
 });
 
 export const sendMessageSchema = appointmentIdSchema.extend({
-  type: z.enum(["created_confirmation", "reminder_24h", "post_survey"]),
+  type: z.enum(["created_confirmation", "reminder_24h", "post_survey", "payment_charge", "payment_receipt"]),
   channel: z.string().optional().nullable(),
   payload: z.record(z.string(), z.unknown()).optional().nullable(),
 });
@@ -42,16 +42,11 @@ export const checklistUpsertSchema = appointmentIdSchema.extend({
 });
 
 const evolutionPayload = z.object({
-  summary: z.string().optional().nullable(),
-  complaint: z.string().optional().nullable(),
-  techniques: z.string().optional().nullable(),
-  recommendations: z.string().optional().nullable(),
-  sectionsJson: z.record(z.string(), z.unknown()).optional().nullable(),
+  text: z.string().optional().nullable(),
 });
 
 export const saveEvolutionSchema = appointmentIdSchema.extend({
   payload: evolutionPayload,
-  status: z.enum(["draft", "published"]),
 });
 
 export const setCheckoutItemsSchema = appointmentIdSchema.extend({

@@ -31,6 +31,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import { ModuleHeader } from "./ui/module-header";
 import { ModulePage } from "./ui/module-page";
 import { FloatingActionMenu } from "./ui/floating-action-menu";
@@ -45,8 +46,10 @@ import {
   confirmPre,
   getAttendance,
   recordPayment,
+  saveEvolution,
   sendMessage,
   sendReminder24h,
+  structureEvolutionFromAudio,
 } from "../app/(dashboard)/atendimento/[id]/actions";
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
 import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
@@ -116,6 +119,14 @@ export function MobileAgenda({
   } | null>(null);
   const [isActionPending, setIsActionPending] = useState(false);
   const [monthPickerYear, setMonthPickerYear] = useState(() => new Date().getFullYear());
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  const redirectToLogin = useCallback((loginUrl?: string | null) => {
+    if (typeof window === "undefined") return;
+    const fallbackNext = `${window.location.pathname}${window.location.search}`;
+    const fallbackLogin = `/auth/login?reason=forbidden&next=${encodeURIComponent(fallbackNext)}`;
+    window.location.assign(loginUrl?.trim() || fallbackLogin);
+  }, []);
   const { toast, showToast } = useToast();
   const daySliderRef = useRef<HTMLDivElement | null>(null);
   const lastSnapIndex = useRef(0);
@@ -127,6 +138,7 @@ export function MobileAgenda({
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const createdToastShown = useRef(false);
+  const autoOpenedAppointmentRef = useRef<string | null>(null);
   const timeColumnWidth = 72;
   const timeColumnGap = 16;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -283,6 +295,10 @@ export function MobileAgenda({
   }, []);
 
   useEffect(() => {
+    setPortalTarget(document.getElementById("app-frame"));
+  }, []);
+
+  useEffect(() => {
     if (!isSearchOpen) {
       setSearchMode("quick");
       setSearchResults({ appointments: [], clients: [] });
@@ -301,8 +317,15 @@ export function MobileAgenda({
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
           signal: controller.signal,
         });
+        const data = (await response.json()) as SearchResults & {
+          loginRequired?: boolean;
+          loginUrl?: string | null;
+        };
+        if (response.status === 401 || data.loginRequired) {
+          redirectToLogin(data.loginUrl);
+          return;
+        }
         if (!response.ok) return;
-        const data = (await response.json()) as SearchResults;
         setSearchResults({
           appointments: data.appointments ?? [],
           clients: data.clients ?? [],
@@ -319,7 +342,7 @@ export function MobileAgenda({
       clearTimeout(handle);
       controller.abort();
     };
-  }, [searchTerm, isSearchOpen, searchMode]);
+  }, [searchTerm, isSearchOpen, searchMode, redirectToLogin]);
 
   useEffect(() => {
     if (searchParams.get("created") !== "1") {
@@ -351,6 +374,12 @@ export function MobileAgenda({
     [showToast]
   );
 
+  const openDetailsForAppointment = useCallback((appointmentId: string) => {
+    setLoadingAppointmentId(appointmentId);
+    setDetailsAppointmentId(appointmentId);
+    setDetailsOpen(true);
+  }, []);
+
   useEffect(() => {
     if (!detailsOpen || !detailsAppointmentId) {
       setDetailsData(null);
@@ -358,6 +387,40 @@ export function MobileAgenda({
     }
     fetchAttendanceDetails(detailsAppointmentId);
   }, [detailsOpen, detailsAppointmentId, fetchAttendanceDetails]);
+
+  useEffect(() => {
+    const appointmentToOpen = searchParams.get("openAppointment");
+    if (!appointmentToOpen) {
+      autoOpenedAppointmentRef.current = null;
+      return;
+    }
+    if (autoOpenedAppointmentRef.current === appointmentToOpen) {
+      return;
+    }
+
+    const targetAppointment = appointments.find((item) => item.id === appointmentToOpen);
+    if (!targetAppointment) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("openAppointment");
+      params.delete("fromAttendance");
+      router.replace(`/?${params.toString()}`, { scroll: false });
+      return;
+    }
+
+    const targetDate = parseDate(targetAppointment.start_time);
+    if (isValid(targetDate) && !isSameDay(targetDate, selectedDateRef.current)) {
+      setSelectedDate(targetDate);
+      setCurrentMonth(startOfMonth(targetDate));
+    }
+
+    autoOpenedAppointmentRef.current = appointmentToOpen;
+    openDetailsForAppointment(appointmentToOpen);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("openAppointment");
+    params.delete("fromAttendance");
+    router.replace(`/?${params.toString()}`, { scroll: false });
+  }, [appointments, openDetailsForAppointment, parseDate, router, searchParams]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -517,7 +580,10 @@ export function MobileAgenda({
   };
 
   const getServiceDuration = (item: DayItem) => {
-    if (item.finished_at) {
+    // For blocked slots, duration comes from start/end interval.
+    // For appointments, keep planned duration so the card height stays stable
+    // even after finishing earlier/later than expected.
+    if (item.type === "block" && item.finished_at) {
       const startTime = parseDate(item.start_time);
       const endTime = parseDate(item.finished_at);
       const diffMinutes = Math.max(15, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
@@ -541,7 +607,20 @@ export function MobileAgenda({
     return `https://wa.me/${withCountry}`;
   }, []);
 
-  const buildMessage = (type: MessageType, appointment: AttendanceOverview["appointment"]) => {
+  const resolvePublicBaseUrl = () => {
+    const raw = publicBaseUrl.trim();
+    if (!raw) {
+      if (typeof window === "undefined") return "";
+      return window.location.origin.replace(/\/$/, "");
+    }
+    return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
+  };
+
+  const buildMessage = (
+    type: MessageType,
+    appointment: AttendanceOverview["appointment"],
+    options?: { paymentId?: string | null; chargeAmount?: number | null }
+  ) => {
     const name = appointment.clients?.name?.trim() ?? "";
     const greeting = name ? `Olá, ${name}!` : "Olá!";
     const startDate = new Date(appointment.start_time);
@@ -572,6 +651,43 @@ export function MobileAgenda({
         date_line: dateLine,
       }).trim();
     }
+
+    if (type === "payment_charge") {
+      const base = resolvePublicBaseUrl();
+      const paymentLink = base ? `${base}/pagamento` : "";
+      const chargeAmount =
+        typeof options?.chargeAmount === "number" && Number.isFinite(options.chargeAmount)
+          ? options.chargeAmount
+          : null;
+      const chargeLabel =
+        chargeAmount !== null
+          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(chargeAmount)
+          : "";
+      const paymentLinkBlock = paymentLink
+        ? `💰 Valor pendente: ${chargeLabel || "conforme combinado"}\nLink:\n${paymentLink}\n\n`
+        : "";
+
+      return applyAutoMessageTemplate(messageTemplates.payment_charge, {
+        greeting,
+        service_name: serviceName,
+        payment_link_block: paymentLinkBlock,
+      }).trim();
+    }
+
+    if (type === "payment_receipt") {
+      const base = resolvePublicBaseUrl();
+      const receiptLink =
+        base && options?.paymentId ? `${base}/comprovante/pagamento/${options.paymentId}` : "";
+      const receiptBlock = receiptLink
+        ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`
+        : "";
+      return applyAutoMessageTemplate(messageTemplates.payment_receipt, {
+        greeting,
+        service_name: serviceName,
+        receipt_link_block: receiptBlock,
+      }).trim();
+    }
+
     if (name) {
       return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
     }
@@ -616,6 +732,78 @@ export function MobileAgenda({
     setDetailsActionPending(false);
   };
 
+  const handleSendPaymentCharge = async () => {
+    if (!detailsData) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    const totalAmount = Number(detailsData.checkout?.total ?? detailsData.appointment.price ?? 0);
+    const paidAmount = (detailsData.payments ?? [])
+      .filter((payment) => payment.status === "paid")
+      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
+    const remainingAmount = Math.max(totalAmount - paidAmount, 0);
+
+    setDetailsActionPending(true);
+    const message = buildMessage("payment_charge", detailsData.appointment, {
+      chargeAmount: remainingAmount,
+    });
+    openWhatsapp(phone, message);
+
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type: "payment_charge",
+      channel: "whatsapp",
+      payload: { message, remaining_amount: remainingAmount },
+    });
+
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "whatsapp"));
+      setDetailsActionPending(false);
+      return;
+    }
+
+    showToast(feedbackById("message_recorded"));
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleSendPaymentReceipt = async (paymentId: string | null) => {
+    if (!detailsData || !paymentId) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    setDetailsActionPending(true);
+    const base = resolvePublicBaseUrl();
+    const receiptLink = base ? `${base}/comprovante/pagamento/${paymentId}` : "";
+    const message = buildMessage("payment_receipt", detailsData.appointment, { paymentId });
+    openWhatsapp(phone, message);
+
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type: "payment_receipt",
+      channel: "whatsapp",
+      payload: { message, payment_id: paymentId, receipt_link: receiptLink || null },
+    });
+
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "whatsapp"));
+      setDetailsActionPending(false);
+      return;
+    }
+
+    showToast(feedbackById("message_recorded"));
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
   const handleSendReminder = async () => {
     if (!detailsData) return;
     const phone = detailsData.appointment.clients?.phone ?? null;
@@ -633,6 +821,36 @@ export function MobileAgenda({
       return;
     }
     showToast(feedbackById("reminder_recorded"));
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+  };
+
+  const handleSendSurvey = async () => {
+    if (!detailsData) return;
+    const phone = detailsData.appointment.clients?.phone ?? null;
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    setDetailsActionPending(true);
+    const message = buildMessage("post_survey", detailsData.appointment);
+    openWhatsapp(phone, message);
+
+    const result = await sendMessage({
+      appointmentId: detailsData.appointment.id,
+      type: "post_survey",
+      channel: "whatsapp",
+      payload: { message },
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "whatsapp"));
+      setDetailsActionPending(false);
+      return;
+    }
+
+    showToast(feedbackById("message_recorded"));
     await fetchAttendanceDetails(detailsData.appointment.id);
     router.refresh();
     setDetailsActionPending(false);
@@ -703,11 +921,61 @@ export function MobileAgenda({
     setDetailsActionPending(false);
   };
 
-  const handleStartSession = () => {
+  const handleSaveEvolutionFromDetails = async (text: string) => {
+    if (!detailsData) return { ok: false as const };
+    setDetailsActionPending(true);
+    const result = await saveEvolution({
+      appointmentId: detailsData.appointment.id,
+      payload: {
+        text,
+      },
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      setDetailsActionPending(false);
+      return { ok: false as const };
+    }
+
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Evolução salva.",
+      })
+    );
+    await fetchAttendanceDetails(detailsData.appointment.id);
+    router.refresh();
+    setDetailsActionPending(false);
+    return { ok: true as const };
+  };
+
+  const handleStructureEvolutionFromDetails = async (text: string) => {
+    if (!detailsData) return { ok: false as const, structuredText: null };
+    setDetailsActionPending(true);
+    const result = await structureEvolutionFromAudio({
+      appointmentId: detailsData.appointment.id,
+      transcript: text,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      setDetailsActionPending(false);
+      return { ok: false as const, structuredText: null };
+    }
+
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Flora organizou a evolução.",
+      })
+    );
+    setDetailsActionPending(false);
+    return { ok: true as const, structuredText: result.data.structuredText };
+  };
+
+  const handleOpenAttendance = () => {
     if (!detailsData) return;
     const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
     setDetailsOpen(false);
-    router.push(`/atendimento/${detailsData.appointment.id}?stage=session&return=${encodeURIComponent(returnTo)}`);
+    router.push(`/atendimento/${detailsData.appointment.id}?return=${encodeURIComponent(returnTo)}`);
   };
 
   return (
@@ -1010,7 +1278,7 @@ export function MobileAgenda({
                           } as const;
 
                           let endLabel = "";
-                          if (item.finished_at) {
+                          if (isBlock && item.finished_at) {
                             endLabel = format(parseDate(item.finished_at), "HH:mm");
                           } else if (durationMinutes) {
                             endLabel = format(addMinutes(startTimeDate, durationMinutes), "HH:mm");
@@ -1080,13 +1348,7 @@ export function MobileAgenda({
                                       hasPreBuffer={hasPreBuffer}
                                       hasPostBuffer={hasPostBuffer}
                                       loading={loadingAppointmentId === item.id}
-                                      onOpen={() =>
-                                        (() => {
-                                          setLoadingAppointmentId(item.id);
-                                          setDetailsAppointmentId(item.id);
-                                          setDetailsOpen(true);
-                                        })()
-                                      }
+                                      onOpen={() => openDetailsForAppointment(item.id)}
                                       onLongPress={() => {
                                         setActionSheet({
                                           id: item.id,
@@ -1271,67 +1533,71 @@ export function MobileAgenda({
         </main>
       </ModulePage>
 
-      {actionSheet && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <button
-            type="button"
-            aria-label="Fechar ações"
-            onClick={() => setActionSheet(null)}
-            className="absolute inset-0 bg-black/40"
-          />
-          <div className="relative w-full max-w-105 rounded-t-3xl bg-white p-5 shadow-float">
-            <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
-              Ações do agendamento
-            </div>
-            <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
-            <div className="text-xs text-muted">
-              {actionSheet.serviceName} • {format(parseDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
-            </div>
-
-            <div className="mt-4 space-y-2">
+      {actionSheet &&
+        (() => {
+          const actionSheetNode = (
+            <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center`}>
               <button
                 type="button"
-                onClick={() => {
-                  const nextReturn = actionSheet.returnTo;
-                  setActionSheet(null);
-                  router.push(
-                    `/novo?appointmentId=${actionSheet.id}&returnTo=${encodeURIComponent(nextReturn)}`
-                  );
-                }}
-                className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm font-extrabold text-studio-text hover:bg-studio-light transition"
-              >
-                Editar agendamento
-              </button>
-              <button
-                type="button"
-                disabled={isActionPending}
-                onClick={async () => {
-                  setIsActionPending(true);
-                  const result = await cancelAppointment(actionSheet.id);
-                  if (!result.ok) {
-                    showToast(feedbackFromError(result.error, "agenda"));
-                  } else {
-                    showToast(feedbackById("appointment_deleted"));
-                    setActionSheet(null);
-                    router.refresh();
-                  }
-                  setIsActionPending(false);
-                }}
-                className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-100 transition disabled:opacity-60"
-              >
-                Excluir agendamento
-              </button>
-              <button
-                type="button"
+                aria-label="Fechar ações"
                 onClick={() => setActionSheet(null)}
-                className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
-              >
-                Cancelar
-              </button>
+                className="absolute inset-0 bg-black/40"
+              />
+              <div className="relative w-full max-w-105 rounded-t-3xl bg-white p-5 shadow-float">
+                <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">
+                  Ações do agendamento
+                </div>
+                <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
+                <div className="text-xs text-muted">
+                  {actionSheet.serviceName} •{" "}
+                  {format(parseDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextReturn = actionSheet.returnTo;
+                      setActionSheet(null);
+                      router.push(`/novo?appointmentId=${actionSheet.id}&returnTo=${encodeURIComponent(nextReturn)}`);
+                    }}
+                    className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm font-extrabold text-studio-text hover:bg-studio-light transition"
+                  >
+                    Editar agendamento
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isActionPending}
+                    onClick={async () => {
+                      setIsActionPending(true);
+                      const result = await cancelAppointment(actionSheet.id);
+                      if (!result.ok) {
+                        showToast(feedbackFromError(result.error, "agenda"));
+                      } else {
+                        showToast(feedbackById("appointment_deleted"));
+                        setActionSheet(null);
+                        router.refresh();
+                      }
+                      setIsActionPending(false);
+                    }}
+                    className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-100 transition disabled:opacity-60"
+                  >
+                    Excluir agendamento
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActionSheet(null)}
+                    className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+
+          return portalTarget ? createPortal(actionSheetNode, portalTarget) : actionSheetNode;
+        })()}
 
       <AgendaSearchModal
         open={isSearchOpen}
@@ -1370,12 +1636,17 @@ export function MobileAgenda({
           setDetailsAppointmentId(null);
           setDetailsActionPending(false);
         }}
-        onStartSession={handleStartSession}
+        onStartSession={handleOpenAttendance}
         onSendCreatedMessage={() => handleSendMessage("created_confirmation")}
         onSendReminder={handleSendReminder}
+        onSendSurvey={handleSendSurvey}
+        onSendPaymentCharge={handleSendPaymentCharge}
+        onSendPaymentReceipt={handleSendPaymentReceipt}
         onConfirmClient={handleConfirmClient}
         onCancelAppointment={handleCancelAppointment}
         onRecordPayment={handleRecordPayment}
+        onSaveEvolution={handleSaveEvolutionFromDetails}
+        onStructureEvolution={handleStructureEvolutionFromDetails}
         onNotify={(feedback) => showToast(feedback)}
       />
 

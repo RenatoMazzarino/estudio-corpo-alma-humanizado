@@ -2,10 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, MapPin, Sparkles } from "lucide-react";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
-import "./receipt.module.css";
+import { CheckCircle2, Download, MapPin, Sparkles } from "lucide-react";
+import { downloadReceiptBlob, renderReceiptImageBlob } from "./receipt-export";
 
 interface ReceiptData {
   clientName: string;
@@ -13,6 +11,7 @@ interface ReceiptData {
   dateLabel: string;
   timeLabel: string;
   paymentStatus: "paid" | "partial";
+  paymentMethodLabel?: string;
   locationLabel: string;
   locationDetail?: string;
   totalLabel: string;
@@ -31,155 +30,152 @@ export default function ReceiptView({ data }: ReceiptViewProps) {
   const receiptRef = useRef<HTMLDivElement | null>(null);
   const [downloading, setDownloading] = useState(false);
   const isPaid = data.paymentStatus === "paid";
-  const statusPill = isPaid ? "Pagamento confirmado" : "Sinal confirmado";
+  const statusPill = isPaid ? "Pagamento confirmado" : "Pagamento parcial";
+  const partialPaymentLabel = data.paymentMethodLabel
+    ? `Pagamento (${data.paymentMethodLabel})`
+    : "Pagamento parcial";
+  const paidPaymentLabel = data.paymentMethodLabel
+    ? `Pagamento (${data.paymentMethodLabel})`
+    : "Pagamento integral";
   const fileName = useMemo(() => {
     const safeDate = data.dateLabel.replace(/\//g, "-");
-    return `Recibo-CorpoAlma-${safeDate}.pdf`;
+    return `recibo-corpo-alma-${safeDate}.png`;
   }, [data.dateLabel]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleDownload = async () => {
     if (!receiptRef.current || downloading) return;
     setDownloading(true);
     try {
-      const canvas = await html2canvas(receiptRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? "landscape" : "portrait",
-        unit: "px",
-        format: [canvas.width, canvas.height],
-      });
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-      pdf.save(fileName);
+      const blob = await renderReceiptImageBlob(receiptRef.current);
+      if (!blob) return;
+      downloadReceiptBlob(blob, fileName, window.navigator.userAgent);
     } finally {
       setDownloading(false);
     }
   };
 
   return (
-    <>
-      <div className="receipt-page min-h-screen bg-[#333333] text-studio-text px-4 py-10 flex items-center justify-center">
-        <div className="w-full max-w-md">
-          <div className="receipt-shell relative rounded-[20px] bg-[#faf9f6] shadow-2xl overflow-hidden">
-            <div className="receipt-header bg-studio-green text-white px-6 pt-8 pb-10 text-center rounded-b-[30px]">
-              <div className="flex justify-center mb-3">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <Image src="/brand/logo.png" alt="Estúdio Corpo & Alma Humanizado" width={28} height={28} className="h-7 w-7" priority />
-                </div>
+    <div className="min-h-screen bg-[#1f2324] text-studio-text px-4 py-10 flex items-center justify-center">
+      <div className="w-full max-w-md">
+        <div
+          ref={receiptRef}
+          className="relative rounded-[20px] overflow-hidden border border-black/5"
+          style={{ backgroundColor: "#faf9f6", boxShadow: "0 22px 40px rgba(0,0,0,0.28)" }}
+        >
+          <div className="bg-studio-green text-white px-6 pt-7 pb-8 text-center">
+            <div className="flex justify-center mb-2">
+              <Image
+                src="/brand/logo-white.png"
+                alt="Estúdio Corpo & Alma Humanizado"
+                width={62}
+                height={62}
+                className="h-14 w-14 object-contain"
+                priority
+              />
+            </div>
+            <h1 className="font-serif text-[30px] leading-[1.05] tracking-tight">Estúdio Corpo & Alma Humanizado</h1>
+            <p
+              className="mt-1 font-serif italic text-xs text-white/85"
+              style={{ fontFamily: "var(--font-playfair), serif" }}
+            >
+              Toque que alivia, cuidado que transforma.
+            </p>
+            <div className="mt-4">
+              <span className="inline-flex items-center rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]">
+                {statusPill}
+              </span>
+            </div>
+          </div>
+
+          <div className="px-6 py-6">
+            <div className="flex justify-between items-start mb-5">
+              <div>
+                <p className="text-[10px] text-gray-400 font-extrabold uppercase tracking-[0.14em]">Cliente</p>
+                <p className="font-serif text-xl leading-tight text-studio-text">{data.clientName}</p>
               </div>
-              <h1 className="font-serif text-2xl font-bold tracking-wide">Estúdio Corpo & Alma Humanizado</h1>
-              <p className="text-[10px] uppercase tracking-widest opacity-80 mt-1">Estúdio de bem-estar</p>
-              <div className="mt-6">
-                <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
-                  {statusPill}
-                </span>
+              <div className="text-right">
+                <p className="text-[10px] text-gray-400 font-extrabold uppercase tracking-[0.14em]">Data</p>
+                <p className="font-bold text-studio-text text-sm">{data.dateLabel}</p>
+                <p className="text-[11px] text-muted mt-1">{data.timeLabel}</p>
               </div>
             </div>
 
-            <div ref={receiptRef} id="receipt-content" className="receipt-paper px-6 py-6 pb-8">
-              <div className="flex justify-between items-end mb-6">
+            <div className="rounded-2xl border border-line bg-white px-4 py-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center">
+                  <Sparkles className="w-4 h-4" />
+                </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Cliente</p>
-                  <p className="font-serif text-lg font-bold text-gray-800">{data.clientName}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Data</p>
-                  <p className="font-bold text-gray-800 text-sm">{data.dateLabel}</p>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{data.timeLabel}</p>
+                  <p className="text-xs font-bold text-studio-text">{data.serviceName}</p>
+                  <p className="text-[10px] text-muted">Serviço realizado</p>
                 </div>
               </div>
-
-              <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm mb-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-green-50 text-studio-green flex items-center justify-center">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-800">{data.serviceName}</p>
-                    <p className="text-[10px] text-gray-400">Serviço confirmado</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-dom/20 text-studio-accent flex items-center justify-center">
+                  <MapPin className="w-4 h-4" />
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-dom/20 text-studio-accent flex items-center justify-center">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-800">{data.locationLabel}</p>
-                    {data.locationDetail && <p className="text-[10px] text-gray-400">{data.locationDetail}</p>}
-                  </div>
+                <div>
+                  <p className="text-xs font-bold text-studio-text">{data.locationLabel}</p>
+                  {data.locationDetail && <p className="text-[10px] text-muted">{data.locationDetail}</p>}
                 </div>
               </div>
+            </div>
 
-              <div className="dashed-line"></div>
+            <div className="border-t border-dashed border-line my-5" />
 
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>Valor Total</span>
-                  <span>{data.totalLabel}</span>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm text-muted">
+                <span>Valor total</span>
+                <span className="font-bold text-studio-text">{data.totalLabel}</span>
+              </div>
+
+              {!isPaid && (
+                <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-emerald-50 p-2.5 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{partialPaymentLabel}</span>
+                  </div>
+                  <span>{data.signalLabel}</span>
                 </div>
+              )}
 
-                {!isPaid && (
-                  <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-green-50 p-2 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Sinal Pago (PIX)</span>
-                    </div>
-                    <span>- {data.signalLabel}</span>
+              {isPaid ? (
+                <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-emerald-50 p-2.5 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{paidPaymentLabel}</span>
                   </div>
-                )}
+                  <span>{data.paidLabel}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-end pt-1">
+                  <span className="text-xs font-extrabold text-muted uppercase tracking-wide">Restante a pagar</span>
+                  <span className="font-serif text-2xl leading-none text-studio-text">{data.remainingLabel}</span>
+                </div>
+              )}
+            </div>
 
-                {isPaid ? (
-                  <div className="flex justify-between items-center text-studio-green font-bold text-sm bg-green-50 p-2 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Pagamento Integral</span>
-                    </div>
-                    <span>{data.paidLabel}</span>
-                  </div>
-                ) : (
-                  <div className="flex justify-between items-end pt-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase">Restante a Pagar</span>
-                    <span className="font-serif text-2xl font-bold text-gray-800">{data.remainingLabel}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-center gap-2 opacity-60">
-                <CheckCircle2 className="w-4 h-4 text-studio-green" />
-                <p className="text-[10px] text-gray-500 font-medium">Gerado por Flora • ID: {data.transactionId}</p>
-              </div>
+            <div className="mt-7 border-t border-line pt-3 text-center">
+              <p className="text-[10px] text-muted uppercase tracking-[0.14em] font-bold">
+                Gerado por Flora • ID {data.transactionId}
+              </p>
+              <p className="mt-1 text-[10px] text-muted">Em {data.generatedAtLabel}</p>
             </div>
           </div>
         </div>
 
-        <div className="receipt-actions fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-auto md:top-1/2 md:-translate-y-1/2">
-          <div className="flex w-full md:w-auto gap-2 md:flex-col bg-white/90 backdrop-blur border border-white/60 shadow-xl rounded-2xl p-3">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="flex-1 md:w-40 inline-flex items-center justify-center gap-2 rounded-xl bg-studio-green text-white px-4 py-3 text-xs font-extrabold uppercase tracking-wide shadow-lg shadow-green-200"
-            >
-              🖨️ Imprimir
-            </button>
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex-1 md:w-40 inline-flex items-center justify-center gap-2 rounded-xl border border-studio-text/10 bg-white text-studio-text px-4 py-3 text-xs font-extrabold uppercase tracking-wide disabled:opacity-60"
-            >
-              {downloading ? "Gerando..." : "📥 Baixar PDF"}
-            </button>
-          </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-studio-green text-white px-4 py-3 text-xs font-extrabold uppercase tracking-wide shadow-lg shadow-green-900/20 disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? "Gerando recibo..." : "Baixar recibo"}
+          </button>
         </div>
       </div>
-
-    </>
+    </div>
   );
 }

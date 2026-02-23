@@ -8,12 +8,14 @@ import {
   Bell,
   CheckCircle2,
   Eye,
+  Sparkles,
   Wallet,
   MapPin,
   MessageSquare,
   StickyNote,
   ThumbsUp,
   User,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import type { AttendanceOverview, AppointmentMessage, MessageType } from "../../lib/attendance/attendance-types";
@@ -34,9 +36,14 @@ interface AppointmentDetailsSheetProps {
   onStartSession: () => void;
   onSendCreatedMessage: () => void;
   onSendReminder: () => void;
+  onSendSurvey: () => void;
+  onSendPaymentCharge: () => void;
+  onSendPaymentReceipt: (paymentId: string | null) => void;
   onConfirmClient: () => void;
   onCancelAppointment: () => void;
   onRecordPayment?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
+  onSaveEvolution?: (text: string) => Promise<{ ok: boolean }>;
+  onStructureEvolution?: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
   onNotify?: (feedback: UserFeedback) => void;
 }
 
@@ -88,7 +95,7 @@ const getStatusInfo = (status?: string | null) => {
 
 const paymentStatusMap = {
   paid: { label: "PAGO", className: "bg-emerald-50 text-emerald-700", textClass: "text-emerald-600" },
-  partial: { label: "SINAL PAGO", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
+  partial: { label: "PARCIAL", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
   pending: { label: "A RECEBER", className: "bg-gray-100 text-gray-500", textClass: "text-gray-500" },
 } as const;
 
@@ -107,9 +114,14 @@ export function AppointmentDetailsSheet({
   onStartSession,
   onSendCreatedMessage,
   onSendReminder,
+  onSendSurvey,
+  onSendPaymentCharge,
+  onSendPaymentReceipt,
   onConfirmClient,
   onCancelAppointment,
   onRecordPayment,
+  onSaveEvolution,
+  onStructureEvolution,
   onNotify,
 }: AppointmentDetailsSheetProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -117,6 +129,10 @@ export function AppointmentDetailsSheet({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
+  const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
+  const [evolutionDraft, setEvolutionDraft] = useState("");
+  const [evolutionSaving, setEvolutionSaving] = useState(false);
+  const [evolutionStructuring, setEvolutionStructuring] = useState(false);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -129,14 +145,21 @@ export function AppointmentDetailsSheet({
     if (!open) {
       setCancelDialogOpen(false);
       setDragOffset(0);
+      setEvolutionModalOpen(false);
+      setEvolutionSaving(false);
+      setEvolutionStructuring(false);
       dragOffsetRef.current = 0;
       return;
     }
     setCancelDialogOpen(false);
     setDragOffset(0);
     setPaymentMethod("pix");
+    setEvolutionModalOpen(false);
+    setEvolutionSaving(false);
+    setEvolutionStructuring(false);
+    setEvolutionDraft(details?.evolution?.[0]?.evolution_text?.trim() ?? "");
     dragOffsetRef.current = 0;
-  }, [open, details?.appointment?.id]);
+  }, [open, details?.appointment?.id, details?.evolution]);
 
   const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     dragStartRef.current = event.clientY;
@@ -213,7 +236,11 @@ export function AppointmentDetailsSheet({
 
   const createdMessage = messageByType(messages, "created_confirmation");
   const reminderMessage = messageByType(messages, "reminder_24h");
+  const paymentChargeMessage = messageByType(messages, "payment_charge");
+  const paymentReceiptMessage = messageByType(messages, "payment_receipt");
+  const postSurveyMessage = messageByType(messages, "post_survey");
   const appointmentStatus = appointment?.status ?? "pending";
+  const isCompleted = appointmentStatus === "completed";
   const shouldShowConfirmed = ["confirmed", "in_progress", "completed"].includes(appointmentStatus);
   const confirmedAt = shouldShowConfirmed ? attendance?.confirmed_at ?? null : null;
   const isConfirmed = Boolean(confirmedAt);
@@ -236,6 +263,17 @@ export function AppointmentDetailsSheet({
   const paidPayments = payments.filter((payment) => payment.status === "paid");
   const paidAmount = paidPayments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
   const lastPaid = paidPayments.length > 0 ? paidPayments[paidPayments.length - 1] : null;
+  const latestPaymentMethod = (() => {
+    if (!lastPaid) return "Não informado";
+    if (lastPaid.method === "pix") return "Pix";
+    if (lastPaid.method === "cash") return "Dinheiro";
+    if (lastPaid.method === "card") {
+      if (lastPaid.card_mode === "debit") return "Cartão débito";
+      if (lastPaid.card_mode === "credit") return "Cartão crédito";
+      return "Cartão";
+    }
+    return "Outro";
+  })();
   const paidAt = lastPaid?.paid_at ?? lastPaid?.created_at ?? null;
   const totalAmount = Number(details?.checkout?.total ?? appointment?.price ?? 0);
   const normalizedSignalPercentage = Number.isFinite(signalPercentage)
@@ -248,6 +286,27 @@ export function AppointmentDetailsSheet({
   const canRegisterSignal = paymentStatus === "pending" && paidAmount <= 0 && signalRemaining > 0;
   const canRegisterFull = paymentStatus !== "paid" && remainingAmount > 0;
   const showManualRegister = canRegisterSignal || canRegisterFull;
+  const paymentStatusLabel =
+    paymentStatus === "paid" ? "Pago" : paymentStatus === "partial" ? "Parcial" : "Não pago";
+  const hasReceiptSent = isMessageSent(paymentReceiptMessage?.status);
+  const hasChargeSent = isMessageSent(paymentChargeMessage?.status);
+  const hasSurveySent = isMessageSent(postSurveyMessage?.status);
+  const appointmentDurationMinutes = appointment?.actual_duration_minutes
+    ? Math.max(1, appointment.actual_duration_minutes)
+    : attendance?.actual_seconds
+      ? Math.max(1, Math.round(attendance.actual_seconds / 60))
+      : appointment?.total_duration_minutes ?? appointment?.service_duration_minutes ?? 0;
+  const durationLabel = appointmentDurationMinutes > 0 ? `${appointmentDurationMinutes} min` : "Não informado";
+  const followUpDateLabel =
+    details?.post?.follow_up_due_at
+      ? format(new Date(details.post.follow_up_due_at), "dd/MM/yyyy", { locale: ptBR })
+      : "Não definido";
+  const followUpNoteLabel =
+    details?.post?.follow_up_note?.trim() && details.post.follow_up_note.trim().length > 0
+      ? details.post.follow_up_note.trim()
+      : "Sem observação registrada";
+  const latestEvolutionText = details?.evolution?.[0]?.evolution_text?.trim() ?? "";
+  const evolutionPreviewText = latestEvolutionText || "Sem evolução registrada nesta sessão.";
   const paymentDateLabel = paidAt ? format(new Date(paidAt), "dd/MM", { locale: ptBR }) : "";
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -266,7 +325,10 @@ export function AppointmentDetailsSheet({
 
   const resolvePublicBaseUrl = () => {
     const raw = publicBaseUrl.trim();
-    if (!raw) return "";
+    if (!raw) {
+      if (typeof window === "undefined") return "";
+      return window.location.origin.replace(/\/$/, "");
+    }
     return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
   };
 
@@ -275,10 +337,12 @@ export function AppointmentDetailsSheet({
     return base ? `${base}/pagamento` : "";
   };
 
-  const buildReceiptLink = () => {
+  const buildReceiptLink = (paymentId?: string | null) => {
     const base = resolvePublicBaseUrl();
+    if (!base) return "";
+    if (paymentId) return `${base}/comprovante/pagamento/${paymentId}`;
     const appointmentId = appointment?.id;
-    return base && appointmentId ? `${base}/comprovante/${appointmentId}` : "";
+    return appointmentId ? `${base}/comprovante/${appointmentId}` : "";
   };
 
   const buildSignalChargeMessage = () => {
@@ -306,7 +370,7 @@ export function AppointmentDetailsSheet({
     const serviceName = appointment?.service_name ?? "";
     const paidValue = formatCurrency(paidAmount);
     const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
-    const receiptLink = buildReceiptLink();
+    const receiptLink = buildReceiptLink(lastPaid?.id ?? null);
     const receiptLine = receiptLink
       ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\nVocê pode baixar ou imprimir direto pelo link.\n\n`
       : "";
@@ -318,10 +382,10 @@ export function AppointmentDetailsSheet({
     }).trim();
   };
 
-  const buildPaidReceiptMessage = () => {
+  const buildPaidReceiptMessage = (paymentId?: string | null) => {
     const serviceName = appointment?.service_name ?? "";
     const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
-    const receiptLink = buildReceiptLink();
+    const receiptLink = buildReceiptLink(paymentId ?? lastPaid?.id ?? null);
     const receiptLine = receiptLink
       ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\nVocê pode baixar ou imprimir direto pelo link.\n\n`
       : "";
@@ -330,6 +394,26 @@ export function AppointmentDetailsSheet({
       service_name: serviceName,
       receipt_link_block: receiptLine,
     }).trim();
+  };
+
+  const handleStructureEvolution = async () => {
+    if (!onStructureEvolution || !evolutionDraft.trim()) return;
+    setEvolutionStructuring(true);
+    const result = await onStructureEvolution(evolutionDraft);
+    if (result.ok && result.structuredText) {
+      setEvolutionDraft(result.structuredText);
+    }
+    setEvolutionStructuring(false);
+  };
+
+  const handleSaveEvolution = async () => {
+    if (!onSaveEvolution) return;
+    setEvolutionSaving(true);
+    const result = await onSaveEvolution(evolutionDraft);
+    setEvolutionSaving(false);
+    if (result.ok) {
+      setEvolutionModalOpen(false);
+    }
   };
 
   return createPortal(
@@ -405,7 +489,209 @@ export function AppointmentDetailsSheet({
           )}
 
           {!loading && details && (
-            <div className="mt-6 space-y-5">
+            isCompleted ? (
+              <div className="mt-6 space-y-5">
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Logística
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                      <span className="text-xs font-bold text-studio-text block">{dateLabel}</span>
+                      <span className="text-[10px] font-bold text-muted uppercase">{timeLabel}</span>
+                    </div>
+                    <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                      <span className="text-xs font-bold text-studio-text block">{durationLabel}</span>
+                      <span className="text-[10px] font-bold text-muted uppercase">Duração</span>
+                    </div>
+                    <div className="bg-white rounded-2xl p-3 border border-line text-center">
+                      <span className="text-xs font-bold text-studio-text block">
+                        {isHomeVisit ? "Domicílio" : "Estúdio"}
+                      </span>
+                      <span className="text-[10px] font-bold text-muted uppercase">Local</span>
+                    </div>
+                  </div>
+                  {isHomeVisit && hasAddress && mapsHref && (
+                    <a
+                      href={mapsHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-dom-strong"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      Abrir localização
+                    </a>
+                  )}
+                </section>
+
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <Wallet className="w-3.5 h-3.5" />
+                    Pagamento
+                  </div>
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">Status</span>
+                      <span className={`font-extrabold ${paymentInfo.textClass}`}>{paymentStatusLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">Valor pago</span>
+                      <span className="font-bold text-studio-text">{formatCurrency(paidAmount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">Método</span>
+                      <span className="font-bold text-studio-text">{latestPaymentMethod}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">A receber</span>
+                      <span className="font-bold text-studio-text">{formatCurrency(remainingAmount)}</span>
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap gap-2">
+                      <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-stone-100 text-muted">
+                        {hasReceiptSent ? "Recibo enviado" : "Recibo pendente"}
+                      </span>
+                      <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-stone-100 text-muted">
+                        {hasChargeSent ? "Cobrança enviada" : "Cobrança pendente"}
+                      </span>
+                    </div>
+
+                    {paymentStatus !== "paid" && (
+                      <div className="border-t border-line pt-3">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                          Incluir pagamento manual
+                        </p>
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                          {([
+                            { key: "pix", label: "Pix" },
+                            { key: "card", label: "Cartão" },
+                            { key: "cash", label: "Dinheiro" },
+                          ] as const).map((item) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setPaymentMethod(item.key)}
+                              disabled={actionPending}
+                              className={`h-9 rounded-xl text-[10px] font-extrabold border transition ${
+                                paymentMethod === item.key
+                                  ? "border-studio-green bg-studio-light text-studio-green"
+                                  : "border-line text-muted hover:bg-paper"
+                              } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={onSendPaymentCharge}
+                            disabled={actionPending}
+                            className="h-10 rounded-xl border border-studio-text/10 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
+                          >
+                            {hasChargeSent ? "Reenviar cobrança" : "Enviar cobrança"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onRecordPayment?.({
+                                type: "full",
+                                amount: remainingAmount,
+                                method: paymentMethod,
+                              })
+                            }
+                            disabled={actionPending || remainingAmount <= 0}
+                            className="h-10 rounded-xl border border-studio-green bg-studio-light text-[10px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-60"
+                          >
+                            Incluir pagamento
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentStatus === "paid" && (
+                      <div className="border-t border-line pt-3">
+                        <button
+                          type="button"
+                          onClick={() => onSendPaymentReceipt(lastPaid?.id ?? null)}
+                          disabled={actionPending || !lastPaid?.id}
+                          className="w-full h-10 rounded-xl border border-studio-green bg-studio-light text-[10px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-60"
+                        >
+                          {!lastPaid?.id
+                            ? "Recibo indisponível"
+                            : hasReceiptSent
+                              ? "Reenviar recibo"
+                              : "Enviar recibo"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Avaliação e feedback
+                  </div>
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">Pesquisa</span>
+                      <span className="font-bold text-studio-text">{hasSurveySent ? "Enviada" : "Pendente"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">Resposta</span>
+                      <span className="font-bold text-studio-text">
+                        {details.post?.survey_score !== null && details.post?.survey_score !== undefined
+                          ? `Nota ${details.post?.survey_score}`
+                          : "Sem resposta"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onSendSurvey}
+                      disabled={actionPending}
+                      className="w-full h-10 rounded-xl border border-studio-text/10 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
+                    >
+                      {hasSurveySent ? "Reenviar pesquisa" : "Enviar pesquisa"}
+                    </button>
+                  </div>
+                </section>
+
+                <section>
+                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
+                    <Eye className="w-3.5 h-3.5" />
+                    Follow-up e evolução
+                  </div>
+                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">Próximo contato</span>
+                      <span className="font-bold text-studio-text">{followUpDateLabel}</span>
+                    </div>
+                    <div className="text-xs text-muted">{followUpNoteLabel}</div>
+
+                    <div className="rounded-xl border border-line bg-paper p-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted mb-1">
+                        Evolução da sessão
+                      </p>
+                      <p className="max-h-24 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-studio-text">
+                        {evolutionPreviewText}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setEvolutionModalOpen(true)}
+                      disabled={actionPending}
+                      className="mt-1 w-full h-10 rounded-xl bg-studio-green text-[10px] font-extrabold uppercase tracking-wide text-white disabled:opacity-60"
+                    >
+                      Editar evolução
+                    </button>
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <div className="mt-6 space-y-5">
               <section>
                 <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
                   <MapPin className="w-3.5 h-3.5" />
@@ -716,20 +1002,87 @@ export function AppointmentDetailsSheet({
                   </div>
                 )}
               </section>
-            </div>
+              </div>
+            )
           )}
         </div>
 
-        <div className="border-t border-line px-6 py-4 bg-white/95 backdrop-blur">
-          <button
-            type="button"
-            onClick={onStartSession}
-            disabled={!details || actionPending}
-            className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-60"
-          >
-            Iniciar sessão
-          </button>
-        </div>
+        {isCompleted && evolutionModalOpen && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center px-4">
+            <button
+              type="button"
+              aria-label="Fechar edição de evolução"
+              onClick={() => setEvolutionModalOpen(false)}
+              className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            />
+            <div className="relative z-10 w-full max-w-96 rounded-3xl border border-line bg-white shadow-float">
+              <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-studio-text">Evolução</p>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                    Edite sem sair do pós-atendimento
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEvolutionModalOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-studio-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 p-4">
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleStructureEvolution()}
+                    disabled={!onStructureEvolution || !evolutionDraft.trim() || evolutionStructuring || evolutionSaving || actionPending}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-studio-green/30 bg-white text-studio-green disabled:opacity-50"
+                    aria-label="Organizar com Flora"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <textarea
+                  value={evolutionDraft}
+                  onChange={(event) => setEvolutionDraft(event.target.value)}
+                  className="min-h-44 w-full resize-y rounded-2xl border border-line bg-paper p-4 text-sm text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  placeholder="Descreva a evolução da sessão..."
+                />
+
+                <p className="text-[11px] font-semibold text-muted">
+                  {evolutionStructuring
+                    ? "Flora está organizando o texto..."
+                    : "Edite livremente e, se quiser, use a varinha para estruturar."}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSaveEvolution()}
+                  disabled={!onSaveEvolution || evolutionSaving || evolutionStructuring || actionPending}
+                  className="h-11 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
+                >
+                  {evolutionSaving ? "Salvando..." : "Salvar evolução"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isCompleted && (
+          <div className="border-t border-line px-6 py-4 bg-white/95 backdrop-blur">
+            <button
+              type="button"
+              onClick={onStartSession}
+              disabled={!details || actionPending}
+              className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-60"
+            >
+              Ver atendimento
+            </button>
+          </div>
+        )}
       </div>
 
       {cancelDialogOpen && (
