@@ -6,14 +6,41 @@ export const dynamic = "force-dynamic";
 
 function resolveRequestOrigin(request: NextRequest) {
   const host =
-    request.headers.get("x-forwarded-host")?.trim() ||
-    request.headers.get("host")?.trim();
+    extractForwardedHeaderValue(request.headers.get("x-forwarded-host")) ??
+    extractForwardedHeaderValue(request.headers.get("host"));
   const proto =
-    request.headers.get("x-forwarded-proto")?.trim() ||
-    request.nextUrl.protocol.replace(":", "");
+    resolveForwardedProto(request.headers.get("x-forwarded-proto")) ??
+    resolveForwardedProto(request.nextUrl.protocol.replace(":", ""));
 
-  if (host && proto) return `${proto}://${host}`;
+  if (host && proto && isValidOriginParts(host, proto)) {
+    return `${proto}://${host}`;
+  }
+
   return request.nextUrl.origin;
+}
+
+function extractForwardedHeaderValue(value: string | null) {
+  if (!value) return null;
+  const firstValue = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return firstValue ?? null;
+}
+
+function resolveForwardedProto(value: string | null) {
+  const normalized = extractForwardedHeaderValue(value)?.toLowerCase();
+  if (normalized === "http" || normalized === "https") return normalized;
+  return null;
+}
+
+function isValidOriginParts(host: string, proto: "http" | "https") {
+  try {
+    const url = new URL(`${proto}://${host}`);
+    return url.host.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -40,4 +67,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(data.url);
 }
-
