@@ -4,6 +4,21 @@ import { getDashboardAuthRedirectPath } from "../../../src/modules/auth/dashboar
 
 export const dynamic = "force-dynamic";
 
+function extractForwardedHeaderValue(value: string | null) {
+  if (!value) return null;
+  const firstValue = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return firstValue ?? null;
+}
+
+function resolveForwardedProto(value: string | null) {
+  const normalized = extractForwardedHeaderValue(value)?.toLowerCase();
+  if (normalized === "http" || normalized === "https") return normalized;
+  return null;
+}
+
 function isTrustedRedirectHost(host: string, fallbackHost: string) {
   const normalizedHost = host.trim().toLowerCase();
   const normalizedFallback = fallbackHost.trim().toLowerCase();
@@ -29,7 +44,7 @@ function resolveRequestOrigin(request: NextRequest) {
     return fallbackOrigin;
   }
 
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.trim().toLowerCase();
+  const forwardedProto = resolveForwardedProto(request.headers.get("x-forwarded-proto"));
   const proto =
     forwardedProto === "http" || forwardedProto === "https"
       ? forwardedProto
