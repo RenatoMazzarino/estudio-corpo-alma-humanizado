@@ -25,8 +25,8 @@ function resolveRequestOrigin(request: NextRequest) {
   const fallbackOrigin = request.nextUrl.origin;
   const fallbackHost = request.nextUrl.host;
   const host =
-    extractForwardedHeaderValue(request.headers.get("host")) ??
-    extractForwardedHeaderValue(request.headers.get("x-forwarded-host"));
+    extractForwardedHeaderValue(request.headers.get("x-forwarded-host")) ??
+    extractForwardedHeaderValue(request.headers.get("host"));
   const proto =
     resolveForwardedProto(request.headers.get("x-forwarded-proto")) ??
     resolveForwardedProto(request.nextUrl.protocol.replace(":", ""));

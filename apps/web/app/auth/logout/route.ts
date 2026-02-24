@@ -39,7 +39,9 @@ function isTrustedRedirectHost(host: string, fallbackHost: string) {
 function resolveRequestOrigin(request: NextRequest) {
   const fallbackOrigin = request.nextUrl.origin;
   const fallbackHost = request.nextUrl.host;
-  const host = request.headers.get("host")?.trim();
+  const host =
+    extractForwardedHeaderValue(request.headers.get("x-forwarded-host")) ??
+    extractForwardedHeaderValue(request.headers.get("host"));
   if (!host || !isTrustedRedirectHost(host, fallbackHost)) {
     return fallbackOrigin;
   }
