@@ -212,7 +212,13 @@ export async function getDashboardAccessForCurrentUser(): Promise<DashboardAcces
 
 export function getDashboardAuthRedirectPath(params?: {
   next?: string | null;
-  reason?: DashboardAccessFailureReason | "signed_out" | "oauth_error" | "forbidden";
+  reason?:
+    | DashboardAccessFailureReason
+    | "signed_out"
+    | "oauth_error"
+    | "forbidden"
+    | "dev_login_error"
+    | "dev_login_disabled";
 }) {
   const next = sanitizeInternalPath(params?.next, "/");
   const search = new URLSearchParams();
