@@ -181,6 +181,15 @@ const mapFailureReasonForUser = (rawMessage: string | null | undefined) => {
       technicalMessage: message,
     };
   }
+  if (
+    normalized.includes("janela de conversa de 24h") ||
+    normalized.includes("customer service window")
+  ) {
+    return {
+      userMessage: "Janela de conversa de 24h não está aberta para este agendamento.",
+      technicalMessage: message,
+    };
+  }
 
   return {
     userMessage: "Falha no envio automático. Verifique o detalhe técnico para diagnóstico.",
@@ -196,6 +205,9 @@ const inferTemplateName = (job: JobRow, automation: Record<string, unknown>) => 
   }
   if (job.type === "appointment_reminder") {
     return WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME || "Modelo não informado";
+  }
+  if (job.type === "appointment_canceled") {
+    return "Mensagem livre (janela 24h)";
   }
   return "Modelo não informado";
 };
@@ -225,6 +237,30 @@ const buildJourneySteps = (job: JobRow) => {
 
   if (job.scheduled_for) {
     steps.push({ key: "scheduled", label: "Agendado para processamento", at: job.scheduled_for });
+  }
+
+  const customerWindowCheckedAt =
+    typeof automation.customer_service_window_checked_at === "string"
+      ? automation.customer_service_window_checked_at
+      : null;
+  if (customerWindowCheckedAt) {
+    const result =
+      typeof automation.customer_service_window_result === "string"
+        ? automation.customer_service_window_result
+        : null;
+    steps.push({
+      key: "customer_window_checked",
+      label: "Janela de 24h verificada",
+      at: customerWindowCheckedAt,
+      note:
+        result === "open"
+          ? "Janela aberta"
+          : result === "expired"
+            ? "Janela expirada"
+            : result === "no_inbound"
+              ? "Cliente ainda não respondeu"
+              : null,
+    });
   }
 
   const retryScheduledAt =
@@ -299,6 +335,22 @@ const buildJourneySteps = (job: JobRow) => {
       label: "Falha registrada",
       at: failedAt,
       note: failMap.userMessage,
+    });
+  }
+
+  const skippedReasonLabel =
+    typeof automation.skipped_reason_label === "string" ? automation.skipped_reason_label : null;
+  if (skippedReasonLabel) {
+    const skippedAt =
+      (typeof automation.customer_service_window_checked_at === "string" &&
+        automation.customer_service_window_checked_at) ||
+      job.updated_at ||
+      job.created_at;
+    steps.push({
+      key: "skipped_auto",
+      label: "Envio ignorado",
+      at: skippedAt,
+      note: skippedReasonLabel,
     });
   }
 

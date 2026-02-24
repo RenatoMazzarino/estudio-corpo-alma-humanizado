@@ -167,7 +167,10 @@ export async function finishAppointment(id: string): Promise<ActionResult<{ id: 
   return ok({ id });
 }
 
-export async function cancelAppointment(id: string): Promise<ActionResult<{ id: string }>> {
+export async function cancelAppointment(
+  id: string,
+  options?: { notifyClient?: boolean }
+): Promise<ActionResult<{ id: string }>> {
   const parsed = cancelAppointmentSchema.safeParse({ id });
   if (!parsed.success) {
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
@@ -193,6 +196,7 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
     tenantId: FIXED_TENANT_ID,
     appointmentId: id,
     source: "admin_cancel",
+    notifyClient: options?.notifyClient === true,
   });
 
   revalidatePath("/");

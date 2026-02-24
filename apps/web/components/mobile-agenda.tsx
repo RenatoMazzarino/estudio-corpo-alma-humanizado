@@ -892,10 +892,10 @@ export function MobileAgenda({
     setDetailsActionPending(false);
   };
 
-  const handleCancelAppointment = async () => {
+  const handleCancelAppointment = async (options?: { notifyClient?: boolean }) => {
     if (!detailsData) return;
     setDetailsActionPending(true);
-    const result = await cancelAppointment(detailsData.appointment.id);
+    const result = await cancelAppointment(detailsData.appointment.id, options);
     if (!result.ok) {
       showToast(feedbackFromError(result.error, "attendance"));
       setDetailsActionPending(false);

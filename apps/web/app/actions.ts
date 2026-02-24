@@ -38,10 +38,10 @@ export async function finishAppointment(id: string) {
   return finishAppointmentImpl(id);
 }
 
-export async function cancelAppointment(id: string) {
+export async function cancelAppointment(id: string, options?: { notifyClient?: boolean }) {
 
   await requireDashboardAccessForServerAction();
-  return cancelAppointmentImpl(id);
+  return cancelAppointmentImpl(id, options);
 }
 
 export async function appointmentExists(

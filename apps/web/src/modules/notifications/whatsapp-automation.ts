@@ -52,6 +52,7 @@ interface ScheduleCanceledParams {
   tenantId: string;
   appointmentId: string;
   source: QueueSource;
+  notifyClient?: boolean;
 }
 
 interface ProcessJobsParams {
@@ -102,6 +103,14 @@ interface AppointmentTemplateContext {
   dateLabel: string;
   timeLabel: string;
   locationLine: string;
+}
+
+interface CustomerServiceWindowCheckResult {
+  isOpen: boolean;
+  reason: "open" | "no_inbound" | "expired";
+  checkedAt: string;
+  lastInboundAt: string | null;
+  customerWaId: string | null;
 }
 
 type MetaWebhookStatusItem = {
@@ -568,9 +577,12 @@ async function enqueueNotificationJobWithAutomationGuard(payload: NotificationJo
     return { skipped: true as const, reason: "duplicate_pending" as const, jobId: existingPendingDuplicate.id };
   }
 
+  const basePayload = asJsonObject(payload.payload ?? {});
+  const existingAutomation = asJsonObject(basePayload.automation as Json | undefined);
   const enrichedPayload = {
-    ...asJsonObject(payload.payload ?? {}),
+    ...basePayload,
     automation: {
+      ...existingAutomation,
       queued_at: new Date().toISOString(),
       source,
       mode_at_queue_time: WHATSAPP_AUTOMATION_MODE,
@@ -655,10 +667,73 @@ export async function scheduleAppointmentLifecycleNotifications(params: Schedule
 }
 
 export async function scheduleAppointmentCanceledNotification(params: ScheduleCanceledParams) {
-  // Cancelamento ainda não foi implementado com template aprovado.
-  // Mantemos o fluxo manual e evitamos poluir a fila automática até essa etapa.
-  void params;
-  return;
+  if (!params.notifyClient) {
+    return;
+  }
+  if (!WHATSAPP_AUTOMATION_QUEUE_ENABLED) {
+    return;
+  }
+  if (!isWhatsAppAutomationTenantAllowed(params.tenantId)) {
+    await logAppointmentAutomationMessage({
+      tenantId: params.tenantId,
+      appointmentId: params.appointmentId,
+      type: "auto_appointment_canceled",
+      status: "skipped_auto",
+      payload: {
+        automation: {
+          skipped_reason: "tenant_not_allowed",
+          skipped_reason_label: "Este cliente ainda não está liberado para automação.",
+          customer_service_window_checked_at: new Date().toISOString(),
+        },
+      } as Json,
+    });
+    return;
+  }
+
+  const windowCheck = await hasOpenCustomerServiceWindowForAppointment(params.tenantId, params.appointmentId);
+  if (!windowCheck.isOpen || !windowCheck.customerWaId) {
+    await logAppointmentAutomationMessage({
+      tenantId: params.tenantId,
+      appointmentId: params.appointmentId,
+      type: "auto_appointment_canceled",
+      status: "skipped_auto",
+      payload: {
+        automation: {
+          skipped_reason:
+            windowCheck.reason === "no_inbound"
+              ? "customer_service_window_no_inbound"
+              : "customer_service_window_expired",
+          skipped_reason_label:
+            windowCheck.reason === "no_inbound"
+              ? "Cliente ainda não respondeu no WhatsApp para este agendamento."
+              : "Janela de conversa de 24h expirou.",
+          customer_service_window_checked_at: windowCheck.checkedAt,
+          customer_service_window_last_inbound_at: windowCheck.lastInboundAt,
+          customer_service_window_result: windowCheck.reason,
+        },
+      } as Json,
+    });
+    return;
+  }
+
+  await enqueueNotificationJobWithAutomationGuard({
+    tenant_id: params.tenantId,
+    appointment_id: params.appointmentId,
+    type: "appointment_canceled",
+    channel: "whatsapp",
+    payload: {
+      appointment_id: params.appointmentId,
+      automation: {
+        customer_service_window_checked_at: windowCheck.checkedAt,
+        customer_service_window_last_inbound_at: windowCheck.lastInboundAt,
+        customer_service_window_result: "open",
+        customer_wa_id: windowCheck.customerWaId,
+      },
+    } as Json,
+    status: "pending",
+    scheduled_for: new Date().toISOString(),
+    source: params.source,
+  });
 }
 
 async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<DeliveryResult> {
@@ -684,11 +759,11 @@ async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<Del
   if (job.type === "appointment_reminder") {
     return sendMetaCloudReminderAppointmentTemplate(job);
   }
+  if (job.type === "appointment_canceled") {
+    return sendMetaCloudCanceledAppointmentSessionMessage(job);
+  }
 
-  // Cancelamento ainda segue desativado até template aprovado.
-  throw new Error(
-    `Template automático para '${job.type}' ainda não implementado.`
-  );
+  throw new Error(`Template automático para '${job.type}' ainda não implementado.`);
 }
 
 export async function processPendingWhatsAppNotificationJobs(params?: ProcessJobsParams) {
@@ -1040,7 +1115,7 @@ function resolvePublicBaseUrlFromWebhookOrigin(webhookOrigin?: string) {
 
 function buildAppointmentVoucherLink(appointmentId: string, webhookOrigin?: string) {
   const base = resolvePublicBaseUrlFromWebhookOrigin(webhookOrigin);
-  return `${base}/comprovante/${appointmentId}`;
+  return `${base}/voucher/${appointmentId}`;
 }
 
 function buildButtonReplyAutoMessage(params: {
@@ -1070,6 +1145,111 @@ function buildButtonReplyAutoMessage(params: {
     default:
       return "Recebemos sua resposta. Obrigada! 🌿";
   }
+}
+
+function buildCanceledAppointmentSessionMessage(context: AppointmentTemplateContext) {
+  return (
+    `Olá, ${context.clientName}! Tudo bem?\n\n` +
+    "Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado. 🌿\n\n" +
+    "⚠️ Estou passando para avisar que o horário abaixo foi cancelado:\n\n" +
+    `✨ *Seu cuidado:* ${context.serviceName}\n` +
+    `🗓️ *Horário cancelado:* ${context.dateLabel}, às ${context.timeLabel}\n` +
+    `📍 *Nosso ponto de encontro:* ${context.locationLine}\n\n` +
+    "Se precisar, responda por aqui que ajudamos com um novo horário.\n\n" +
+    "Flora | Estúdio Corpo & Alma Humanizado"
+  );
+}
+
+async function sendMetaCloudCanceledAppointmentSessionMessage(job: NotificationJobRow): Promise<DeliveryResult> {
+  assertMetaCloudConfigBase();
+  const { automation } = getAutomationPayload(job.payload);
+  const customerWaId =
+    typeof automation.customer_wa_id === "string" ? onlyDigits(automation.customer_wa_id) : "";
+  if (!customerWaId) {
+    throw new Error("Janela de conversa de 24h não está aberta para este agendamento.");
+  }
+
+  const context = await loadAppointmentTemplateContext(job);
+  const messageText = buildCanceledAppointmentSessionMessage(context);
+  const outbound = await sendMetaCloudTextMessage({ to: customerWaId, text: messageText });
+
+  return {
+    providerMessageId: outbound.providerMessageId,
+    deliveredAt: outbound.deliveredAt,
+    deliveryMode: "meta_cloud_session_appointment_canceled",
+    messagePreview:
+      `Meta session cancel -> ${customerWaId} • ${context.clientName} • ${context.serviceName} • ` +
+      `${context.dateLabel} ${context.timeLabel}`,
+    templateName: null,
+    templateLanguage: null,
+    recipient: customerWaId,
+    providerName: "meta_cloud",
+    providerResponse: outbound.payload ?? null,
+  };
+}
+
+async function hasOpenCustomerServiceWindowForAppointment(
+  tenantId: string,
+  appointmentId: string,
+  now = new Date()
+): Promise<CustomerServiceWindowCheckResult> {
+  const supabase = createServiceClient();
+  const checkedAt = now.toISOString();
+  const { data, error } = await supabase
+    .from("appointment_messages")
+    .select("created_at, payload")
+    .eq("tenant_id", tenantId)
+    .eq("appointment_id", appointmentId)
+    .eq("type", "auto_appointment_reply_inbound")
+    .eq("status", "received_auto_reply")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[whatsapp-automation] Falha ao verificar janela 24h:", error);
+    return {
+      isOpen: false,
+      reason: "no_inbound",
+      checkedAt,
+      lastInboundAt: null,
+      customerWaId: null,
+    };
+  }
+
+  const payload = asJsonObject((data?.payload ?? null) as Json | null | undefined);
+  const lastInboundAt = typeof data?.created_at === "string" ? data.created_at : null;
+  const customerWaId = typeof payload.from === "string" ? onlyDigits(payload.from) : null;
+  if (!lastInboundAt || !customerWaId) {
+    return {
+      isOpen: false,
+      reason: "no_inbound",
+      checkedAt,
+      lastInboundAt: lastInboundAt ?? null,
+      customerWaId: customerWaId ?? null,
+    };
+  }
+
+  const lastInboundDate = new Date(lastInboundAt);
+  if (Number.isNaN(lastInboundDate.getTime())) {
+    return {
+      isOpen: false,
+      reason: "no_inbound",
+      checkedAt,
+      lastInboundAt,
+      customerWaId,
+    };
+  }
+
+  const diffMs = now.getTime() - lastInboundDate.getTime();
+  const within24h = diffMs >= 0 && diffMs <= 24 * 60 * 60 * 1000;
+  return {
+    isOpen: within24h,
+    reason: within24h ? "open" : "expired",
+    checkedAt,
+    lastInboundAt,
+    customerWaId,
+  };
 }
 
 async function processMetaCloudWebhookInboundMessages(params: {
