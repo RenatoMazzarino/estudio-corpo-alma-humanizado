@@ -1,9 +1,12 @@
 import { createServiceClient } from "../../../lib/supabase/service";
 import type { Json } from "../../../lib/supabase/types";
+import { BRAZIL_TIME_ZONE } from "../../shared/timezone";
 import {
   WHATSAPP_AUTOMATION_ALLOWED_TENANT_IDS,
   WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE,
   WHATSAPP_AUTOMATION_BATCH_LIMIT,
+  WHATSAPP_AUTOMATION_LOCAL_POLLER_ENABLED,
+  WHATSAPP_AUTOMATION_LOCAL_POLLER_INTERVAL_SECONDS,
   WHATSAPP_AUTOMATION_MAX_RETRIES,
   WHATSAPP_AUTOMATION_MODE,
   WHATSAPP_AUTOMATION_PROVIDER,
@@ -12,11 +15,16 @@ import {
   isWhatsAppAutomationTenantAllowed,
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN,
   WHATSAPP_AUTOMATION_META_API_VERSION,
+  WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
+  WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
   WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_LANGUAGE,
   WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_NAME,
+  WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
+  WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID,
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT,
   WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE,
+  WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE,
 } from "./automation-config";
 import {
   findNotificationJobByProviderMessageId,
@@ -72,12 +80,30 @@ interface ProcessSummary {
   }>;
 }
 
+type LocalPollerState = {
+  started: boolean;
+  running: boolean;
+  timer: NodeJS.Timeout | null;
+};
+
 interface DeliveryResult {
   providerMessageId: string | null;
   deliveredAt: string;
   deliveryMode: string;
   messagePreview: string;
+  templateName?: string | null;
+  templateLanguage?: string | null;
+  recipient?: string | null;
+  providerName?: string | null;
   providerResponse?: Record<string, unknown> | null;
+}
+
+interface AppointmentTemplateContext {
+  clientName: string;
+  serviceName: string;
+  dateLabel: string;
+  timeLabel: string;
+  locationLine: string;
 }
 
 type MetaWebhookStatusItem = {
@@ -140,6 +166,7 @@ const buildAutomationMessagePreview = (job: NotificationJobRow) => {
 };
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
+const capitalizeFirst = (value: string) => (value ? `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}` : value);
 
 const parseJsonResponse = async (response: Response) => {
   try {
@@ -148,6 +175,41 @@ const parseJsonResponse = async (response: Response) => {
     return null;
   }
 };
+
+function extractMetaApiErrorMessage(payload: Record<string, unknown> | null, status: number) {
+  if (
+    payload &&
+    typeof payload.error === "object" &&
+    payload.error &&
+    "message" in payload.error &&
+    typeof payload.error.message === "string"
+  ) {
+    return payload.error.message;
+  }
+  return `Meta WhatsApp API respondeu ${status}.`;
+}
+
+function extractMetaStatusFailureMessage(errors: unknown) {
+  if (!Array.isArray(errors)) return null;
+  const parts = errors
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const obj = entry as Record<string, unknown>;
+      const code =
+        typeof obj.code === "number"
+          ? String(obj.code)
+          : typeof obj.code === "string"
+            ? obj.code
+            : null;
+      const title = typeof obj.title === "string" ? obj.title.trim() : "";
+      const message = typeof obj.message === "string" ? obj.message.trim() : "";
+      const text = message || title || null;
+      if (!code && !text) return null;
+      return code && text ? `${code}: ${text}` : code ?? text;
+    })
+    .filter((value): value is string => Boolean(value));
+  return parts.length > 0 ? parts.join(" | ") : null;
+}
 
 const isRetryableDeliveryError = (message: string) => {
   const normalized = message.toLowerCase();
@@ -181,16 +243,122 @@ function getMetaCloudHelloWorldTestRecipient() {
   return recipient;
 }
 
-async function sendMetaCloudHelloWorldTemplate(job: NotificationJobRow): Promise<DeliveryResult> {
+function assertMetaCloudConfigBase() {
   if (!WHATSAPP_AUTOMATION_META_ACCESS_TOKEN) {
     throw new Error("WHATSAPP_AUTOMATION_META_ACCESS_TOKEN não configurado.");
   }
   if (!WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID) {
     throw new Error("WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID não configurado.");
   }
+}
+
+function getMetaCloudMessagesUrl() {
+  return `https://graph.facebook.com/${WHATSAPP_AUTOMATION_META_API_VERSION}/${WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID}/messages`;
+}
+
+function formatAppointmentDateForTemplate(startTimeIso: string) {
+  const date = new Date(startTimeIso);
+  if (Number.isNaN(date.getTime())) {
+    return { dateLabel: "--", timeLabel: "--:--" };
+  }
+
+  const weekday = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    timeZone: BRAZIL_TIME_ZONE,
+  }).format(date);
+  const dayMonth = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: BRAZIL_TIME_ZONE,
+  }).format(date);
+  const time = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: BRAZIL_TIME_ZONE,
+  }).format(date);
+
+  return {
+    dateLabel: `${capitalizeFirst(weekday)}, ${dayMonth}`,
+    timeLabel: time,
+  };
+}
+
+function resolveLocationLineFromAppointmentRecord(record: Record<string, unknown>) {
+  const isHomeVisit = Boolean(record.is_home_visit);
+  const clients = asJsonObject(record.clients as Json | undefined);
+  const clientAddress =
+    (typeof clients.endereco_completo === "string" && clients.endereco_completo.trim()) ||
+    [
+      record.address_logradouro,
+      record.address_numero,
+      record.address_bairro,
+      record.address_cidade,
+      record.address_estado,
+    ]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(", ");
+
+  if (isHomeVisit) {
+    return clientAddress
+      ? `No endereço informado: ${clientAddress}`
+      : "Atendimento domiciliar (endereço a confirmar)";
+  }
+  return WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE
+    ? `No estúdio: ${WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE}`
+    : "No estúdio";
+}
+
+async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<AppointmentTemplateContext> {
+  if (!job.appointment_id) {
+    throw new Error("Job sem appointment_id para montar template de agendamento.");
+  }
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(
+      "id, tenant_id, start_time, service_name, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients(name, endereco_completo)"
+    )
+    .eq("id", job.appointment_id)
+    .eq("tenant_id", job.tenant_id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("Falha ao carregar dados do agendamento para template WhatsApp.");
+  }
+  if (!data) {
+    throw new Error("Agendamento não encontrado para template WhatsApp.");
+  }
+
+  const record = data as unknown as Record<string, unknown>;
+  const client = asJsonObject(record.clients as Json | undefined);
+  const clientName =
+    (typeof client.name === "string" && client.name.trim()) || "Cliente";
+  const serviceName =
+    (typeof record.service_name === "string" && record.service_name.trim()) || "Seu atendimento";
+  const startTimeIso =
+    (typeof record.start_time === "string" && record.start_time) ||
+    (typeof asJsonObject(job.payload).start_time === "string"
+      ? (asJsonObject(job.payload).start_time as string)
+      : "");
+  const { dateLabel, timeLabel } = formatAppointmentDateForTemplate(startTimeIso);
+
+  return {
+    clientName,
+    serviceName,
+    dateLabel,
+    timeLabel,
+    locationLine: resolveLocationLineFromAppointmentRecord(record),
+  };
+}
+
+async function sendMetaCloudHelloWorldTemplate(job: NotificationJobRow): Promise<DeliveryResult> {
+  assertMetaCloudConfigBase();
 
   const to = getMetaCloudHelloWorldTestRecipient();
-  const url = `https://graph.facebook.com/${WHATSAPP_AUTOMATION_META_API_VERSION}/${WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID}/messages`;
+  const url = getMetaCloudMessagesUrl();
   const requestBody = {
     messaging_product: "whatsapp",
     to,
@@ -214,14 +382,7 @@ async function sendMetaCloudHelloWorldTemplate(job: NotificationJobRow): Promise
 
   const payload = await parseJsonResponse(response);
   if (!response.ok) {
-    const message =
-      typeof payload?.error === "object" &&
-      payload.error &&
-      "message" in payload.error &&
-      typeof payload.error.message === "string"
-        ? payload.error.message
-        : `Meta WhatsApp API respondeu ${response.status}.`;
-    throw new Error(message);
+    throw new Error(extractMetaApiErrorMessage(payload, response.status));
   }
 
   const messages = Array.isArray(payload?.messages) ? payload.messages : [];
@@ -236,6 +397,150 @@ async function sendMetaCloudHelloWorldTemplate(job: NotificationJobRow): Promise
     deliveredAt: new Date().toISOString(),
     deliveryMode: "meta_cloud_test_hello_world",
     messagePreview: `Meta hello_world (${job.type}) -> ${to}`,
+    templateName: WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_NAME,
+    templateLanguage: WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_LANGUAGE,
+    recipient: to,
+    providerName: "meta_cloud",
+    providerResponse: payload,
+  };
+}
+
+async function sendMetaCloudCreatedAppointmentTemplate(job: NotificationJobRow): Promise<DeliveryResult> {
+  assertMetaCloudConfigBase();
+  if (!WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME) {
+    throw new Error("WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME não configurado.");
+  }
+
+  const to = getMetaCloudHelloWorldTestRecipient();
+  const context = await loadAppointmentTemplateContext(job);
+  const url = getMetaCloudMessagesUrl();
+
+  const requestBody = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
+      language: {
+        code: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
+      },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: context.clientName },
+            { type: "text", text: context.serviceName },
+            { type: "text", text: context.dateLabel },
+            { type: "text", text: context.timeLabel },
+            { type: "text", text: context.locationLine },
+          ],
+        },
+      ],
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${WHATSAPP_AUTOMATION_META_ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(extractMetaApiErrorMessage(payload, response.status));
+  }
+
+  const messages = Array.isArray(payload?.messages) ? payload.messages : [];
+  const firstMessage = messages[0];
+  const providerMessageId =
+    firstMessage && typeof firstMessage === "object" && "id" in firstMessage && typeof firstMessage.id === "string"
+      ? firstMessage.id
+      : null;
+
+  return {
+    providerMessageId,
+    deliveredAt: new Date().toISOString(),
+    deliveryMode: "meta_cloud_template_created_appointment",
+    messagePreview:
+      `Meta template created (${WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME}) -> ${to} ` +
+      `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}`,
+    templateName: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
+    templateLanguage: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
+    recipient: to,
+    providerName: "meta_cloud",
+    providerResponse: payload,
+  };
+}
+
+async function sendMetaCloudReminderAppointmentTemplate(job: NotificationJobRow): Promise<DeliveryResult> {
+  assertMetaCloudConfigBase();
+  if (!WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME) {
+    throw new Error("WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME não configurado.");
+  }
+
+  const to = getMetaCloudHelloWorldTestRecipient();
+  const context = await loadAppointmentTemplateContext(job);
+  const url = getMetaCloudMessagesUrl();
+
+  const requestBody = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
+      language: {
+        code: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
+      },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: context.clientName },
+            { type: "text", text: context.serviceName },
+            { type: "text", text: context.dateLabel },
+            { type: "text", text: context.timeLabel },
+            { type: "text", text: context.locationLine },
+          ],
+        },
+      ],
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${WHATSAPP_AUTOMATION_META_ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  const payload = await parseJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(extractMetaApiErrorMessage(payload, response.status));
+  }
+
+  const messages = Array.isArray(payload?.messages) ? payload.messages : [];
+  const firstMessage = messages[0];
+  const providerMessageId =
+    firstMessage && typeof firstMessage === "object" && "id" in firstMessage && typeof firstMessage.id === "string"
+      ? firstMessage.id
+      : null;
+
+  return {
+    providerMessageId,
+    deliveredAt: new Date().toISOString(),
+    deliveryMode: "meta_cloud_template_appointment_reminder",
+    messagePreview:
+      `Meta template reminder (${WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME}) -> ${to} ` +
+      `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}`,
+    templateName: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
+    templateLanguage: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
+    recipient: to,
+    providerName: "meta_cloud",
     providerResponse: payload,
   };
 }
@@ -406,10 +711,16 @@ async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<Del
   if (WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE) {
     return sendMetaCloudHelloWorldTemplate(job);
   }
+  if (job.type === "appointment_created") {
+    return sendMetaCloudCreatedAppointmentTemplate(job);
+  }
+  if (job.type === "appointment_reminder") {
+    return sendMetaCloudReminderAppointmentTemplate(job);
+  }
 
-  // Próxima etapa: template real baseado no tipo do job (created/reminder/canceled).
+  // Cancelamento ainda segue pendente até template aprovado.
   throw new Error(
-    "Provedor Meta configurado, mas o envio real por tipo de evento ainda não foi implementado. Ative WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE=true para teste end-to-end."
+    `Template automático para '${job.type}' ainda não implementado. Ative WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE=true para teste, ou implemente o template desse tipo.`
   );
 }
 
@@ -475,8 +786,13 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
         automation: {
           ...(asJsonObject(job.payload).automation as Record<string, unknown> | undefined),
           processed_at: delivery.deliveredAt,
+          provider_accepted_at: delivery.deliveredAt,
+          provider_name: delivery.providerName ?? null,
           delivery_mode: delivery.deliveryMode,
           provider_message_id: delivery.providerMessageId,
+          template_name: delivery.templateName ?? null,
+          template_language: delivery.templateLanguage ?? null,
+          recipient: delivery.recipient ?? null,
           message_preview: delivery.messagePreview,
           provider_response: delivery.providerResponse ?? null,
         },
@@ -624,6 +940,8 @@ export function getWhatsAppAutomationRuntimeConfig() {
     batchLimit: WHATSAPP_AUTOMATION_BATCH_LIMIT,
     maxRetries: WHATSAPP_AUTOMATION_MAX_RETRIES,
     retryBaseDelaySeconds: WHATSAPP_AUTOMATION_RETRY_BASE_DELAY_SECONDS,
+    localPollerEnabled: WHATSAPP_AUTOMATION_LOCAL_POLLER_ENABLED,
+    localPollerIntervalSeconds: WHATSAPP_AUTOMATION_LOCAL_POLLER_INTERVAL_SECONDS,
     allowedTenantIdsCount: WHATSAPP_AUTOMATION_ALLOWED_TENANT_IDS.length,
     meta: {
       helloWorldTestMode: WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE,
@@ -633,8 +951,61 @@ export function getWhatsAppAutomationRuntimeConfig() {
       testRecipientConfigured: Boolean(onlyDigits(WHATSAPP_AUTOMATION_META_TEST_RECIPIENT)),
       helloWorldTemplateName: WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_NAME,
       helloWorldTemplateLanguage: WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_LANGUAGE,
+      createdTemplateName: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
+      createdTemplateLanguage: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
+      reminderTemplateName: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
+      reminderTemplateLanguage: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
+      studioLocationLineConfigured: Boolean(WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE),
     },
   };
+}
+
+function getLocalPollerState(): LocalPollerState {
+  const globalRef = globalThis as typeof globalThis & {
+    __whatsappAutomationLocalPollerState?: LocalPollerState;
+  };
+  if (!globalRef.__whatsappAutomationLocalPollerState) {
+    globalRef.__whatsappAutomationLocalPollerState = {
+      started: false,
+      running: false,
+      timer: null,
+    };
+  }
+  return globalRef.__whatsappAutomationLocalPollerState;
+}
+
+function startLocalWhatsAppAutomationPollerIfNeeded() {
+  if (typeof window !== "undefined") return;
+  if (!WHATSAPP_AUTOMATION_LOCAL_POLLER_ENABLED) return;
+  if (process.env.NODE_ENV === "production") return;
+
+  const state = getLocalPollerState();
+  if (state.started) return;
+  state.started = true;
+
+  const intervalMs = Math.max(5, WHATSAPP_AUTOMATION_LOCAL_POLLER_INTERVAL_SECONDS) * 1000;
+  state.timer = setInterval(async () => {
+    if (state.running) return;
+    if (WHATSAPP_AUTOMATION_MODE === "disabled") return;
+    state.running = true;
+    try {
+      const summary = await processPendingWhatsAppNotificationJobs({ limit: 5 });
+      if (summary.sent > 0 || summary.failed > 0) {
+        console.log(
+          `[whatsapp-automation] Local poller processou jobs: sent=${summary.sent} failed=${summary.failed} skipped=${summary.skipped}`
+        );
+      }
+    } catch (error) {
+      console.error("[whatsapp-automation] Falha no local poller:", error);
+    } finally {
+      state.running = false;
+    }
+  }, intervalMs);
+  state.timer.unref?.();
+
+  console.log(
+    `[whatsapp-automation] Local poller ativo (${WHATSAPP_AUTOMATION_LOCAL_POLLER_INTERVAL_SECONDS}s) para jobs agendados.`
+  );
 }
 
 function normalizeMetaStatus(status: string | undefined) {
@@ -708,12 +1079,14 @@ export async function processMetaCloudWebhookStatusEvents(payload: Record<string
           pricing: statusItem.pricing ?? null,
           errors: statusItem.errors ?? null,
         };
+        const statusFailureMessage = extractMetaStatusFailureMessage(statusItem.errors);
 
         const nextPayload = mergeJobPayload(job, {
           automation: {
             ...automation,
             provider_delivery_status: normalizedStatus,
             provider_delivery_updated_at: new Date().toISOString(),
+            provider_delivery_error: normalizedStatus === "failed" ? statusFailureMessage : null,
             meta_status_events: [...previousEvents, statusEvent].slice(-20),
           },
         });
@@ -744,3 +1117,5 @@ export async function processMetaCloudWebhookStatusEvents(payload: Record<string
 
   return { ok: true, processed, matchedJobs, unmatched };
 }
+
+startLocalWhatsAppAutomationPollerIfNeeded();
