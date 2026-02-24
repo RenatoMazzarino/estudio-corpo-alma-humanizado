@@ -44,7 +44,7 @@ export function VoucherTicketCard({
       className={`w-full max-w-[420px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden ${
         className ?? ""
       }`}
-      style={{ boxShadow: "0 16px 34px rgba(0, 0, 0, 0.18)" }}
+      style={capture ? undefined : { boxShadow: "0 16px 34px rgba(0, 0, 0, 0.18)" }}
     >
       <div className="bg-studio-green px-7 pt-4 pb-5 text-center relative overflow-hidden">
         <svg
@@ -133,7 +133,16 @@ export function VoucherTicketCard({
 
         <div className="flex items-center justify-center gap-2 px-2" style={{ color: colors.studioText80 }}>
           <MapPin className="w-5 h-5 text-studio-green shrink-0" />
-          <p className="text-sm font-medium truncate">{locationLabel}</p>
+          <p
+            className={
+              capture
+                ? "min-w-0 flex-1 text-sm font-medium leading-snug whitespace-normal break-words text-left"
+                : "min-w-0 flex-1 text-sm font-medium truncate"
+            }
+            title={locationLabel}
+          >
+            {locationLabel}
+          </p>
         </div>
       </div>
 

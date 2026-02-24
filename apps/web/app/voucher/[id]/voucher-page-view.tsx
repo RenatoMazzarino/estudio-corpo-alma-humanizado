@@ -59,8 +59,8 @@ export default function VoucherPageView({
   }, [bookingId, buildVoucherBlob]);
 
   return (
-    <div className="min-h-screen bg-[#1f2324] px-4 py-8 sm:py-10">
-      <div className="mx-auto max-w-[468px]">
+    <div className="h-[100dvh] overflow-y-auto overscroll-y-contain bg-[#1f2324] px-4 py-6 sm:py-10">
+      <div className="mx-auto max-w-[468px] pb-6">
         <div className="mb-4 text-center text-white">
           <h1 className="font-serif text-2xl font-bold">Voucher de Agendamento</h1>
           <p className="mt-1 text-sm text-white/75">{dateTimeLabel}</p>
