@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   WHATSAPP_AUTOMATION_PROCESSOR_SECRET,
-  WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE,
   isWhatsAppAutomationDispatchEnabled,
 } from "../../../../../../src/modules/notifications/automation-config";
 import {
@@ -49,14 +48,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let appointmentId: string | undefined;
   let jobId: string | undefined;
   let type: "appointment_created" | "appointment_canceled" | "appointment_reminder" | undefined;
-  let allowBulk = false;
   try {
     const body = (await request.json().catch(() => ({}))) as {
       limit?: unknown;
       appointmentId?: unknown;
       jobId?: unknown;
       type?: unknown;
-      allowBulk?: unknown;
     };
     if (typeof body.limit === "number" && Number.isFinite(body.limit)) {
       limit = body.limit;
@@ -74,23 +71,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ) {
       type = body.type;
     }
-    if (body.allowBulk === true) {
-      allowBulk = true;
-    }
   } catch {
     // Ignorar body inválido e seguir com limite padrão.
-  }
-
-  if (WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE && !allowBulk && !appointmentId && !jobId) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Modo de teste hello_world exige alvo específico para evitar spam. Envie appointmentId ou jobId (ou allowBulk=true conscientemente).",
-        automation: getWhatsAppAutomationRuntimeConfig(),
-      },
-      { status: 400 }
-    );
   }
 
   try {

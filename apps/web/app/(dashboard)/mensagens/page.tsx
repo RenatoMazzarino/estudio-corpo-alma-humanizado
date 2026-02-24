@@ -9,9 +9,7 @@ import { getDashboardAccessForCurrentUser } from "../../../src/modules/auth/dash
 import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
 import {
   WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
-  WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_NAME,
   WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
-  WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE,
 } from "../../../src/modules/notifications/automation-config";
 
 export const dynamic = "force-dynamic";
@@ -193,10 +191,6 @@ const mapFailureReasonForUser = (rawMessage: string | null | undefined) => {
 const inferTemplateName = (job: JobRow, automation: Record<string, unknown>) => {
   const explicit = typeof automation.template_name === "string" ? automation.template_name.trim() : "";
   if (explicit) return explicit;
-
-  if (WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE) {
-    return WHATSAPP_AUTOMATION_META_HELLO_WORLD_TEMPLATE_NAME || "hello_world";
-  }
   if (job.type === "appointment_created") {
     return WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME || "Modelo não informado";
   }

@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  WHATSAPP_AUTOMATION_BATCH_LIMIT,
-  WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE,
-} from "../../../../src/modules/notifications/automation-config";
+import { WHATSAPP_AUTOMATION_BATCH_LIMIT } from "../../../../src/modules/notifications/automation-config";
 import {
   getWhatsAppAutomationRuntimeConfig,
   processPendingWhatsAppNotificationJobs,
@@ -24,19 +21,6 @@ const isAuthorizedCron = (request: NextRequest) => {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCron(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Safety guard: never bulk-process via cron while hello_world test mode is enabled.
-  if (WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Cron de lembretes desabilitado enquanto WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE=true (proteção anti-spam).",
-        automation: getWhatsAppAutomationRuntimeConfig(),
-      },
-      { status: 409 }
-    );
   }
 
   try {

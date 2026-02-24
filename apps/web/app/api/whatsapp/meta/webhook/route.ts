@@ -4,7 +4,7 @@ import {
   WHATSAPP_AUTOMATION_META_APP_SECRET,
   WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN,
 } from "../../../../../src/modules/notifications/automation-config";
-import { processMetaCloudWebhookStatusEvents } from "../../../../../src/modules/notifications/whatsapp-automation";
+import { processMetaCloudWebhookEvents } from "../../../../../src/modules/notifications/whatsapp-automation";
 
 const timingSafeEqualHex = (a: string, b: string) => {
   const left = Buffer.from(a, "hex");
@@ -67,11 +67,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await processMetaCloudWebhookStatusEvents(payload);
+    const result = await processMetaCloudWebhookEvents(payload, {
+      webhookOrigin: request.nextUrl.origin,
+    });
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao processar webhook da Meta.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-
