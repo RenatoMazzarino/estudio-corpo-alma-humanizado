@@ -1414,6 +1414,7 @@ async function processMetaCloudWebhookStatusEvents(payload: Record<string, unkno
   let processed = 0;
   let matchedJobs = 0;
   let unmatched = 0;
+  let duplicates = 0;
 
   for (const entry of entryList) {
     if (!entry || typeof entry !== "object") continue;
@@ -1449,6 +1450,37 @@ async function processMetaCloudWebhookStatusEvents(payload: Record<string, unkno
         const previousEvents = Array.isArray(automation.meta_status_events)
           ? (automation.meta_status_events as unknown[])
           : [];
+        const duplicateStatus = previousEvents.some((event) => {
+          if (!event || typeof event !== "object") return false;
+          const previous = event as Record<string, unknown>;
+          const previousProviderMessageId =
+            typeof previous.provider_message_id === "string" ? previous.provider_message_id : null;
+          const previousProviderStatus =
+            typeof previous.provider_status === "string" ? previous.provider_status : null;
+          const previousProviderTimestamp =
+            typeof previous.provider_timestamp === "string"
+              ? previous.provider_timestamp
+              : typeof previous.provider_timestamp === "number"
+                ? String(previous.provider_timestamp)
+                : null;
+          const currentProviderTimestamp =
+            typeof statusItem.timestamp === "string"
+              ? statusItem.timestamp
+              : typeof statusItem.timestamp === "number"
+                ? String(statusItem.timestamp)
+                : null;
+
+          return (
+            previousProviderMessageId === providerMessageId &&
+            previousProviderStatus === normalizedStatus &&
+            previousProviderTimestamp === currentProviderTimestamp
+          );
+        });
+        if (duplicateStatus) {
+          duplicates += 1;
+          continue;
+        }
+
         const statusEvent = {
           at: new Date().toISOString(),
           provider_message_id: providerMessageId,
@@ -1495,7 +1527,43 @@ async function processMetaCloudWebhookStatusEvents(payload: Record<string, unkno
     }
   }
 
-  return { processed, matchedJobs, unmatched };
+  return { processed, matchedJobs, unmatched, duplicates };
+}
+
+function summarizeMetaWebhookNonMessageFields(payload: Record<string, unknown>) {
+  const entryList = Array.isArray(payload.entry) ? payload.entry : [];
+  const trackedFields = new Set([
+    "message_template_status_update",
+    "message_template_quality_update",
+    "history",
+    "smb_message_echoes",
+    "smb_app_state_sync",
+  ]);
+  const counts: Record<string, number> = {};
+  let totalTracked = 0;
+
+  for (const entry of entryList) {
+    if (!entry || typeof entry !== "object") continue;
+    const changes = Array.isArray((entry as Record<string, unknown>).changes)
+      ? ((entry as Record<string, unknown>).changes as unknown[])
+      : [];
+
+    for (const change of changes) {
+      if (!change || typeof change !== "object") continue;
+      const field =
+        typeof (change as Record<string, unknown>).field === "string"
+          ? ((change as Record<string, unknown>).field as string).trim()
+          : "";
+      if (!field || !trackedFields.has(field)) continue;
+      counts[field] = (counts[field] ?? 0) + 1;
+      totalTracked += 1;
+    }
+  }
+
+  return {
+    totalTracked,
+    fields: counts,
+  };
 }
 
 export async function processMetaCloudWebhookEvents(
@@ -1507,10 +1575,15 @@ export async function processMetaCloudWebhookEvents(
     payload,
     webhookOrigin: options?.webhookOrigin,
   });
+  const nonMessageFields = summarizeMetaWebhookNonMessageFields(payload);
+  if (nonMessageFields.totalTracked > 0) {
+    console.log("[whatsapp-automation] Webhook Meta recebeu eventos extras (rastreados):", nonMessageFields);
+  }
   return {
     ok: true,
     statuses: statusResult,
     inboundMessages: inboundResult,
+    nonMessageFields,
   };
 }
 
