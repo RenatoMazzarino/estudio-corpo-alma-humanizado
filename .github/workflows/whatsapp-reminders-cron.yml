@@ -1,0 +1,75 @@
+name: whatsapp-reminders-cron
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whatsapp-reminders-cron
+  cancel-in-progress: false
+
+jobs:
+  whatsapp-reminders-dev:
+    name: WhatsApp reminders (DEV)
+    runs-on: ubuntu-latest
+    env:
+      CRON_URL: https://dev.public.corpoealmahumanizado.com.br/api/cron/whatsapp-reminders
+      CRON_SECRET: ${{ secrets.WHATSAPP_CRON_DEV_SECRET }}
+    steps:
+      - name: Validate DEV cron secret
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "Missing GitHub secret: WHATSAPP_CRON_DEV_SECRET"
+            exit 1
+          fi
+
+      - name: Trigger DEV reminder processor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp_body="$(mktemp)"
+          http_code="$(curl -sS -o "$tmp_body" -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Accept: application/json" \
+            "${CRON_URL}")"
+          echo "HTTP ${http_code}"
+          cat "$tmp_body"
+          echo
+          if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+            exit 1
+          fi
+
+  whatsapp-reminders-prod:
+    name: WhatsApp reminders (PROD)
+    if: ${{ vars.WHATSAPP_CRON_ENABLE_PROD == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      CRON_URL: https://public.corpoealmahumanizado.com.br/api/cron/whatsapp-reminders
+      CRON_SECRET: ${{ secrets.WHATSAPP_CRON_PROD_SECRET }}
+    steps:
+      - name: Validate PROD cron secret
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "Missing GitHub secret: WHATSAPP_CRON_PROD_SECRET"
+            exit 1
+          fi
+
+      - name: Trigger PROD reminder processor
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp_body="$(mktemp)"
+          http_code="$(curl -sS -o "$tmp_body" -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Accept: application/json" \
+            "${CRON_URL}")"
+          echo "HTTP ${http_code}"
+          cat "$tmp_body"
+          echo
+          if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+            exit 1
+          fi
