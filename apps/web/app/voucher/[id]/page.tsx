@@ -3,7 +3,7 @@ import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE } from "../../../src/modules/notifications/automation-config";
-import { VoucherTicketCard } from "../../../components/voucher/voucher-ticket-card";
+import VoucherPageView from "./voucher-page-view";
 
 export const dynamic = "force-dynamic";
 
@@ -90,23 +90,14 @@ export default async function VoucherPage(props: PageProps) {
     : `No estúdio: ${WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE || "Estúdio Corpo & Alma Humanizado"}`;
 
   return (
-    <div className="min-h-screen bg-[#1f2324] px-4 py-8 sm:py-10">
-      <div className="mx-auto max-w-[468px]">
-        <div className="mb-4 text-center text-white">
-          <h1 className="font-serif text-2xl font-bold">Voucher de Agendamento</h1>
-          <p className="mt-1 text-sm text-white/75">
-            {dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)} às {timeLabel}
-          </p>
-        </div>
-        <VoucherTicketCard
-          clientName={appointment.clients?.name?.trim() || "Cliente"}
-          dayLabel={dayAndMonthLabel}
-          timeLabel={timeLabel}
-          serviceName={appointment.service_name || "Agendamento"}
-          locationLabel={locationLine}
-          bookingId={`AGD-${appointment.id.slice(0, 8).toUpperCase()}`}
-        />
-      </div>
-    </div>
+    <VoucherPageView
+      clientName={appointment.clients?.name?.trim() || "Cliente"}
+      dateTimeLabel={`${dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)} às ${timeLabel}`}
+      dayLabel={dayAndMonthLabel}
+      timeLabel={timeLabel}
+      serviceName={appointment.service_name || "Agendamento"}
+      locationLabel={locationLine}
+      bookingId={`AGD-${appointment.id.slice(0, 8).toUpperCase()}`}
+    />
   );
 }
