@@ -677,6 +677,12 @@ export async function scheduleAppointmentLifecycleNotifications(params: Schedule
 }
 
 export async function scheduleAppointmentCanceledNotification(params: ScheduleCanceledParams) {
+  // Ainda não existe template real de cancelamento implementado. Enquanto isso,
+  // evitamos criar job pendente que nunca será processado (a não ser em hello_world de teste).
+  if (!WHATSAPP_AUTOMATION_META_USE_HELLO_WORLD_TEMPLATE) {
+    return;
+  }
+
   await enqueueNotificationJobWithAutomationGuard({
     tenant_id: params.tenantId,
     appointment_id: params.appointmentId,
