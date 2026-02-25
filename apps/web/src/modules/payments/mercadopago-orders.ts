@@ -1265,36 +1265,93 @@ export async function getAppointmentPaymentStatusByMethod({
   cardMode?: PointCardMode | null;
 }): Promise<ActionResult<{ internal_status: InternalPaymentStatus }>> {
   const supabase = createServiceClient();
-  let query = supabase
-    .from("appointment_payments")
-    .select("status, created_at, card_mode")
-    .eq("appointment_id", appointmentId)
-    .eq("tenant_id", tenantId)
-    .eq("method", method)
-    .order("created_at", { ascending: false });
+  const fetchPayments = async () => {
+    let query = supabase
+      .from("appointment_payments")
+      .select("status, created_at, card_mode, provider_order_id, provider_ref")
+      .eq("appointment_id", appointmentId)
+      .eq("tenant_id", tenantId)
+      .eq("method", method)
+      .order("created_at", { ascending: false });
 
-  if (cardMode) {
-    query = query.eq("card_mode", cardMode);
-  }
+    if (cardMode) {
+      query = query.eq("card_mode", cardMode);
+    }
 
-  const { data: payments, error } = await query;
+    return query;
+  };
 
+  const resolveInternalStatus = (
+    payments:
+      | {
+          status: string | null;
+          provider_order_id: string | null;
+          provider_ref: string | null;
+        }[]
+      | null
+      | undefined
+  ): InternalPaymentStatus => {
+    const statuses = (payments ?? [])
+      .map((item) => (typeof item.status === "string" ? item.status : null))
+      .filter((value): value is string => Boolean(value));
+
+    if (statuses.includes("paid")) return "paid";
+    if ((statuses[0] ?? null) === "failed") return "failed";
+    return "pending";
+  };
+
+  const { data: payments, error } = await fetchPayments();
   if (error) {
     return fail(new AppError("Não foi possível consultar o status do pagamento.", "SUPABASE_ERROR", 500, error));
   }
 
-  const statuses = (payments ?? [])
-    .map((item) => (typeof item.status === "string" ? item.status : null))
-    .filter((value): value is string => Boolean(value));
+  let internalStatus = resolveInternalStatus(payments);
 
-  if (statuses.includes("paid")) {
-    return ok({ internal_status: "paid" });
+  // Pix polling in the attendance screen should reflect successful payments even if the webhook
+  // arrives late. We sync the latest pending order directly from Mercado Pago before responding.
+  if (method === "pix" && internalStatus !== "paid") {
+    const latestPayment = (payments ?? [])[0] ?? null;
+    const providerOrderId =
+      latestPayment && typeof latestPayment.provider_order_id === "string"
+        ? latestPayment.provider_order_id.trim()
+        : "";
+
+    if (providerOrderId) {
+      const statusResult = await getOrderById(providerOrderId);
+      if (!statusResult.ok) return statusResult;
+
+      const statusData = statusResult.data;
+      const upsertResult = await upsertAppointmentPayment({
+        appointmentId,
+        tenantId,
+        method: "pix",
+        amount: statusData.transaction_amount,
+        status: statusData.internal_status,
+        providerRef: statusData.id,
+        providerOrderId: statusData.order_id,
+        rawPayload: null,
+      });
+      if (!upsertResult.ok) return upsertResult;
+
+      if (statusData.internal_status === "paid") {
+        const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
+        if (!recalcResult.ok) return recalcResult;
+      }
+
+      const { data: refreshedPayments, error: refreshedError } = await fetchPayments();
+      if (refreshedError) {
+        return fail(
+          new AppError(
+            "Não foi possível atualizar o status do pagamento.",
+            "SUPABASE_ERROR",
+            500,
+            refreshedError
+          )
+        );
+      }
+      internalStatus = resolveInternalStatus(refreshedPayments);
+    }
   }
 
-  const latestStatus = statuses[0] ?? null;
-  if (latestStatus === "failed") {
-    return ok({ internal_status: "failed" });
-  }
-
-  return ok({ internal_status: "pending" });
+  return ok({ internal_status: internalStatus });
 }
