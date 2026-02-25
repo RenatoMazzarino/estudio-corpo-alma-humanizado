@@ -41,7 +41,7 @@ export function VoucherTicketCard({
     <div
       ref={innerRef}
       data-voucher-capture={capture ? "true" : undefined}
-      className={`w-full max-w-[420px] mx-auto bg-transparent relative rounded-[14px] overflow-hidden ${
+      className={`w-full max-w-105 mx-auto bg-transparent relative rounded-[14px] overflow-hidden ${
         className ?? ""
       }`}
       style={capture ? undefined : { boxShadow: "0 16px 34px rgba(0, 0, 0, 0.18)" }}
@@ -101,7 +101,7 @@ export function VoucherTicketCard({
           >
             {dayLabel}
           </span>
-          <span className="h-7 w-[2px]" style={{ backgroundColor: "rgba(44, 51, 51, 0.3)" }} />
+          <span className="h-7 w-0.5" style={{ backgroundColor: "rgba(44, 51, 51, 0.3)" }} />
           <span
             className="font-serif text-[52px] font-semibold leading-none"
             style={{ fontFamily: "var(--font-playfair), serif" }}
@@ -124,7 +124,7 @@ export function VoucherTicketCard({
             Procedimento
           </p>
           <h3
-            className="font-serif text-[56px] text-studio-green leading-[1.02] mb-2 break-words"
+            className="font-serif text-[56px] text-studio-green leading-[1.02] mb-2 wrap-break-word"
             style={{ fontFamily: "var(--font-playfair), serif" }}
           >
             {serviceName}
@@ -136,7 +136,7 @@ export function VoucherTicketCard({
           <p
             className={
               capture
-                ? "min-w-0 flex-1 text-sm font-medium leading-snug whitespace-normal break-words text-left"
+                ? "min-w-0 flex-1 text-sm font-medium leading-snug whitespace-normal wrap-break-word text-left"
                 : "min-w-0 flex-1 text-sm font-medium truncate"
             }
             title={locationLabel}
@@ -158,7 +158,7 @@ export function VoucherTicketCard({
       <div className="voucher-paper-texture px-6 py-4 rounded-b-[14px] flex items-end justify-between gap-4">
         <div className="text-left flex-1 min-w-0">
           <p
-            className="font-signature text-[50px] mb-1 ml-[-3px] leading-none whitespace-nowrap"
+            className="font-signature text-[50px] mb-1 -ml-0.75 leading-none whitespace-nowrap"
             style={{ color: colors.studioText, transform: "rotate(-3deg)" }}
           >
             Janaina Santos
@@ -167,7 +167,7 @@ export function VoucherTicketCard({
             Gerado por Flora • ID {bookingId}
           </p>
         </div>
-        <div className="h-12 flex items-end gap-[3px] opacity-85 shrink-0">
+        <div className="h-12 flex items-end gap-0.75 opacity-85 shrink-0">
           {barcodePattern.map((width, index) => (
             <span
               key={`${index}-${width}`}

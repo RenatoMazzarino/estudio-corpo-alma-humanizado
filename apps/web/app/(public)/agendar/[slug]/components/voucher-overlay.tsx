@@ -69,7 +69,7 @@ export function VoucherOverlay({
         style={{ backgroundColor: colors.overlayBackdrop }}
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-[468px]">
+      <div className="relative z-10 w-full max-w-117">
         <div className="absolute right-2 top-2 z-20">
           <button
             type="button"

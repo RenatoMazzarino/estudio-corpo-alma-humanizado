@@ -23,7 +23,7 @@ export default function LegalDocumentShell({
   children,
 }: LegalDocumentShellProps) {
   return (
-    <div className="h-[100dvh] overflow-y-auto overscroll-y-contain bg-stone-100">
+    <div className="h-dvh overflow-y-auto overscroll-y-contain bg-stone-100">
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
           <Link href="/" className="transition-colors hover:text-studio-green">
@@ -34,7 +34,7 @@ export default function LegalDocumentShell({
         </div>
 
         <article className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
-          <header className="border-b border-stone-100 bg-gradient-to-b from-stone-50 to-white px-5 py-6 sm:px-8 sm:py-8">
+          <header className="border-b border-stone-100 bg-linear-to-b from-stone-50 to-white px-5 py-6 sm:px-8 sm:py-8">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-stone-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-600">
                 Documento legal

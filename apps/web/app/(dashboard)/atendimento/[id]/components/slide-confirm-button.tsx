@@ -115,7 +115,7 @@ export function SlideConfirmButton({
     <div className="relative h-14 w-full touch-none select-none rounded-2xl border border-studio-green/35 bg-studio-green/10 p-1">
       <div
         ref={trackRef}
-        className="relative h-full w-full touch-none rounded-xl bg-gradient-to-r from-studio-green/20 to-studio-green/5"
+        className="relative h-full w-full touch-none rounded-xl bg-linear-to-r from-studio-green/20 to-studio-green/5"
         onPointerMove={handlePointerMove}
         onPointerUp={finishDrag}
         onPointerCancel={finishDrag}

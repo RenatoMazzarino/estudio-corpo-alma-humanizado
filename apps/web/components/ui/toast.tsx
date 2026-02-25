@@ -62,7 +62,7 @@ export function Toast({ toast }: { toast: ToastState | null }) {
   const Icon = toneIcon[toast.tone];
   if (toast.kind === "banner") {
     const bannerNode = (
-      <div className={`${positionClass} left-1/2 top-4 z-90 w-[calc(100%-1rem)] max-w-[520px] -translate-x-1/2 px-1`}>
+      <div className={`${positionClass} left-1/2 top-4 z-90 w-[calc(100%-1rem)] max-w-130 -translate-x-1/2 px-1`}>
         <div
           className={`rounded-2xl border px-4 py-3 shadow-float ${bannerToneStyles[toast.tone]}`}
           role="status"
@@ -86,7 +86,7 @@ export function Toast({ toast }: { toast: ToastState | null }) {
 
   const toastNode = (
     <div
-      className={`${positionClass} left-1/2 top-4 z-90 w-[calc(100%-1rem)] max-w-[520px] -translate-x-1/2 px-1`}
+      className={`${positionClass} left-1/2 top-4 z-90 w-[calc(100%-1rem)] max-w-130 -translate-x-1/2 px-1`}
       role="status"
       aria-live="polite"
     >

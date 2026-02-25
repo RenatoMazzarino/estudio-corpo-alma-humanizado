@@ -1054,7 +1054,7 @@ export function AttendancePaymentModal({
       </div>
 
       {busy && (
-        <div className="absolute inset-0 z-[90] flex items-center justify-center bg-black/35 backdrop-blur-sm">
+        <div className="absolute inset-0 z-90 flex items-center justify-center bg-black/35 backdrop-blur-sm">
           <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-float">
             <Loader2 className="mx-auto h-6 w-6 animate-spin text-studio-green" />
             <p className="mt-3 text-sm font-bold text-studio-text">{stageMessages[stageIndex]}</p>

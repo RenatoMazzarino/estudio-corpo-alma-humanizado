@@ -1363,7 +1363,7 @@ export function BookingFlow({
                   alt="Estúdio Corpo & Alma Humanizado"
                   width={132}
                   height={132}
-                  className="h-[132px] w-[132px] object-contain"
+                  className="h-33 w-33 object-contain"
                   priority
                 />
               </div>
@@ -1430,7 +1430,7 @@ export function BookingFlow({
               {clientLookupStatus === "found" && suggestedClient && (
                 <>
                   <div className="relative overflow-hidden rounded-2xl border border-studio-green/30 bg-green-50 p-4 shadow-soft animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-studio-green/15 to-transparent" />
+                    <div className="absolute inset-y-0 right-0 w-16 bg-linear-to-l from-studio-green/15 to-transparent" />
                     <div className="relative z-10 flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-studio-green text-sm font-bold text-white">
