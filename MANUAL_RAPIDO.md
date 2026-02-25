@@ -328,9 +328,16 @@ https://public.corpoealmahumanizado.com.br
 Rotas publicas (cliente):
 ```
 /agendar/<slug>
-/pagamento
+/voucher/<id>
 /comprovante/<id>
+/politica-de-privacidade
+/termos-de-servico
+/exclusao-de-dados
 ```
+
+Observacao importante:
+- `voucher` = comprovante de agendamento/servico (`/voucher/<id>`)
+- `comprovante` = recibo/comprovante de pagamento (`/comprovante/<id>`)
 
 Exemplo (slug atual em producao):
 ```
@@ -340,6 +347,11 @@ https://public.corpoealmahumanizado.com.br/agendar/estudio-corpo-alma
 ### Dominios em local (dev)
 ```
 http://localhost:3000/agendar/estudio-corpo-alma
+```
+
+### Dominio publico DEV (quando houver deploy de teste)
+```
+https://dev.public.corpoealmahumanizado.com.br
 ```
 
 ### Alterar o slug (local e online)
@@ -381,7 +393,8 @@ Integracoes em uso:
 1. Supabase (banco + RPCs)
 2. Google Maps Platform (endereco e taxa de deslocamento)
 3. Mercado Pago Checkout Transparente (Pix/cartao + webhook)
-4. WhatsApp (links de envio assistido)
+4. WhatsApp (manual + automacao via Meta Cloud API, webhook, cron e painel `Mensagens`)
+5. Spotify (OAuth + estado/controle de player no atendimento/configuracoes)
 
 Regra fixa do Mercado Pago neste projeto:
 - Modelo oficial: **Checkout Transparente** (implementado com Orders API + webhook).
@@ -389,6 +402,12 @@ Regra fixa do Mercado Pago neste projeto:
 - Se aparecer "Checkout API/Orders" na documentacao do Mercado Pago, para este projeto isso deve ser tratado como fluxo do Checkout Transparente.
 - A Orders API nao aceita `MERCADOPAGO_ACCESS_TOKEN` no formato `TEST-`.
 - Em producao, webhook deve usar URL sem bypass e responder server-to-server.
+
+WhatsApp (operacao atual):
+- Fluxo manual continua existindo (nao remover).
+- Automacao WhatsApp coexiste com o manual.
+- Lembretes 24h usam endpoint `/api/cron/whatsapp-reminders` + scheduler via GitHub Actions (Vercel Hobby nao cobre cron frequente).
+- Webhook Meta (`/api/whatsapp/meta/webhook`) e necessario para status (`sent`, `delivered`, `read`, `failed`) e replies.
 
 Variaveis criticas na Vercel:
 - `NEXT_PUBLIC_SUPABASE_URL`
@@ -399,3 +418,14 @@ Variaveis criticas na Vercel:
 - `MERCADOPAGO_PUBLIC_KEY`
 - `MERCADOPAGO_WEBHOOK_SECRET`
 - `APP_TIMEZONE=America/Sao_Paulo`
+
+Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
+- `WHATSAPP_AUTOMATION_MODE`
+- `WHATSAPP_AUTOMATION_PROVIDER`
+- `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
+- `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
+- `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
+- `WHATSAPP_AUTOMATION_META_APP_SECRET`
+- `CRON_SECRET`
+- `SPOTIFY_CLIENT_ID`
+- `SPOTIFY_CLIENT_SECRET`

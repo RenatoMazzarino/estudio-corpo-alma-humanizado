@@ -1,56 +1,87 @@
 # Webhook Mercado Pago - Operacional (Vercel)
 
-Data de referência: 2026-02-13
+Data de referência: 2026-02-25
 
 ## Objetivo
-Evitar perda de notificação de pagamento por erro `404`/`401` no webhook.
+
+Evitar perda de notificação de pagamento por erro de URL/domínio, autenticação indevida no endpoint ou assinatura inválida.
 
 ## Escopo de integração (obrigatório)
-- Modelo Mercado Pago deste projeto: `Checkout Transparente`.
-- Implementação: `Orders API` + notificações de webhook (`payment` e `order`).
-- `Checkout Pro` não deve ser usado para este fluxo.
 
-## Configuração exata no painel Mercado Pago (produção)
-1. URL de produção:
+- Modelo Mercado Pago deste projeto: `Checkout Transparente`
+- Implementação técnica: `Orders API` + webhook interno
+- Eventos usados no sistema:
+  - `payment`
+  - `order`
+- `Checkout Pro` não deve ser usado neste fluxo
+
+## URLs corretas por ambiente
+
+### Produção
+
 - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
 
-3. Eventos que devem ficar selecionados:
+### DEV (público)
+
+- `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+
+## Configuração no painel Mercado Pago (produção)
+
+1. URL de callback:
+- `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+
+2. Eventos que devem ficar selecionados:
 - `Pagamentos`
 - `Order (Mercado Pago)`
 
-4. Eventos que devem ficar desmarcados para este projeto:
-- Vinculação de aplicações
-- Alertas de fraude
-- Reclamações
-- Card Updater
-- Contestações
-- Envios (Mercado Pago)
-- Outros eventos
-- Planos e assinaturas
-- Integrações Point
-- Delivery (proximity marketplace)
-- Wallet Connect
-- Pedidos comerciais
-- Self Service
+3. Eventos que devem ficar desmarcados neste projeto:
+- categorias não utilizadas (fraude, reclamações, planos/assinaturas, Point, delivery etc.) para reduzir ruído
 
-## Causa prática
-1. Produção:
-- Qualquer `404/401` indica problema de domínio/deploy/proteção no endpoint real da rota.
-- Necessário validar o domínio final após cada deploy.
-2. Produção
-- Usar callback sem bypass.
-- Garantir endpoint público para chamadas server-to-server.
-- Manter validação de assinatura (`x-signature`) ativa no backend.
+## Regras operacionais obrigatórias
 
-## Regra operacional obrigatória
-1. Produção: webhook acessível sem autenticação extra.
-2. Sempre validar:
-- `GET /api/mercadopago/webhook` retorna `200` no domínio do ambiente.
-- Simulação de webhook MP retorna `200/201`.
+1. O endpoint webhook deve ser público (server-to-server), sem autenticação extra.
+2. A validação de assinatura `x-signature` no backend deve permanecer ativa.
+3. Sempre validar domínio/commit corretos do deploy antes de testar.
 
-## Checklist de liberação
-1. Confirmar domínio correto no projeto Vercel correto.
-2. Garantir deploy ativo com rota `/api/mercadopago/webhook`.
-3. Configurar callback no painel MP com URL correta do ambiente.
-4. Simular webhook `payment` e `order`.
-5. Verificar atualização em `appointment_payments` e `appointments.payment_status`.
+## Healthcheck e testes rápidos
+
+### Healthcheck do endpoint
+
+O endpoint aceita `GET` para teste operacional:
+
+- `GET /api/mercadopago/webhook` -> `200` com `{ ok: true, paymentId }`
+
+### Teste de painel / simulação
+
+1. Validar `GET` no domínio do ambiente
+2. Simular webhook `payment` no painel MP
+3. Simular webhook `order` no painel MP
+4. Confirmar respostas `200/201`
+5. Confirmar atualização no banco/app
+
+## Causa prática dos erros mais comuns
+
+### `404`
+
+- domínio errado
+- deploy antigo/commit errado
+- rota indisponível no ambiente testado
+
+### `401`
+
+- assinatura inválida (`MERCADOPAGO_WEBHOOK_SECRET`)
+- secret configurado no ambiente errado
+- callback apontando para outro projeto/ambiente
+
+## Checklist de liberação (produção)
+
+1. Confirmar deploy ativo no domínio correto
+2. Confirmar `GET /api/mercadopago/webhook` retorna `200`
+3. Configurar callback no painel MP com URL de produção
+4. Selecionar somente `payment` + `order`
+5. Configurar `MERCADOPAGO_WEBHOOK_SECRET` na Vercel Production
+6. Simular `payment` e `order`
+7. Verificar atualização em:
+- `appointment_payments`
+- `appointments.payment_status`
+

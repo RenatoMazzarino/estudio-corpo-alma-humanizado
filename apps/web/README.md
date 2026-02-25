@@ -1,42 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# `apps/web` — App Web (Next.js App Router)
 
-## UI layout padrão
+Aplicação principal do projeto (dashboard interno + fluxos públicos + APIs do App Router).
 
-- Todas as telas seguem 3 partes: **Header / Content / Navigation**.
-- `AppShell` controla o frame e o scroll único; `ModulePage` organiza header + conteúdo.
-- Referência: `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`.
+## Escopo
 
-## Getting Started
+- Dashboard interno do estúdio (agenda, clientes, atendimento, caixa, mensagens, configurações)
+- Fluxos públicos (`/agendar/[slug]`, voucher, comprovantes, páginas legais)
+- APIs internas em `app/api/*` (pagamentos, WhatsApp/Meta, cron, Spotify, utilidades)
+- Auth do dashboard via Supabase (Google OAuth + fallback DEV opcional)
 
-First, run the development server:
+## Stack (app)
+
+- Next.js `16.1.6` (App Router)
+- React `19.2`
+- Tailwind CSS `4`
+- Supabase (`@supabase/ssr`, `@supabase/supabase-js`)
+- Zod
+
+## Scripts locais (`apps/web`)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm --filter web dev
+pnpm --filter web lint
+pnpm --filter web check-types
+pnpm --filter web build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Auth do Dashboard (resumo)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Login principal: Google OAuth via Supabase (`/auth/login` -> `/auth/google` -> `/auth/callback`)
+- Logout: `/auth/logout`
+- Fallback DEV/local (opcional): `/auth/dev-login` quando `DEV_PASSWORD_LOGIN_ENABLED=true`
+- Controle de acesso por tabela `dashboard_access_users`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+### Sessão / persistência
 
-## Learn More
+- O app usa `apps/web/proxy.ts` (Next 16 Proxy) para refresh de sessão/cookies do Supabase SSR durante navegação.
+- Isso reduz reautenticação frequente no painel, principalmente em uso mobile/PWA.
 
-To learn more about Next.js, take a look at the following resources:
+## Layout/UI (padrão)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Estrutura canônica: **Header / Content / Navigation**
+- `AppShell` controla frame mobile e scroll único
+- `ModulePage` organiza header + conteúdo
+- Referência: `docs/ui-system/README.md`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## APIs do app
 
-## Deploy on Vercel
+- Rotas em `apps/web/app/api/**/route.ts`
+- Guia consolidado: `docs/apis/API_GUIDE.md`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Integrações (ver docs)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Mercado Pago (Orders API + webhook): `docs/integrations/INTEGRATIONS_TECNICO.md`
+- WhatsApp/Meta automação + webhook + cron: `docs/integrations/INTEGRATIONS_TECNICO.md`
+- Spotify (OAuth + player): `docs/integrations/INTEGRATIONS_TECNICO.md`
+
+## Observação
+
+Para setup do monorepo, versões, comandos globais e operação local (Windows), use o `README.md` da raiz e `MANUAL_RAPIDO.md`.

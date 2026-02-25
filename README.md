@@ -66,9 +66,11 @@ Integrações ativas no produto:
 - Supabase (dados, RPCs e autenticação server-side)
 - Google Maps Platform (endereços e taxa de deslocamento)
 - Mercado Pago Checkout Transparente (Pix/cartão + webhook)
-- WhatsApp (mensageria assistida por deep links/share)
+- WhatsApp (manual + automação via Meta Cloud API, webhook, cron e painel `Mensagens`)
+- Spotify (OAuth + estado/controle de player no módulo de atendimento)
 
 ## Documentação
 
 - Índice de docs: `docs/README.md`
+- Matriz canônica de documentação: `docs/DOCUMENTATION_CANONICAL_MATRIX.md`
 - Arquivo legado da fase Agenda V1 UI: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`

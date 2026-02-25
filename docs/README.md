@@ -6,9 +6,12 @@ Este diretório foi organizado em duas camadas:
 
 - `README.md` (raiz): setup e visão geral.
 - `MANUAL_RAPIDO.md`: comandos operacionais (dev, build, migrations, deploy).
+- `docs/DOCUMENTATION_CANONICAL_MATRIX.md`: classificação canônica (ativo/legado/histórico) e regra de leitura.
 - `docs/apis/API_GUIDE.md`: APIs internas do app.
 - `docs/integrations/INTEGRATIONS_TECNICO.md`: arquitetura e requisitos técnicos das integrações.
 - `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: operação de produção.
+- `docs/integrations/WEBHOOK_OPERACIONAL.md`: runbook operacional do webhook Mercado Pago (produção).
+- `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`: documento canônico de roadmap/readiness WhatsApp/Meta/coexistência (estratégia, não runtime).
 - `docs/ui-system/*`: design system e padrões canônicos de UI.
 - `docs/sql/README.md`: orientação para snapshots SQL de auditoria.
 
@@ -28,3 +31,4 @@ Inclui:
 
 - Novas branches não devem usar arquivos de legado como fonte primária.
 - Para decisões novas, usar a documentação ativa e criar novos artefatos fora de `docs/legacy/`.
+- Em conflito entre documentação e comportamento implementado: validar `código + migrations + env real`.
