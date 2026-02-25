@@ -1,5 +1,8 @@
 # PLANO_IMPLANTACAO_ATENDIMENTO_V1_UNIFICADO
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Documento datado. Use apenas como referencia historica; comportamento atual deve ser validado no codigo e docs ativos.
+
 ## Objetivo
 Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinheiro, Pix e Point), e pós-atendimento dentro do modal do agendamento para status `completed`, mantendo Checkout Transparente (Orders API + webhook) e sem mudanças destrutivas de histórico.
 

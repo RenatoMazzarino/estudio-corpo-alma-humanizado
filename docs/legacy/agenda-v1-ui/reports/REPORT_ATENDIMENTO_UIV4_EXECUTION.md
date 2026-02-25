@@ -1,5 +1,8 @@
 # REPORT_ATENDIMENTO_UIV4_EXECUTION
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 ## 1) Resumo do que foi implementado (checklist por seção do plano)
 - UI V4 por etapas (HUB → PRE → SESSÃO → CHECKOUT → PÓS) com layout mobile-first, headers sticky e CTA fixo.
 - HUB com cards de etapas, badges de status e banner de sessão ativa.

@@ -1,4 +1,7 @@
 # Auditoria Final da Branch agenda-v1-ui (Atualizada)
+
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
 Data de referencia: 2026-02-13  
 Escopo: auditoria da branch `agenda-v1-ui` contra `main`, com foco em prontidao de merge e producao.
 

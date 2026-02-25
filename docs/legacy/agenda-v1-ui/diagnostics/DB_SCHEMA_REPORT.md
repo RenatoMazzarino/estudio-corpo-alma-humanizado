@@ -1,5 +1,8 @@
 # DB_SCHEMA_REPORT
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 Fonte de verdade: `supabase/migrations/*.sql` (até `20260129040000_clear_availability_blocks.sql`).
 
 ## Tabelas (public)

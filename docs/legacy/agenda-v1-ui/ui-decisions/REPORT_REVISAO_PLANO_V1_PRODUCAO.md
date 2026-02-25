@@ -1,5 +1,8 @@
 # Report — Revisão do Plano v1.0 Produção
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 ## Resumo executivo (o que mudou do plano anterior)
 - O plano anterior (`PLANO_NOVA_APARENCIA.MD`) estava vazio; foi **substituído** por um plano completo e alinhado ao repo.
 - O novo plano (`PLANO_NOVA_APARENCIA_V1_PRODUCAO.md`) contém:

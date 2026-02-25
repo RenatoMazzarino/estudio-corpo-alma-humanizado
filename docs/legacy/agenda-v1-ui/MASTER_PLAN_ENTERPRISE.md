@@ -1,5 +1,8 @@
 # MASTER_PLAN_ENTERPRISE (V2 — Branch única, commits por grupos, 1 PR)
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 **Data:** 2026-01-30  
 **Escopo:** repositório `/mnt/c/Users/renat/projetos_de_dev/estudio-corpo-alma-humanizado`  
 **Objetivo:** plano unificado e executável para elevar o repo a padrão enterprise, com modularização por domínio e paridade total **DB ⇄ Código**.  

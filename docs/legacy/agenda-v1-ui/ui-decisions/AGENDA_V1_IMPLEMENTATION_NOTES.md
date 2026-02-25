@@ -1,5 +1,8 @@
 # Agenda V1 — Notas de Implementação
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 ## Mapeamento atual (rotas/arquivos)
 - Tela de Agenda (home): `apps/web/app/(dashboard)/page.tsx`
   - Componente principal: `apps/web/components/mobile-agenda.tsx`

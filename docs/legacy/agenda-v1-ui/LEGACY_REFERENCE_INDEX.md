@@ -1,5 +1,8 @@
 # Legacy Reference Index — Agenda V1 UI Branch
 
+> **Status documental:** Indice canonico do bloco legado `agenda-v1-ui` (nao canônico para comportamento atual do produto).
+> **Uso correto:** Este arquivo e a referencia para localizar artefatos historicos; para decisoes novas, use docs ativos e o codigo atual.
+
 Este índice consolida os artefatos de referência usados na branch `agenda-v1-ui` e que agora ficam arquivados como legado.
 
 ## 1) Referências visuais HTML/HTM (por conteúdo)

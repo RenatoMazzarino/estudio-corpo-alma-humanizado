@@ -1,5 +1,8 @@
 # PLAN_ATENDIMENTO_UIV4.md — Atendimento UI V4 (Plano Único Consolidado)
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 ## 1) Objetivo e Resultado Esperado
 
 ### Objetivo

@@ -1,5 +1,8 @@
 # AUDIT_REPORT
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 ## Sumário executivo (curto)
 - O repo é um monorepo Turbo (Next.js App Router + Supabase), mas a arquitetura está fragmentada entre layouts duplicados, ações espalhadas e componentes não usados.
 - Há divergências críticas DB ⇄ código: campo `clients.notes` não existe, status de agendamentos divergentes e drift entre migrations e types.

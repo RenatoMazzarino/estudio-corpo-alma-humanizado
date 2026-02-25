@@ -1,5 +1,8 @@
 # MIGRATION_PLAN
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 Ordem sugerida para migrations (pequenas, reversíveis, com validação). Datas/ids são placeholders.
 
 ## 1) `2026xxxxxx_add_service_id_to_appointments.sql`

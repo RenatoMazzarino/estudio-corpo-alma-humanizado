@@ -1,5 +1,8 @@
 # POST_EXECUTION_REPORT_ADDENDUM
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 Data: 2026-01-31  
 Branch: `feat/master-plan-enterprise`  
 Escopo: polimento pós-execução (G9–G22)

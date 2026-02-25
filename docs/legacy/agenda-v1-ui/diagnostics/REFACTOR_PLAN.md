@@ -1,5 +1,8 @@
 # REFACTOR_PLAN
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 Plano faseado com PRs pequenos e testáveis. Cada tarefa inclui objetivo, arquivos, passos, critérios e testes.
 
 ## Fase 0 — Hardening (sem mudança de comportamento)

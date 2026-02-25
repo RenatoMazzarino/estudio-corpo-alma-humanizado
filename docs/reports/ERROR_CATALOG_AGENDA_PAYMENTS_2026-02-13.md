@@ -1,5 +1,8 @@
 # Catalogo de feedbacks (Agenda + Pagamentos)
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Documento datado. Use apenas como referencia historica; comportamento atual deve ser validado no codigo e docs ativos.
+
 ## Objetivo
 Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com linguagem humana e sem texto tecnico cru na tela.
 

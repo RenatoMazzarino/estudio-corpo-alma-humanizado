@@ -1,5 +1,8 @@
 # DB_CODE_DIFF
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 Fonte de verdade: `supabase/migrations/*.sql`.
 Types TS analisados: `apps/web/lib/supabase/types.ts` (drift detectado).
 

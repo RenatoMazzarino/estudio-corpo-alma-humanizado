@@ -1,5 +1,8 @@
 # REPORT — Execução do Plano Nova Aparência/UX v1.0 (Produção)
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 ## Atualização final (2026-02-13)
 Este arquivo manteve histórico cumulativo. Para evitar ambiguidades de leitura, considerar as regras abaixo como estado final vigente desta branch:
 

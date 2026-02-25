@@ -1,5 +1,8 @@
 # Plano Oficial — Nova Aparência/UX v1.0 (Produção)
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 > **Escopo:** Agenda/Agendamentos, Atendimento (novo padrão produção) e Clientes (lista, detalhe e novo).  
 > **Fontes oficiais:** HTMLs em `docs/legacy/agenda-v1-ui/ui-decisions/*`, `Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf` e o estado atual do repo (rotas/actions/repos/migrations).  
 > **Regra-mãe:** UI ↔ DB 1:1 (exceto auditoria/logs/tenant).  

@@ -1,5 +1,8 @@
 # AUDIT_LOGS
 
+> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
+> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+
 Data: 2026-01-29
 CWD: /mnt/c/Users/renat/projetos_de_dev/estudio-corpo-alma-humanizado
 
