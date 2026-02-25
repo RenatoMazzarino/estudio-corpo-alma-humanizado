@@ -29,6 +29,7 @@ interface AppointmentDetailsSheetProps {
   loading?: boolean;
   actionPending?: boolean;
   details: AttendanceOverview | null;
+  attendanceCode?: string | null;
   signalPercentage?: number;
   publicBaseUrl?: string;
   messageTemplates: AutoMessageTemplates;
@@ -146,6 +147,7 @@ export function AppointmentDetailsSheet({
   loading = false,
   actionPending = false,
   details,
+  attendanceCode = null,
   signalPercentage = 30,
   publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
   messageTemplates,
@@ -440,6 +442,15 @@ export function AppointmentDetailsSheet({
     }).trim();
   };
 
+  const attendanceClientToken = attendanceCode ? attendanceCode.split("-")[1] ?? null : null;
+  const attendanceCodeHint = attendanceClientToken?.startsWith("N")
+    ? "ID cliente por nome"
+    : attendanceClientToken?.startsWith("T")
+      ? "ID cliente por telefone"
+      : attendanceClientToken?.startsWith("A")
+        ? "ID cliente de apoio"
+        : null;
+
   const handleStructureEvolution = async () => {
     if (!onStructureEvolution || !evolutionDraft.trim()) return;
     setEvolutionStructuring(true);
@@ -556,6 +567,21 @@ export function AppointmentDetailsSheet({
                       <span className="text-[10px] font-bold text-muted uppercase">Local</span>
                     </div>
                   </div>
+                  {attendanceCode && (
+                    <div className="mt-3 rounded-2xl border border-line bg-paper px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                          Código de atendimento
+                        </span>
+                        <code className="text-xs font-extrabold tracking-[0.08em] text-studio-text">
+                          {attendanceCode}
+                        </code>
+                      </div>
+                      {attendanceCodeHint && (
+                        <p className="mt-1 text-[10px] text-muted">{attendanceCodeHint}</p>
+                      )}
+                    </div>
+                  )}
                   {isHomeVisit && hasAddress && mapsHref && (
                     <a
                       href={mapsHref}
@@ -782,6 +808,21 @@ export function AppointmentDetailsSheet({
                     )}
                   </div>
                 </div>
+                {attendanceCode && (
+                  <div className="mt-3 rounded-2xl border border-line bg-paper px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                        Código de atendimento
+                      </span>
+                      <code className="text-xs font-extrabold tracking-[0.08em] text-studio-text">
+                        {attendanceCode}
+                      </code>
+                    </div>
+                    {attendanceCodeHint && (
+                      <p className="mt-1 text-[10px] text-muted">{attendanceCodeHint}</p>
+                    )}
+                  </div>
+                )}
               </section>
 
               <section>

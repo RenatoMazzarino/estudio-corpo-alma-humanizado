@@ -526,7 +526,7 @@ export function AttendancePage({
   const handleReceiptPromptResolved = async () => {
     setPaymentModalOpen(false);
     setBubbleVisible(true);
-    router.push(buildAgendaReturnUrl());
+    router.push(buildAgendaReturnUrl(), { scroll: false });
   };
 
   const handlePrimaryAction = async () => {

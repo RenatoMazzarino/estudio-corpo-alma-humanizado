@@ -70,6 +70,54 @@ import {
   type MobileAgendaProps,
 } from "./agenda/mobile-agenda.types";
 
+function normalizeReferenceToken(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function buildServiceReferenceCode(serviceName: string | null | undefined) {
+  const normalized = normalizeReferenceToken(serviceName ?? "");
+  if (!normalized) return "AT";
+  const ignored = new Set(["DE", "DA", "DO", "DAS", "DOS", "E", "EM", "PARA", "COM"]);
+  const parts = normalized.split(" ").filter((part) => part && !ignored.has(part));
+  if (parts.length === 0) return "AT";
+  const firstPart = parts[0] ?? "";
+  const secondPart = parts[1] ?? "";
+  if (parts.length === 1) return firstPart.slice(0, 2).padEnd(2, "X");
+  return `${firstPart[0] ?? ""}${secondPart[0] ?? ""}`.padEnd(2, "X");
+}
+
+function buildClientReferenceCode(params: {
+  clientName?: string | null;
+  phone?: string | null;
+  appointmentId: string;
+}) {
+  const normalizedName = normalizeReferenceToken(params.clientName ?? "");
+  if (normalizedName) {
+    const parts = normalizedName.split(" ").filter(Boolean);
+    const firstPart = parts[0] ?? "";
+    const lastPart = parts[parts.length - 1] ?? "";
+    const initials =
+      parts.length >= 2
+        ? `${firstPart[0] ?? ""}${lastPart[0] ?? ""}`
+        : firstPart.slice(0, 2);
+    const token = initials || "CL";
+    return `N${token}`;
+  }
+
+  const digits = (params.phone ?? "").replace(/\D/g, "");
+  if (digits) {
+    return `T${digits.slice(-4).padStart(4, "0")}`;
+  }
+
+  return `A${params.appointmentId.replace(/[^a-zA-Z0-9]/g, "").slice(-3).toUpperCase().padStart(3, "X")}`;
+}
+
 export function MobileAgenda({
   appointments,
   blocks,
@@ -139,6 +187,8 @@ export function MobileAgenda({
   const [now, setNow] = useState<Date | null>(null);
   const createdToastShown = useRef(false);
   const autoOpenedAppointmentRef = useRef<string | null>(null);
+  const pendingAutoOpenAppointmentRef = useRef<string | null>(null);
+  const pendingAutoOpenDelayMsRef = useRef<number>(0);
   const timeColumnWidth = 72;
   const timeColumnGap = 16;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -360,13 +410,26 @@ export function MobileAgenda({
   const fetchAttendanceDetails = useCallback(
     async (appointmentId: string) => {
       setDetailsLoading(true);
+      let timeoutId: number | null = null;
       try {
-        const data = await getAttendance(appointmentId);
+        const data = await Promise.race([
+          getAttendance(appointmentId),
+          new Promise<null>((_, reject) => {
+            timeoutId = window.setTimeout(() => reject(new Error("details_timeout")), 10000);
+          }),
+        ]);
         setDetailsData(data ?? null);
       } catch {
-        showToast(feedbackById("agenda_details_load_failed"));
+        showToast(
+          feedbackById("agenda_details_load_failed", {
+            message: "Não foi possível carregar os detalhes agora. Tente abrir novamente.",
+          })
+        );
         setDetailsData(null);
       } finally {
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
         setDetailsLoading(false);
         setLoadingAppointmentId(null);
       }
@@ -383,6 +446,8 @@ export function MobileAgenda({
   useEffect(() => {
     if (!detailsOpen || !detailsAppointmentId) {
       setDetailsData(null);
+      setDetailsLoading(false);
+      setLoadingAppointmentId(null);
       return;
     }
     fetchAttendanceDetails(detailsAppointmentId);
@@ -414,13 +479,28 @@ export function MobileAgenda({
     }
 
     autoOpenedAppointmentRef.current = appointmentToOpen;
-    openDetailsForAppointment(appointmentToOpen);
+    pendingAutoOpenAppointmentRef.current = appointmentToOpen;
+    pendingAutoOpenDelayMsRef.current = searchParams.get("fromAttendance") === "1" ? 80 : 0;
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("openAppointment");
     params.delete("fromAttendance");
     router.replace(`/?${params.toString()}`, { scroll: false });
   }, [appointments, openDetailsForAppointment, parseDate, router, searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("openAppointment")) return;
+    const pendingAppointmentId = pendingAutoOpenAppointmentRef.current;
+    if (!pendingAppointmentId) return;
+
+    pendingAutoOpenAppointmentRef.current = null;
+    const delayMs = pendingAutoOpenDelayMsRef.current;
+    pendingAutoOpenDelayMsRef.current = 0;
+
+    window.setTimeout(() => {
+      openDetailsForAppointment(pendingAppointmentId);
+    }, delayMs);
+  }, [openDetailsForAppointment, searchParams]);
 
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
@@ -615,6 +695,45 @@ export function MobileAgenda({
     }
     return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
   };
+
+  const detailsAttendanceCode = useMemo(() => {
+    const appointment = detailsData?.appointment;
+    if (!appointment) return null;
+
+    const startDate = parseDate(appointment.start_time);
+    if (!isValid(startDate)) return null;
+
+    const serviceCode = buildServiceReferenceCode(appointment.service_name);
+    const clientCode = buildClientReferenceCode({
+      clientName: appointment.clients?.name ?? null,
+      phone: appointment.clients?.phone ?? null,
+      appointmentId: appointment.id,
+    });
+
+    const dayKey = format(startDate, "yyyy-MM-dd");
+    const normalizedServiceName = normalizeReferenceToken(appointment.service_name ?? "");
+    const sameServiceDayAppointments = appointments
+      .filter((item) => {
+        const itemDate = parseDate(item.start_time);
+        if (!isValid(itemDate)) return false;
+        return (
+          format(itemDate, "yyyy-MM-dd") === dayKey &&
+          normalizeReferenceToken(item.service_name ?? "") === normalizedServiceName
+        );
+      })
+      .slice()
+      .sort((a, b) => {
+        const timeDiff = parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return a.id.localeCompare(b.id);
+      });
+
+    const sequenceIndex = sameServiceDayAppointments.findIndex((item) => item.id === appointment.id);
+    const sequence = String(sequenceIndex >= 0 ? sequenceIndex + 1 : 1).padStart(2, "0");
+    const dateToken = format(startDate, "ddMMyy");
+
+    return `${serviceCode}-${clientCode}-${dateToken}-${sequence}`;
+  }, [appointments, detailsData?.appointment, parseDate]);
 
   const buildMessage = (
     type: MessageType,
@@ -1648,6 +1767,7 @@ export function MobileAgenda({
         open={detailsOpen}
         loading={detailsLoading}
         details={detailsData}
+        attendanceCode={detailsAttendanceCode}
         actionPending={detailsActionPending}
         signalPercentage={signalPercentage}
         publicBaseUrl={publicBaseUrl}
@@ -1655,6 +1775,9 @@ export function MobileAgenda({
         onClose={() => {
           setDetailsOpen(false);
           setDetailsAppointmentId(null);
+          setDetailsData(null);
+          setDetailsLoading(false);
+          setLoadingAppointmentId(null);
           setDetailsActionPending(false);
         }}
         onStartSession={handleOpenAttendance}

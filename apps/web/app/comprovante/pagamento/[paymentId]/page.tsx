@@ -50,14 +50,26 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
   const params = await props.params;
   const supabase = createServiceClient();
 
-  const { data: payment } = await supabase
+  const paymentSelect =
+    "id, appointment_id, amount, status, paid_at, created_at, method, card_mode, transaction_id, tenant_id, provider_ref";
+
+  const { data: paymentById } = await supabase
     .from("appointment_payments")
-    .select(
-      "id, appointment_id, amount, status, paid_at, created_at, method, card_mode, transaction_id, tenant_id"
-    )
+    .select(paymentSelect)
     .eq("id", params.paymentId)
     .eq("tenant_id", FIXED_TENANT_ID)
     .maybeSingle();
+
+  const payment =
+    paymentById ??
+    (
+      await supabase
+        .from("appointment_payments")
+        .select(paymentSelect)
+        .eq("provider_ref", params.paymentId)
+        .eq("tenant_id", FIXED_TENANT_ID)
+        .maybeSingle()
+    ).data;
 
   if (!payment || payment.status !== "paid") {
     return <ReceiptNotFound />;
