@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, CreditCard, Loader2, QrCode, Trash2, Wallet } from "lucide-react";
+import { CheckCircle2, Copy, CreditCard, Loader2, QrCode, Trash2, Wallet } from "lucide-react";
 import Image from "next/image";
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
 import {
@@ -60,6 +60,8 @@ interface AttendancePaymentModalProps {
     orderId: string
   ) => Promise<{ ok: boolean; status: InternalStatus; paymentId?: string | null }>;
   onSendReceipt: (paymentId: string) => Promise<void>;
+  onAutoSendReceipt?: (paymentId: string) => Promise<{ ok?: boolean; message?: string } | void>;
+  receiptFlowMode?: "manual" | "auto";
   onReceiptPromptResolved?: (payload: { paymentId: string; sentReceipt: boolean }) => Promise<void> | void;
 }
 
@@ -136,6 +138,8 @@ export function AttendancePaymentModal({
   onCreatePointPayment,
   onPollPointStatus,
   onSendReceipt,
+  onAutoSendReceipt,
+  receiptFlowMode = "manual",
   onReceiptPromptResolved,
 }: AttendancePaymentModalProps) {
   const [method, setMethod] = useState<"cash" | "pix_mp" | "pix_key" | "card">("cash");
@@ -164,6 +168,9 @@ export function AttendancePaymentModal({
   const [errorText, setErrorText] = useState<string | null>(null);
   const [receiptPromptPaymentId, setReceiptPromptPaymentId] = useState<string | null>(null);
   const [resolvingReceiptPrompt, setResolvingReceiptPrompt] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
+  const [autoReceiptStatus, setAutoReceiptStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const [autoReceiptMessage, setAutoReceiptMessage] = useState<string | null>(null);
   const [pixRemaining, setPixRemaining] = useState(0);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const normalizedPixKeyValue = normalizePixKeyForCharge(pixKeyValue, pixKeyType);
@@ -224,6 +231,9 @@ export function AttendancePaymentModal({
     setDiscountReasonInput(checkout?.discount_reason ?? "");
     setErrorText(null);
     setResolvingReceiptPrompt(false);
+    setReceiptSent(false);
+    setAutoReceiptStatus("idle");
+    setAutoReceiptMessage(null);
     setPixKeyError(null);
     setCheckoutSaving(false);
   }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
@@ -270,6 +280,9 @@ export function AttendancePaymentModal({
       if (!result.ok) return;
       if (result.status === "paid") {
         setReceiptPromptPaymentId(pixPayment.id);
+        setReceiptSent(false);
+        setAutoReceiptStatus("idle");
+        setAutoReceiptMessage(null);
         setPixPayment(null);
       }
       if (result.status === "failed") {
@@ -343,6 +356,9 @@ export function AttendancePaymentModal({
       if (!result.ok) return;
       if (result.status === "paid") {
         setReceiptPromptPaymentId(result.paymentId ?? pointPayment.id);
+        setReceiptSent(false);
+        setAutoReceiptStatus("idle");
+        setAutoReceiptMessage(null);
         setPointPayment(null);
       }
       if (result.status === "failed") {
@@ -351,6 +367,48 @@ export function AttendancePaymentModal({
     }, 3500);
     return () => window.clearInterval(interval);
   }, [method, onPollPointStatus, open, pointPayment]);
+
+  useEffect(() => {
+    if (!open || receiptFlowMode !== "auto") return;
+    if (!receiptPromptPaymentId) return;
+    if (autoReceiptStatus !== "idle") return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      if (!onAutoSendReceipt) {
+        if (!cancelled) {
+          setAutoReceiptStatus("failed");
+          setAutoReceiptMessage("Envio automático do recibo ainda não está configurado neste ambiente.");
+        }
+        return;
+      }
+
+      setAutoReceiptStatus("sending");
+      setAutoReceiptMessage("Enviando recibo automaticamente no WhatsApp...");
+      try {
+        const result = await onAutoSendReceipt(receiptPromptPaymentId);
+        if (cancelled) return;
+        if (result && result.ok === false) {
+          setAutoReceiptStatus("failed");
+          setAutoReceiptMessage(result.message ?? "Não foi possível enviar o recibo automaticamente.");
+          return;
+        }
+        setAutoReceiptStatus("sent");
+        setAutoReceiptMessage(result?.message ?? "Recibo enviado automaticamente pelo WhatsApp.");
+        setReceiptSent(true);
+      } catch {
+        if (cancelled) return;
+        setAutoReceiptStatus("failed");
+        setAutoReceiptMessage("Não foi possível enviar o recibo automaticamente.");
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [autoReceiptStatus, onAutoSendReceipt, open, receiptFlowMode, receiptPromptPaymentId]);
 
   if (!open) return null;
 
@@ -391,6 +449,9 @@ export function AttendancePaymentModal({
     }
     if (result.paymentId) {
       setReceiptPromptPaymentId(result.paymentId);
+      setReceiptSent(false);
+      setAutoReceiptStatus("idle");
+      setAutoReceiptMessage(null);
     }
   };
 
@@ -406,6 +467,9 @@ export function AttendancePaymentModal({
     }
     if (result.paymentId) {
       setReceiptPromptPaymentId(result.paymentId);
+      setReceiptSent(false);
+      setAutoReceiptStatus("idle");
+      setAutoReceiptMessage(null);
     }
   };
 
@@ -424,22 +488,45 @@ export function AttendancePaymentModal({
     setPointPayment(result.data);
     if (result.data.internal_status === "paid") {
       setReceiptPromptPaymentId(result.data.id);
+      setReceiptSent(false);
+      setAutoReceiptStatus("idle");
+      setAutoReceiptMessage(null);
     }
   };
 
-  const resolveReceiptPrompt = async (sendReceipt: boolean) => {
+  const handleSendReceiptFromSuccess = async () => {
     const paymentId = receiptPromptPaymentId;
     if (!paymentId || resolvingReceiptPrompt) return;
-    setReceiptPromptPaymentId(null);
     setResolvingReceiptPrompt(true);
     try {
-      if (sendReceipt) {
-        await onSendReceipt(paymentId);
-      }
-      await onReceiptPromptResolved?.({ paymentId, sentReceipt: sendReceipt });
+      await onSendReceipt(paymentId);
+      setReceiptSent(true);
     } finally {
       setResolvingReceiptPrompt(false);
     }
+  };
+
+  const resolveReceiptSuccess = async () => {
+    const paymentId = receiptPromptPaymentId;
+    if (!paymentId || resolvingReceiptPrompt) return;
+    setResolvingReceiptPrompt(true);
+    try {
+      await onReceiptPromptResolved?.({
+        paymentId,
+        sentReceipt: receiptSent || autoReceiptStatus === "sent",
+      });
+      setReceiptPromptPaymentId(null);
+    } finally {
+      setResolvingReceiptPrompt(false);
+    }
+  };
+
+  const handleDismiss = () => {
+    if (receiptPromptPaymentId) {
+      void resolveReceiptSuccess();
+      return;
+    }
+    onClose();
   };
 
   const handleAddItem = async () => {
@@ -507,7 +594,7 @@ export function AttendancePaymentModal({
     <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center pointer-events-none`}>
       <button
         className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
-        onClick={onClose}
+        onClick={handleDismiss}
         aria-label="Fechar modal"
       />
       <div className="relative w-full max-w-105 rounded-t-3xl bg-white shadow-float flex flex-col max-h-[90vh] pointer-events-auto">
@@ -525,12 +612,84 @@ export function AttendancePaymentModal({
             </div>
             <button
               className="rounded-full border border-line px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-gray-500"
-              onClick={onClose}
+              onClick={handleDismiss}
             >
               Fechar
             </button>
           </div>
 
+          {receiptPromptPaymentId ? (
+            <section className="mt-5 flex min-h-[58vh] flex-col items-center justify-center px-1 pb-1 text-center animate-in zoom-in duration-300">
+              <div className="h-24 w-24 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-5 shadow-soft">
+                <CheckCircle2 className="h-11 w-11" />
+              </div>
+
+              <h3 className="text-3xl font-serif text-studio-text">Pagamento confirmado!</h3>
+              <p className="mt-3 max-w-72 text-sm leading-relaxed text-muted">
+                O pagamento foi registrado no atendimento com sucesso.
+              </p>
+
+              <div className="mt-6 w-full rounded-2xl border border-line bg-white px-4 py-4 text-left shadow-soft">
+                <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
+                  <span className="text-sm font-bold text-emerald-700">Pagamento confirmado</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total checkout</span>
+                  <span className="text-sm font-bold text-studio-text">{formatCurrency(total)}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Saldo restante</span>
+                  <span className={`text-sm font-bold ${remaining <= 0 ? "text-emerald-700" : "text-studio-text"}`}>
+                    {remaining <= 0 ? "Quitado" : formatCurrency(remaining)}
+                  </span>
+                </div>
+              </div>
+
+              {receiptFlowMode === "auto" ? (
+                <div
+                  className={`mt-4 w-full rounded-2xl border px-4 py-3 text-sm ${
+                    autoReceiptStatus === "failed"
+                      ? "border-amber-200 bg-amber-50 text-amber-800"
+                      : autoReceiptStatus === "sent"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-line bg-paper text-studio-text"
+                  }`}
+                >
+                  {autoReceiptStatus === "sending" && (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-studio-green" />
+                      {autoReceiptMessage ?? "Enviando recibo automaticamente..."}
+                    </span>
+                  )}
+                  {autoReceiptStatus !== "sending" && (autoReceiptMessage ?? "Recibo será enviado automaticamente pelo WhatsApp.")}
+                </div>
+              ) : (
+                <div className="mt-4 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-studio-text">
+                  {receiptSent ? "Recibo enviado pelo WhatsApp (manual)." : "Você pode enviar o recibo manualmente agora."}
+                </div>
+              )}
+
+              {receiptFlowMode === "manual" && (
+                <button
+                  className="mt-5 w-full h-12 rounded-2xl border border-stone-200 bg-white text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors disabled:opacity-60"
+                  onClick={() => void handleSendReceiptFromSuccess()}
+                  disabled={resolvingReceiptPrompt}
+                >
+                  {resolvingReceiptPrompt ? "Enviando recibo..." : receiptSent ? "Reenviar recibo" : "Enviar recibo"}
+                </button>
+              )}
+
+              <button
+                className="mt-3 w-full h-12 rounded-2xl bg-studio-green text-white font-bold uppercase tracking-widest text-xs hover:bg-studio-green-dark transition-colors disabled:opacity-60"
+                onClick={() => void resolveReceiptSuccess()}
+                disabled={resolvingReceiptPrompt || autoReceiptStatus === "sending"}
+              >
+                {resolvingReceiptPrompt ? "Saindo..." : "Voltar para agenda"}
+              </button>
+            </section>
+          ) : (
+            <>
           <section className="mt-5 rounded-2xl border border-line px-4 py-4 bg-white">
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
               <Wallet className="w-3.5 h-3.5" />
@@ -889,27 +1048,7 @@ export function AttendancePaymentModal({
               {errorText}
             </div>
           )}
-
-          {receiptPromptPaymentId && (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-bold text-emerald-800">Pagamento confirmado. Deseja enviar o recibo agora?</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-[11px] font-extrabold uppercase tracking-wider text-emerald-700"
-                  onClick={() => void resolveReceiptPrompt(false)}
-                  disabled={resolvingReceiptPrompt}
-                >
-                  Agora não
-                </button>
-                <button
-                  className="h-10 rounded-xl bg-emerald-600 px-3 text-[11px] font-extrabold uppercase tracking-wider text-white"
-                  onClick={() => void resolveReceiptPrompt(true)}
-                  disabled={resolvingReceiptPrompt}
-                >
-                  Enviar recibo
-                </button>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </div>
