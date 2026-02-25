@@ -11,8 +11,14 @@ import {
 const parseBearerToken = (request: NextRequest) => {
   const header = request.headers.get("authorization")?.trim();
   if (!header) return "";
-  const match = /^Bearer\s+(.+)$/i.exec(header);
-  return match?.[1]?.trim() ?? "";
+  const separatorIndex = header.indexOf(" ");
+  if (separatorIndex <= 0) return "";
+
+  const scheme = header.slice(0, separatorIndex);
+  if (scheme.toLowerCase() !== "bearer") return "";
+
+  const token = header.slice(separatorIndex + 1).trim();
+  return token.length > 0 ? token : "";
 };
 
 const isAuthorized = (request: NextRequest) => {
