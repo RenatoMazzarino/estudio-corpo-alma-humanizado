@@ -4,6 +4,21 @@ import { getDashboardAuthRedirectPath } from "../../../src/modules/auth/dashboar
 
 export const dynamic = "force-dynamic";
 
+function extractForwardedHeaderValue(value: string | null) {
+  if (!value) return null;
+  const firstValue = value
+    .split(",")
+    .map((entry) => entry.trim())
+    .find(Boolean);
+  return firstValue ?? null;
+}
+
+function resolveForwardedProto(value: string | null) {
+  const normalized = extractForwardedHeaderValue(value)?.toLowerCase();
+  if (normalized === "http" || normalized === "https") return normalized;
+  return null;
+}
+
 function isTrustedRedirectHost(host: string, fallbackHost: string) {
   const normalizedHost = host.trim().toLowerCase();
   const normalizedFallback = fallbackHost.trim().toLowerCase();
@@ -24,12 +39,14 @@ function isTrustedRedirectHost(host: string, fallbackHost: string) {
 function resolveRequestOrigin(request: NextRequest) {
   const fallbackOrigin = request.nextUrl.origin;
   const fallbackHost = request.nextUrl.host;
-  const host = request.headers.get("host")?.trim();
+  const host =
+    extractForwardedHeaderValue(request.headers.get("x-forwarded-host")) ??
+    extractForwardedHeaderValue(request.headers.get("host"));
   if (!host || !isTrustedRedirectHost(host, fallbackHost)) {
     return fallbackOrigin;
   }
 
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.trim().toLowerCase();
+  const forwardedProto = resolveForwardedProto(request.headers.get("x-forwarded-proto"));
   const proto =
     forwardedProto === "http" || forwardedProto === "https"
       ? forwardedProto

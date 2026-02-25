@@ -40,7 +40,7 @@ interface AppointmentDetailsSheetProps {
   onSendPaymentCharge: () => void;
   onSendPaymentReceipt: (paymentId: string | null) => void;
   onConfirmClient: () => void;
-  onCancelAppointment: () => void;
+  onCancelAppointment: (options?: { notifyClient?: boolean }) => void;
   onRecordPayment?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
   onSaveEvolution?: (text: string) => Promise<{ ok: boolean }>;
   onStructureEvolution?: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
@@ -49,6 +49,9 @@ interface AppointmentDetailsSheetProps {
 
 const messageByType = (messages: AppointmentMessage[], type: MessageType) =>
   messages.find((message) => message.type === type) ?? null;
+
+const messageByRawType = (messages: AppointmentMessage[], type: string) =>
+  messages.find((message) => (message.type as unknown as string) === type) ?? null;
 
 const isMessageSent = (status?: string | null) =>
   status === "sent_manual" || status === "sent_auto" || status === "delivered";
@@ -63,6 +66,42 @@ const formatSentLabel = (sentAt?: string | null) => {
     return `Enviada ontem às ${format(sentDate, "HH:mm", { locale: ptBR })}`;
   }
   return `Enviada em ${format(sentDate, "dd MMM 'às' HH:mm", { locale: ptBR })}`;
+};
+
+const formatStatusMoment = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  if (isToday(date)) return `hoje às ${format(date, "HH:mm", { locale: ptBR })}`;
+  if (isYesterday(date)) return `ontem às ${format(date, "HH:mm", { locale: ptBR })}`;
+  return format(date, "dd/MM 'às' HH:mm", { locale: ptBR });
+};
+
+const getAutomationStatusLabel = (message: AppointmentMessage | null) => {
+  if (!message) return "Automação: pendente / sem envio";
+  const status = (message.status as unknown as string) ?? "";
+  const at = formatStatusMoment(message.sent_at ?? message.created_at ?? null);
+  switch (status) {
+    case "queued_auto":
+      return "Automação: em fila";
+    case "retry_scheduled_auto":
+      return "Automação: reenvio agendado";
+    case "sent_auto":
+      return at ? `Automação: enviada (${at})` : "Automação: enviada";
+    case "sent_auto_dry_run":
+      return at ? `Automação: simulada (${at})` : "Automação: simulada";
+    case "provider_sent":
+      return at ? `Automação: enviada e aguardando entrega (${at})` : "Automação: enviada e aguardando entrega";
+    case "provider_delivered":
+      return at ? `Automação: entregue (${at})` : "Automação: entregue";
+    case "provider_read":
+      return at ? `Automação: lida pelo cliente (${at})` : "Automação: lida pelo cliente";
+    case "provider_failed":
+    case "failed_auto":
+      return "Automação: falhou";
+    default:
+      return `Automação: ${status || "pendente"}`;
+  }
 };
 
 const getInitials = (name: string) => {
@@ -126,6 +165,7 @@ export function AppointmentDetailsSheet({
 }: AppointmentDetailsSheetProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [notifyClientOnCancel, setNotifyClientOnCancel] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
@@ -144,6 +184,7 @@ export function AppointmentDetailsSheet({
   useEffect(() => {
     if (!open) {
       setCancelDialogOpen(false);
+      setNotifyClientOnCancel(false);
       setDragOffset(0);
       setEvolutionModalOpen(false);
       setEvolutionSaving(false);
@@ -152,6 +193,7 @@ export function AppointmentDetailsSheet({
       return;
     }
     setCancelDialogOpen(false);
+    setNotifyClientOnCancel(false);
     setDragOffset(0);
     setPaymentMethod("pix");
     setEvolutionModalOpen(false);
@@ -236,6 +278,8 @@ export function AppointmentDetailsSheet({
 
   const createdMessage = messageByType(messages, "created_confirmation");
   const reminderMessage = messageByType(messages, "reminder_24h");
+  const createdAutoMessage = messageByRawType(messages, "auto_appointment_created");
+  const reminderAutoMessage = messageByRawType(messages, "auto_appointment_reminder");
   const paymentChargeMessage = messageByType(messages, "payment_charge");
   const paymentReceiptMessage = messageByType(messages, "payment_receipt");
   const postSurveyMessage = messageByType(messages, "post_survey");
@@ -757,6 +801,7 @@ export function AppointmentDetailsSheet({
                         <p className="text-[10px] text-muted">
                           {isMessageSent(createdMessage?.status) ? formatSentLabel(createdMessage?.sent_at ?? null) : "Pendente de envio"}
                         </p>
+                        <p className="text-[10px] text-muted">{getAutomationStatusLabel(createdAutoMessage)}</p>
                       </div>
                     </div>
                     <button
@@ -781,6 +826,7 @@ export function AppointmentDetailsSheet({
                             ? formatSentLabel(reminderMessage?.sent_at ?? null)
                             : "Pendente de envio"}
                         </p>
+                        <p className="text-[10px] text-muted">{getAutomationStatusLabel(reminderAutoMessage)}</p>
                       </div>
                     </div>
                     <button
@@ -1098,10 +1144,24 @@ export function AppointmentDetailsSheet({
             <p className="text-xs text-muted mt-2">
               Se cancelar, este card vai sumir da agenda e o horário ficará livre novamente.
             </p>
+            <label className="mt-4 flex items-start gap-3 rounded-xl border border-line bg-studio-light/40 px-3 py-3">
+              <input
+                type="checkbox"
+                checked={notifyClientOnCancel}
+                onChange={(event) => setNotifyClientOnCancel(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-line text-studio-green focus:ring-studio-green"
+              />
+              <span className="text-[11px] leading-4 text-studio-text">
+                Avisar cliente por WhatsApp (se a janela de conversa estiver aberta).
+              </span>
+            </label>
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={() => setCancelDialogOpen(false)}
+                onClick={() => {
+                  setCancelDialogOpen(false);
+                  setNotifyClientOnCancel(false);
+                }}
                 className="flex-1 rounded-full border border-line px-3 py-2 text-[10px] font-extrabold text-studio-text"
               >
                 Manter
@@ -1110,7 +1170,8 @@ export function AppointmentDetailsSheet({
                 type="button"
                 onClick={() => {
                   setCancelDialogOpen(false);
-                  onCancelAppointment();
+                  onCancelAppointment({ notifyClient: notifyClientOnCancel });
+                  setNotifyClientOnCancel(false);
                 }}
                 disabled={actionPending}
                 className="flex-1 rounded-full bg-red-600 px-3 py-2 text-[10px] font-extrabold text-white transition disabled:opacity-60"

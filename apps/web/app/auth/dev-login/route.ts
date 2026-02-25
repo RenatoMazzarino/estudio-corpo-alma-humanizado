@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import {
   authorizeDashboardSupabaseUser,
-  getDashboardAccessForCurrentUser,
   getDashboardAuthRedirectPath,
   sanitizeDashboardNextPath,
 } from "../../../src/modules/auth/dashboard-access";
@@ -24,7 +23,7 @@ function resolveForwardedProto(value: string | null) {
   return null;
 }
 
-function isTrustedRedirectHost(host: string, fallbackHost: string) {
+function isTrustedHost(host: string, fallbackHost: string) {
   const normalizedHost = host.trim().toLowerCase();
   const normalizedFallback = fallbackHost.trim().toLowerCase();
   if (!normalizedHost) return false;
@@ -35,7 +34,6 @@ function isTrustedRedirectHost(host: string, fallbackHost: string) {
   if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
   if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
   if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  if (hostname === "public.corpoealmahumanizado.com.br") return true;
   if (hostname === "dev.public.corpoealmahumanizado.com.br") return true;
   if (hostname.endsWith(".vercel.app")) return true;
   return false;
@@ -47,7 +45,7 @@ function resolveRequestOrigin(request: NextRequest) {
   const host =
     extractForwardedHeaderValue(request.headers.get("x-forwarded-host")) ??
     extractForwardedHeaderValue(request.headers.get("host"));
-  if (!host || !isTrustedRedirectHost(host, fallbackHost)) {
+  if (!host || !isTrustedHost(host, fallbackHost)) {
     return fallbackOrigin;
   }
 
@@ -59,36 +57,46 @@ function resolveRequestOrigin(request: NextRequest) {
   return `${proto}://${host}`;
 }
 
-export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const next = sanitizeDashboardNextPath(request.nextUrl.searchParams.get("next"), "/");
-  const code = request.nextUrl.searchParams.get("code");
+function isDevPasswordLoginEnabled() {
+  return (process.env.DEV_PASSWORD_LOGIN_ENABLED ?? "").trim().toLowerCase() === "true";
+}
+
+export async function POST(request: NextRequest) {
   const requestOrigin = resolveRequestOrigin(request);
-  let access = null as Awaited<ReturnType<typeof getDashboardAccessForCurrentUser>> | null;
+  const fallbackNext = sanitizeDashboardNextPath(request.nextUrl.searchParams.get("next"), "/");
 
-  if (code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    const exchangeUser = data?.session?.user ?? null;
-
-    if (error) {
-      return NextResponse.redirect(
-        new URL(getDashboardAuthRedirectPath({ next, reason: "oauth_error" }), requestOrigin)
-      );
-    }
-
-    if (exchangeUser) {
-      access = await authorizeDashboardSupabaseUser(exchangeUser);
-    }
+  if (!isDevPasswordLoginEnabled()) {
+    return NextResponse.redirect(
+      new URL(getDashboardAuthRedirectPath({ next: fallbackNext, reason: "dev_login_disabled" }), requestOrigin)
+    );
   }
 
-  if (!access) {
-    access = await getDashboardAccessForCurrentUser();
+  const formData = await request.formData();
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const next = sanitizeDashboardNextPath(String(formData.get("next") ?? fallbackNext), "/");
+
+  if (!email || !password) {
+    return NextResponse.redirect(
+      new URL(getDashboardAuthRedirectPath({ next, reason: "dev_login_error" }), requestOrigin)
+    );
   }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  const signedUser = data.session?.user ?? null;
+  if (error || !signedUser) {
+    return NextResponse.redirect(
+      new URL(getDashboardAuthRedirectPath({ next, reason: "dev_login_error" }), requestOrigin)
+    );
+  }
+
+  const access = await authorizeDashboardSupabaseUser(signedUser);
   if (!access.ok) {
     await supabase.auth.signOut();
-    return NextResponse.redirect(
-      new URL(getDashboardAuthRedirectPath({ next, reason: access.reason }), requestOrigin)
-    );
+    const reason = access.reason === "system_error" ? "system_error" : "forbidden";
+    return NextResponse.redirect(new URL(getDashboardAuthRedirectPath({ next, reason }), requestOrigin));
   }
 
   return NextResponse.redirect(new URL(next, requestOrigin));

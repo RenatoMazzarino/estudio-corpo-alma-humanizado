@@ -25,7 +25,10 @@ import {
   updateClient,
 } from "../clients/repository";
 import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
-import { insertNotificationJob } from "../notifications/repository";
+import {
+  scheduleAppointmentCanceledNotification,
+  scheduleAppointmentLifecycleNotifications,
+} from "../notifications/whatsapp-automation";
 import { BRAZIL_TZ_OFFSET } from "../../shared/timezone";
 import { estimateDisplacementFromAddress } from "../../shared/displacement/service";
 import {
@@ -164,7 +167,10 @@ export async function finishAppointment(id: string): Promise<ActionResult<{ id: 
   return ok({ id });
 }
 
-export async function cancelAppointment(id: string): Promise<ActionResult<{ id: string }>> {
+export async function cancelAppointment(
+  id: string,
+  options?: { notifyClient?: boolean }
+): Promise<ActionResult<{ id: string }>> {
   const parsed = cancelAppointmentSchema.safeParse({ id });
   if (!parsed.success) {
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
@@ -186,14 +192,11 @@ export async function cancelAppointment(id: string): Promise<ActionResult<{ id: 
     })
     .eq("appointment_id", id);
 
-  await enqueueNotificationJob({
-    tenant_id: FIXED_TENANT_ID,
-    appointment_id: id,
-    type: "appointment_canceled",
-    channel: "whatsapp",
-    payload: { appointment_id: id },
-    status: "pending",
-    scheduled_for: new Date().toISOString(),
+  await scheduleAppointmentCanceledNotification({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: id,
+    source: "admin_cancel",
+    notifyClient: options?.notifyClient === true,
   });
 
   revalidatePath("/");
@@ -363,30 +366,11 @@ export async function createAppointment(formData: FormData): Promise<void> {
   if (appointmentId) {
     const tenantId = FIXED_TENANT_ID;
 
-    await enqueueNotificationJob({
-      tenant_id: tenantId,
-      appointment_id: appointmentId,
-      type: "appointment_created",
-      channel: "whatsapp",
-      payload: {
-        appointment_id: appointmentId,
-        start_time: startDateTime.toISOString(),
-      },
-      status: "pending",
-      scheduled_for: new Date().toISOString(),
-    });
-
-    await enqueueNotificationJob({
-      tenant_id: tenantId,
-      appointment_id: appointmentId,
-      type: "appointment_reminder",
-      channel: "whatsapp",
-      payload: {
-        appointment_id: appointmentId,
-        start_time: startDateTime.toISOString(),
-      },
-      status: "pending",
-      scheduled_for: new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    await scheduleAppointmentLifecycleNotifications({
+      tenantId,
+      appointmentId,
+      startTimeIso: startDateTime.toISOString(),
+      source: "admin_create",
     });
 
     if (sendCreatedMessage) {
@@ -806,13 +790,6 @@ export async function submitPublicAppointment(
   data: SubmitPublicAppointmentInput
 ): Promise<ActionResult<{ appointmentId: string | null }>> {
   return submitPublicAppointmentAction(data);
-}
-
-async function enqueueNotificationJob(payload: Parameters<typeof insertNotificationJob>[0]) {
-  const { error } = await insertNotificationJob(payload);
-  if (error) {
-    console.error("Erro ao criar job de notificação:", error);
-  }
 }
 
 interface FinishAppointmentParams {

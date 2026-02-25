@@ -8,7 +8,7 @@ import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { BRAZIL_TZ_OFFSET } from "../../shared/timezone";
 import { publicBookingSchema } from "../../shared/validation/appointments";
 import { estimateDisplacementFromAddress } from "../../shared/displacement/service";
-import { insertNotificationJob } from "../notifications/repository";
+import { scheduleAppointmentLifecycleNotifications } from "../notifications/whatsapp-automation";
 import { getTenantBySlug } from "../settings/repository";
 
 export interface SubmitPublicAppointmentInput {
@@ -33,13 +33,6 @@ export interface SubmitPublicAppointmentInput {
 
 const toBrazilDateTime = (date: string, time: string) =>
   new Date(`${date}T${time}:00${BRAZIL_TZ_OFFSET}`);
-
-async function enqueueNotificationJob(payload: Parameters<typeof insertNotificationJob>[0]) {
-  const { error } = await insertNotificationJob(payload);
-  if (error) {
-    console.error("Erro ao criar job de notificação:", error);
-  }
-}
 
 export async function submitPublicAppointmentAction(
   data: SubmitPublicAppointmentInput
@@ -102,30 +95,11 @@ export async function submitPublicAppointmentAction(
     const { data: tenant } = await getTenantBySlug(parsed.data.tenantSlug);
     const tenantId = tenant?.id ?? FIXED_TENANT_ID;
 
-    await enqueueNotificationJob({
-      tenant_id: tenantId,
-      appointment_id: appointmentId,
-      type: "appointment_created",
-      channel: "whatsapp",
-      payload: {
-        appointment_id: appointmentId,
-        start_time: startDateTime.toISOString(),
-      },
-      status: "pending",
-      scheduled_for: new Date().toISOString(),
-    });
-
-    await enqueueNotificationJob({
-      tenant_id: tenantId,
-      appointment_id: appointmentId,
-      type: "appointment_reminder",
-      channel: "whatsapp",
-      payload: {
-        appointment_id: appointmentId,
-        start_time: startDateTime.toISOString(),
-      },
-      status: "pending",
-      scheduled_for: new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    await scheduleAppointmentLifecycleNotifications({
+      tenantId,
+      appointmentId,
+      startTimeIso: startDateTime.toISOString(),
+      source: "public_booking",
     });
   }
 
