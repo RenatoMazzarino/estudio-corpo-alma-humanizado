@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { resolveClientNames } from "../../../src/modules/clients/name-profile";
 import { WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE } from "../../../src/modules/notifications/automation-config";
 import VoucherPageView from "./voucher-page-view";
 
@@ -42,7 +43,7 @@ export default async function VoucherPage(props: PageProps) {
   const supabase = createServiceClient();
   const publicId = params.id.trim();
   const appointmentSelect =
-    "id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name )";
+    "id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name, extra_data )";
 
   let appointmentData: VoucherAppointmentRecord | null = null;
 
@@ -82,7 +83,7 @@ export default async function VoucherPage(props: PageProps) {
     address_bairro: string | null;
     address_cidade: string | null;
     address_estado: string | null;
-    clients: { name: string | null } | null;
+    clients: { name: string | null; extra_data?: unknown } | null;
   };
 
   const startDate = new Date(appointment.start_time);
@@ -110,9 +111,14 @@ export default async function VoucherPage(props: PageProps) {
     ? `No endereço informado: ${locationAddress || "Endereço informado no agendamento"}`
     : `No estúdio: ${WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE || "Estúdio Corpo & Alma Humanizado"}`;
 
+  const clientNames = resolveClientNames({
+    name: appointment.clients?.name ?? null,
+    extraData: appointment.clients?.extra_data,
+  });
+
   return (
     <VoucherPageView
-      clientName={appointment.clients?.name?.trim() || "Cliente"}
+      clientName={clientNames.publicFullName}
       dateTimeLabel={`${dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)} às ${timeLabel}`}
       dayLabel={dayAndMonthLabel}
       timeLabel={timeLabel}

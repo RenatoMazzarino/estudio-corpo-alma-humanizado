@@ -34,6 +34,7 @@ import {
   type NotificationJobInsert,
   type NotificationJobRow,
 } from "./repository";
+import { resolveClientNames } from "../clients/name-profile";
 
 type WhatsAppNotificationJobType =
   | "appointment_created"
@@ -398,7 +399,7 @@ async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<
   const { data, error } = await supabase
     .from("appointments")
     .select(
-      "id, tenant_id, start_time, service_name, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients(name, endereco_completo)"
+      "id, tenant_id, start_time, service_name, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients(name, endereco_completo, extra_data)"
     )
     .eq("id", job.appointment_id)
     .eq("tenant_id", job.tenant_id)
@@ -413,8 +414,10 @@ async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<
 
   const record = data as unknown as Record<string, unknown>;
   const client = asJsonObject(record.clients as Json | undefined);
-  const clientName =
-    (typeof client.name === "string" && client.name.trim()) || "Cliente";
+  const clientName = resolveClientNames({
+    name: typeof client?.name === "string" ? client.name : null,
+    extraData: client?.extra_data,
+  }).messagingFirstName;
   const serviceName =
     (typeof record.service_name === "string" && record.service_name.trim()) || "Seu atendimento";
   const startTimeIso =

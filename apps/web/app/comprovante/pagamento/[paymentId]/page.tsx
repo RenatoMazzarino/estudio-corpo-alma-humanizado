@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
+import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import ReceiptView from "../../[id]/receipt-view";
 
 export const dynamic = "force-dynamic";
@@ -78,7 +79,7 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
   const { data: appointmentData } = await supabase
     .from("appointments")
     .select(
-      "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name )"
+      "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, extra_data )"
     )
     .eq("id", payment.appointment_id)
     .eq("tenant_id", FIXED_TENANT_ID)
@@ -100,8 +101,13 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
     address_bairro: string | null;
     address_cidade: string | null;
     address_estado: string | null;
-    clients: { name: string | null } | null;
+    clients: { name: string | null; extra_data?: unknown } | null;
   };
+
+  const clientNames = resolveClientNames({
+    name: appointment.clients?.name ?? null,
+    extraData: appointment.clients?.extra_data,
+  });
 
   const [{ data: checkoutData }, { data: paymentsData }] = await Promise.all([
     supabase
@@ -145,7 +151,7 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
   return (
     <ReceiptView
       data={{
-        clientName: appointment.clients?.name ?? "Cliente",
+        clientName: clientNames.publicFullName,
         serviceName: appointment.service_name,
         dateLabel,
         timeLabel,
