@@ -499,7 +499,6 @@ export type Database = {
       appointments: {
         Row: {
           actual_duration_minutes: number | null
-          attendance_code: string | null
           address_bairro: string | null
           address_cep: string | null
           address_cidade: string | null
@@ -507,6 +506,7 @@ export type Database = {
           address_estado: string | null
           address_logradouro: string | null
           address_numero: string | null
+          attendance_code: string | null
           client_address_id: string | null
           client_id: string | null
           created_at: string
@@ -532,7 +532,6 @@ export type Database = {
         }
         Insert: {
           actual_duration_minutes?: number | null
-          attendance_code?: string | null
           address_bairro?: string | null
           address_cep?: string | null
           address_cidade?: string | null
@@ -540,6 +539,7 @@ export type Database = {
           address_estado?: string | null
           address_logradouro?: string | null
           address_numero?: string | null
+          attendance_code?: string | null
           client_address_id?: string | null
           client_id?: string | null
           created_at?: string
@@ -565,7 +565,6 @@ export type Database = {
         }
         Update: {
           actual_duration_minutes?: number | null
-          attendance_code?: string | null
           address_bairro?: string | null
           address_cep?: string | null
           address_cidade?: string | null
@@ -573,6 +572,7 @@ export type Database = {
           address_estado?: string | null
           address_logradouro?: string | null
           address_numero?: string | null
+          attendance_code?: string | null
           client_address_id?: string | null
           client_id?: string | null
           created_at?: string
@@ -945,14 +945,13 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           endereco_completo: string | null
-          extra_data: Json
-          internal_reference: string | null
           guardian_cpf: string | null
           guardian_name: string | null
           guardian_phone: string | null
           health_tags: string[] | null
           id: string
           initials: string | null
+          internal_reference: string | null
           is_minor: boolean
           is_vip: boolean
           marketing_opt_in: boolean
@@ -961,10 +960,10 @@ export type Database = {
           notes: string | null
           observacoes_gerais: string | null
           phone: string | null
-          public_first_name: string | null
-          public_last_name: string | null
           preferences_notes: string | null
           profissao: string | null
+          public_first_name: string | null
+          public_last_name: string | null
           tenant_id: string
         }
         Insert: {
@@ -986,14 +985,13 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           endereco_completo?: string | null
-          extra_data?: Json
-          internal_reference?: string | null
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
           health_tags?: string[] | null
           id?: string
           initials?: string | null
+          internal_reference?: string | null
           is_minor?: boolean
           is_vip?: boolean
           marketing_opt_in?: boolean
@@ -1002,10 +1000,10 @@ export type Database = {
           notes?: string | null
           observacoes_gerais?: string | null
           phone?: string | null
-          public_first_name?: string | null
-          public_last_name?: string | null
           preferences_notes?: string | null
           profissao?: string | null
+          public_first_name?: string | null
+          public_last_name?: string | null
           tenant_id: string
         }
         Update: {
@@ -1027,14 +1025,13 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           endereco_completo?: string | null
-          extra_data?: Json
-          internal_reference?: string | null
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
           health_tags?: string[] | null
           id?: string
           initials?: string | null
+          internal_reference?: string | null
           is_minor?: boolean
           is_vip?: boolean
           marketing_opt_in?: boolean
@@ -1043,15 +1040,62 @@ export type Database = {
           notes?: string | null
           observacoes_gerais?: string | null
           phone?: string | null
-          public_first_name?: string | null
-          public_last_name?: string | null
           preferences_notes?: string | null
           profissao?: string | null
+          public_first_name?: string | null
+          public_last_name?: string | null
           tenant_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_access_users: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          last_login_at: string | null
+          linked_at: string | null
+          role: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          linked_at?: string | null
+          role?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          linked_at?: string | null
+          role?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_access_users_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1154,6 +1198,144 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notification_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pix_payment_keys: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          key_type: string
+          key_value: string
+          label: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_type: string
+          key_value: string
+          label?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key_type?: string
+          key_value?: string
+          label?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_payment_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_booking_identity_lookup_events: {
+        Row: {
+          actor_key_hash: string
+          created_at: string
+          details: Json
+          event_type: string
+          id: string
+          phone_hash: string
+          phone_last4: string | null
+          tenant_id: string
+        }
+        Insert: {
+          actor_key_hash: string
+          created_at?: string
+          details?: Json
+          event_type: string
+          id?: string
+          phone_hash: string
+          phone_last4?: string | null
+          tenant_id: string
+        }
+        Update: {
+          actor_key_hash?: string
+          created_at?: string
+          details?: Json
+          event_type?: string
+          id?: string
+          phone_hash?: string
+          phone_last4?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_booking_identity_lookup_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_booking_identity_lookup_guards: {
+        Row: {
+          actor_key_hash: string
+          attempts_in_cycle: number
+          completed_cycles: number
+          cooldown_until: string | null
+          created_at: string
+          hard_block_until: string | null
+          id: string
+          last_attempt_at: string | null
+          last_success_at: string | null
+          phone_hash: string
+          phone_last4: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          actor_key_hash: string
+          attempts_in_cycle?: number
+          completed_cycles?: number
+          cooldown_until?: string | null
+          created_at?: string
+          hard_block_until?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_success_at?: string | null
+          phone_hash: string
+          phone_last4?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          actor_key_hash?: string
+          attempts_in_cycle?: number
+          completed_cycles?: number
+          cooldown_until?: string | null
+          created_at?: string
+          hard_block_until?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_success_at?: string | null
+          phone_hash?: string
+          phone_last4?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_booking_identity_lookup_guards_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1306,47 +1488,6 @@ export type Database = {
           },
         ]
       }
-      pix_payment_keys: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean
-          key_type: string
-          key_value: string
-          label: string | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          key_type: string
-          key_value: string
-          label?: string | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          key_type?: string
-          key_value?: string
-          label?: string | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pix_payment_keys_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tenants: {
         Row: {
           created_at: string
@@ -1424,6 +1565,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_pix_payment_key: {
+        Args: { p_key_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
       create_internal_appointment: {
         Args: {
           client_name: string
@@ -1492,6 +1637,13 @@ export type Database = {
             Returns: string
           }
       normalize_phone_digits: { Args: { value: string }; Returns: string }
+      remove_pix_payment_key_and_rebalance: {
+        Args: { p_key_id: string; p_tenant_id: string }
+        Returns: {
+          deleted_was_active: boolean
+          next_active_key_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1624,3 +1776,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
