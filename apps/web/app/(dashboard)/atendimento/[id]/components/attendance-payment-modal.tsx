@@ -64,6 +64,11 @@ interface AttendancePaymentModalProps {
   onSendReceipt: (paymentId: string) => Promise<void>;
   onAutoSendReceipt?: (paymentId: string) => Promise<{ ok?: boolean; message?: string } | void>;
   receiptFlowMode?: "manual" | "auto";
+  variant?: "modal" | "embedded";
+  chargeAmountOverride?: number | null;
+  hideWaiverOption?: boolean;
+  initialMethod?: "cash" | "pix_mp" | "pix_key" | "card" | "waiver";
+  successResolveLabel?: string;
   onReceiptPromptResolved?: (payload: {
     paymentId?: string | null;
     sentReceipt: boolean;
@@ -148,6 +153,11 @@ export function AttendancePaymentModal({
   onSendReceipt,
   onAutoSendReceipt,
   receiptFlowMode = "manual",
+  variant = "modal",
+  chargeAmountOverride = null,
+  hideWaiverOption = false,
+  initialMethod = "cash",
+  successResolveLabel = "Voltar para agenda",
   onReceiptPromptResolved,
 }: AttendancePaymentModalProps) {
   const [method, setMethod] = useState<"cash" | "pix_mp" | "pix_key" | "card" | "waiver">("cash");
@@ -227,13 +237,18 @@ export function AttendancePaymentModal({
   }, [appliedDiscountType, appliedDiscountValue, subtotal]);
   const total = Math.max(subtotal - appliedDiscountAmount, 0);
   const remaining = Math.max(total - paidTotal, 0);
+  const effectiveChargeAmount = useMemo(() => {
+    const raw = chargeAmountOverride === null || chargeAmountOverride === undefined ? remaining : Number(chargeAmountOverride);
+    if (!Number.isFinite(raw)) return remaining;
+    return Math.max(0, Math.min(raw, remaining));
+  }, [chargeAmountOverride, remaining]);
   const isFullyPaid = remaining <= 0 && total > 0;
   const isWaived = appointmentPaymentStatus === "waived" || waiverSuccess;
   const isSuccessState = Boolean(receiptPromptPaymentId) || waiverSuccess;
 
   useEffect(() => {
     if (!open) return;
-    setMethod(appointmentPaymentStatus === "waived" ? "waiver" : "cash");
+    setMethod(appointmentPaymentStatus === "waived" ? "waiver" : initialMethod);
     setDraftItems(items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount })));
     setAppliedDiscountType(checkout?.discount_type ?? null);
     setAppliedDiscountValue(checkout?.discount_value ?? 0);
@@ -249,12 +264,12 @@ export function AttendancePaymentModal({
     setAutoReceiptMessage(null);
     setPixKeyError(null);
     setCheckoutSaving(false);
-  }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason, appointmentPaymentStatus]);
+  }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason, appointmentPaymentStatus, initialMethod]);
 
   useEffect(() => {
     if (!open) return;
-    setCashAmount(remaining);
-  }, [open, remaining]);
+    setCashAmount(effectiveChargeAmount);
+  }, [effectiveChargeAmount, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -283,8 +298,12 @@ export function AttendancePaymentModal({
   }, [open, pixPayment]);
 
   useEffect(() => {
+    if (variant === "embedded") {
+      setPortalTarget(null);
+      return;
+    }
     setPortalTarget(document.getElementById("app-frame"));
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
     if (!open || !pixPayment || method !== "pix_mp") return;
@@ -313,7 +332,7 @@ export function AttendancePaymentModal({
       setPixKeyError("Configure a chave Pix CNPJ para usar esta forma de cobrança.");
       return;
     }
-    if (remaining <= 0) {
+    if (effectiveChargeAmount <= 0) {
       setPixKeyCode("");
       setPixKeyQrDataUrl(null);
       setPixKeyError(null);
@@ -327,7 +346,7 @@ export function AttendancePaymentModal({
       try {
         const payload = buildPixBrCode({
           pixKey: normalizedPixKeyValue,
-          amount: remaining,
+          amount: effectiveChargeAmount,
           merchantName: ATTENDANCE_PIX_RECEIVER_NAME,
           merchantCity: ATTENDANCE_PIX_RECEIVER_CITY,
           txid: ATTENDANCE_PIX_TXID,
@@ -360,7 +379,7 @@ export function AttendancePaymentModal({
     return () => {
       cancelled = true;
     };
-  }, [method, normalizedPixKeyValue, open, pixKeyConfigured, remaining]);
+  }, [effectiveChargeAmount, method, normalizedPixKeyValue, open, pixKeyConfigured]);
 
   useEffect(() => {
     if (!open || !pointPayment || method !== "card") return;
@@ -426,11 +445,11 @@ export function AttendancePaymentModal({
   if (!open) return null;
 
   const handleCreatePix = async () => {
-    if (remaining <= 0) return;
+    if (effectiveChargeAmount <= 0) return;
     setBusy(true);
     setErrorText(null);
     const nextAttempt = pixAttempt + 1;
-    const result = await onCreatePixPayment(remaining, nextAttempt);
+    const result = await onCreatePixPayment(effectiveChargeAmount, nextAttempt);
     setBusy(false);
     if (!result.ok || !result.data) {
       setErrorText("Não foi possível gerar o Pix agora.");
@@ -469,10 +488,10 @@ export function AttendancePaymentModal({
   };
 
   const handleRegisterPixKey = async () => {
-    if (remaining <= 0) return;
+    if (effectiveChargeAmount <= 0) return;
     setBusy(true);
     setErrorText(null);
-    const result = await onRegisterPixKeyPayment(remaining);
+    const result = await onRegisterPixKeyPayment(effectiveChargeAmount);
     setBusy(false);
     if (!result.ok) {
       setErrorText("Não foi possível registrar o pagamento Pix por chave.");
@@ -487,11 +506,11 @@ export function AttendancePaymentModal({
   };
 
   const handlePointCharge = async (cardMode: PointCardMode) => {
-    if (remaining <= 0) return;
+    if (effectiveChargeAmount <= 0) return;
     const nextAttempt = pointAttempt + 1;
     setBusy(true);
     setErrorText(null);
-    const result = await onCreatePointPayment(remaining, cardMode, nextAttempt);
+    const result = await onCreatePointPayment(effectiveChargeAmount, cardMode, nextAttempt);
     setBusy(false);
     if (!result.ok || !result.data) {
       setErrorText("Não foi possível iniciar a cobrança na maquininha.");
@@ -625,14 +644,29 @@ export function AttendancePaymentModal({
     }
   };
 
+  const isEmbedded = variant === "embedded";
   const modalNode = (
-    <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center pointer-events-none`}>
-      <button
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
-        onClick={handleDismiss}
-        aria-label="Fechar modal"
-      />
-      <div className="relative w-full max-w-105 rounded-t-3xl bg-white shadow-float flex flex-col max-h-[90vh] pointer-events-auto">
+    <div
+      className={
+        isEmbedded
+          ? "relative w-full"
+          : `${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center pointer-events-none`
+      }
+    >
+      {!isEmbedded && (
+        <button
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+          onClick={handleDismiss}
+          aria-label="Fechar modal"
+        />
+      )}
+      <div
+        className={`relative w-full flex flex-col ${
+          isEmbedded
+            ? "rounded-2xl border border-line bg-white shadow-soft"
+            : "max-w-105 rounded-t-3xl bg-white shadow-float max-h-[90vh] pointer-events-auto"
+        }`}
+      >
         <div className="flex items-center justify-center px-6 pt-4 pb-2">
           <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-200" />
         </div>
@@ -738,7 +772,7 @@ export function AttendancePaymentModal({
                 onClick={() => void resolveCheckoutSuccess()}
                 disabled={resolvingReceiptPrompt || (!waiverSuccess && autoReceiptStatus === "sending")}
               >
-                {resolvingReceiptPrompt ? "Saindo..." : "Voltar para agenda"}
+                {resolvingReceiptPrompt ? "Saindo..." : successResolveLabel}
               </button>
             </section>
           ) : (
@@ -882,7 +916,7 @@ export function AttendancePaymentModal({
               </div>
               <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-muted">
                 <span>Valor a cobrar agora</span>
-                <span className="text-lg font-black text-studio-text">{formatCurrency(remaining)}</span>
+                <span className="text-lg font-black text-studio-text">{formatCurrency(effectiveChargeAmount)}</span>
               </div>
             </div>
           </section>
@@ -941,17 +975,19 @@ export function AttendancePaymentModal({
                 <CreditCard className="mx-auto mb-1 h-3.5 w-3.5" />
                 Cartão
               </button>
-              <button
-                className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                  method === "waiver"
-                    ? "border-sky-500 bg-sky-50 text-sky-700"
-                    : "border-line text-muted hover:bg-paper"
-                }`}
-                onClick={() => setMethod("waiver")}
-              >
-                <Gift className="mx-auto mb-1 h-3.5 w-3.5" />
-                Cortesia
-              </button>
+              {!hideWaiverOption && (
+                <button
+                  className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                    method === "waiver"
+                      ? "border-sky-500 bg-sky-50 text-sky-700"
+                      : "border-line text-muted hover:bg-paper"
+                  }`}
+                  onClick={() => setMethod("waiver")}
+                >
+                  <Gift className="mx-auto mb-1 h-3.5 w-3.5" />
+                  Cortesia
+                </button>
+              )}
             </div>
             {isWaived && !waiverSuccess && (
               <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-900">
@@ -1116,7 +1152,7 @@ export function AttendancePaymentModal({
             </section>
           )}
 
-          {method === "waiver" && (
+          {!hideWaiverOption && method === "waiver" && (
             <section className="mt-4 rounded-2xl border border-sky-200 px-4 py-4 bg-sky-50">
               <p className="text-[10px] font-extrabold uppercase tracking-widest text-sky-700 mb-2">
                 Cortesia interna
@@ -1156,5 +1192,6 @@ export function AttendancePaymentModal({
     </div>
   );
 
+  if (isEmbedded) return modalNode;
   return portalTarget ? createPortal(modalNode, portalTarget) : modalNode;
 }
