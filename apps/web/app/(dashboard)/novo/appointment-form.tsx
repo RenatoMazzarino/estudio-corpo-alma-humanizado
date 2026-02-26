@@ -17,7 +17,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createAppointment, getClientAddresses, updateAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
+import { createAppointment, getClientAddresses, saveClientAddress, updateAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Toast, useToast } from "../../../components/ui/toast";
@@ -39,7 +39,7 @@ interface Service {
 
 interface AppointmentFormProps {
   services: Service[];
-  clients: { id: string; name: string; phone: string | null }[];
+  clients: { id: string; name: string; phone: string | null; cpf?: string | null }[];
   safeDate: string;
   initialAppointment?: InitialAppointment | null;
   returnTo?: string;
@@ -70,6 +70,9 @@ interface DisplacementEstimate {
   fee: number;
   rule: "urban" | "road";
 }
+
+type AddressModalStep = "chooser" | "cep" | "search" | "form";
+type ClientSelectionMode = "idle" | "existing" | "new";
 
 interface InitialAppointment {
   id: string;
@@ -195,6 +198,7 @@ export function AppointmentForm({
   const formRef = useRef<HTMLFormElement | null>(null);
   const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
   const sendMessageTextInputRef = useRef<HTMLInputElement | null>(null);
+  const clientPhoneInputRef = useRef<HTMLInputElement | null>(null);
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
   const sectionCardClass = "bg-white rounded-2xl shadow-sm p-5 border border-stone-100";
   const sectionHeaderTextClass = "text-xs font-bold text-gray-400 uppercase tracking-widest";
@@ -238,10 +242,15 @@ export function AppointmentForm({
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
+  const [clientSelectionMode, setClientSelectionMode] = useState<ClientSelectionMode>(
+    initialAppointment?.clientId ? "existing" : "idle"
+  );
+  const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [clientName, setClientName] = useState(initialAppointment?.clientName ?? "");
   const [clientPhone, setClientPhone] = useState(
     initialAppointment?.clientPhone ? formatBrazilPhone(initialAppointment.clientPhone) : ""
   );
+  const [clientCpf, setClientCpf] = useState("");
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasBlocks, setHasBlocks] = useState(false);
   const [hasShiftBlock, setHasShiftBlock] = useState(false);
@@ -252,27 +261,22 @@ export function AppointmentForm({
   );
   const [addressMode, setAddressMode] = useState<"none" | "existing" | "new">(initialAddressMode);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [modalAddressId, setModalAddressId] = useState<string | null>(null);
+  const [addressModalStep, setAddressModalStep] = useState<AddressModalStep>("chooser");
+  const [showAddressSelectionList, setShowAddressSelectionList] = useState(false);
   const [addressConfirmed, setAddressConfirmed] = useState(
     Boolean(initialAppointment?.clientAddressId || hasInitialManualAddress)
   );
-  const [isCepModalOpen, setIsCepModalOpen] = useState(false);
   const [cepDraft, setCepDraft] = useState("");
   const [cepDraftStatus, setCepDraftStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
-  const [cepDraftResult, setCepDraftResult] = useState<{
-    cep: string;
-    logradouro: string;
-    bairro: string;
-    cidade: string;
-    estado: string;
-  } | null>(null);
-  const [isAddressSearchModalOpen, setIsAddressSearchModalOpen] = useState(false);
   const [addressSearchQuery, setAddressSearchQuery] = useState("");
   const [addressSearchResults, setAddressSearchResults] = useState<AddressSearchResult[]>([]);
   const [addressSearchLoading, setAddressSearchLoading] = useState(false);
   const [addressSearchError, setAddressSearchError] = useState<string | null>(null);
+  const [addressSavePending, setAddressSavePending] = useState(false);
+  const [addressSaveError, setAddressSaveError] = useState<string | null>(null);
+  const [addressIsPrimaryDraft, setAddressIsPrimaryDraft] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const [addressLabel, setAddressLabel] = useState("Casa");
+  const [addressLabel, setAddressLabel] = useState("Principal");
   const [cep, setCep] = useState(initialAppointment?.addressCep ?? "");
   const [logradouro, setLogradouro] = useState(initialAppointment?.addressLogradouro ?? "");
   const [numero, setNumero] = useState(initialAppointment?.addressNumero ?? "");
@@ -280,7 +284,6 @@ export function AppointmentForm({
   const [bairro, setBairro] = useState(initialAppointment?.addressBairro ?? "");
   const [cidade, setCidade] = useState(initialAppointment?.addressCidade ?? "");
   const [estado, setEstado] = useState(initialAppointment?.addressEstado ?? "");
-  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [displacementEstimate, setDisplacementEstimate] = useState<DisplacementEstimate | null>(null);
   const [displacementStatus, setDisplacementStatus] = useState<"idle" | "loading" | "error">("idle");
   const [displacementError, setDisplacementError] = useState<string | null>(null);
@@ -289,6 +292,7 @@ export function AppointmentForm({
       ? initialAppointment.displacementFee.toFixed(2).replace(".", ",")
       : ""
   );
+  const [isCourtesyAppointment, setIsCourtesyAppointment] = useState(false);
   const [internalNotes, setInternalNotes] = useState(initialAppointment?.internalNotes ?? "");
   const { toast, showToast } = useToast();
   const selectedService = useMemo(
@@ -308,7 +312,10 @@ export function AppointmentForm({
     if (previousClientIdRef.current && previousClientIdRef.current !== selectedClientId) {
       setAddressMode("none");
       setSelectedAddressId(null);
+      setShowAddressSelectionList(false);
       setAddressConfirmed(false);
+      setIsAddressModalOpen(false);
+      setAddressModalStep("chooser");
       setCep("");
       setLogradouro("");
       setNumero("");
@@ -316,7 +323,9 @@ export function AppointmentForm({
       setBairro("");
       setCidade("");
       setEstado("");
-      setCepStatus("idle");
+      setAddressLabel("Principal");
+      setAddressIsPrimaryDraft(false);
+      setAddressSaveError(null);
       setDisplacementEstimate(null);
       setDisplacementStatus("idle");
       setDisplacementError(null);
@@ -329,7 +338,7 @@ export function AppointmentForm({
     const lower = clientName.toLowerCase();
     return clients
       .filter((client) => client.name.toLowerCase().includes(lower))
-      .slice(0, 6);
+      .slice(0, 8);
   }, [clientName, clients]);
 
   const exactClientMatch = useMemo(() => {
@@ -338,25 +347,27 @@ export function AppointmentForm({
     return clients.find((client) => client.name.trim().toLowerCase() === trimmed.toLowerCase()) ?? null;
   }, [clientName, clients]);
 
-  useEffect(() => {
-    const trimmed = clientName.trim();
-    if (!trimmed) {
-      setSelectedClientId(null);
-      return;
-    }
-    const match = clients.find((client) => client.name.trim().toLowerCase() === trimmed.toLowerCase());
-    if (match && match.id !== selectedClientId) {
-      setSelectedClientId(match.id);
-      if (!clientPhone && match.phone) {
-        setClientPhone(formatBrazilPhone(match.phone));
-      }
-    }
-  }, [clientName, clients, selectedClientId, clientPhone]);
-
-  const handleSelectClient = (client: { id: string; name: string; phone: string | null }) => {
+  const handleSelectClient = (client: { id: string; name: string; phone: string | null; cpf?: string | null }) => {
     setClientName(client.name);
     setClientPhone(client.phone ? formatBrazilPhone(client.phone) : "");
+    setClientCpf(client.cpf ?? "");
     setSelectedClientId(client.id);
+    setClientSelectionMode("existing");
+    setIsClientDropdownOpen(false);
+  };
+
+  const handleCreateNewClientFromName = () => {
+    const normalizedName = clientName.trim();
+    if (!normalizedName) return;
+    setClientName(normalizedName);
+    setSelectedClientId(null);
+    setClientPhone("");
+    setClientCpf("");
+    setClientSelectionMode("new");
+    setIsClientDropdownOpen(false);
+    window.setTimeout(() => {
+      clientPhoneInputRef.current?.focus();
+    }, 40);
   };
 
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -462,11 +473,10 @@ export function AppointmentForm({
 
   useEffect(() => {
     if (isHomeVisit) return;
-    setIsCepModalOpen(false);
+    setIsAddressModalOpen(false);
+    setAddressModalStep("chooser");
     setCepDraft("");
     setCepDraftStatus("idle");
-    setCepDraftResult(null);
-    setIsAddressSearchModalOpen(false);
     setAddressSearchQuery("");
     setAddressSearchResults([]);
     setAddressSearchLoading(false);
@@ -482,6 +492,7 @@ export function AppointmentForm({
     if (!selectedClientId) {
       setClientAddresses([]);
       setSelectedAddressId(null);
+      setShowAddressSelectionList(false);
       setAddressConfirmed(false);
       return;
     }
@@ -496,6 +507,11 @@ export function AppointmentForm({
       const nextSelectedId = hasSelected ? selectedAddressId : primary?.id ?? null;
       if (nextSelectedId !== selectedAddressId) {
         setSelectedAddressId(nextSelectedId);
+      }
+      if (addresses.length <= 1) {
+        setShowAddressSelectionList(false);
+      } else if (!hasSelected && nextSelectedId) {
+        setShowAddressSelectionList(true);
       }
       if (addressMode !== "new") {
         setAddressMode(nextSelectedId ? "existing" : "none");
@@ -512,7 +528,6 @@ export function AppointmentForm({
           setBairro(selected.address_bairro ?? "");
           setCidade(selected.address_cidade ?? "");
           setEstado(selected.address_estado ?? "");
-          setCepStatus("success");
         }
       }
     })();
@@ -524,24 +539,17 @@ export function AppointmentForm({
 
   useEffect(() => {
     if (!isHomeVisit) return;
-    if (addressMode === "new") return;
+    if (addressMode === "new" && addressConfirmed) return;
     if (clientAddresses.length > 0) {
       setAddressMode("existing");
       setAddressConfirmed(true);
       return;
     }
-    setAddressMode("new");
-    setAddressConfirmed(false);
+    setAddressMode(addressConfirmed ? "new" : "none");
   }, [isHomeVisit, clientAddresses, addressMode, addressConfirmed]);
 
   useEffect(() => {
-    if (!isAddressModalOpen) return;
-    const fallback = clientAddresses.find((address) => address.is_primary)?.id ?? clientAddresses[0]?.id ?? null;
-    setModalAddressId(selectedAddressId ?? fallback);
-  }, [isAddressModalOpen, clientAddresses, selectedAddressId]);
-
-  useEffect(() => {
-    if (!isAddressSearchModalOpen) return;
+    if (!(isAddressModalOpen && addressModalStep === "search")) return;
     const query = addressSearchQuery.trim();
     if (query.length < 3) {
       setAddressSearchResults([]);
@@ -580,28 +588,64 @@ export function AppointmentForm({
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [addressSearchQuery, isAddressSearchModalOpen]);
+  }, [addressSearchQuery, isAddressModalOpen, addressModalStep]);
 
   const handleCepDraftLookup = async () => {
     const normalized = normalizeCep(cepDraft);
     if (normalized.length !== 8) {
       setCepDraftStatus("error");
-      return;
+      return null;
     }
     setCepDraftStatus("loading");
     const result = await fetchAddressByCep(normalized);
     if (!result) {
       setCepDraftStatus("error");
-      return;
+      return null;
     }
-    setCepDraftResult({
+    const nextResult = {
       cep: formatCep(normalized),
       logradouro: result.logradouro,
       bairro: result.bairro,
       cidade: result.cidade,
       estado: result.estado,
-    });
+    };
     setCepDraftStatus("success");
+    return nextResult;
+  };
+
+  const handleAddressSearchResultSelect = async (result: AddressSearchResult) => {
+    setAddressSearchLoading(true);
+    setAddressSearchError(null);
+    try {
+      const response = await fetch(`/api/address-details?placeId=${encodeURIComponent(result.placeId)}`);
+      if (!response.ok) throw new Error("Falha ao buscar endereço");
+      const data = (await response.json()) as {
+        cep?: string;
+        logradouro?: string;
+        numero?: string;
+        bairro?: string;
+        cidade?: string;
+        estado?: string;
+      };
+
+      applyAddressDraftFields({
+        cep: data.cep ? formatCep(data.cep) : "",
+        logradouro: data.logradouro ?? result.label,
+        numero: data.numero ?? "",
+        bairro: data.bairro ?? "",
+        cidade: data.cidade ?? "",
+        estado: data.estado ?? "",
+      });
+      setAddressModalStep("form");
+      setAddressSaveError(null);
+      return true;
+    } catch (error) {
+      console.error(error);
+      setAddressSearchError("Não foi possível carregar o endereço. Tente novamente.");
+      return false;
+    } finally {
+      setAddressSearchLoading(false);
+    }
   };
 
   const mapsQuery = buildAddressQuery({
@@ -613,9 +657,21 @@ export function AppointmentForm({
     estado,
     cep,
   });
-  const resolvedClientId = selectedClientId ?? exactClientMatch?.id ?? null;
-  const resolvedClientPhone =
-    clientPhone || (exactClientMatch?.phone ? formatBrazilPhone(exactClientMatch.phone) : "");
+  const selectedClientRecord =
+    (selectedClientId ? clients.find((client) => client.id === selectedClientId) ?? null : null) ?? null;
+  const isClientSelectionPending = !isEditing && clientSelectionMode === "idle";
+  const shouldShowClientContactFields = isEditing || clientSelectionMode !== "idle";
+  const shouldShowCpfField =
+    shouldShowClientContactFields &&
+    (clientSelectionMode === "new" ||
+      !selectedClientRecord?.cpf ||
+      selectedClientRecord.cpf.trim().length === 0 ||
+      clientCpf.trim().length > 0);
+  const missingWhatsappWarning =
+    shouldShowClientContactFields && clientPhone.replace(/\D/g, "").length === 0;
+  const resolvedClientId =
+    clientSelectionMode === "existing" ? (selectedClientId ?? exactClientMatch?.id ?? null) : null;
+  const resolvedClientPhone = clientPhone || (selectedClientRecord?.phone ? formatBrazilPhone(selectedClientRecord.phone) : "");
   const canHomeVisit = selectedService?.accepts_home_visit ?? false;
   const selectedAddress = useMemo(
     () => clientAddresses.find((address) => address.id === selectedAddressId) ?? null,
@@ -707,7 +763,7 @@ export function AppointmentForm({
 
   const finalPrice = priceOverride ? priceOverride : displayedPrice;
   const formAction = isEditing ? updateAppointment : createAppointment;
-  const applyAddressFields = (payload: {
+  const applyAddressDraftFields = (payload: {
     cep?: string | null;
     logradouro?: string | null;
     numero?: string | null;
@@ -715,7 +771,6 @@ export function AppointmentForm({
     bairro?: string | null;
     cidade?: string | null;
     estado?: string | null;
-    mode?: "existing" | "new";
   }) => {
     setCep(payload.cep ?? "");
     setLogradouro(payload.logradouro ?? "");
@@ -723,13 +778,119 @@ export function AppointmentForm({
     setComplemento(payload.complemento ?? "");
     setBairro(payload.bairro ?? "");
     setCidade(payload.cidade ?? "");
-    setEstado(payload.estado ?? "");
-    setCepStatus(payload.cep ? "success" : "idle");
-    if (payload.mode === "new") {
+    setEstado((payload.estado ?? "").toUpperCase());
+  };
+
+  const openAddressCreateModal = () => {
+    if (!isHomeVisit) return;
+    setIsAddressModalOpen(true);
+    setAddressModalStep("chooser");
+    setAddressSaveError(null);
+    setAddressSavePending(false);
+    setCepDraft("");
+    setCepDraftStatus("idle");
+    setAddressSearchQuery("");
+    setAddressSearchResults([]);
+    setAddressSearchLoading(false);
+    setAddressSearchError(null);
+    setAddressIsPrimaryDraft(clientAddresses.length === 0);
+    if (!addressLabel.trim()) {
+      setAddressLabel("Principal");
+    }
+    if (addressMode !== "new") {
+      setCep("");
+      setLogradouro("");
+      setNumero("");
+      setComplemento("");
+      setBairro("");
+      setCidade("");
+      setEstado("");
+      setAddressLabel("Principal");
+    }
+  };
+
+  const closeAddressCreateModal = () => {
+    setIsAddressModalOpen(false);
+    setAddressModalStep("chooser");
+    setAddressSaveError(null);
+    setAddressSavePending(false);
+    setCepDraft("");
+    setCepDraftStatus("idle");
+    setAddressSearchQuery("");
+    setAddressSearchResults([]);
+    setAddressSearchLoading(false);
+    setAddressSearchError(null);
+  };
+
+  const handleSelectExistingAddress = (addressId: string) => {
+    const selected = clientAddresses.find((address) => address.id === addressId) ?? null;
+    setSelectedAddressId(addressId);
+    setAddressMode("existing");
+    setAddressConfirmed(true);
+    setShowAddressSelectionList(false);
+    if (selected) {
+      setAddressLabel(selected.label ?? "Principal");
+      setCep(selected.address_cep ?? "");
+      setLogradouro(selected.address_logradouro ?? "");
+      setNumero(selected.address_numero ?? "");
+      setComplemento(selected.address_complemento ?? "");
+      setBairro(selected.address_bairro ?? "");
+      setCidade(selected.address_cidade ?? "");
+      setEstado(selected.address_estado ?? "");
+    }
+  };
+
+  const handleAddressModalSave = async () => {
+    const normalizedLabel = addressLabel.trim() || "Principal";
+    if (!logradouro.trim() || !cidade.trim() || estado.trim().length < 2) {
+      setAddressSaveError("Preencha rua, cidade e UF para salvar o endereço.");
+      setAddressModalStep("form");
+      return;
+    }
+
+    setAddressSaveError(null);
+
+    if (!resolvedClientId) {
+      setAddressLabel(normalizedLabel);
       setAddressMode("new");
       setSelectedAddressId(null);
+      setAddressConfirmed(true);
+      setShowAddressSelectionList(false);
+      closeAddressCreateModal();
+      return;
     }
+
+    setAddressSavePending(true);
+    const result = await saveClientAddress({
+      clientId: resolvedClientId,
+      label: normalizedLabel,
+      isPrimary: clientAddresses.length === 0 ? true : addressIsPrimaryDraft,
+      addressCep: cep || null,
+      addressLogradouro: logradouro,
+      addressNumero: numero || null,
+      addressComplemento: complemento || null,
+      addressBairro: bairro || null,
+      addressCidade: cidade,
+      addressEstado: estado.toUpperCase(),
+    });
+
+    if (result.error || !result.data?.id) {
+      setAddressSavePending(false);
+      setAddressSaveError(result.error ?? "Não foi possível salvar o endereço.");
+      setAddressModalStep("form");
+      return;
+    }
+
+    const refreshed = await getClientAddresses(resolvedClientId);
+    const refreshedAddresses = (refreshed.data as ClientAddress[]) ?? [];
+    setClientAddresses(refreshedAddresses);
+    setAddressLabel(normalizedLabel);
+    setAddressMode("existing");
+    setSelectedAddressId(result.data.id);
     setAddressConfirmed(true);
+    setShowAddressSelectionList(false);
+    setAddressSavePending(false);
+    closeAddressCreateModal();
   };
 
   const openWhatsappFromForm = (message: string) => {
@@ -788,6 +949,41 @@ export function AppointmentForm({
       <input type="hidden" name="address_label" value={isHomeVisit ? addressLabel : ""} />
       <input
         type="hidden"
+        name="address_cep"
+        value={isHomeVisit && addressMode === "new" ? cep : ""}
+      />
+      <input
+        type="hidden"
+        name="address_logradouro"
+        value={isHomeVisit && addressMode === "new" ? logradouro : ""}
+      />
+      <input
+        type="hidden"
+        name="address_numero"
+        value={isHomeVisit && addressMode === "new" ? numero : ""}
+      />
+      <input
+        type="hidden"
+        name="address_complemento"
+        value={isHomeVisit && addressMode === "new" ? complemento : ""}
+      />
+      <input
+        type="hidden"
+        name="address_bairro"
+        value={isHomeVisit && addressMode === "new" ? bairro : ""}
+      />
+      <input
+        type="hidden"
+        name="address_cidade"
+        value={isHomeVisit && addressMode === "new" ? cidade : ""}
+      />
+      <input
+        type="hidden"
+        name="address_estado"
+        value={isHomeVisit && addressMode === "new" ? estado : ""}
+      />
+      <input
+        type="hidden"
         name="displacement_fee"
         value={isHomeVisit ? String(effectiveDisplacementFee) : ""}
       />
@@ -816,50 +1012,129 @@ export function AppointmentForm({
                 type="text"
                 placeholder="Buscar ou digitar nome..."
                 value={clientName}
+                autoComplete="off"
+                onFocus={() => {
+                  if (!isEditing) setIsClientDropdownOpen(true);
+                }}
+                onBlur={() => {
+                  if (isEditing) return;
+                  window.setTimeout(() => setIsClientDropdownOpen(false), 120);
+                }}
                 onChange={(event) => {
                   setClientName(event.target.value);
-                  setSelectedClientId(null);
+                  if (!isEditing) {
+                    setSelectedClientId(null);
+                    setClientSelectionMode("idle");
+                    setClientPhone("");
+                    setClientCpf("");
+                    setIsClientDropdownOpen(true);
+                  }
                 }}
                 className={inputWithIconClass}
                 required
               />
+
+              {!isEditing && isClientDropdownOpen && clientName.trim().length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-30 mt-2 rounded-2xl border border-stone-200 bg-white shadow-xl overflow-hidden">
+                  {filteredClients.length > 0 ? (
+                    <div className="max-h-56 overflow-y-auto p-1.5">
+                      {filteredClients.map((client) => (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => handleSelectClient(client)}
+                          className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between gap-3"
+                        >
+                          <span className="font-medium truncate">{client.name}</span>
+                          {client.phone && (
+                            <span className="text-xs text-muted shrink-0">
+                              {formatBrazilPhone(client.phone)}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-1.5">
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={handleCreateNewClientFromName}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50"
+                      >
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-studio-green">
+                          Cadastrar cliente
+                        </p>
+                        <p className="text-sm font-semibold text-studio-text truncate">
+                          {clientName.trim()}
+                        </p>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <p className="text-[11px] text-muted mt-2 ml-1 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Se já existir, vinculamos automaticamente.
+              <Sparkles className="w-3 h-3" />
+              {isEditing
+                ? "Atualize o cliente e os dados de contato se necessário."
+                : "Selecione um cliente da lista ou cadastre um novo a partir do nome digitado."}
             </p>
-            {filteredClients.length > 0 && (
-              <div className="mt-3 bg-white border border-stone-100 rounded-2xl shadow-sm p-2 space-y-1">
-                {filteredClients.map((client) => (
-                  <button
-                    type="button"
-                    key={client.id}
-                    onClick={() => handleSelectClient(client)}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between"
-                  >
-                    <span className="font-medium">{client.name}</span>
-                    {client.phone && <span className="text-xs text-muted">{client.phone}</span>}
-                  </button>
-                ))}
-              </div>
+            {isClientSelectionPending && clientName.trim().length > 0 && (
+              <p className="text-[11px] text-amber-700 mt-2 ml-1">
+                Selecione um cliente da lista suspensa ou toque em <strong>Cadastrar cliente</strong>.
+              </p>
             )}
           </div>
 
-          <div>
-            <label className={labelClass}>WhatsApp (opcional)</label>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                name="clientPhone"
-                type="tel"
-                placeholder="(00) 00000-0000"
-                value={resolvedClientPhone}
-                onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
-                inputMode="numeric"
-                className={inputWithIconClass}
-              />
-            </div>
-            <p className="text-[11px] text-muted mt-2 ml-1">Ajuda a localizar cadastros antigos 💚</p>
-          </div>
+          {shouldShowClientContactFields && (
+            <>
+              <div>
+                <label className={labelClass}>WhatsApp</label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input
+                    ref={clientPhoneInputRef}
+                    name="clientPhone"
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    value={clientPhone}
+                    onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
+                    inputMode="numeric"
+                    className={inputWithIconClass}
+                  />
+                </div>
+                {missingWhatsappWarning ? (
+                  <p className="text-[11px] text-red-600 mt-2 ml-1">
+                    Sem WhatsApp não será possível enviar mensagens automáticas para este cliente.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted mt-2 ml-1">
+                    Usado para automações e mensagens rápidas do atendimento.
+                  </p>
+                )}
+              </div>
+
+              {shouldShowCpfField && (
+                <div>
+                  <label className={labelClass}>CPF (para emissão de nota)</label>
+                  <input
+                    name="client_cpf"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    value={clientCpf}
+                    onChange={(event) => setClientCpf(event.target.value)}
+                    className={inputClass}
+                  />
+                  <p className="text-[11px] text-muted mt-2 ml-1">
+                    Campo opcional. Recomendado para facilitar emissão de nota e futuras buscas.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
 
@@ -960,270 +1235,155 @@ export function AppointmentForm({
             }`}
           >
             <div className="space-y-4">
-              {clientAddresses.length > 0 && addressMode === "existing" && selectedAddress && (
+              {clientAddresses.length > 1 && addressMode === "existing" && showAddressSelectionList && (
+                <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
+                  <div className="flex items-center gap-2 mb-3 text-dom-strong">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-xs font-extrabold uppercase tracking-wide">
+                      Endereços cadastrados
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {clientAddresses.map((address, index) => {
+                      const isSelected = address.id === selectedAddressId;
+                      return (
+                        <div
+                          key={address.id}
+                          className={`rounded-2xl border p-3 ${
+                            isSelected ? "border-dom/55 bg-white" : "border-dom/25 bg-white/70"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-extrabold uppercase tracking-wide text-dom-strong">
+                                {index + 1}. {address.label || "Principal"}
+                                {address.is_primary ? " • Principal" : ""}
+                              </p>
+                              <p className="text-sm font-semibold text-studio-text leading-snug">
+                                {formatClientAddress(address) || "Endereço cadastrado"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectExistingAddress(address.id)}
+                              className={`shrink-0 px-3 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border ${
+                                isSelected
+                                  ? "bg-dom/15 border-dom/40 text-dom-strong"
+                                  : "bg-white border-dom/30 text-dom-strong hover:bg-dom/10"
+                              }`}
+                            >
+                              {isSelected ? "Selecionado" : "Usar esse"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openAddressCreateModal}
+                    className="mt-3 w-full py-3 rounded-2xl border border-dom/35 bg-white text-[11px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/15 transition"
+                  >
+                    Cadastrar novo endereço
+                  </button>
+                </div>
+              )}
+
+              {addressMode === "existing" && selectedAddress && (!showAddressSelectionList || clientAddresses.length <= 1) && (
                 <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
                   <div className="flex items-center gap-2 mb-2 text-dom-strong">
                     <MapPin className="w-4 h-4" />
                     <span className="text-xs font-extrabold uppercase tracking-wide">
-                      {selectedAddress.label}
+                      {selectedAddress.label || "Principal"}
+                      {selectedAddress.is_primary ? " • Principal" : ""}
                     </span>
                   </div>
-                  <p className="text-sm font-semibold text-studio-text">
+                  <p className="text-sm font-semibold text-studio-text leading-snug">
                     {formatClientAddress(selectedAddress) || "Endereço cadastrado"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    {clientAddresses.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddressSelectionList(true)}
+                        className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
+                      >
+                        Trocar endereço
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setIsAddressModalOpen(true)}
+                      onClick={openAddressCreateModal}
                       className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
                     >
-                      Trocar endereço
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddressMode("new");
-                        setSelectedAddressId(null);
-                        setAddressConfirmed(false);
-                        setCep("");
-                        setLogradouro("");
-                        setNumero("");
-                        setComplemento("");
-                        setBairro("");
-                        setCidade("");
-                        setEstado("");
-                        setCepStatus("idle");
-                      }}
-                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
-                    >
-                      Cadastrar novo
+                      Cadastrar novo endereço
                     </button>
                   </div>
-                </div>
-              )}
-
-              {addressMode === "new" && !addressConfirmed && (
-                <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
-                  <div className="flex items-center gap-2 mb-2 text-dom-strong">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-xs font-extrabold uppercase tracking-wide">Novo endereço</span>
-                  </div>
-                  <p className="text-xs text-dom-strong mb-4">
-                    Escolha como deseja localizar o endereço do cliente.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCepModalOpen(true);
-                        setCepDraft("");
-                        setCepDraftStatus("idle");
-                        setCepDraftResult(null);
-                      }}
-                      className="rounded-2xl border border-dom/45 bg-white px-4 py-0 text-left hover:border-dom/55 hover:bg-dom/25 transition"
-                    >
-                      <span className="text-[10px] font-extrabold uppercase text-dom-strong leading-tight">
-                        Buscar por CEP
-                      </span>
-                      <span className="block text-[9px] text-dom-strong/80 leading-tight">Rápido e direto</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddressSearchModalOpen(true);
-                        setAddressSearchQuery("");
-                        setAddressSearchResults([]);
-                        setAddressSearchLoading(false);
-                        setAddressSearchError(null);
-                      }}
-                      className="rounded-2xl border border-dom/45 bg-white px-4 py-0 text-left hover:border-dom/55 hover:bg-dom/25 transition"
-                    >
-                      <span className="text-[10px] font-extrabold uppercase text-dom-strong leading-tight">
-                        Buscar endereço
-                      </span>
-                      <span className="block text-[9px] text-dom-strong/80 leading-tight">
-                        Digite rua, bairro, número
-                      </span>
-                    </button>
-                  </div>
-                  {clientAddresses.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setAddressMode("existing")}
-                      className="mt-4 text-[11px] font-extrabold uppercase tracking-wide text-dom-strong hover:text-dom-strong"
-                    >
-                      Usar endereço cadastrado
-                    </button>
-                  )}
                 </div>
               )}
 
               {addressMode === "new" && addressConfirmed && (
                 <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2 text-dom-strong">
-                      <MapPin className="w-4 h-4" />
-                      <span className="text-xs font-extrabold uppercase tracking-wide">Novo endereço</span>
-                    </div>
+                  <div className="flex items-center gap-2 mb-2 text-dom-strong">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-xs font-extrabold uppercase tracking-wide">
+                      {addressLabel || "Principal"}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-studio-text leading-snug">
+                    {mapsQuery || "Endereço informado"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setAddressConfirmed(false);
-                        setCepDraft("");
-                        setCepDraftStatus("idle");
-                        setCepDraftResult(null);
-                      }}
-                      className="text-[10px] font-extrabold uppercase tracking-wide text-dom-strong"
+                      onClick={openAddressCreateModal}
+                      className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
                     >
-                      Refazer busca
+                      Trocar endereço
                     </button>
+                    {clientAddresses.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddressSelectionList(true)}
+                        className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
+                      >
+                        Usar cadastrado
+                      </button>
+                    )}
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCepModalOpen(true);
-                        setCepDraft(cep);
-                        setCepDraftStatus("idle");
-                        setCepDraftResult(null);
-                      }}
-                      className="px-3 py-2 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase text-dom-strong hover:bg-dom/25"
-                    >
-                      Buscar por CEP
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddressSearchModalOpen(true);
-                        setAddressSearchQuery("");
-                        setAddressSearchResults([]);
-                        setAddressSearchLoading(false);
-                        setAddressSearchError(null);
-                      }}
-                      className="px-3 py-2 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase text-dom-strong hover:bg-dom/25"
-                    >
-                      Buscar endereço
-                    </button>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className={labelClass}>Identificação</label>
-                    <input
-                      type="text"
-                      value={addressLabel}
-                      onChange={(event) => setAddressLabel(event.target.value)}
-                      disabled={!isHomeVisit}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className={labelClass}>CEP</label>
-                    <input
-                      name="address_cep"
-                      type="text"
-                      value={cep}
-                      onChange={(e) => {
-                        setCep(formatCep(e.target.value));
-                        setCepStatus("idle");
-                      }}
-                      inputMode="numeric"
-                      aria-invalid={cepStatus === "error" ? "true" : "false"}
-                      disabled={!isHomeVisit}
-                      className={`w-full px-4 py-3 rounded-xl bg-stone-50 border text-sm font-medium focus:outline-none focus:ring-1 ${
-                        cepStatus === "error"
-                          ? "border-red-200 focus:ring-red-200 focus:border-red-400"
-                          : "border-stone-100 focus:ring-studio-green focus:border-studio-green"
-                      }`}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className={labelClass}>Rua / Avenida</label>
-                    <input
-                      name="address_logradouro"
-                      type="text"
-                      value={logradouro}
-                      onChange={(e) => setLogradouro(e.target.value)}
-                      disabled={!isHomeVisit}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div>
-                      <label className={labelClass}>Número</label>
-                      <input
-                        name="address_numero"
-                        type="text"
-                        value={numero}
-                        onChange={(e) => setNumero(e.target.value)}
-                        disabled={!isHomeVisit}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className={labelClass}>Complemento</label>
-                      <input
-                        name="address_complemento"
-                        type="text"
-                        value={complemento}
-                        onChange={(e) => setComplemento(e.target.value)}
-                        disabled={!isHomeVisit}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div>
-                      <label className={labelClass}>Bairro</label>
-                      <input
-                        name="address_bairro"
-                        type="text"
-                        value={bairro}
-                        onChange={(e) => setBairro(e.target.value)}
-                        disabled={!isHomeVisit}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Cidade</label>
-                      <input
-                        name="address_cidade"
-                        type="text"
-                        value={cidade}
-                        onChange={(e) => setCidade(e.target.value)}
-                        disabled={!isHomeVisit}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Estado (UF)</label>
-                    <input
-                      name="address_estado"
-                      type="text"
-                      value={estado}
-                      onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                      maxLength={2}
-                      disabled={!isHomeVisit}
-                      className={`${inputClass} uppercase`}
-                    />
-                  </div>
-                  {mapsQuery && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-semibold text-dom-strong hover:underline mt-3 inline-flex"
-                    >
-                      Ver endereço no Maps
-                    </a>
-                  )}
                 </div>
+              )}
+
+              {!addressConfirmed && clientAddresses.length === 0 && (
+                <div className="bg-dom/20 rounded-2xl border border-dom/35 p-4">
+                  <div className="flex items-center gap-2 mb-2 text-dom-strong">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-xs font-extrabold uppercase tracking-wide">
+                      Endereço do atendimento
+                    </span>
+                  </div>
+                  <p className="text-xs text-dom-strong/90 mb-4">
+                    Cadastre o endereço para atendimento domiciliar. Você pode buscar por CEP ou por endereço.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openAddressCreateModal}
+                    className="w-full h-12 rounded-2xl bg-white border border-dom/35 text-dom-strong font-extrabold text-xs uppercase tracking-wide hover:bg-dom/15"
+                  >
+                    Cadastrar endereço
+                  </button>
+                </div>
+              )}
+
+              {mapsQuery && addressConfirmed && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-dom-strong hover:underline inline-flex"
+                >
+                  Ver endereço no Maps
+                </a>
               )}
 
               <div className="rounded-2xl border border-stone-100 bg-white p-4">
@@ -1425,6 +1585,29 @@ export function AppointmentForm({
           />
           <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
         </div>
+
+        {!isEditing && (
+          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                name="is_courtesy"
+                type="checkbox"
+                checked={isCourtesyAppointment}
+                onChange={(event) => setIsCourtesyAppointment(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-sky-300 text-sky-600 focus:ring-sky-400"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-sky-700">
+                  Marcar como cortesia
+                </p>
+                <p className="text-xs text-sky-800/80 mt-1">
+                  O agendamento será criado com pagamento liberado e o card aparecerá com a tag
+                  <strong> Cortesia</strong>.
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
       </section>
 
       {portalTarget &&
@@ -1432,273 +1615,319 @@ export function AppointmentForm({
         createPortal(
           <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
             <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Endereço</p>
-                <h3 className="text-lg font-serif text-studio-text">Usar endereço</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddressModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {clientAddresses.map((address) => {
-                const isSelected = modalAddressId === address.id;
-                return (
-                  <button
-                    key={address.id}
-                    type="button"
-                    onClick={() => setModalAddressId(address.id)}
-                    className={`w-full text-left px-4 py-3 rounded-2xl border transition ${
-                      isSelected ? "border-studio-green bg-studio-light" : "border-line bg-white"
-                    }`}
-                  >
-                    <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
-                      {address.label}
-                    </p>
-                    <p className="text-sm font-semibold text-studio-text">
-                      {formatClientAddress(address) || "Endereço cadastrado"}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedAddressId(modalAddressId);
-                  setAddressMode("existing");
-                  setAddressConfirmed(true);
-                  setIsAddressModalOpen(false);
-                }}
-                className="w-full py-3 rounded-2xl bg-studio-green text-white font-extrabold"
-              >
-                Usar endereço selecionado
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAddressMode("new");
-                  setSelectedAddressId(null);
-                  setAddressConfirmed(false);
-                  setCep("");
-                  setLogradouro("");
-                  setNumero("");
-                  setComplemento("");
-                  setBairro("");
-                  setCidade("");
-                  setEstado("");
-                  setCepStatus("idle");
-                  setIsAddressModalOpen(false);
-                }}
-                className="w-full py-3 rounded-2xl bg-white border border-line text-studio-text font-extrabold"
-              >
-                Cadastrar novo endereço
-              </button>
-            </div>
-            </div>
-          </div>,
-          portalTarget
-        )}
-
-      {portalTarget &&
-        isCepModalOpen &&
-        createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Buscar por CEP</p>
-                <h3 className="text-lg font-serif text-studio-text">Digite o CEP</h3>
-                <p className="text-xs text-muted mt-1">Preenchemos o endereço automaticamente.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCepModalOpen(false);
-                  setCepDraft("");
-                  setCepDraftStatus("idle");
-                  setCepDraftResult(null);
-                }}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className={labelClass}>CEP</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={cepDraft}
-                onChange={(event) => {
-                  setCepDraft(formatCep(event.target.value));
-                  setCepDraftStatus("idle");
-                  setCepDraftResult(null);
-                }}
-                className={inputClass}
-              />
-              {cepDraftStatus === "error" && (
-                <p className="text-[11px] text-red-500 mt-2 ml-1">CEP inválido. Verifique e tente novamente.</p>
-              )}
-            </div>
-
-            {cepDraftStatus === "success" && cepDraftResult && (
-              <div className="mb-4 rounded-2xl border border-stone-100 bg-stone-50 p-3">
-                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest mb-1">Prévia</p>
-                <p className="text-sm font-semibold text-studio-text">
-                  {[
-                    cepDraftResult.logradouro,
-                    cepDraftResult.bairro,
-                    cepDraftResult.cidade,
-                    cepDraftResult.estado,
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "Endereço não encontrado"}
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleCepDraftLookup}
-                disabled={cepDraftStatus === "loading"}
-                className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-              >
-                {cepDraftStatus === "loading" ? "Buscando..." : "Buscar CEP"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!cepDraftResult) return;
-                  applyAddressFields({
-                    cep: cepDraftResult.cep,
-                    logradouro: cepDraftResult.logradouro,
-                    bairro: cepDraftResult.bairro,
-                    cidade: cepDraftResult.cidade,
-                    estado: cepDraftResult.estado,
-                    mode: "new",
-                  });
-                  setIsCepModalOpen(false);
-                }}
-                disabled={!cepDraftResult}
-                className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
-              >
-                Confirmar endereço
-              </button>
-            </div>
-            </div>
-          </div>,
-          portalTarget
-        )}
-
-      {portalTarget &&
-        isAddressSearchModalOpen &&
-        createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Buscar endereço</p>
-                <h3 className="text-lg font-serif text-studio-text">Digite o endereço</h3>
-                <p className="text-xs text-muted mt-1">Resultados aparecem enquanto você digita.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddressSearchModalOpen(false);
-                  setAddressSearchQuery("");
-                  setAddressSearchResults([]);
-                  setAddressSearchLoading(false);
-                  setAddressSearchError(null);
-                }}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mb-3">
-              <label className={labelClass}>Endereço</label>
-              <div className="relative">
-                <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={addressSearchQuery}
-                  onChange={(event) => setAddressSearchQuery(event.target.value)}
-                  className={inputWithIconClass}
-                />
-              </div>
-              <p className="text-[10px] text-muted mt-2 ml-1">Ex: Rua das Acácias, 120, Moema</p>
-              {addressSearchError && (
-                <p className="text-[11px] text-red-500 mt-2 ml-1">{addressSearchError}</p>
-              )}
-            </div>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {addressSearchLoading && (
-                <p className="text-[11px] text-muted">Buscando endereços...</p>
-              )}
-              {!addressSearchLoading && addressSearchQuery.trim().length < 3 && (
-                <p className="text-[11px] text-muted">Digite pelo menos 3 caracteres para iniciar.</p>
-              )}
-              {!addressSearchLoading && addressSearchQuery.trim().length >= 3 && addressSearchResults.length === 0 && (
-                <p className="text-[11px] text-muted">Nenhum endereço encontrado.</p>
-              )}
-              {addressSearchResults.map((result) => (
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Endereço</p>
+                  <h3 className="text-lg font-serif text-studio-text">
+                    {addressModalStep === "chooser"
+                      ? "Cadastrar endereço"
+                      : addressModalStep === "cep"
+                        ? "Buscar por CEP"
+                        : addressModalStep === "search"
+                          ? "Buscar por endereço"
+                          : "Confirmar endereço"}
+                  </h3>
+                  <p className="text-xs text-muted mt-1">
+                    {addressModalStep === "chooser"
+                      ? "Escolha como deseja localizar o endereço."
+                      : addressModalStep === "form"
+                        ? resolvedClientId
+                          ? "Revise os dados e salve o endereço para este cliente."
+                          : "Revise os dados. O endereço será salvo junto com o agendamento."
+                        : "Preencha e confirme para continuar."}
+                  </p>
+                </div>
                 <button
-                  key={result.id}
                   type="button"
-                  onClick={async () => {
-                    setAddressSearchLoading(true);
-                    setAddressSearchError(null);
-                    try {
-                      const response = await fetch(
-                        `/api/address-details?placeId=${encodeURIComponent(result.placeId)}`
-                      );
-                      if (!response.ok) throw new Error("Falha ao buscar endereço");
-                      const data = (await response.json()) as {
-                        cep?: string;
-                        logradouro?: string;
-                        numero?: string;
-                        bairro?: string;
-                        cidade?: string;
-                        estado?: string;
-                      };
-                      applyAddressFields({
-                        cep: data.cep ? formatCep(data.cep) : "",
-                        logradouro: data.logradouro ?? result.label,
-                        numero: data.numero ?? "",
-                        bairro: data.bairro ?? "",
-                        cidade: data.cidade ?? "",
-                        estado: data.estado ?? "",
-                        mode: "new",
-                      });
-                      setIsAddressSearchModalOpen(false);
+                  onClick={closeAddressCreateModal}
+                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {addressModalStep !== "chooser" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddressModalStep("chooser");
+                    setAddressSaveError(null);
+                  }}
+                  className="mb-4 text-[11px] font-extrabold uppercase tracking-wide text-dom-strong"
+                >
+                  Voltar
+                </button>
+              )}
+
+              {addressModalStep === "chooser" && (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddressModalStep("cep");
+                      setCepDraft("");
+                      setCepDraftStatus("idle");
+                      setAddressSaveError(null);
+                    }}
+                    className="w-full rounded-2xl border border-dom/45 bg-white px-4 py-3 text-left hover:border-dom/55 hover:bg-dom/10 transition"
+                  >
+                    <span className="text-[10px] font-extrabold uppercase text-dom-strong tracking-wide">
+                      Buscar por CEP
+                    </span>
+                    <span className="block text-xs text-dom-strong/80 mt-1">
+                      Digite o CEP e revise os dados antes de salvar.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddressModalStep("search");
                       setAddressSearchQuery("");
                       setAddressSearchResults([]);
-                    } catch (error) {
-                      console.error(error);
-                      setAddressSearchError("Não foi possível carregar o endereço. Tente novamente.");
-                    } finally {
                       setAddressSearchLoading(false);
-                    }
-                  }}
-                  className="w-full text-left px-4 py-3 rounded-2xl border border-stone-100 hover:border-stone-200 hover:bg-stone-50 transition"
-                >
-                  <p className="text-sm font-semibold text-studio-text">{result.label}</p>
-                </button>
-              ))}
-            </div>
+                      setAddressSearchError(null);
+                      setAddressSaveError(null);
+                    }}
+                    className="w-full rounded-2xl border border-dom/45 bg-white px-4 py-3 text-left hover:border-dom/55 hover:bg-dom/10 transition"
+                  >
+                    <span className="text-[10px] font-extrabold uppercase text-dom-strong tracking-wide">
+                      Buscar por endereço
+                    </span>
+                    <span className="block text-xs text-dom-strong/80 mt-1">
+                      Digite rua/bairro e escolha o endereço correto.
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {addressModalStep === "cep" && (
+                <div>
+                  <div className="mb-4">
+                    <label className={labelClass}>CEP</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={cepDraft}
+                      onChange={(event) => {
+                        setCepDraft(formatCep(event.target.value));
+                        setCepDraftStatus("idle");
+                      }}
+                      className={inputClass}
+                    />
+                    {cepDraftStatus === "error" && (
+                      <p className="text-[11px] text-red-500 mt-2 ml-1">
+                        CEP inválido. Verifique e tente novamente.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const found = await handleCepDraftLookup();
+                        if (!found) return;
+                        applyAddressDraftFields({
+                          cep: found.cep,
+                          logradouro: found.logradouro,
+                          bairro: found.bairro,
+                          cidade: found.cidade,
+                          estado: found.estado,
+                        });
+                        setAddressModalStep("form");
+                      }}
+                      disabled={cepDraftStatus === "loading"}
+                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
+                    >
+                      {cepDraftStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {addressModalStep === "search" && (
+                <div>
+                  <div className="mb-3">
+                    <label className={labelClass}>Endereço</label>
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={addressSearchQuery}
+                        onChange={(event) => setAddressSearchQuery(event.target.value)}
+                        className={inputWithIconClass}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted mt-2 ml-1">Ex: Rua das Acácias, 120, Moema</p>
+                    {addressSearchError && (
+                      <p className="text-[11px] text-red-500 mt-2 ml-1">{addressSearchError}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {addressSearchLoading && <p className="text-[11px] text-muted">Buscando endereços...</p>}
+                    {!addressSearchLoading && addressSearchQuery.trim().length < 3 && (
+                      <p className="text-[11px] text-muted">Digite pelo menos 3 caracteres para iniciar.</p>
+                    )}
+                    {!addressSearchLoading &&
+                      addressSearchQuery.trim().length >= 3 &&
+                      addressSearchResults.length === 0 && (
+                        <p className="text-[11px] text-muted">Nenhum endereço encontrado.</p>
+                      )}
+                    {addressSearchResults.map((result) => (
+                      <button
+                        key={result.id}
+                        type="button"
+                        onClick={async () => {
+                          const ok = await handleAddressSearchResultSelect(result);
+                          if (ok) setAddressModalStep("form");
+                        }}
+                        className="w-full text-left px-4 py-3 rounded-2xl border border-stone-100 hover:border-stone-200 hover:bg-stone-50 transition"
+                      >
+                        <p className="text-sm font-semibold text-studio-text">{result.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {addressModalStep === "form" && (
+                <div className="space-y-3">
+                  {addressSaveError && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      {addressSaveError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className={labelClass}>Identificação</label>
+                    <input
+                      type="text"
+                      value={addressLabel}
+                      onChange={(event) => setAddressLabel(event.target.value)}
+                      className={inputClass}
+                      placeholder="Principal"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={clientAddresses.length === 0 ? true : addressIsPrimaryDraft}
+                        onChange={(event) => setAddressIsPrimaryDraft(event.target.checked)}
+                        disabled={clientAddresses.length === 0}
+                        className="h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
+                      />
+                      <div>
+                        <p className="text-[11px] font-extrabold uppercase tracking-wide text-studio-text">
+                          Definir como endereço principal
+                        </p>
+                        <p className="text-[10px] text-muted">
+                          {clientAddresses.length === 0
+                            ? "Primeiro endereço do cliente será principal automaticamente."
+                            : "O endereço principal será selecionado por padrão nos próximos agendamentos."}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>CEP</label>
+                    <input
+                      type="text"
+                      value={cep}
+                      onChange={(e) => {
+                        setCep(formatCep(e.target.value));
+                      }}
+                      inputMode="numeric"
+                      className={inputClass}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Rua / Avenida</label>
+                    <input
+                      type="text"
+                      value={logradouro}
+                      onChange={(e) => setLogradouro(e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className={labelClass}>Número</label>
+                      <input
+                        type="text"
+                        value={numero}
+                        onChange={(e) => setNumero(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className={labelClass}>Complemento</label>
+                      <input
+                        type="text"
+                        value={complemento}
+                        onChange={(e) => setComplemento(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={labelClass}>Bairro</label>
+                      <input
+                        type="text"
+                        value={bairro}
+                        onChange={(e) => setBairro(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Cidade</label>
+                      <input
+                        type="text"
+                        value={cidade}
+                        onChange={(e) => setCidade(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Estado (UF)</label>
+                    <input
+                      type="text"
+                      value={estado}
+                      onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                      maxLength={2}
+                      className={`${inputClass} uppercase`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setAddressModalStep("chooser")}
+                      disabled={addressSavePending}
+                      className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
+                    >
+                      Buscar novamente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddressModalSave}
+                      disabled={addressSavePending}
+                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
+                    >
+                      {addressSavePending ? "Salvando..." : "Salvar endereço"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>,
           portalTarget
