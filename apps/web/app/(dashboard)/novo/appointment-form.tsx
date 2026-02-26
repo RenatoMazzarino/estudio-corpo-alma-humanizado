@@ -15,9 +15,28 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createAppointment, getClientAddresses, saveClientAddress, updateAppointment } from "./appointment-actions"; // Ação importada do arquivo renomeado
+import { AttendancePaymentModal } from "../atendimento/[id]/components/attendance-payment-modal";
+import {
+  createAppointment,
+  createAppointmentForImmediateCharge,
+  finalizeCreatedAppointmentNotifications,
+  getBookingChargeContext,
+  getClientAddresses,
+  pollBookingPixPaymentStatus,
+  pollBookingPointPaymentStatus,
+  recordBookingChargePayment,
+  recordManualCreatedMessage,
+  recordManualPaymentReceiptMessage,
+  saveBookingChargeItems,
+  saveClientAddress,
+  setBookingChargeDiscount,
+  createBookingPixPayment,
+  createBookingPointPayment,
+  updateAppointment,
+} from "./appointment-actions"; // Ação importada do arquivo renomeado
 import { getAvailableSlots, getDateBlockStatus } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Toast, useToast } from "../../../components/ui/toast";
@@ -26,11 +45,13 @@ import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.typ
 import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
 import { feedbackById } from "../../../src/shared/feedback/user-feedback";
 import { formatBrazilPhone } from "../../../src/shared/phone";
+import { buildAppointmentReceiptPath } from "../../../src/shared/public-links";
 import {
   composeInternalClientName,
   normalizeReferenceLabel,
   resolveClientNames,
 } from "../../../src/modules/clients/name-profile";
+import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../lib/attendance/attendance-types";
 
 interface Service {
   id: string;
@@ -58,6 +79,13 @@ interface AppointmentFormProps {
   initialAppointment?: InitialAppointment | null;
   returnTo?: string;
   messageTemplates: AutoMessageTemplates;
+  signalPercentage: number;
+  pointEnabled: boolean;
+  pointTerminalName: string;
+  pointTerminalModel: string;
+  publicBaseUrl: string;
+  pixKeyValue: string;
+  pixKeyType: "cnpj" | "cpf" | "email" | "phone" | "evp" | null;
 }
 
 interface ClientAddress {
@@ -89,6 +117,9 @@ type AddressModalStep = "chooser" | "cep" | "search" | "form";
 type ClientSelectionMode = "idle" | "existing" | "new";
 type FinanceDraftItemType = "service" | "fee" | "addon" | "adjustment";
 type CollectionTimingDraft = "at_attendance" | "charge_now";
+type ChargeNowAmountMode = "full" | "signal" | "custom";
+type ChargeNowMethodDraft = "cash" | "pix_mp" | "card";
+type BookingConfirmationStep = "review" | "creating_charge" | "charge_payment" | "charge_manual_prompt";
 
 interface FinanceDraftItem {
   id: string;
@@ -96,6 +127,17 @@ interface FinanceDraftItem {
   label: string;
   qty: number;
   amount: number;
+}
+
+interface ChargeBookingState {
+  appointmentId: string;
+  date: string;
+  startTimeIso: string;
+  attendanceCode: string | null;
+  appointmentPaymentStatus: string | null;
+  checkout: CheckoutRow | null;
+  checkoutItems: CheckoutItem[];
+  payments: PaymentRow[];
 }
 
 type ClientRecordLite = {
@@ -232,6 +274,20 @@ function buildAddressQuery(payload: {
   return parts.join(", ");
 }
 
+function resolvePublicBaseUrl(rawBaseUrl: string) {
+  const trimmed = rawBaseUrl.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/\/$/, "");
+  return `https://${trimmed.replace(/\/$/, "")}`;
+}
+
+function normalizePhoneForWhatsapp(phone: string | null | undefined) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  return digits.startsWith("55") ? digits : `55${digits}`;
+}
+
 function formatClientAddress(address: ClientAddress) {
   const parts = [
     address.address_logradouro,
@@ -283,7 +339,15 @@ export function AppointmentForm({
   initialAppointment,
   returnTo,
   messageTemplates,
+  signalPercentage,
+  pointEnabled,
+  pointTerminalName,
+  pointTerminalModel,
+  publicBaseUrl,
+  pixKeyValue,
+  pixKeyType,
 }: AppointmentFormProps) {
+  const router = useRouter();
   const isEditing = Boolean(initialAppointment);
   const formRef = useRef<HTMLFormElement | null>(null);
   const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
@@ -348,6 +412,16 @@ export function AppointmentForm({
   const [scheduleDiscountType, setScheduleDiscountType] = useState<"value" | "pct">("value");
   const [scheduleDiscountValue, setScheduleDiscountValue] = useState<string>("");
   const [collectionTimingDraft, setCollectionTimingDraft] = useState<CollectionTimingDraft>("at_attendance");
+  const [chargeNowAmountMode, setChargeNowAmountMode] = useState<ChargeNowAmountMode>("full");
+  const [chargeNowSignalPercent, setChargeNowSignalPercent] = useState<number>(Math.max(0, signalPercentage ?? 30));
+  const [chargeNowCustomAmount, setChargeNowCustomAmount] = useState<string>("");
+  const [chargeNowMethodDraft, setChargeNowMethodDraft] = useState<ChargeNowMethodDraft>("pix_mp");
+  const [confirmationSheetStep, setConfirmationSheetStep] = useState<BookingConfirmationStep>("review");
+  const [creatingChargeBooking, setCreatingChargeBooking] = useState(false);
+  const [chargeBookingState, setChargeBookingState] = useState<ChargeBookingState | null>(null);
+  const [chargeFlowError, setChargeFlowError] = useState<string | null>(null);
+  const [chargeNotificationsDispatched, setChargeNotificationsDispatched] = useState(false);
+  const [finishingChargeFlow, setFinishingChargeFlow] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? safeDate);
   const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -606,6 +680,14 @@ export function AppointmentForm({
       setScheduleDiscountType("value");
       setScheduleDiscountValue("");
       setCollectionTimingDraft("at_attendance");
+      setChargeNowAmountMode("full");
+      setChargeNowSignalPercent(Math.max(0, signalPercentage ?? 30));
+      setChargeNowCustomAmount("");
+      setChargeNowMethodDraft("pix_mp");
+      setConfirmationSheetStep("review");
+      setChargeBookingState(null);
+      setChargeFlowError(null);
+      setChargeNotificationsDispatched(false);
     }
 
     const service = services.find((s) => s.id === serviceId);
@@ -673,6 +755,10 @@ export function AppointmentForm({
     () => parseDecimalText(scheduleDiscountValue),
     [scheduleDiscountValue]
   );
+  const parsedChargeNowCustomAmount = useMemo(
+    () => parseDecimalText(chargeNowCustomAmount),
+    [chargeNowCustomAmount]
+  );
   const financeExtraSubtotal = useMemo(
     () =>
       financeExtraItems.reduce(
@@ -724,6 +810,41 @@ export function AppointmentForm({
     () => Math.max(0, scheduleSubtotal - effectiveScheduleDiscount),
     [effectiveScheduleDiscount, scheduleSubtotal]
   );
+  const effectiveSignalPercentageDraft = useMemo(
+    () => Math.min(100, Math.max(0, Number(chargeNowSignalPercent || 0))),
+    [chargeNowSignalPercent]
+  );
+  const chargeNowSuggestedSignalAmount = useMemo(() => {
+    if (scheduleTotal <= 0) return 0;
+    const rawSignal = scheduleTotal * (effectiveSignalPercentageDraft / 100);
+    if (rawSignal <= 0) return 0;
+    const minimumPix = chargeNowMethodDraft === "pix_mp" ? 1 : 0;
+    return Math.min(scheduleTotal, Math.max(minimumPix, rawSignal));
+  }, [chargeNowMethodDraft, effectiveSignalPercentageDraft, scheduleTotal]);
+  const chargeNowDraftAmount = useMemo(() => {
+    if (scheduleTotal <= 0) return 0;
+    if (chargeNowAmountMode === "full") return scheduleTotal;
+    if (chargeNowAmountMode === "signal") return chargeNowSuggestedSignalAmount;
+    const custom = Math.max(0, parsedChargeNowCustomAmount ?? 0);
+    if (chargeNowMethodDraft === "pix_mp" && custom > 0 && custom < 1) return custom;
+    return custom;
+  }, [chargeNowAmountMode, chargeNowMethodDraft, chargeNowSuggestedSignalAmount, parsedChargeNowCustomAmount, scheduleTotal]);
+  const chargeNowAmountError = useMemo(() => {
+    if (collectionTimingDraft !== "charge_now") return null;
+    if (scheduleTotal <= 0) return "Configure o financeiro antes de cobrar no agendamento.";
+    if (chargeNowAmountMode === "custom") {
+      const custom = Math.max(0, parsedChargeNowCustomAmount ?? 0);
+      if (custom <= 0) return "Informe o valor personalizado da cobrança.";
+      if (custom > scheduleTotal) return "O valor personalizado não pode ser maior que o total do agendamento.";
+      if (chargeNowMethodDraft === "pix_mp" && custom < 1) {
+        return "Para PIX Mercado Pago, o valor mínimo é R$ 1,00.";
+      }
+    }
+    if (chargeNowAmountMode === "signal" && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && chargeNowDraftAmount < 1) {
+      return "Para PIX Mercado Pago, o valor mínimo é R$ 1,00.";
+    }
+    return null;
+  }, [chargeNowAmountMode, chargeNowDraftAmount, chargeNowMethodDraft, collectionTimingDraft, parsedChargeNowCustomAmount, scheduleTotal]);
   const createPriceOverrideValue = selectedService ? scheduleTotal.toFixed(2) : "";
   const createCheckoutServiceAmountValue = selectedService ? effectiveServicePriceDraft.toFixed(2) : "";
   const createCheckoutExtraItemsJson = useMemo(
@@ -1296,6 +1417,348 @@ export function AppointmentForm({
     return true;
   };
 
+  const buildCreatedMessageText = () =>
+    buildCreatedMessage({
+      clientName: clientMessageFirstName,
+      date: selectedDate,
+      time: selectedTime,
+      serviceName: selectedService?.name ?? "",
+      locationLine: isHomeVisit
+        ? addressLabel
+          ? `No endereço informado: ${addressLabel}`
+          : "Atendimento domiciliar (endereço a confirmar)"
+        : "No estúdio",
+      template: messageTemplates.created_confirmation,
+    });
+
+  const buildAgendaDayReturnUrl = (appointmentId?: string | null) => {
+    const dateParam = selectedDate || safeDate;
+    const params = new URLSearchParams();
+    params.set("view", "day");
+    params.set("date", dateParam);
+    if (appointmentId) {
+      params.set("openAppointment", appointmentId);
+    }
+    return `/?${params.toString()}`;
+  };
+
+  const refreshChargeBookingState = async (appointmentId: string) => {
+    const context = await getBookingChargeContext(appointmentId);
+    if (!context.ok) {
+      setChargeFlowError(context.error ?? "Não foi possível atualizar o checkout.");
+      return null;
+    }
+    const next = {
+      ...(chargeBookingState ?? {
+        appointmentId,
+        date: selectedDate || safeDate,
+        startTimeIso: "",
+        attendanceCode: null,
+      }),
+      appointmentId,
+      appointmentPaymentStatus: context.data.appointment.payment_status ?? null,
+      attendanceCode: context.data.appointment.attendance_code ?? null,
+      checkout: context.data.checkout,
+      checkoutItems: context.data.checkoutItems,
+      payments: context.data.payments,
+    } satisfies ChargeBookingState;
+    setChargeBookingState(next);
+    return next;
+  };
+
+  const handleBeginImmediateCharge = async () => {
+    if (!formRef.current) return;
+    if (!formRef.current.reportValidity()) return;
+    if (chargeNowAmountError) {
+      showToast({ title: "Financeiro", message: chargeNowAmountError, tone: "warning", durationMs: 2600 });
+      return;
+    }
+
+    setCreatingChargeBooking(true);
+    setChargeFlowError(null);
+    setConfirmationSheetStep("creating_charge");
+    try {
+      const formData = new FormData(formRef.current);
+      formData.set("payment_collection_timing", "charge_now");
+      const result = await createAppointmentForImmediateCharge(formData);
+      if (!result.ok || !result.data) {
+        setChargeFlowError(result.error ?? "Não foi possível criar o agendamento para cobrança.");
+        setConfirmationSheetStep("review");
+        return;
+      }
+
+      const attendance = result.data.attendance;
+      const nextState: ChargeBookingState = {
+        appointmentId: result.data.appointmentId,
+        date: result.data.date,
+        startTimeIso: result.data.startTimeIso,
+        attendanceCode: attendance?.appointment?.attendance_code ?? null,
+        appointmentPaymentStatus: attendance?.appointment?.payment_status ?? null,
+        checkout: attendance?.checkout ?? null,
+        checkoutItems: attendance?.checkoutItems ?? [],
+        payments: attendance?.payments ?? [],
+      };
+      setChargeBookingState(nextState);
+      setChargeNotificationsDispatched(false);
+      setConfirmationSheetStep("charge_payment");
+    } finally {
+      setCreatingChargeBooking(false);
+    }
+  };
+
+  const resolveChargeAmountForModal = () => {
+    if (collectionTimingDraft !== "charge_now") return null;
+    if (!chargeBookingState?.checkout) return Math.max(0, chargeNowDraftAmount);
+    const total = Number(chargeBookingState.checkout.total ?? 0);
+    const paid = (chargeBookingState.payments ?? [])
+      .filter((payment) => payment.status === "paid")
+      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
+    const remaining = Math.max(total - paid, 0);
+    return Math.max(0, Math.min(chargeNowDraftAmount, remaining));
+  };
+
+  const ensureChargeNotificationsDispatched = async () => {
+    if (!chargeBookingState || chargeNotificationsDispatched) return true;
+    const result = await finalizeCreatedAppointmentNotifications({
+      appointmentId: chargeBookingState.appointmentId,
+      startTimeIso: chargeBookingState.startTimeIso,
+    });
+    if (!result.ok) {
+      showToast({
+        title: "Automação",
+        message: "Agendamento criado, mas não foi possível acionar a automação agora.",
+        tone: "warning",
+        durationMs: 2600,
+      });
+      return false;
+    }
+    setChargeNotificationsDispatched(true);
+    return true;
+  };
+
+  const handleChargeSaveItems = async (
+    items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>
+  ) => {
+    if (!chargeBookingState) return false;
+    const result = await saveBookingChargeItems({ appointmentId: chargeBookingState.appointmentId, items });
+    if (!result.ok) {
+      showToast({
+        title: "Checkout",
+        message: "Não foi possível atualizar os itens do checkout.",
+        tone: "error",
+        durationMs: 2600,
+      });
+      return false;
+    }
+    await refreshChargeBookingState(chargeBookingState.appointmentId);
+    return true;
+  };
+
+  const handleChargeSetDiscount = async (type: "value" | "pct" | null, value: number | null, reason?: string) => {
+    if (!chargeBookingState) return false;
+    const result = await setBookingChargeDiscount({
+      appointmentId: chargeBookingState.appointmentId,
+      type,
+      value,
+      reason: reason ?? null,
+    });
+    if (!result.ok) {
+      showToast({
+        title: "Checkout",
+        message: "Não foi possível aplicar o desconto.",
+        tone: "error",
+        durationMs: 2600,
+      });
+      return false;
+    }
+    await refreshChargeBookingState(chargeBookingState.appointmentId);
+    return true;
+  };
+
+  const handleChargeRegisterCashPayment = async (amount: number) => {
+    if (!chargeBookingState) return { ok: false as const, paymentId: null };
+    const result = await recordBookingChargePayment({ appointmentId: chargeBookingState.appointmentId, method: "cash", amount });
+    if (!result.ok) {
+      showToast({
+        title: "Pagamento",
+        message: "Não foi possível registrar o pagamento em dinheiro.",
+        tone: "error",
+        durationMs: 2600,
+      });
+      return { ok: false as const, paymentId: null };
+    }
+    await refreshChargeBookingState(chargeBookingState.appointmentId);
+    return { ok: true as const, paymentId: result.data.paymentId };
+  };
+
+  const handleChargeRegisterPixKeyPayment = async (amount: number) => {
+    if (!chargeBookingState) return { ok: false as const, paymentId: null };
+    const result = await recordBookingChargePayment({ appointmentId: chargeBookingState.appointmentId, method: "pix", amount });
+    if (!result.ok) {
+      showToast({
+        title: "Pagamento",
+        message: "Não foi possível registrar o pagamento Pix.",
+        tone: "error",
+        durationMs: 2600,
+      });
+      return { ok: false as const, paymentId: null };
+    }
+    await refreshChargeBookingState(chargeBookingState.appointmentId);
+    return { ok: true as const, paymentId: result.data.paymentId };
+  };
+
+  const handleChargeCreatePixPayment = async (amount: number, attempt: number) => {
+    if (!chargeBookingState) return { ok: false as const };
+    const payerPhone = resolvedClientPhone || clientPhone;
+    const result = await createBookingPixPayment({
+      appointmentId: chargeBookingState.appointmentId,
+      amount,
+      payerName: clientPublicFullNamePreview || clientName || "Cliente",
+      payerPhone,
+      payerEmail: clientEmail || selectedClientRecord?.email || null,
+      attempt,
+    });
+    if (!result.ok) {
+      showToast({
+        title: "Pagamento",
+        message: "Não foi possível gerar o PIX agora.",
+        tone: "error",
+        durationMs: 2600,
+      });
+      return { ok: false as const };
+    }
+    await refreshChargeBookingState(chargeBookingState.appointmentId);
+    return { ok: true as const, data: result.data };
+  };
+
+  const handleChargePollPixStatus = async () => {
+    if (!chargeBookingState) return { ok: false as const, status: "pending" as const };
+    const result = await pollBookingPixPaymentStatus({ appointmentId: chargeBookingState.appointmentId });
+    if (!result.ok) {
+      return { ok: false as const, status: "pending" as const };
+    }
+    if (result.data.internal_status !== "pending") {
+      await refreshChargeBookingState(chargeBookingState.appointmentId);
+    }
+    return { ok: true as const, status: result.data.internal_status };
+  };
+
+  const handleChargeCreatePointPayment = async (amount: number, cardMode: "debit" | "credit", attempt: number) => {
+    if (!chargeBookingState) return { ok: false as const };
+    const result = await createBookingPointPayment({
+      appointmentId: chargeBookingState.appointmentId,
+      amount,
+      cardMode,
+      attempt,
+    });
+    if (!result.ok) {
+      showToast({
+        title: "Pagamento",
+        message: "Não foi possível iniciar a cobrança no cartão.",
+        tone: "error",
+        durationMs: 2600,
+      });
+      return { ok: false as const };
+    }
+    if (result.data.internal_status !== "pending") {
+      await refreshChargeBookingState(chargeBookingState.appointmentId);
+    }
+    return { ok: true as const, data: result.data };
+  };
+
+  const handleChargePollPointStatus = async (orderId: string) => {
+    if (!chargeBookingState) return { ok: false as const, status: "pending" as const, paymentId: null };
+    const result = await pollBookingPointPaymentStatus({
+      appointmentId: chargeBookingState.appointmentId,
+      orderId,
+    });
+    if (!result.ok) {
+      return { ok: false as const, status: "pending" as const, paymentId: null };
+    }
+    if (result.data.internal_status !== "pending") {
+      await refreshChargeBookingState(chargeBookingState.appointmentId);
+    }
+    return { ok: true as const, status: result.data.internal_status, paymentId: result.data.id };
+  };
+
+  const handleChargeSendReceipt = async (paymentId: string) => {
+    if (!chargeBookingState) return;
+    const phone = normalizePhoneForWhatsapp(resolvedClientPhone || clientPhone);
+    if (!phone) {
+      showToast(feedbackById("whatsapp_missing_phone"));
+      return;
+    }
+
+    const baseUrl = resolvePublicBaseUrl(publicBaseUrl);
+    const receiptPath = buildAppointmentReceiptPath({
+      appointmentId: chargeBookingState.appointmentId,
+      attendanceCode: chargeBookingState.attendanceCode,
+    });
+    const receiptLink = baseUrl ? `${baseUrl}${receiptPath}` : `${window.location.origin}${receiptPath}`;
+    const greeting = clientMessageFirstName ? `Olá, ${clientMessageFirstName}!` : "Olá!";
+    const message = applyAutoMessageTemplate(messageTemplates.payment_receipt, {
+      greeting,
+      service_name: selectedService?.name ?? "atendimento",
+      receipt_link_block: `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`,
+    }).trim();
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
+    void recordManualPaymentReceiptMessage({
+      appointmentId: chargeBookingState.appointmentId,
+      paymentId,
+      message,
+      receiptLink,
+    });
+  };
+
+  const handleChargePaymentResolved = async () => {
+    await ensureChargeNotificationsDispatched();
+    setChargeFlowError(null);
+    setConfirmationSheetStep("charge_manual_prompt");
+  };
+
+  const handleSwitchChargeToAttendance = async () => {
+    if (!chargeBookingState) return;
+    setFinishingChargeFlow(true);
+    try {
+      await ensureChargeNotificationsDispatched();
+      setConfirmationSheetStep("charge_manual_prompt");
+    } finally {
+      setFinishingChargeFlow(false);
+    }
+  };
+
+  const handleResolveDeferredManualPrompt = async (shouldSendMessage: boolean) => {
+    if (!chargeBookingState) return;
+    if (shouldSendMessage) {
+      const messageText = buildCreatedMessageText();
+      const opened = openWhatsappFromForm(messageText);
+      if (opened) {
+        await recordManualCreatedMessage({
+          appointmentId: chargeBookingState.appointmentId,
+          message: messageText,
+        });
+      }
+    }
+    setIsSendPromptOpen(false);
+    setConfirmationSheetStep("review");
+    router.push(buildAgendaDayReturnUrl(chargeBookingState.appointmentId));
+  };
+
+  const handleConfirmationSheetClose = () => {
+    if (confirmationSheetStep === "charge_manual_prompt" && chargeBookingState) {
+      void handleResolveDeferredManualPrompt(false);
+      return;
+    }
+    if (confirmationSheetStep === "charge_payment" && chargeBookingState) {
+      void handleSwitchChargeToAttendance();
+      return;
+    }
+    setIsSendPromptOpen(false);
+    setConfirmationSheetStep("review");
+    setChargeFlowError(null);
+  };
+
   const handleSchedule = (shouldSendMessage: boolean) => {
     if (duplicateCpfClient) {
       showToast(
@@ -1314,18 +1777,7 @@ export function AppointmentForm({
     let shouldRecord = shouldSendMessage;
     let messageText = "";
     if (shouldSendMessage) {
-      messageText = buildCreatedMessage({
-        clientName: clientMessageFirstName,
-        date: selectedDate,
-        time: selectedTime,
-        serviceName: selectedService?.name ?? "",
-        locationLine: isHomeVisit
-          ? addressLabel
-            ? `No endereço informado: ${addressLabel}`
-            : "Atendimento domiciliar (endereço a confirmar)"
-          : "No estúdio",
-        template: messageTemplates.created_confirmation,
-      });
+      messageText = buildCreatedMessageText();
       const opened = openWhatsappFromForm(messageText);
       if (!opened) {
         shouldRecord = false;
@@ -1345,6 +1797,8 @@ export function AppointmentForm({
   const handleOpenConfirmationPrompt = () => {
     if (!formRef.current) return;
     if (!formRef.current.reportValidity()) return;
+    setConfirmationSheetStep("review");
+    setChargeFlowError(null);
     setIsSendPromptOpen(true);
   };
 
@@ -2363,13 +2817,159 @@ export function AppointmentForm({
                 </button>
                 <button
                   type="button"
-                  disabled
-                  className="rounded-2xl border px-4 py-3 text-xs font-extrabold uppercase tracking-wide border-gray-200 text-muted bg-gray-50 cursor-not-allowed"
-                  title="Cobrança no agendamento entra na fase 2"
+                  onClick={() => setCollectionTimingDraft("charge_now")}
+                  className={`rounded-2xl border px-4 py-3 text-xs font-extrabold uppercase tracking-wide ${
+                    collectionTimingDraft === "charge_now"
+                      ? "border-studio-green bg-studio-light text-studio-green"
+                      : "border-gray-200 text-muted hover:bg-gray-50"
+                  }`}
+                  title="Cobrança no agendamento"
                 >
-                  Cobrar agora (fase 2)
+                  Cobrar agora
                 </button>
               </div>
+              {collectionTimingDraft === "charge_now" && (
+                <div className="mt-4 space-y-3 border-t border-line pt-4">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Valor a cobrar agora</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowAmountMode("full")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowAmountMode === "full"
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        Integral
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowAmountMode("signal")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowAmountMode === "signal"
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        Sinal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowAmountMode("custom")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowAmountMode === "custom"
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        Personalizado
+                      </button>
+                    </div>
+                  </div>
+
+                  {chargeNowAmountMode === "signal" && (
+                    <div className="grid grid-cols-[1fr_auto] gap-3">
+                      <div className="rounded-2xl border border-line bg-paper px-4 py-3">
+                        <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                          Percentual do sinal (%)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={chargeNowSignalPercent}
+                          onChange={(event) => setChargeNowSignalPercent(Math.max(0, Number(event.target.value) || 0))}
+                          className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
+                        />
+                      </div>
+                      <div className="rounded-2xl border border-line bg-paper px-4 py-3 min-w-[136px]">
+                        <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                          Valor do sinal
+                        </label>
+                        <p className="mt-1 text-lg font-black text-studio-text tabular-nums">
+                          R$ {formatCurrencyLabel(chargeNowSuggestedSignalAmount)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {chargeNowAmountMode === "custom" && (
+                    <div className="rounded-2xl border border-line bg-paper px-4 py-3">
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                        Valor personalizado
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={chargeNowCustomAmount}
+                        onChange={(event) => setChargeNowCustomAmount(event.target.value)}
+                        className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
+                        placeholder="0,00"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Forma de pagamento</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowMethodDraft("pix_mp")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowMethodDraft === "pix_mp"
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        PIX
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowMethodDraft("card")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowMethodDraft === "card"
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        Cartão
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowMethodDraft("cash")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowMethodDraft === "cash"
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        Dinheiro
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-line bg-paper px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                        Valor a cobrar agora
+                      </span>
+                      <span className="text-lg font-black text-studio-text tabular-nums">
+                        R$ {formatCurrencyLabel(chargeNowDraftAmount)}
+                      </span>
+                    </div>
+                    {chargeNowAmountError && (
+                      <p className="mt-2 text-[11px] font-semibold text-red-700">{chargeNowAmountError}</p>
+                    )}
+                    {!chargeNowAmountError && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && (
+                      <p className="mt-2 text-[11px] text-muted">
+                        Valor mínimo do PIX Mercado Pago: R$ 1,00.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-paper border border-line rounded-3xl p-4">
@@ -2911,125 +3511,271 @@ export function AppointmentForm({
         createPortal(
           <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
             <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
-                  Confirmar agendamento
-                </p>
-                <h3 className="text-lg font-serif text-studio-text">Revisar dados antes de criar</h3>
-                <p className="text-xs text-muted mt-1">
-                  Confira os dados do agendamento antes de confirmar.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSendPromptOpen(false)}
-                className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
-                  Resumo
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-500">Cliente</span>
-                    <span className="text-right font-semibold text-studio-text">
-                      {clientDisplayPreviewLabel || "Cliente"}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-500">Serviço</span>
-                    <span className="text-right font-semibold text-studio-text">
-                      {selectedService?.name || "Selecione um serviço"}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-500">Data e horário</span>
-                    <span className="text-right font-semibold text-studio-text">
-                      {selectedDate
-                        ? `${format(parseISO(selectedDate), "dd/MM/yyyy", { locale: ptBR })} • ${selectedTime || "--:--"}`
-                        : "--"}
-                    </span>
-                  </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-500">Local</span>
-                    <span className="text-right font-semibold text-studio-text">
-                      {isHomeVisit
-                        ? `Domicílio${addressLabel ? ` • ${addressLabel}` : ""}`
-                        : "Estúdio"}
-                    </span>
-                  </div>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
+                    {confirmationSheetStep === "charge_payment" ? "Cobrança no agendamento" : "Confirmar agendamento"}
+                  </p>
+                  <h3 className="text-lg font-serif text-studio-text">
+                    {confirmationSheetStep === "creating_charge"
+                      ? "Criando agendamento..."
+                      : confirmationSheetStep === "charge_payment"
+                        ? "Pagamento do agendamento"
+                        : confirmationSheetStep === "charge_manual_prompt"
+                          ? "Aviso manual do agendamento"
+                          : "Revisar dados antes de criar"}
+                  </h3>
+                  <p className="text-xs text-muted mt-1">
+                    {confirmationSheetStep === "creating_charge"
+                      ? "Estamos criando o agendamento e preparando o checkout."
+                      : confirmationSheetStep === "charge_payment"
+                        ? "Finalize a cobrança agora ou jogue para pagar no atendimento."
+                        : confirmationSheetStep === "charge_manual_prompt"
+                          ? "Escolha se deseja enviar o aviso manual de agendamento agora."
+                          : "Confira os dados do agendamento antes de confirmar."}
+                  </p>
                 </div>
-              </div>
-
-              <div className="rounded-2xl border border-stone-100 bg-white p-4">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
-                  Financeiro
-                </p>
-                <div className="space-y-2 text-sm">
-                  {financeDraftItems.length > 0 ? (
-                    financeDraftItems.map((item, index) => (
-                      <div key={`${item.type}-${item.label}-${index}`} className="flex items-center justify-between gap-3">
-                        <span className="text-gray-500">{item.label}</span>
-                        <span className="font-semibold text-studio-text">
-                          R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-muted">Sem itens financeiros configurados.</p>
-                  )}
-                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-stone-100">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
-                  </div>
-                  {effectiveScheduleDiscount > 0 && (
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">
-                        Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
-                      </span>
-                      <span className="font-semibold text-studio-text">
-                        - R$ {formatCurrencyLabel(effectiveScheduleDiscount)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-gray-500">Cobrança</span>
-                    <span className="font-semibold text-studio-text">
-                      {collectionTimingDraft === "at_attendance" ? "No atendimento" : "No agendamento"}
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
-                  <span className="text-base font-bold text-studio-text">
-                    R$ {formatCurrencyLabel(scheduleTotal)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={() => handleSchedule(true)}
-                  className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
+                  onClick={handleConfirmationSheetClose}
+                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
                 >
-                  Agendar e avisar
+                  <X className="w-4 h-4" />
                 </button>
-              <button
-                type="button"
-                onClick={() => handleSchedule(false)}
-                className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
-              >
-                Agendar sem enviar
-              </button>
-            </div>
-            </div>
+              </div>
+
+              {chargeFlowError && (
+                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                  {chargeFlowError}
+                </div>
+              )}
+
+              {confirmationSheetStep === "creating_charge" ? (
+                <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-5 text-center">
+                  <div className="mx-auto h-10 w-10 rounded-full border-2 border-studio-green/20 border-t-studio-green animate-spin" />
+                  <p className="mt-3 text-sm font-semibold text-studio-text">Preparando cobrança...</p>
+                  <p className="mt-1 text-xs text-muted">Isso leva apenas alguns segundos.</p>
+                </div>
+              ) : confirmationSheetStep === "charge_payment" && chargeBookingState ? (
+                <div className="space-y-3">
+                  <AttendancePaymentModal
+                    open
+                    variant="embedded"
+                    hideWaiverOption
+                    chargeAmountOverride={resolveChargeAmountForModal()}
+                    checkout={chargeBookingState.checkout}
+                    items={chargeBookingState.checkoutItems}
+                    payments={chargeBookingState.payments}
+                    appointmentPaymentStatus={chargeBookingState.appointmentPaymentStatus}
+                    pixKeyValue={pixKeyValue}
+                    pixKeyType={pixKeyType}
+                    pointEnabled={pointEnabled}
+                    pointTerminalName={pointTerminalName}
+                    pointTerminalModel={pointTerminalModel}
+                    onClose={() => void handleSwitchChargeToAttendance()}
+                    onSaveItems={handleChargeSaveItems}
+                    onSetDiscount={handleChargeSetDiscount}
+                    onRegisterCashPayment={handleChargeRegisterCashPayment}
+                    onRegisterPixKeyPayment={handleChargeRegisterPixKeyPayment}
+                    onCreatePixPayment={handleChargeCreatePixPayment}
+                    onPollPixStatus={handleChargePollPixStatus}
+                    onCreatePointPayment={handleChargeCreatePointPayment}
+                    onPollPointStatus={handleChargePollPointStatus}
+                    onWaivePayment={async () => ({ ok: false })}
+                    onSendReceipt={handleChargeSendReceipt}
+                    receiptFlowMode="manual"
+                    initialMethod={chargeNowMethodDraft}
+                    successResolveLabel="Continuar"
+                    onReceiptPromptResolved={async () => {
+                      await handleChargePaymentResolved();
+                    }}
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSwitchChargeToAttendance()}
+                      disabled={finishingChargeFlow}
+                      className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
+                    >
+                      {finishingChargeFlow ? "Finalizando..." : "Cobrar no atendimento"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChargeFlowError(null)}
+                      className="w-full h-12 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs uppercase tracking-wide"
+                    >
+                      Cobrar de outra forma
+                    </button>
+                  </div>
+                </div>
+              ) : confirmationSheetStep === "charge_manual_prompt" && chargeBookingState ? (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
+                    <p className="text-xs font-semibold text-studio-text">
+                      Agendamento criado{chargeBookingState.appointmentPaymentStatus === "paid" ? " e pagamento confirmado" : ""}.
+                    </p>
+                    <p className="text-xs text-muted mt-1">
+                      Agora você pode decidir se quer enviar o aviso manual pelo WhatsApp.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleResolveDeferredManualPrompt(true)}
+                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
+                    >
+                      Enviar aviso manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleResolveDeferredManualPrompt(false)}
+                      className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+                    >
+                      Não enviar aviso manual
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
+                      Resumo
+                    </p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-gray-500">Cliente</span>
+                        <span className="text-right font-semibold text-studio-text">
+                          {clientDisplayPreviewLabel || "Cliente"}
+                        </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-gray-500">Serviço</span>
+                        <span className="text-right font-semibold text-studio-text">
+                          {selectedService?.name || "Selecione um serviço"}
+                        </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-gray-500">Data e horário</span>
+                        <span className="text-right font-semibold text-studio-text">
+                          {selectedDate
+                            ? `${format(parseISO(selectedDate), "dd/MM/yyyy", { locale: ptBR })} • ${selectedTime || "--:--"}`
+                            : "--"}
+                        </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-gray-500">Local</span>
+                        <span className="text-right font-semibold text-studio-text">
+                          {isHomeVisit ? `Domicílio${addressLabel ? ` • ${addressLabel}` : ""}` : "Estúdio"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-stone-100 bg-white p-4">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
+                      Financeiro
+                    </p>
+                    <div className="space-y-2 text-sm">
+                      {financeDraftItems.length > 0 ? (
+                        financeDraftItems.map((item, index) => (
+                          <div key={`${item.type}-${item.label}-${index}`} className="flex items-center justify-between gap-3">
+                            <span className="text-gray-500">{item.label}</span>
+                            <span className="font-semibold text-studio-text">
+                              R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-muted">Sem itens financeiros configurados.</p>
+                      )}
+                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-stone-100">
+                        <span className="text-gray-500">Subtotal</span>
+                        <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
+                      </div>
+                      {effectiveScheduleDiscount > 0 && (
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-gray-500">
+                            Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
+                          </span>
+                          <span className="font-semibold text-studio-text">
+                            - R$ {formatCurrencyLabel(effectiveScheduleDiscount)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-500">Cobrança</span>
+                        <span className="font-semibold text-studio-text">
+                          {collectionTimingDraft === "at_attendance" ? "No atendimento" : "No agendamento"}
+                        </span>
+                      </div>
+                      {collectionTimingDraft === "charge_now" && (
+                        <>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-gray-500">Forma</span>
+                            <span className="font-semibold text-studio-text">
+                              {chargeNowMethodDraft === "pix_mp"
+                                ? "PIX"
+                                : chargeNowMethodDraft === "card"
+                                  ? "Cartão"
+                                  : "Dinheiro"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-gray-500">Valor a cobrar agora</span>
+                            <span className="font-semibold text-studio-text">
+                              R$ {formatCurrencyLabel(chargeNowDraftAmount)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
+                      <span className="text-base font-bold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {collectionTimingDraft === "charge_now" ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void handleBeginImmediateCharge()}
+                          disabled={creatingChargeBooking || Boolean(chargeNowAmountError)}
+                          className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
+                        >
+                          {creatingChargeBooking ? "Preparando cobrança..." : "Cobrar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirmationSheetClose}
+                          className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleSchedule(true)}
+                          className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
+                        >
+                          Agendar e avisar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSchedule(false)}
+                          className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+                        >
+                          Agendar sem enviar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>,
           portalTarget

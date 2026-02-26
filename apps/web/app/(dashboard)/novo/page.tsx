@@ -9,8 +9,10 @@ import { AppointmentForm } from "./appointment-form";
 import { listServices } from "../../../src/modules/services/repository";
 import { listClients } from "../../../src/modules/clients/repository";
 import { getAppointmentById } from "../../../src/modules/appointments/repository";
+import { getSettings, listPixPaymentKeys } from "../../../src/modules/settings/repository";
 import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
 import { getAutoMessageTemplates } from "../../../src/shared/auto-messages";
+import { DEFAULT_PUBLIC_BASE_URL } from "../../../src/shared/config";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -18,6 +20,8 @@ type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 interface PageProps {
   searchParams: SearchParams;
 }
+
+const PIX_KEY_TYPES = ["cnpj", "cpf", "email", "phone", "evp"] as const;
 
 // Helper para sanitizar a data
 function getSafeDate(dateParam: string | string[] | undefined): string {
@@ -51,10 +55,12 @@ export default async function NewAppointment(props: PageProps) {
   const appointmentId = typeof params.appointmentId === "string" ? params.appointmentId : null;
 
   // Buscar serviços ativos do Tenant
-  const [{ data: services }, { data: clients }, appointmentResult] = await Promise.all([
+  const [{ data: services }, { data: clients }, appointmentResult, settingsResult, pixKeysResult] = await Promise.all([
     listServices(FIXED_TENANT_ID),
     listClients(FIXED_TENANT_ID),
     appointmentId ? getAppointmentById(FIXED_TENANT_ID, appointmentId) : Promise.resolve({ data: null, error: null }),
+    getSettings(FIXED_TENANT_ID),
+    listPixPaymentKeys(FIXED_TENANT_ID),
   ]);
 
   const appointment = appointmentResult?.data ?? null;
@@ -90,6 +96,13 @@ export default async function NewAppointment(props: PageProps) {
       }
     : null;
   const messageTemplates = getAutoMessageTemplates();
+  const settings = settingsResult.data;
+  const pixKeys = pixKeysResult.data ?? [];
+  const activePixKey = pixKeys.find((item) => item.is_active) ?? pixKeys[0] ?? null;
+  const activePixKeyType =
+    activePixKey && PIX_KEY_TYPES.includes(activePixKey.key_type as (typeof PIX_KEY_TYPES)[number])
+      ? (activePixKey.key_type as (typeof PIX_KEY_TYPES)[number])
+      : null;
 
   return (
     <div className="-mx-4 -mt-4">
@@ -116,6 +129,13 @@ export default async function NewAppointment(props: PageProps) {
           initialAppointment={initialAppointment}
           returnTo={returnTo}
           messageTemplates={messageTemplates}
+          signalPercentage={settings?.signal_percentage ?? 30}
+          pointEnabled={settings?.mp_point_enabled ?? false}
+          pointTerminalName={settings?.mp_point_terminal_name ?? ""}
+          pointTerminalModel={settings?.mp_point_terminal_model ?? ""}
+          publicBaseUrl={settings?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
+          pixKeyValue={activePixKey?.key_value ?? ""}
+          pixKeyType={activePixKeyType}
         />
       </main>
     </div>

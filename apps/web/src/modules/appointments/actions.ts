@@ -251,7 +251,12 @@ export async function cancelAppointment(
   return ok({ id });
 }
 
-export async function createAppointment(formData: FormData): Promise<void> {
+export async function createAppointment(
+  formData: FormData
+): Promise<void | { appointmentId: string; date: string; startTimeIso: string }> {
+  const responseMode = ((formData.get("response_mode") as string | null) || "").trim() === "json" ? "json" : "redirect";
+  const deferLifecycleNotifications = formData.get("defer_lifecycle_notifications") === "1";
+  const skipManualCreatedMessage = formData.get("skip_manual_created_message") === "1";
   const clientId = (formData.get("clientId") as string | null) || null;
   const clientName = formData.get("clientName") as string | null;
   const clientPhone = (formData.get("clientPhone") as string | null) || null;
@@ -288,7 +293,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     ((formData.get("payment_collection_timing") as string | null) || "").trim() === "charge_now"
       ? "charge_now"
       : "at_attendance";
-  const sendCreatedMessage = formData.get("send_created_message") === "1";
+  const sendCreatedMessage = !skipManualCreatedMessage && formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
   const isCourtesyAppointment = formData.get("is_courtesy") === "on";
   const rawClientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
@@ -310,7 +315,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
   const checkoutServiceAmount = parseDecimalInput(rawCheckoutServiceAmount);
   const initialCheckoutDiscountValue = parseDecimalInput(rawInitialCheckoutDiscountValue);
-  if (paymentCollectionTiming === "charge_now") {
+  if (paymentCollectionTiming === "charge_now" && responseMode !== "json") {
     throw new AppError(
       "Cobrança no agendamento entra na Fase 2 e ainda não está liberada.",
       "VALIDATION_ERROR",
@@ -612,12 +617,14 @@ export async function createAppointment(formData: FormData): Promise<void> {
       if (mappedCourtesyUpdateError) throw mappedCourtesyUpdateError;
     }
 
-    await scheduleAppointmentLifecycleNotifications({
-      tenantId,
-      appointmentId,
-      startTimeIso: startDateTime.toISOString(),
-      source: "admin_create",
-    });
+    if (!deferLifecycleNotifications) {
+      await scheduleAppointmentLifecycleNotifications({
+        tenantId,
+        appointmentId,
+        startTimeIso: startDateTime.toISOString(),
+        source: "admin_create",
+      });
+    }
 
     if (sendCreatedMessage) {
       const supabase = createServiceClient();
@@ -640,7 +647,81 @@ export async function createAppointment(formData: FormData): Promise<void> {
   }
 
   revalidatePath(`/?view=day&date=${parsed.data.date}`);
+  if (responseMode === "json" && appointmentId) {
+    return {
+      appointmentId,
+      date: parsed.data.date,
+      startTimeIso: startDateTime.toISOString(),
+    };
+  }
   redirect(`/?view=day&date=${parsed.data.date}&created=1`);
+}
+
+export async function triggerCreatedNotificationsForAppointment(payload: {
+  appointmentId: string;
+  startTimeIso: string;
+  source?: string | null;
+}): Promise<ActionResult<{ appointmentId: string; scheduled: boolean }>> {
+  const parsed = z
+    .object({
+      appointmentId: z.string().uuid(),
+      startTimeIso: z.string().datetime(),
+      source: z.string().trim().min(1).max(80).optional().nullable(),
+    })
+    .safeParse(payload);
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const supabase = createServiceClient();
+  const { data: appointment, error: appointmentError } = await supabase
+    .from("appointments")
+    .select("id, client_id, clients ( phone )")
+    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("id", parsed.data.appointmentId)
+    .maybeSingle();
+
+  const mappedAppointmentError = mapSupabaseError(appointmentError);
+  if (mappedAppointmentError) return fail(mappedAppointmentError);
+  if (!appointment) {
+    return fail(new AppError("Agendamento não encontrado", "NOT_FOUND", 404));
+  }
+
+  const clientRelation =
+    appointment && typeof appointment === "object" && "clients" in appointment
+      ? (appointment.clients as { phone?: string | null } | Array<{ phone?: string | null }> | null | undefined)
+      : null;
+  const clientPhone = Array.isArray(clientRelation)
+    ? (clientRelation[0]?.phone ?? null)
+    : (clientRelation?.phone ?? null);
+  const hasPhone = Boolean((clientPhone ?? "").replace(/\D/g, ""));
+
+  if (!hasPhone) {
+    await supabase.from("appointment_messages").insert({
+      appointment_id: parsed.data.appointmentId,
+      tenant_id: FIXED_TENANT_ID,
+      type: "created_confirmation",
+      status: "failed",
+      payload: {
+        automation: {
+          skipped_reason: "missing_phone",
+          skipped_reason_label: "Cliente sem WhatsApp/telefone cadastrado para automação.",
+          checked_at: new Date().toISOString(),
+        },
+      },
+    });
+
+    return ok({ appointmentId: parsed.data.appointmentId, scheduled: false });
+  }
+
+  await scheduleAppointmentLifecycleNotifications({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    startTimeIso: parsed.data.startTimeIso,
+    source: "admin_create",
+  });
+
+  return ok({ appointmentId: parsed.data.appointmentId, scheduled: true });
 }
 
 export async function updateInternalAppointment(formData: FormData): Promise<void> {
