@@ -175,6 +175,9 @@ export async function createClientAction(formData: FormData): Promise<void> {
     ? ((formData.get("observacoes_gerais") as string | null) || null)
     : undefined;
   const emailField = (formData.get("email") as string | null) || null;
+  const public_first_name = (formData.get("public_first_name") as string | null) || null;
+  const public_last_name = (formData.get("public_last_name") as string | null) || null;
+  const internal_reference = (formData.get("internal_reference") as string | null) || null;
   const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
   const cpf = (formData.get("cpf") as string | null) || null;
   const endereco_completo = (formData.get("endereco_completo") as string | null) || null;
@@ -235,6 +238,9 @@ export async function createClientAction(formData: FormData): Promise<void> {
     guardian_cpf,
     observacoes_gerais,
     email,
+    public_first_name,
+    public_last_name,
+    internal_reference,
     data_nascimento,
     cpf,
     endereco_completo,
@@ -269,6 +275,9 @@ export async function createClientAction(formData: FormData): Promise<void> {
     guardian_cpf: parsed.data.guardian_cpf,
     observacoes_gerais: parsed.data.observacoes_gerais,
     email: parsed.data.email,
+    public_first_name: parsed.data.public_first_name,
+    public_last_name: parsed.data.public_last_name,
+    internal_reference: parsed.data.internal_reference,
     data_nascimento: parsed.data.data_nascimento,
     cpf: parsed.data.cpf,
     endereco_completo:
@@ -449,6 +458,9 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
   const guardian_cpf = (formData.get("guardian_cpf") as string | null) || null;
   const observacoes_gerais = (formData.get("observacoes_gerais") as string | null) || null;
   const email = (formData.get("email") as string | null) || null;
+  const public_first_name = (formData.get("public_first_name") as string | null) || null;
+  const public_last_name = (formData.get("public_last_name") as string | null) || null;
+  const internal_reference = (formData.get("internal_reference") as string | null) || null;
   const data_nascimento = (formData.get("data_nascimento") as string | null) || null;
   const cpf = (formData.get("cpf") as string | null) || null;
   const endereco_completo = (formData.get("endereco_completo") as string | null) || null;
@@ -491,6 +503,9 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     guardian_cpf,
     observacoes_gerais,
     email,
+    public_first_name,
+    public_last_name,
+    internal_reference,
     data_nascimento,
     cpf,
     endereco_completo,
@@ -525,6 +540,9 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     guardian_phone: parsed.data.guardian_phone,
     guardian_cpf: parsed.data.guardian_cpf,
     email: parsed.data.email,
+    public_first_name: parsed.data.public_first_name,
+    public_last_name: parsed.data.public_last_name,
+    internal_reference: parsed.data.internal_reference,
     data_nascimento: parsed.data.data_nascimento,
     cpf: parsed.data.cpf,
     endereco_completo:

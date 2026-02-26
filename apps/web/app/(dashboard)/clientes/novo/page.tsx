@@ -11,7 +11,6 @@ import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import {
-  buildClientExtraDataProfile,
   composeInternalClientName,
 } from "../../../../src/modules/clients/name-profile";
 
@@ -120,25 +119,13 @@ export default function NewClientPage() {
   const [suggestions, setSuggestions] = useState<ClientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const internalDisplayName = useMemo(
-    () => composeInternalClientName(firstName.trim(), reference.trim() || null),
-    [firstName, reference]
+    () => composeInternalClientName(firstName.trim(), lastName.trim(), reference.trim() || null),
+    [firstName, lastName, reference]
   );
   const publicDisplayName = useMemo(
     () => [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
     [firstName, lastName]
   );
-  const extraData = useMemo<Record<string, unknown>>(
-    () =>
-      firstName.trim() && lastName.trim()
-        ? buildClientExtraDataProfile({
-            publicFirstName: firstName.trim(),
-            publicLastName: lastName.trim(),
-            reference: reference.trim() || null,
-          })
-        : {},
-    [firstName, lastName, reference]
-  );
-
   const avatarPreview = useMemo(() => {
     if (!avatarFile) return null;
     return URL.createObjectURL(avatarFile);
@@ -291,10 +278,13 @@ export default function NewClientPage() {
       <main className="p-6 pb-28">
         <form action={createClientAction} className="space-y-6">
           <input type="hidden" name="name" value={internalDisplayName} />
+          <input type="hidden" name="public_first_name" value={firstName.trim()} />
+          <input type="hidden" name="public_last_name" value={lastName.trim()} />
+          <input type="hidden" name="internal_reference" value={reference.trim()} />
           <input type="hidden" name="phones_json" value={JSON.stringify(phonesPayload)} />
           <input type="hidden" name="emails_json" value={JSON.stringify(emailsPayload)} />
           <input type="hidden" name="addresses_json" value={JSON.stringify(addressesPayload)} />
-          <input type="hidden" name="extra_data_json" value={JSON.stringify(extraData)} />
+          <input type="hidden" name="extra_data_json" value="{}" />
           <input type="hidden" name="health_tags" value={healthTagsCombined.join(", ")} />
           <input type="hidden" name="health_items_json" value={JSON.stringify(healthItemsPayload)} />
 

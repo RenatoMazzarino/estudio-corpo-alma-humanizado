@@ -12,10 +12,17 @@ function stripReferenceFromInternalName(value: string) {
   return value.replace(/\s*\([^)]*\)\s*$/, "").trim();
 }
 
-export function composeInternalClientName(firstName: string, reference?: string | null) {
+export function composeInternalClientName(
+  firstName: string,
+  lastName?: string | null,
+  reference?: string | null
+) {
   const normalizedFirstName = firstName.trim();
+  const normalizedLastName = (lastName ?? "").trim();
   const normalizedReference = normalizeReferenceLabel(reference);
-  if (!normalizedReference) return normalizedFirstName;
+  if (!normalizedReference) {
+    return [normalizedFirstName, normalizedLastName].filter((value) => value.length > 0).join(" ").trim();
+  }
   return `${normalizedFirstName} (${normalizedReference})`;
 }
 
@@ -41,18 +48,25 @@ export interface ResolvedClientNames {
   messagingFirstName: string;
 }
 
-export function resolveClientNames(input: { name?: string | null; extraData?: unknown }): ResolvedClientNames {
+export function resolveClientNames(input: {
+  name?: string | null;
+  publicFirstName?: string | null;
+  publicLastName?: string | null;
+  internalReference?: string | null;
+  extraData?: unknown; // transitional fallback
+}): ResolvedClientNames {
   const internalName = (input.name ?? "").trim();
   const extra = asObject(input.extraData);
-  const publicFirstName = normalizeText(extra?.public_first_name);
-  const publicLastName = normalizeText(extra?.public_last_name);
+  const publicFirstName = normalizeText(input.publicFirstName) || normalizeText(extra?.public_first_name);
+  const publicLastName = normalizeText(input.publicLastName) || normalizeText(extra?.public_last_name);
   const publicFullNameFromExtra =
     normalizeText(extra?.public_display_name) || composePublicClientFullName(publicFirstName, publicLastName);
   const fallbackBase = stripReferenceFromInternalName(internalName) || internalName || "Cliente";
   const fallbackFirstName = fallbackBase.split(/\s+/).filter(Boolean)[0] ?? "Cliente";
   const fallbackFullName = fallbackBase || "Cliente";
   const reference = normalizeReferenceLabel(
-    typeof extra?.internal_reference === "string" ? extra.internal_reference : null
+    input.internalReference ??
+      (typeof extra?.internal_reference === "string" ? extra.internal_reference : null)
   );
 
   const fullName = publicFullNameFromExtra || fallbackFullName;
@@ -68,7 +82,10 @@ export function resolveClientNames(input: { name?: string | null; extraData?: un
       : "");
 
   return {
-    internalName: internalName || fullName,
+    internalName:
+      internalName ||
+      composeInternalClientName(firstName || "Cliente", lastName, reference || null) ||
+      fullName,
     publicFirstName: firstName || "Cliente",
     publicLastName: lastName,
     publicFullName: fullName || "Cliente",
@@ -77,7 +94,7 @@ export function resolveClientNames(input: { name?: string | null; extraData?: un
   };
 }
 
-export function buildClientExtraDataProfile(params: {
+export function buildClientNameColumnsProfile(params: {
   publicFirstName: string;
   publicLastName: string;
   reference?: string | null;
@@ -85,14 +102,9 @@ export function buildClientExtraDataProfile(params: {
   const publicFirstName = params.publicFirstName.trim();
   const publicLastName = params.publicLastName.trim();
   const reference = normalizeReferenceLabel(params.reference);
-  const publicDisplayName = composePublicClientFullName(publicFirstName, publicLastName);
-  const payload: Record<string, unknown> = {
-    public_first_name: publicFirstName,
-    public_last_name: publicLastName,
-    public_display_name: publicDisplayName || publicFirstName,
+  return {
+    public_first_name: publicFirstName || null,
+    public_last_name: publicLastName || null,
+    internal_reference: reference || null,
   };
-  if (reference) {
-    payload.internal_reference = reference;
-  }
-  return payload;
 }

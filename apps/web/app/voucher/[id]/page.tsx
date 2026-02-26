@@ -43,7 +43,7 @@ export default async function VoucherPage(props: PageProps) {
   const supabase = createServiceClient();
   const publicId = params.id.trim();
   const appointmentSelect =
-    "id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name, extra_data )";
+    "id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
 
   let appointmentData: VoucherAppointmentRecord | null = null;
 
@@ -83,7 +83,12 @@ export default async function VoucherPage(props: PageProps) {
     address_bairro: string | null;
     address_cidade: string | null;
     address_estado: string | null;
-    clients: { name: string | null; extra_data?: unknown } | null;
+    clients: {
+      name: string | null;
+      public_first_name?: string | null;
+      public_last_name?: string | null;
+      internal_reference?: string | null;
+    } | null;
   };
 
   const startDate = new Date(appointment.start_time);
@@ -113,7 +118,9 @@ export default async function VoucherPage(props: PageProps) {
 
   const clientNames = resolveClientNames({
     name: appointment.clients?.name ?? null,
-    extraData: appointment.clients?.extra_data,
+    publicFirstName: appointment.clients?.public_first_name ?? null,
+    publicLastName: appointment.clients?.public_last_name ?? null,
+    internalReference: appointment.clients?.internal_reference ?? null,
   });
 
   return (

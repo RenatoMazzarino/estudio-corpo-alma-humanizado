@@ -946,6 +946,7 @@ export type Database = {
           email: string | null
           endereco_completo: string | null
           extra_data: Json
+          internal_reference: string | null
           guardian_cpf: string | null
           guardian_name: string | null
           guardian_phone: string | null
@@ -960,6 +961,8 @@ export type Database = {
           notes: string | null
           observacoes_gerais: string | null
           phone: string | null
+          public_first_name: string | null
+          public_last_name: string | null
           preferences_notes: string | null
           profissao: string | null
           tenant_id: string
@@ -984,6 +987,7 @@ export type Database = {
           email?: string | null
           endereco_completo?: string | null
           extra_data?: Json
+          internal_reference?: string | null
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -998,6 +1002,8 @@ export type Database = {
           notes?: string | null
           observacoes_gerais?: string | null
           phone?: string | null
+          public_first_name?: string | null
+          public_last_name?: string | null
           preferences_notes?: string | null
           profissao?: string | null
           tenant_id: string
@@ -1022,6 +1028,7 @@ export type Database = {
           email?: string | null
           endereco_completo?: string | null
           extra_data?: Json
+          internal_reference?: string | null
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -1036,6 +1043,8 @@ export type Database = {
           notes?: string | null
           observacoes_gerais?: string | null
           phone?: string | null
+          public_first_name?: string | null
+          public_last_name?: string | null
           preferences_notes?: string | null
           profissao?: string | null
           tenant_id?: string

@@ -399,7 +399,7 @@ async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<
   const { data, error } = await supabase
     .from("appointments")
     .select(
-      "id, tenant_id, start_time, service_name, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients(name, endereco_completo, extra_data)"
+      "id, tenant_id, start_time, service_name, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients(name, endereco_completo, public_first_name, public_last_name, internal_reference)"
     )
     .eq("id", job.appointment_id)
     .eq("tenant_id", job.tenant_id)
@@ -416,7 +416,9 @@ async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<
   const client = asJsonObject(record.clients as Json | undefined);
   const clientName = resolveClientNames({
     name: typeof client?.name === "string" ? client.name : null,
-    extraData: client?.extra_data,
+    publicFirstName: typeof client?.public_first_name === "string" ? client.public_first_name : null,
+    publicLastName: typeof client?.public_last_name === "string" ? client.public_last_name : null,
+    internalReference: typeof client?.internal_reference === "string" ? client.internal_reference : null,
   }).messagingFirstName;
   const serviceName =
     (typeof record.service_name === "string" && record.service_name.trim()) || "Seu atendimento";

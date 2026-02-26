@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createServiceClient } from "../../../lib/supabase/service";
-import type { Json } from "../../../lib/supabase/types";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
@@ -26,7 +25,7 @@ import {
   getClientById,
   updateClient,
 } from "../clients/repository";
-import { buildClientExtraDataProfile } from "../clients/name-profile";
+import { buildClientNameColumnsProfile } from "../clients/name-profile";
 import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
 import {
   scheduleAppointmentCanceledNotification,
@@ -295,13 +294,13 @@ export async function createAppointment(formData: FormData): Promise<void> {
     resolvedClientId = existingClient?.id ?? null;
   }
 
-  const newClientExtraData =
+  const newClientNameColumns =
     clientFirstName && clientLastName
-      ? (buildClientExtraDataProfile({
+      ? buildClientNameColumnsProfile({
           publicFirstName: clientFirstName,
           publicLastName: clientLastName,
           reference: clientReference || null,
-        }) as Json)
+        })
       : undefined;
 
   if (clientCpf) {
@@ -419,7 +418,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
     const tenantId = FIXED_TENANT_ID;
     let appointmentClientId: string | null = null;
 
-    if (clientCpf || clientEmail || newClientExtraData) {
+    if (clientCpf || clientEmail || newClientNameColumns) {
       const { data: appointmentClientRow } = await supabase
         .from("appointments")
         .select("client_id")
@@ -429,32 +428,20 @@ export async function createAppointment(formData: FormData): Promise<void> {
       appointmentClientId = appointmentClientRow?.client_id ?? null;
     }
 
-    if (appointmentClientId && (clientCpf || clientEmail || newClientExtraData)) {
+    if (appointmentClientId && (clientCpf || clientEmail || newClientNameColumns)) {
       const { data: clientRow } = await supabase
         .from("clients")
-        .select("cpf, email, extra_data")
+        .select("cpf, email, public_first_name, public_last_name, internal_reference")
         .eq("tenant_id", tenantId)
         .eq("id", appointmentClientId)
         .maybeSingle();
 
-      const currentExtra =
-        clientRow?.extra_data &&
-        typeof clientRow.extra_data === "object" &&
-        !Array.isArray(clientRow.extra_data)
-          ? (clientRow.extra_data as Record<string, unknown>)
-          : {};
-      const patchExtra =
-        newClientExtraData && typeof newClientExtraData === "object" && !Array.isArray(newClientExtraData)
-          ? (newClientExtraData as Record<string, unknown>)
-          : {};
-
       const { error: clientMetaError } = await updateClient(tenantId, appointmentClientId, {
         cpf: clientCpf ?? clientRow?.cpf ?? null,
         email: clientEmail ?? clientRow?.email ?? null,
-        extra_data:
-          Object.keys(patchExtra).length > 0
-            ? ({ ...currentExtra, ...patchExtra } as Json)
-            : clientRow?.extra_data,
+        public_first_name: newClientNameColumns?.public_first_name ?? clientRow?.public_first_name ?? null,
+        public_last_name: newClientNameColumns?.public_last_name ?? clientRow?.public_last_name ?? null,
+        internal_reference: newClientNameColumns?.internal_reference ?? clientRow?.internal_reference ?? null,
       });
       const mappedClientMetaError = mapSupabaseError(clientMetaError);
       if (mappedClientMetaError) throw mappedClientMetaError;

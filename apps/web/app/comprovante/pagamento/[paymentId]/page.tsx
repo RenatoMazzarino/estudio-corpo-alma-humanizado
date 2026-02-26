@@ -79,7 +79,7 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
   const { data: appointmentData } = await supabase
     .from("appointments")
     .select(
-      "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, extra_data )"
+      "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )"
     )
     .eq("id", payment.appointment_id)
     .eq("tenant_id", FIXED_TENANT_ID)
@@ -101,12 +101,19 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
     address_bairro: string | null;
     address_cidade: string | null;
     address_estado: string | null;
-    clients: { name: string | null; extra_data?: unknown } | null;
+    clients: {
+      name: string | null;
+      public_first_name?: string | null;
+      public_last_name?: string | null;
+      internal_reference?: string | null;
+    } | null;
   };
 
   const clientNames = resolveClientNames({
     name: appointment.clients?.name ?? null,
-    extraData: appointment.clients?.extra_data,
+    publicFirstName: appointment.clients?.public_first_name ?? null,
+    publicLastName: appointment.clients?.public_last_name ?? null,
+    internalReference: appointment.clients?.internal_reference ?? null,
   });
 
   const [{ data: checkoutData }, { data: paymentsData }] = await Promise.all([

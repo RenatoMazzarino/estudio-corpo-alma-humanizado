@@ -3,7 +3,6 @@
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createClient } from "../../../lib/supabase/server";
 import { createServiceClient } from "../../../lib/supabase/service";
-import type { Json } from "../../../lib/supabase/types";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
@@ -12,7 +11,7 @@ import { publicBookingSchema } from "../../shared/validation/appointments";
 import { estimateDisplacementFromAddress } from "../../shared/displacement/service";
 import { scheduleAppointmentLifecycleNotifications } from "../notifications/whatsapp-automation";
 import { getTenantBySlug } from "../settings/repository";
-import { buildClientExtraDataProfile, composePublicClientFullName } from "../clients/name-profile";
+import { buildClientNameColumnsProfile, composePublicClientFullName } from "../clients/name-profile";
 
 export interface SubmitPublicAppointmentInput {
   tenantSlug: string;
@@ -118,31 +117,26 @@ export async function submitPublicAppointmentAction(
     if (appointment?.client_id) {
       const { data: clientRow } = await serviceSupabase
         .from("clients")
-        .select("email, cpf, extra_data")
+        .select("email, cpf, public_first_name, public_last_name, internal_reference")
         .eq("tenant_id", tenantId)
         .eq("id", appointment.client_id)
         .maybeSingle();
-
-      const currentExtra =
-        clientRow?.extra_data &&
-        typeof clientRow.extra_data === "object" &&
-        !Array.isArray(clientRow.extra_data)
-          ? (clientRow.extra_data as Record<string, unknown>)
-          : {};
-      const newProfile =
+      const newProfile: ReturnType<typeof buildClientNameColumnsProfile> | null =
         publicFirstName && publicLastName
-          ? buildClientExtraDataProfile({
+          ? buildClientNameColumnsProfile({
               publicFirstName,
               publicLastName,
             })
-          : {};
+          : null;
 
       await serviceSupabase
         .from("clients")
         .update({
           email: parsed.data.clientEmail || clientRow?.email || null,
           cpf: normalizedCpf || clientRow?.cpf || null,
-          extra_data: { ...currentExtra, ...newProfile } as Json,
+          public_first_name: newProfile?.public_first_name ?? clientRow?.public_first_name ?? null,
+          public_last_name: newProfile?.public_last_name ?? clientRow?.public_last_name ?? null,
+          internal_reference: newProfile?.internal_reference ?? clientRow?.internal_reference ?? null,
         })
         .eq("tenant_id", tenantId)
         .eq("id", appointment.client_id);

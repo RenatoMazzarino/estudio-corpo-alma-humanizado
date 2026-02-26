@@ -50,7 +50,9 @@ interface AppointmentFormProps {
     phone: string | null;
     email?: string | null;
     cpf?: string | null;
-    extra_data?: unknown;
+    public_first_name?: string | null;
+    public_last_name?: string | null;
+    internal_reference?: string | null;
   }[];
   safeDate: string;
   initialAppointment?: InitialAppointment | null;
@@ -92,7 +94,9 @@ type ClientRecordLite = {
   phone: string | null;
   email?: string | null;
   cpf?: string | null;
-  extra_data?: unknown;
+  public_first_name?: string | null;
+  public_last_name?: string | null;
+  internal_reference?: string | null;
 };
 
 interface InitialAppointment {
@@ -430,7 +434,12 @@ export function AppointmentForm({
     setClientPhone(client.phone ? formatBrazilPhone(client.phone) : "");
     setClientCpf(formatCpf(client.cpf ?? ""));
     setClientEmail(client.email?.trim().toLowerCase() ?? "");
-    const names = resolveClientNames({ name: client.name, extraData: client.extra_data });
+    const names = resolveClientNames({
+      name: client.name,
+      publicFirstName: client.public_first_name ?? null,
+      publicLastName: client.public_last_name ?? null,
+      internalReference: client.internal_reference ?? null,
+    });
     setClientFirstName(names.publicFirstName);
     setClientLastName(names.publicLastName);
     setClientReference(names.reference);
@@ -506,7 +515,7 @@ export function AppointmentForm({
       return;
     }
 
-    setClientName(composeInternalClientName(firstName, reference || null));
+    setClientName(composeInternalClientName(firstName, lastName, reference || null));
     setClientPhone(phoneDigits ? formatBrazilPhone(phoneDigits) : "");
     setClientEmail(emailValue);
     setClientCpf(cpfDigits.length === 11 ? formatCpf(cpfDigits) : "");
@@ -832,7 +841,9 @@ export function AppointmentForm({
       selectedClientRecord
         ? resolveClientNames({
             name: selectedClientRecord.name,
-            extraData: selectedClientRecord.extra_data,
+            publicFirstName: selectedClientRecord.public_first_name ?? null,
+            publicLastName: selectedClientRecord.public_last_name ?? null,
+            internalReference: selectedClientRecord.internal_reference ?? null,
           })
         : null,
     [selectedClientRecord]
@@ -883,6 +894,7 @@ export function AppointmentForm({
       : clientFirstName.trim() || clientName.replace(/\s*\([^)]*\)\s*$/, "").trim().split(/\s+/)[0] || "Cliente";
   const clientDraftInternalPreview = composeInternalClientName(
     clientFirstName.trim() || "Primeiro nome",
+    clientLastName.trim() || null,
     clientReference || null
   );
   const clientDraftPublicPreview =
