@@ -246,6 +246,12 @@ export function BookingFlow({
   const [voucherBusy, setVoucherBusy] = useState(false);
   const [identityCpfAttempts, setIdentityCpfAttempts] = useState(0);
   const [identityWelcomeCountdown, setIdentityWelcomeCountdown] = useState<number | null>(null);
+  const [identitySecuritySessionId, setIdentitySecuritySessionId] = useState("");
+  const [identityCaptchaPrompt, setIdentityCaptchaPrompt] = useState<string | null>(null);
+  const [identityCaptchaToken, setIdentityCaptchaToken] = useState<string | null>(null);
+  const [identityCaptchaAnswer, setIdentityCaptchaAnswer] = useState("");
+  const [identityGuardNotice, setIdentityGuardNotice] = useState<string | null>(null);
+  const [isVerifyingClientCpf, setIsVerifyingClientCpf] = useState(false);
   const [suggestedClient, setSuggestedClient] = useState<{
     id: string;
     name: string | null;
@@ -476,8 +482,33 @@ export function BookingFlow({
   );
 
   useEffect(() => {
+    if (identitySecuritySessionId) return;
+    try {
+      const storageKey = `public-booking-lookup-session:${tenant.id}`;
+      const existing = window.sessionStorage.getItem(storageKey);
+      if (existing) {
+        setIdentitySecuritySessionId(existing);
+        return;
+      }
+      const nextId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      window.sessionStorage.setItem(storageKey, nextId);
+      setIdentitySecuritySessionId(nextId);
+    } catch {
+      setIdentitySecuritySessionId(`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+    }
+  }, [identitySecuritySessionId, tenant.id]);
+
+  useEffect(() => {
     identityCpfLookupKeyRef.current = null;
     setIdentityWelcomeCountdown(null);
+    setIdentityCaptchaPrompt(null);
+    setIdentityCaptchaToken(null);
+    setIdentityCaptchaAnswer("");
+    setIdentityGuardNotice(null);
+    setIsVerifyingClientCpf(false);
 
     if (!isPhoneValid) {
       setClientLookupStatus("idle");
@@ -557,106 +588,122 @@ export function BookingFlow({
     return () => window.clearTimeout(timer);
   }, [formattedPhoneDigits, isPhoneValid, tenant.id]);
 
-  useEffect(() => {
-    if (!suggestedClient || !(clientLookupStatus === "found" || clientLookupStatus === "declined")) {
+  const handleVerifyExistingClientCpf = useCallback(async () => {
+    if (!suggestedClient || !(clientLookupStatus === "found" || clientLookupStatus === "declined")) return;
+    if (!isCpfValid || !isPhoneValid || isVerifyingClientCpf) return;
+
+    setIsVerifyingClientCpf(true);
+    setIdentityGuardNotice(null);
+    const result = await lookupClientIdentity({
+      tenantId: tenant.id,
+      phone: formattedPhoneDigits,
+      cpf: normalizedCpfDigits,
+      securitySessionId: identitySecuritySessionId,
+      captchaToken: identityCaptchaToken ?? undefined,
+      captchaAnswer: identityCaptchaAnswer || undefined,
+    });
+    setIsVerifyingClientCpf(false);
+
+    if (!result.ok) {
+      setClientLookupStatus("declined");
+      setIdentityGuardNotice("Não foi possível validar seus dados agora. Tente novamente.");
       return;
     }
-    if (!isCpfValid) {
-      identityCpfLookupKeyRef.current = null;
+
+    const guard = result.data.guard;
+    if (guard?.status === "captcha_required") {
+      setIdentityCaptchaPrompt(guard.captcha?.prompt ?? "Confirme a verificação.");
+      setIdentityCaptchaToken(guard.captcha?.token ?? null);
+      setIdentityCaptchaAnswer("");
+      setIdentityGuardNotice("Antes de continuar, confirme a verificação de segurança.");
       return;
     }
 
-    const lookupKey = `${formattedPhoneDigits}:${normalizedCpfDigits}`;
-    if (identityCpfLookupKeyRef.current === lookupKey) {
-      return;
-    }
-    identityCpfLookupKeyRef.current = lookupKey;
-
-    const timer = window.setTimeout(async () => {
-      const result = await lookupClientIdentity({
-        tenantId: tenant.id,
-        phone: formattedPhoneDigits,
-        cpf: normalizedCpfDigits,
-      });
-
-      if (
-        `${formattedPhoneDigits}:${normalizedCpfDigits}` !== lookupKey ||
-        !(clientLookupStatus === "found" || clientLookupStatus === "declined")
-      ) {
-        return;
-      }
-
-      if (!result.ok || !result.data.client || result.data.client.id !== suggestedClient.id) {
-        setClientLookupStatus("declined");
+    if (guard?.status === "cooldown" || guard?.status === "blocked") {
+      const message =
+        guard.status === "blocked"
+          ? "Detectamos muitas tentativas. Reiniciamos a tela e bloqueamos novas tentativas neste aparelho por 24h."
+          : "Muitas tentativas. Reiniciamos a tela por segurança. Tente novamente em alguns minutos.";
+      setIdentityGuardNotice(message);
+      showToast(feedbackById("validation_invalid_data", { message, durationMs: 3200 }));
+      window.setTimeout(() => {
+        setStep("WELCOME");
+        setSelectedService(null);
+        setIsHomeVisit(false);
+        const today = new Date();
+        setDate(format(today, "yyyy-MM-dd"));
+        setActiveMonth(startOfMonth(today));
+        setSelectedTime("");
+        setMonthAvailability({});
+        setClientName("");
+        setClientFirstName("");
+        setClientLastName("");
+        setClientEmail("");
+        setClientPhone("");
+        setClientCpf("");
+        setSuggestedClient(null);
+        setClientLookupStatus("idle");
+        setIdentityCpfAttempts(0);
         setIdentityWelcomeCountdown(null);
-        setIdentityCpfAttempts((attempts) => {
-          const nextAttempts = attempts + 1;
-          if (nextAttempts >= 3) {
-            showToast(
-              feedbackById("validation_invalid_data", {
-                message: "Dados não conferem. Vamos reiniciar para proteger seu cadastro.",
-                durationMs: 2600,
-              })
-            );
-            window.setTimeout(() => {
-              setStep("WELCOME");
-              setSelectedService(null);
-              setIsHomeVisit(false);
-              const today = new Date();
-              setDate(format(today, "yyyy-MM-dd"));
-              setActiveMonth(startOfMonth(today));
-              setSelectedTime("");
-              setMonthAvailability({});
-              setClientName("");
-              setClientFirstName("");
-              setClientLastName("");
-              setClientEmail("");
-              setClientPhone("");
-              setClientCpf("");
-              setSuggestedClient(null);
-              setClientLookupStatus("idle");
-              setIdentityCpfAttempts(0);
-              setIdentityWelcomeCountdown(null);
-              window.setTimeout(() => phoneInputRef.current?.focus(), 0);
-            }, 300);
+        setIdentityCaptchaPrompt(null);
+        setIdentityCaptchaToken(null);
+        setIdentityCaptchaAnswer("");
+        setIdentityGuardNotice(null);
+        window.setTimeout(() => phoneInputRef.current?.focus(), 0);
+      }, 300);
+      return;
+    }
+
+    if (!result.data.client || result.data.client.id !== suggestedClient.id) {
+      setClientLookupStatus("declined");
+      setIdentityWelcomeCountdown(null);
+      setIdentityCaptchaAnswer("");
+      setIdentityCaptchaToken(null);
+      setIdentityCaptchaPrompt(null);
+      setIdentityCpfAttempts(Math.min(guard?.attemptsInCycle ?? identityCpfAttempts + 1, 3));
+      setIdentityGuardNotice("Não encontramos cliente com este WhatsApp e CPF. Confira e tente novamente.");
+      return;
+    }
+
+    const names = resolveClientNames({
+      name: result.data.client.name ?? null,
+      publicFirstName: result.data.client.public_first_name ?? null,
+      publicLastName: result.data.client.public_last_name ?? null,
+      internalReference: result.data.client.internal_reference ?? null,
+    });
+    setSuggestedClient((current) =>
+      current && current.id === result.data.client?.id
+        ? {
+            ...current,
+            email: result.data.client.email ?? current.email ?? null,
+            cpf: result.data.client.cpf ?? current.cpf ?? null,
+            public_first_name: result.data.client.public_first_name ?? current.public_first_name ?? null,
+            public_last_name: result.data.client.public_last_name ?? current.public_last_name ?? null,
+            internal_reference: result.data.client.internal_reference ?? current.internal_reference ?? null,
           }
-          return nextAttempts;
-        });
-        return;
-      }
-
-      const names = resolveClientNames({
-        name: result.data.client.name ?? null,
-        publicFirstName: result.data.client.public_first_name ?? null,
-        publicLastName: result.data.client.public_last_name ?? null,
-        internalReference: result.data.client.internal_reference ?? null,
-      });
-      setSuggestedClient((current) =>
-        current && current.id === result.data.client?.id
-          ? {
-              ...current,
-              email: result.data.client.email ?? current.email ?? null,
-              cpf: result.data.client.cpf ?? current.cpf ?? null,
-              public_first_name: result.data.client.public_first_name ?? current.public_first_name ?? null,
-              public_last_name: result.data.client.public_last_name ?? current.public_last_name ?? null,
-              internal_reference: result.data.client.internal_reference ?? current.internal_reference ?? null,
-            }
-          : current
-      );
-      setClientFirstName(names.publicFirstName);
-      setClientLastName(names.publicLastName);
-      setClientName(names.publicFullName || result.data.client.name || "Cliente");
-      setClientEmail(result.data.client.email ?? "");
-      setClientCpf(formatCpf(result.data.client.cpf ?? normalizedCpfDigits));
-      setClientLookupStatus("confirmed");
-      setIdentityCpfAttempts(0);
-    }, 400);
-
-    return () => window.clearTimeout(timer);
+        : current
+    );
+    setClientFirstName(names.publicFirstName);
+    setClientLastName(names.publicLastName);
+    setClientName(names.publicFullName || result.data.client.name || "Cliente");
+    setClientEmail(result.data.client.email ?? "");
+    setClientCpf(formatCpf(result.data.client.cpf ?? normalizedCpfDigits));
+    setClientLookupStatus("confirmed");
+    setIdentityCpfAttempts(0);
+    setIdentityGuardNotice(null);
+    setIdentityCaptchaPrompt(null);
+    setIdentityCaptchaToken(null);
+    setIdentityCaptchaAnswer("");
   }, [
     clientLookupStatus,
     formattedPhoneDigits,
+    identityCaptchaAnswer,
+    identityCaptchaToken,
+    identityCpfAttempts,
+    identitySecuritySessionId,
     isCpfValid,
+    isPhoneValid,
+    isVerifyingClientCpf,
     normalizedCpfDigits,
     showToast,
     suggestedClient,
@@ -694,6 +741,11 @@ export function BookingFlow({
     setClientLookupStatus("idle");
     setIdentityCpfAttempts(0);
     setIdentityWelcomeCountdown(null);
+    setIdentityCaptchaPrompt(null);
+    setIdentityCaptchaToken(null);
+    setIdentityCaptchaAnswer("");
+    setIdentityGuardNotice(null);
+    setIsVerifyingClientCpf(false);
     identityCpfLookupKeyRef.current = null;
     setUseSuggestedAddress(null);
     window.setTimeout(() => phoneInputRef.current?.focus(), 0);
@@ -1482,6 +1534,11 @@ export function BookingFlow({
     setClientLookupStatus("idle");
     setIdentityCpfAttempts(0);
     setIdentityWelcomeCountdown(null);
+    setIdentityCaptchaPrompt(null);
+    setIdentityCaptchaToken(null);
+    setIdentityCaptchaAnswer("");
+    setIdentityGuardNotice(null);
+    setIsVerifyingClientCpf(false);
     identityCpfLookupKeyRef.current = null;
     setPixPayment(null);
     setPixStatus("idle");
@@ -1712,6 +1769,7 @@ export function BookingFlow({
                       onChange={(event) => {
                         identityCpfLookupKeyRef.current = null;
                         setClientCpf(formatCpf(event.target.value));
+                        setIdentityGuardNotice(null);
                         if (clientLookupStatus === "declined") {
                           setClientLookupStatus("found");
                         }
@@ -1721,6 +1779,42 @@ export function BookingFlow({
                       Encontramos um cadastro com este WhatsApp. Informe seu CPF para confirmar.
                     </p>
                   </div>
+
+                  {identityCaptchaPrompt && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                      <p className="text-xs font-bold uppercase tracking-widest text-amber-700">
+                        Verificação de segurança
+                      </p>
+                      <p className="mt-1 text-sm text-amber-900">{identityCaptchaPrompt}</p>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className="mt-3 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-center text-base font-semibold text-studio-text outline-none focus:border-studio-green"
+                        placeholder="Resposta"
+                        value={identityCaptchaAnswer}
+                        onChange={(event) => setIdentityCaptchaAnswer(event.target.value.replace(/\D/g, "").slice(0, 2))}
+                      />
+                    </div>
+                  )}
+
+                  {identityGuardNotice && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      {identityGuardNotice}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => void handleVerifyExistingClientCpf()}
+                    disabled={
+                      !isCpfValid ||
+                      isVerifyingClientCpf ||
+                      (!!identityCaptchaPrompt && identityCaptchaAnswer.trim().length === 0)
+                    }
+                    className="w-full rounded-2xl bg-studio-green-dark px-4 py-3 text-sm font-bold uppercase tracking-widest text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isVerifyingClientCpf ? "Validando..." : "Confirmar CPF"}
+                  </button>
 
                   {clientLookupStatus === "declined" && (
                     <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
