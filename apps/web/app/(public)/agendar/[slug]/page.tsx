@@ -1,5 +1,7 @@
 import { BookingFlow } from "./booking-flow";
 import { notFound } from "next/navigation";
+import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
+import { createServiceClient } from "../../../../lib/supabase/service";
 import { getSettings, getTenantBySlug } from "../../../../src/modules/settings/repository";
 import { listPublicServices } from "../../../../src/modules/services/repository";
 
@@ -20,9 +22,22 @@ interface PublicService {
 export default async function PublicBookingPage(props: PageProps) {
   const params = await props.params;
   const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY ?? null;
+  const isLocalDemoSlug = params.slug === "demo-local";
 
   // 1. Validar Tenant pelo Slug
-  const { data: tenant } = await getTenantBySlug(params.slug);
+  const { data: tenantBySlug } = await getTenantBySlug(params.slug);
+  let tenant = tenantBySlug;
+
+  if (!tenant && isLocalDemoSlug && process.env.NODE_ENV !== "production") {
+    const supabase = createServiceClient();
+    const { data: fixedTenant } = await supabase
+      .from("tenants")
+      .select("id, name, slug")
+      .eq("id", FIXED_TENANT_ID)
+      .maybeSingle();
+
+    tenant = fixedTenant ?? null;
+  }
 
   if (!tenant) notFound();
 

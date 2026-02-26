@@ -1911,8 +1911,8 @@ export function AppointmentForm({
       {portalTarget &&
         isClientCreateModalOpen &&
         createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
+          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
+            <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
                   <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
@@ -2083,8 +2083,8 @@ export function AppointmentForm({
       {portalTarget &&
         isAddressModalOpen &&
         createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
+          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
+            <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
                   <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Endereço</p>
@@ -2406,8 +2406,8 @@ export function AppointmentForm({
       {portalTarget &&
         isSendPromptOpen &&
         createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
+          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
+            <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
