@@ -11,7 +11,11 @@ import { publicBookingSchema } from "../../shared/validation/appointments";
 import { estimateDisplacementFromAddress } from "../../shared/displacement/service";
 import { scheduleAppointmentLifecycleNotifications } from "../notifications/whatsapp-automation";
 import { getTenantBySlug } from "../settings/repository";
-import { buildClientNameColumnsProfile, composePublicClientFullName } from "../clients/name-profile";
+import {
+  buildClientNameColumnsProfile,
+  composeInternalClientName,
+  composePublicClientFullName,
+} from "../clients/name-profile";
 
 export interface SubmitPublicAppointmentInput {
   tenantSlug: string;
@@ -117,7 +121,7 @@ export async function submitPublicAppointmentAction(
     if (appointment?.client_id) {
       const { data: clientRow } = await serviceSupabase
         .from("clients")
-        .select("email, cpf, public_first_name, public_last_name, internal_reference")
+        .select("name, email, cpf, public_first_name, public_last_name, internal_reference")
         .eq("tenant_id", tenantId)
         .eq("id", appointment.client_id)
         .maybeSingle();
@@ -128,15 +132,26 @@ export async function submitPublicAppointmentAction(
               publicLastName,
             })
           : null;
+      const targetPublicFirstName = newProfile?.public_first_name ?? clientRow?.public_first_name ?? null;
+      const targetPublicLastName = newProfile?.public_last_name ?? clientRow?.public_last_name ?? null;
+      const targetInternalReference =
+        newProfile?.internal_reference ?? clientRow?.internal_reference ?? null;
+      const restoredInternalName =
+        composeInternalClientName(
+          targetPublicFirstName ?? "",
+          targetPublicLastName,
+          targetInternalReference
+        ) || clientRow?.name || null;
 
       await serviceSupabase
         .from("clients")
         .update({
+          name: restoredInternalName ?? undefined,
           email: parsed.data.clientEmail || clientRow?.email || null,
           cpf: normalizedCpf || clientRow?.cpf || null,
-          public_first_name: newProfile?.public_first_name ?? clientRow?.public_first_name ?? null,
-          public_last_name: newProfile?.public_last_name ?? clientRow?.public_last_name ?? null,
-          internal_reference: newProfile?.internal_reference ?? clientRow?.internal_reference ?? null,
+          public_first_name: targetPublicFirstName,
+          public_last_name: targetPublicLastName,
+          internal_reference: targetInternalReference,
         })
         .eq("tenant_id", tenantId)
         .eq("id", appointment.client_id);
