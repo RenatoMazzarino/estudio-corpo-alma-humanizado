@@ -87,6 +87,16 @@ interface DisplacementEstimate {
 
 type AddressModalStep = "chooser" | "cep" | "search" | "form";
 type ClientSelectionMode = "idle" | "existing" | "new";
+type FinanceDraftItemType = "service" | "fee" | "addon" | "adjustment";
+type CollectionTimingDraft = "at_attendance" | "charge_now";
+
+interface FinanceDraftItem {
+  id: string;
+  type: FinanceDraftItemType;
+  label: string;
+  qty: number;
+  amount: number;
+}
 
 type ClientRecordLite = {
   id: string;
@@ -192,6 +202,13 @@ function formatCurrencyLabel(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function buildDraftItemId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function buildAddressQuery(payload: {
@@ -322,8 +339,15 @@ export function AppointmentForm({
           .replace(".", ",")
       : ""
   );
+  const [financeExtraItems, setFinanceExtraItems] = useState<FinanceDraftItem[]>([]);
+  const [financeNewItemType, setFinanceNewItemType] = useState<Exclude<FinanceDraftItemType, "service" | "fee">>(
+    "addon"
+  );
+  const [financeNewItemLabel, setFinanceNewItemLabel] = useState("");
+  const [financeNewItemAmount, setFinanceNewItemAmount] = useState<string>("");
+  const [scheduleDiscountType, setScheduleDiscountType] = useState<"value" | "pct">("value");
   const [scheduleDiscountValue, setScheduleDiscountValue] = useState<string>("");
-  const [scheduleDiscountReason, setScheduleDiscountReason] = useState<string>("");
+  const [collectionTimingDraft, setCollectionTimingDraft] = useState<CollectionTimingDraft>("at_attendance");
   const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? safeDate);
   const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -575,8 +599,13 @@ export function AppointmentForm({
     setSelectedServiceId(serviceId);
     setPriceOverride("");
     if (!isEditing) {
+      setFinanceExtraItems([]);
+      setFinanceNewItemType("addon");
+      setFinanceNewItemLabel("");
+      setFinanceNewItemAmount("");
+      setScheduleDiscountType("value");
       setScheduleDiscountValue("");
-      setScheduleDiscountReason("");
+      setCollectionTimingDraft("at_attendance");
     }
 
     const service = services.find((s) => s.id === serviceId);
@@ -605,6 +634,29 @@ export function AppointmentForm({
     }
   };
 
+  const handleAddFinanceItem = () => {
+    const label = financeNewItemLabel.trim();
+    const amount = Math.max(0, parseDecimalText(financeNewItemAmount) ?? 0);
+    if (!label) return;
+    setFinanceExtraItems((current) => [
+      ...current,
+      {
+        id: buildDraftItemId(),
+        type: financeNewItemType,
+        label,
+        qty: 1,
+        amount,
+      },
+    ]);
+    setFinanceNewItemType("addon");
+    setFinanceNewItemLabel("");
+    setFinanceNewItemAmount("");
+  };
+
+  const handleRemoveFinanceItem = (itemId: string) => {
+    setFinanceExtraItems((current) => current.filter((item) => item.id !== itemId));
+  };
+
   const parsedManualDisplacementFee = useMemo(
     () => parseDecimalText(manualDisplacementFee),
     [manualDisplacementFee]
@@ -621,20 +673,75 @@ export function AppointmentForm({
     () => parseDecimalText(scheduleDiscountValue),
     [scheduleDiscountValue]
   );
+  const financeExtraSubtotal = useMemo(
+    () =>
+      financeExtraItems.reduce(
+        (acc, item) => acc + Math.max(0, Number(item.amount ?? 0)) * Math.max(1, Number(item.qty ?? 1)),
+        0
+      ),
+    [financeExtraItems]
+  );
+  const financeDraftItems = useMemo(() => {
+    const items: Array<{ type: FinanceDraftItemType; label: string; qty: number; amount: number }> = [];
+    if (selectedService) {
+      items.push({
+        type: "service",
+        label: selectedService.name,
+        qty: 1,
+        amount: effectiveServicePriceDraft,
+      });
+    }
+    if (isHomeVisit && effectiveDisplacementFee > 0) {
+      items.push({
+        type: "fee",
+        label: "Taxa deslocamento",
+        qty: 1,
+        amount: effectiveDisplacementFee,
+      });
+    }
+    financeExtraItems.forEach((item) => {
+      items.push({
+        type: item.type,
+        label: item.label,
+        qty: item.qty,
+        amount: Math.max(0, Number(item.amount ?? 0)),
+      });
+    });
+    return items;
+  }, [effectiveDisplacementFee, effectiveServicePriceDraft, financeExtraItems, isHomeVisit, selectedService]);
   const scheduleSubtotal = useMemo(
-    () => Math.max(0, effectiveServicePriceDraft + effectiveDisplacementFee),
-    [effectiveDisplacementFee, effectiveServicePriceDraft]
+    () => Math.max(0, effectiveServicePriceDraft + effectiveDisplacementFee + financeExtraSubtotal),
+    [effectiveDisplacementFee, effectiveServicePriceDraft, financeExtraSubtotal]
   );
   const effectiveScheduleDiscount = useMemo(() => {
     const raw = Math.max(0, parsedScheduleDiscountValue ?? 0);
+    if (scheduleDiscountType === "pct") {
+      return Math.min(scheduleSubtotal, scheduleSubtotal * (raw / 100));
+    }
     return Math.min(scheduleSubtotal, raw);
-  }, [parsedScheduleDiscountValue, scheduleSubtotal]);
+  }, [parsedScheduleDiscountValue, scheduleDiscountType, scheduleSubtotal]);
   const scheduleTotal = useMemo(
     () => Math.max(0, scheduleSubtotal - effectiveScheduleDiscount),
     [effectiveScheduleDiscount, scheduleSubtotal]
   );
   const createPriceOverrideValue = selectedService ? scheduleTotal.toFixed(2) : "";
   const createCheckoutServiceAmountValue = selectedService ? effectiveServicePriceDraft.toFixed(2) : "";
+  const createCheckoutExtraItemsJson = useMemo(
+    () =>
+      JSON.stringify(
+        financeExtraItems.map((item) => ({
+          type: item.type,
+          label: item.label.trim(),
+          qty: Math.max(1, Number(item.qty ?? 1)),
+          amount: Math.max(0, Number(item.amount ?? 0)),
+        }))
+      ),
+    [financeExtraItems]
+  );
+  const effectiveScheduleDiscountInputValue = useMemo(
+    () => (parsedScheduleDiscountValue && parsedScheduleDiscountValue > 0 ? parsedScheduleDiscountValue : 0),
+    [parsedScheduleDiscountValue]
+  );
 
   useEffect(() => {
     if (!selectedService) return;
@@ -1235,6 +1342,12 @@ export function AppointmentForm({
     formRef.current.requestSubmit();
   };
 
+  const handleOpenConfirmationPrompt = () => {
+    if (!formRef.current) return;
+    if (!formRef.current.reportValidity()) return;
+    setIsSendPromptOpen(true);
+  };
+
   return (
     <form ref={formRef} action={formAction} className="space-y-6">
       <Toast toast={toast} />
@@ -1252,6 +1365,13 @@ export function AppointmentForm({
       {!isEditing && (
         <input
           type="hidden"
+          name="initial_checkout_discount_type"
+          value={effectiveScheduleDiscount > 0 ? scheduleDiscountType : ""}
+        />
+      )}
+      {!isEditing && (
+        <input
+          type="hidden"
           name="initial_checkout_discount_value"
           value={effectiveScheduleDiscount > 0 ? effectiveScheduleDiscount.toFixed(2) : ""}
         />
@@ -1259,8 +1379,15 @@ export function AppointmentForm({
       {!isEditing && (
         <input
           type="hidden"
-          name="initial_checkout_discount_reason"
-          value={scheduleDiscountReason.trim()}
+          name="finance_extra_items_json"
+          value={createCheckoutExtraItemsJson}
+        />
+      )}
+      {!isEditing && (
+        <input
+          type="hidden"
+          name="payment_collection_timing"
+          value={collectionTimingDraft}
         />
       )}
       <input type="hidden" name="client_address_id" value={isHomeVisit ? (selectedAddressId ?? "") : ""} />
@@ -1833,12 +1960,12 @@ export function AppointmentForm({
           <h2 className={sectionHeaderTextClass}>Finalização</h2>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className={labelClass}>{isEditing ? "Valor final" : "Valor do serviço"}</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
-              {isEditing ? (
+        <div className={`grid ${isEditing ? "grid-cols-2" : "grid-cols-1"} gap-4 mb-4`}>
+          {isEditing && (
+            <div>
+              <label className={labelClass}>Valor final</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
                 <input
                   type="tel"
                   value={finalPrice}
@@ -1846,18 +1973,9 @@ export function AppointmentForm({
                   placeholder="0,00"
                   className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
                 />
-              ) : (
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={servicePriceDraft}
-                  onChange={(event) => setServicePriceDraft(event.target.value)}
-                  placeholder={selectedService ? formatCurrencyInput(Number(selectedService.price ?? 0)) : "0,00"}
-                  className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
-                />
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className={labelClass}>Data</label>
@@ -1902,21 +2020,7 @@ export function AppointmentForm({
             </div>
             <p className="text-[10px] text-muted mt-1 ml-1">Se deixar vazio, usamos o valor do serviço.</p>
           </div>
-        ) : (
-          <div className="mb-4 rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-gray-500">Taxa de deslocamento</span>
-              <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(effectiveDisplacementFee)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-sm mt-2">
-              <span className="text-gray-500">Subtotal previsto</span>
-              <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
-            </div>
-            <p className="text-[10px] text-muted mt-2">
-              Desconto e resumo financeiro final são definidos na confirmação antes de agendar.
-            </p>
-          </div>
-        )}
+        ) : null}
 
         <div>
           <label className={labelClass}>Horário</label>
@@ -2009,6 +2113,303 @@ export function AppointmentForm({
           </div>
         )}
       </section>
+
+      {!isEditing && (
+        <section className={sectionCardClass}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className={sectionNumberClass}>4</div>
+            <h2 className={sectionHeaderTextClass}>Financeiro</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-white border border-gray-100 rounded-3xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Itens</p>
+                  <p className="text-xs text-muted mt-1">
+                    Ajuste o valor do serviço, taxa de deslocamento e adicione itens extras.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                  <div>
+                    <label className={labelClass}>Serviço</label>
+                    <p className="text-xs font-bold text-studio-text truncate">
+                      {selectedService?.name || "Selecione um serviço"}
+                    </p>
+                  </div>
+                  <div className="relative w-36">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
+                      R$
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={servicePriceDraft}
+                      onChange={(event) => setServicePriceDraft(event.target.value)}
+                      placeholder={selectedService ? formatCurrencyInput(Number(selectedService.price ?? 0)) : "0,00"}
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
+                    />
+                  </div>
+                </div>
+
+                {isHomeVisit && (
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
+                    <div>
+                      <label className={labelClass}>Taxa de deslocamento</label>
+                      <p className="text-[11px] text-muted">
+                        Distância estimada: {displacementEstimate?.distanceKm?.toFixed(2) ?? "0.00"} km
+                      </p>
+                    </div>
+                    <div className="relative w-36">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
+                        R$
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={manualDisplacementFee}
+                        onChange={(event) => setManualDisplacementFee(event.target.value)}
+                        placeholder={displacementEstimate?.fee.toFixed(2).replace(".", ",") ?? "0,00"}
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setManualDisplacementFee("0,00")}
+                      className="px-3 py-2.5 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/25"
+                    >
+                      Zerar
+                    </button>
+                  </div>
+                )}
+
+                {financeExtraItems.length > 0 && (
+                  <div className="pt-2">
+                    <div className="h-px bg-stone-100 mb-2" />
+                    <div className="space-y-2">
+                      {financeExtraItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="grid grid-cols-[88px_1fr_100px_auto] gap-2 items-center"
+                        >
+                          <select
+                            value={item.type}
+                            onChange={(event) =>
+                              setFinanceExtraItems((current) =>
+                                current.map((entry) =>
+                                  entry.id === item.id
+                                    ? {
+                                        ...entry,
+                                        type: event.target.value as Exclude<FinanceDraftItemType, "service" | "fee">,
+                                      }
+                                    : entry
+                                )
+                              )
+                            }
+                            className="rounded-xl border border-line px-2 py-2 text-xs bg-white"
+                          >
+                            <option value="addon">Adicional</option>
+                            <option value="adjustment">Ajuste</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={item.label}
+                            onChange={(event) =>
+                              setFinanceExtraItems((current) =>
+                                current.map((entry) =>
+                                  entry.id === item.id ? { ...entry, label: event.target.value } : entry
+                                )
+                              )
+                            }
+                            className="rounded-xl border border-line px-3 py-2 text-xs"
+                            placeholder="Descrição"
+                          />
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={formatCurrencyInput(item.amount)}
+                            onChange={(event) =>
+                              setFinanceExtraItems((current) =>
+                                current.map((entry) =>
+                                  entry.id === item.id
+                                    ? { ...entry, amount: Math.max(0, parseDecimalText(event.target.value) ?? 0) }
+                                    : entry
+                                )
+                              )
+                            }
+                            className="rounded-xl border border-line px-3 py-2 text-xs"
+                            placeholder="0,00"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFinanceItem(item.id)}
+                            className="px-2 py-2 rounded-xl border border-line text-[10px] font-extrabold uppercase tracking-wide text-gray-500 hover:text-red-600 hover:border-red-200"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-100 rounded-3xl p-4">
+              <div className="border-t border-line pt-1">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Adicionar item</p>
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  <select
+                    value={financeNewItemType}
+                    onChange={(event) =>
+                      setFinanceNewItemType(event.target.value as Exclude<FinanceDraftItemType, "service" | "fee">)
+                    }
+                    className="rounded-xl border border-line px-2 py-2 text-xs"
+                  >
+                    <option value="addon">Adicional</option>
+                    <option value="adjustment">Ajuste</option>
+                  </select>
+                  <input
+                    className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
+                    placeholder="Novo item"
+                    value={financeNewItemLabel}
+                    onChange={(event) => setFinanceNewItemLabel(event.target.value)}
+                  />
+                  <input
+                    className="rounded-xl border border-line px-3 py-2 text-xs"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    value={financeNewItemAmount}
+                    onChange={(event) => setFinanceNewItemAmount(event.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
+                  onClick={handleAddFinanceItem}
+                >
+                  Adicionar item
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-100 rounded-3xl p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Desconto</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleDiscountType("value")}
+                    className={`px-3 py-1.5 rounded-2xl text-[11px] font-extrabold border ${
+                      scheduleDiscountType === "value"
+                        ? "bg-studio-light text-studio-green border-studio-green/10"
+                        : "bg-paper text-muted border-gray-200"
+                    }`}
+                  >
+                    R$
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleDiscountType("pct")}
+                    className={`px-3 py-1.5 rounded-2xl text-[11px] font-extrabold border ${
+                      scheduleDiscountType === "pct"
+                        ? "bg-studio-light text-studio-green border-studio-green/10"
+                        : "bg-paper text-muted border-gray-200"
+                    }`}
+                  >
+                    %
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-3">
+                <div className="bg-paper border border-gray-100 rounded-2xl px-4 py-3">
+                  <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Valor</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={scheduleDiscountValue}
+                    onChange={(event) => setScheduleDiscountValue(event.target.value)}
+                    className="w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums mt-1"
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="bg-paper border border-gray-100 rounded-2xl px-4 py-3 min-w-[120px]">
+                  <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Aplicado</label>
+                  <p className="text-lg font-black text-studio-text tabular-nums mt-1">
+                    R$ {formatCurrencyLabel(effectiveScheduleDiscount)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-gray-100 rounded-3xl p-4">
+              <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Quando cobrar</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCollectionTimingDraft("at_attendance")}
+                  className={`rounded-2xl border px-4 py-3 text-xs font-extrabold uppercase tracking-wide ${
+                    collectionTimingDraft === "at_attendance"
+                      ? "border-studio-green bg-studio-light text-studio-green"
+                      : "border-gray-200 text-muted hover:bg-gray-50"
+                  }`}
+                >
+                  Cobrar no atendimento
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-2xl border px-4 py-3 text-xs font-extrabold uppercase tracking-wide border-gray-200 text-muted bg-gray-50 cursor-not-allowed"
+                  title="Cobrança no agendamento entra na fase 2"
+                >
+                  Cobrar agora (fase 2)
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-paper border border-line rounded-3xl p-4">
+              <div className="space-y-2 text-sm">
+                {financeDraftItems.length > 0 ? (
+                  financeDraftItems.map((item, index) => (
+                    <div key={`${item.type}-${item.label}-${index}`} className="flex justify-between gap-3">
+                      <span className={item.type === "fee" ? "text-dom-strong font-semibold" : "text-studio-text"}>
+                        {item.label}
+                      </span>
+                      <span className="tabular-nums font-bold text-studio-text">
+                        R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted">Selecione um serviço para montar o financeiro.</p>
+                )}
+                <div className="h-px bg-gray-100 my-2" />
+                <div className="flex justify-between text-muted font-bold">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
+                </div>
+                {effectiveScheduleDiscount > 0 && (
+                  <div className="flex justify-between text-muted font-bold">
+                    <span>
+                      Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
+                    </span>
+                    <span className="tabular-nums">- R$ {formatCurrencyLabel(effectiveScheduleDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-studio-text font-black text-base pt-1">
+                  <span>Total</span>
+                  <span className="tabular-nums">R$ {formatCurrencyLabel(scheduleTotal)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {portalTarget &&
         isClientCreateModalOpen &&
@@ -2517,7 +2918,7 @@ export function AppointmentForm({
                 </p>
                 <h3 className="text-lg font-serif text-studio-text">Revisar dados antes de criar</h3>
                 <p className="text-xs text-muted mt-1">
-                  Confira os dados do agendamento e ajuste o desconto (se houver) antes de confirmar.
+                  Confira os dados do agendamento antes de confirmar.
                 </p>
               </div>
               <button
@@ -2571,59 +2972,38 @@ export function AppointmentForm({
                   Financeiro
                 </p>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-gray-500">Serviço</span>
-                    <span className="font-semibold text-studio-text">
-                      R$ {formatCurrencyLabel(effectiveServicePriceDraft)}
-                    </span>
+                  {financeDraftItems.length > 0 ? (
+                    financeDraftItems.map((item, index) => (
+                      <div key={`${item.type}-${item.label}-${index}`} className="flex items-center justify-between gap-3">
+                        <span className="text-gray-500">{item.label}</span>
+                        <span className="font-semibold text-studio-text">
+                          R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted">Sem itens financeiros configurados.</p>
+                  )}
+                  <div className="flex items-center justify-between gap-3 pt-1 border-t border-stone-100">
+                    <span className="text-gray-500">Subtotal</span>
+                    <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
                   </div>
-                  {isHomeVisit && (
+                  {effectiveScheduleDiscount > 0 && (
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">Taxa de deslocamento</span>
+                      <span className="text-gray-500">
+                        Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
+                      </span>
                       <span className="font-semibold text-studio-text">
-                        R$ {formatCurrencyLabel(effectiveDisplacementFee)}
+                        - R$ {formatCurrencyLabel(effectiveScheduleDiscount)}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-gray-500">Subtotal</span>
+                    <span className="text-gray-500">Cobrança</span>
                     <span className="font-semibold text-studio-text">
-                      R$ {formatCurrencyLabel(scheduleSubtotal)}
+                      {collectionTimingDraft === "at_attendance" ? "No atendimento" : "No agendamento"}
                     </span>
                   </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
-                      R$
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={scheduleDiscountValue}
-                      onChange={(event) => setScheduleDiscountValue(event.target.value)}
-                      placeholder="0,00"
-                      className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setScheduleDiscountValue("")}
-                    className="px-3 py-3 rounded-xl border border-stone-200 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text"
-                  >
-                    Zerar
-                  </button>
-                </div>
-                <div className="mt-2">
-                  <label className={labelClass}>Desconto (opcional)</label>
-                  <input
-                    type="text"
-                    value={scheduleDiscountReason}
-                    onChange={(event) => setScheduleDiscountReason(event.target.value)}
-                    placeholder="Ex: valor combinado"
-                    className={inputClass}
-                  />
                 </div>
                 <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
@@ -2634,13 +3014,13 @@ export function AppointmentForm({
               </div>
 
               <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => handleSchedule(true)}
-                className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
-              >
-                Enviar e agendar
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleSchedule(true)}
+                  className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
+                >
+                  Agendar e avisar
+                </button>
               <button
                 type="button"
                 onClick={() => handleSchedule(false)}
@@ -2666,11 +3046,11 @@ export function AppointmentForm({
       ) : (
         <button
           type="button"
-          onClick={() => setIsSendPromptOpen(true)}
+          onClick={handleOpenConfirmationPrompt}
           className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
         >
           <Check className="w-5 h-5" />
-          Agendar
+          Ir para confirmação
         </button>
       )}
     </form>

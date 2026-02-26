@@ -82,6 +82,42 @@ const normalizeCpfDigits = (value: string | null) => {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+type InitialFinanceExtraItemDraft = {
+  type: "addon" | "adjustment";
+  label: string;
+  qty: number;
+  amount: number;
+};
+
+const normalizeCheckoutDiscountType = (value: string | null): "value" | "pct" | null => {
+  if (value === "pct") return "pct";
+  if (value === "value") return "value";
+  return null;
+};
+
+const parseInitialFinanceExtraItems = (value: string | null): InitialFinanceExtraItemDraft[] => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => {
+        const rawType = typeof entry?.type === "string" ? entry.type : "addon";
+        const type: "addon" | "adjustment" = rawType === "adjustment" ? "adjustment" : "addon";
+        const label = typeof entry?.label === "string" ? entry.label.trim() : "";
+        const qtyRaw = Number(entry?.qty ?? 1);
+        const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.trunc(qtyRaw)) : 1;
+        const amountRaw = Number(entry?.amount ?? 0);
+        const amount = Number.isFinite(amountRaw) ? Math.max(0, amountRaw) : 0;
+        if (!label || amount <= 0) return null;
+        return { type, label, qty, amount };
+      })
+      .filter((entry): entry is InitialFinanceExtraItemDraft => Boolean(entry));
+  } catch {
+    return [];
+  }
+};
+
 export async function startAppointment(id: string): Promise<ActionResult<{ id: string }>> {
   const parsed = startAppointmentSchema.safeParse({ id });
   if (!parsed.success) {
@@ -240,8 +276,18 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const rawCheckoutServiceAmount = (formData.get("checkout_service_amount") as string | null) || null;
   const rawInitialCheckoutDiscountValue =
     (formData.get("initial_checkout_discount_value") as string | null) || null;
+  const initialCheckoutDiscountType = normalizeCheckoutDiscountType(
+    (formData.get("initial_checkout_discount_type") as string | null) || null
+  );
   const initialCheckoutDiscountReason =
     ((formData.get("initial_checkout_discount_reason") as string | null) || "").trim() || null;
+  const financeExtraItems = parseInitialFinanceExtraItems(
+    (formData.get("finance_extra_items_json") as string | null) || null
+  );
+  const paymentCollectionTiming =
+    ((formData.get("payment_collection_timing") as string | null) || "").trim() === "charge_now"
+      ? "charge_now"
+      : "at_attendance";
   const sendCreatedMessage = formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
   const isCourtesyAppointment = formData.get("is_courtesy") === "on";
@@ -264,6 +310,13 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
   const checkoutServiceAmount = parseDecimalInput(rawCheckoutServiceAmount);
   const initialCheckoutDiscountValue = parseDecimalInput(rawInitialCheckoutDiscountValue);
+  if (paymentCollectionTiming === "charge_now") {
+    throw new AppError(
+      "Cobrança no agendamento entra na Fase 2 e ainda não está liberada.",
+      "VALIDATION_ERROR",
+      400
+    );
+  }
 
   const parsed = createInternalAppointmentSchema.safeParse({
     clientId,
@@ -430,7 +483,14 @@ export async function createAppointment(formData: FormData): Promise<void> {
     let appointmentStoredDisplacementFee = 0;
     let appointmentIsHomeVisit = false;
 
-    if (clientCpf || clientEmail || newClientNameColumns || checkoutServiceAmount !== null || initialCheckoutDiscountValue !== null) {
+    if (
+      clientCpf ||
+      clientEmail ||
+      newClientNameColumns ||
+      checkoutServiceAmount !== null ||
+      initialCheckoutDiscountValue !== null ||
+      financeExtraItems.length > 0
+    ) {
       const { data: appointmentClientRow } = await supabase
         .from("appointments")
         .select("client_id, service_name, price, displacement_fee, is_home_visit")
@@ -450,12 +510,15 @@ export async function createAppointment(formData: FormData): Promise<void> {
       checkoutServiceAmount ?? Math.max(appointmentStoredPrice - checkoutFeeAmount, 0)
     );
     const normalizedInitialDiscount = Math.max(0, initialCheckoutDiscountValue ?? 0);
+    const normalizedInitialDiscountType =
+      normalizedInitialDiscount > 0 ? (initialCheckoutDiscountType ?? "value") : null;
     const checkoutTotals = computeTotals({
       items: [
         { amount: checkoutServiceBaseAmount, qty: 1 },
         ...(checkoutFeeAmount > 0 ? [{ amount: checkoutFeeAmount, qty: 1 }] : []),
+        ...financeExtraItems.map((item) => ({ amount: item.amount, qty: item.qty })),
       ],
-      discountType: normalizedInitialDiscount > 0 ? "value" : null,
+      discountType: normalizedInitialDiscountType,
       discountValue: normalizedInitialDiscount > 0 ? normalizedInitialDiscount : null,
     });
 
@@ -463,7 +526,7 @@ export async function createAppointment(formData: FormData): Promise<void> {
       {
         appointment_id: appointmentId,
         tenant_id: tenantId,
-        discount_type: normalizedInitialDiscount > 0 ? "value" : null,
+        discount_type: normalizedInitialDiscountType,
         discount_value: normalizedInitialDiscount > 0 ? normalizedInitialDiscount : null,
         discount_reason: normalizedInitialDiscount > 0 ? initialCheckoutDiscountReason : null,
         subtotal: checkoutTotals.subtotal,
@@ -506,6 +569,16 @@ export async function createAppointment(formData: FormData): Promise<void> {
             },
           ]
         : []),
+      ...financeExtraItems.map((item, index) => ({
+        appointment_id: appointmentId,
+        tenant_id: tenantId,
+        type: item.type,
+        label: item.label,
+        qty: item.qty,
+        amount: item.amount,
+        sort_order: (checkoutFeeAmount > 0 ? 3 : 2) + index,
+        metadata: null,
+      })),
     ];
 
     const { error: checkoutItemsError } = await supabase.from("appointment_checkout_items").insert(checkoutItems);
