@@ -183,6 +183,17 @@ function parseDecimalText(value: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function formatCurrencyInput(value: number) {
+  return Number.isFinite(value) ? value.toFixed(2).replace(".", ",") : "0,00";
+}
+
+function formatCurrencyLabel(value: number) {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 function buildAddressQuery(payload: {
   logradouro: string;
   numero: string;
@@ -301,6 +312,18 @@ export function AppointmentForm({
       ? initialAppointment.priceOverride.toFixed(2).replace(".", ",")
       : ""
   );
+  const [servicePriceDraft, setServicePriceDraft] = useState<string>(
+    initialAppointment?.priceOverride != null
+      ? Math.max(
+          initialAppointment.priceOverride - Math.max(initialAppointment.displacementFee ?? 0, 0),
+          0
+        )
+          .toFixed(2)
+          .replace(".", ",")
+      : ""
+  );
+  const [scheduleDiscountValue, setScheduleDiscountValue] = useState<string>("");
+  const [scheduleDiscountReason, setScheduleDiscountReason] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? safeDate);
   const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -551,10 +574,17 @@ export function AppointmentForm({
     const serviceId = e.target.value;
     setSelectedServiceId(serviceId);
     setPriceOverride("");
+    if (!isEditing) {
+      setScheduleDiscountValue("");
+      setScheduleDiscountReason("");
+    }
 
     const service = services.find((s) => s.id === serviceId);
     if (service) {
       setDisplayedPrice(service.price.toFixed(2));
+      if (!isEditing) {
+        setServicePriceDraft(formatCurrencyInput(service.price));
+      }
       if (!service.accepts_home_visit) {
         setIsHomeVisit(false);
         setDisplacementEstimate(null);
@@ -564,6 +594,9 @@ export function AppointmentForm({
       }
     } else {
       setDisplayedPrice("");
+      if (!isEditing) {
+        setServicePriceDraft("");
+      }
       setIsHomeVisit(false);
       setDisplacementEstimate(null);
       setDisplacementStatus("idle");
@@ -579,6 +612,29 @@ export function AppointmentForm({
   const effectiveDisplacementFee = isHomeVisit
     ? Math.max(0, parsedManualDisplacementFee ?? displacementEstimate?.fee ?? 0)
     : 0;
+  const parsedServicePriceDraft = useMemo(() => parseDecimalText(servicePriceDraft), [servicePriceDraft]);
+  const effectiveServicePriceDraft = useMemo(() => {
+    const serviceCatalogPrice = Number(selectedService?.price ?? 0);
+    return Math.max(0, parsedServicePriceDraft ?? serviceCatalogPrice);
+  }, [parsedServicePriceDraft, selectedService?.price]);
+  const parsedScheduleDiscountValue = useMemo(
+    () => parseDecimalText(scheduleDiscountValue),
+    [scheduleDiscountValue]
+  );
+  const scheduleSubtotal = useMemo(
+    () => Math.max(0, effectiveServicePriceDraft + effectiveDisplacementFee),
+    [effectiveDisplacementFee, effectiveServicePriceDraft]
+  );
+  const effectiveScheduleDiscount = useMemo(() => {
+    const raw = Math.max(0, parsedScheduleDiscountValue ?? 0);
+    return Math.min(scheduleSubtotal, raw);
+  }, [parsedScheduleDiscountValue, scheduleSubtotal]);
+  const scheduleTotal = useMemo(
+    () => Math.max(0, scheduleSubtotal - effectiveScheduleDiscount),
+    [effectiveScheduleDiscount, scheduleSubtotal]
+  );
+  const createPriceOverrideValue = selectedService ? scheduleTotal.toFixed(2) : "";
+  const createCheckoutServiceAmountValue = selectedService ? effectiveServicePriceDraft.toFixed(2) : "";
 
   useEffect(() => {
     if (!selectedService) return;
@@ -1189,6 +1245,24 @@ export function AppointmentForm({
       <input type="hidden" name="client_last_name" value={clientSelectionMode === "new" ? clientLastName : ""} />
       <input type="hidden" name="client_reference" value={clientSelectionMode === "new" ? clientReference : ""} />
       <input type="hidden" name="client_email" value={clientSelectionMode === "new" ? clientEmail : ""} />
+      {!isEditing && <input type="hidden" name="price_override" value={createPriceOverrideValue} />}
+      {!isEditing && (
+        <input type="hidden" name="checkout_service_amount" value={createCheckoutServiceAmountValue} />
+      )}
+      {!isEditing && (
+        <input
+          type="hidden"
+          name="initial_checkout_discount_value"
+          value={effectiveScheduleDiscount > 0 ? effectiveScheduleDiscount.toFixed(2) : ""}
+        />
+      )}
+      {!isEditing && (
+        <input
+          type="hidden"
+          name="initial_checkout_discount_reason"
+          value={scheduleDiscountReason.trim()}
+        />
+      )}
       <input type="hidden" name="client_address_id" value={isHomeVisit ? (selectedAddressId ?? "") : ""} />
       <input type="hidden" name="address_label" value={isHomeVisit ? addressLabel : ""} />
       <input
@@ -1698,7 +1772,7 @@ export function AppointmentForm({
 
               <div className="rounded-2xl border border-stone-100 bg-white p-4">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1">
-                  Taxa recomendada de deslocamento
+                  Taxa de deslocamento
                 </p>
                 {displacementStatus === "loading" && (
                   <p className="text-sm font-semibold text-studio-text">
@@ -1706,16 +1780,12 @@ export function AppointmentForm({
                   </p>
                 )}
                 {displacementStatus !== "loading" && displacementEstimate && (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <p className="text-base font-bold text-dom-strong">
-                      R$ {displacementEstimate.fee.toFixed(2)}
+                      R$ {formatCurrencyLabel(displacementEstimate.fee)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Distância estimada: {displacementEstimate.distanceKm.toFixed(2)} km (
-                      {displacementEstimate.rule === "urban" ? "regra urbana" : "regra rodoviária"}).
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      Taxa recomendada para o endereço selecionado. Você pode ajustar ou zerar abaixo.
+                      Distância estimada: {displacementEstimate.distanceKm.toFixed(2)} km.
                     </p>
                   </div>
                 )}
@@ -1728,7 +1798,6 @@ export function AppointmentForm({
                   </p>
                 )}
                 <div className="pt-2">
-                  <label className={labelClass}>Taxa aplicada (editável)</label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
@@ -1747,13 +1816,10 @@ export function AppointmentForm({
                       type="button"
                       onClick={() => setManualDisplacementFee("0,00")}
                       className="px-3 py-3 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/25"
-                    >
-                      Zerar
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-2">
-                    Em agendamento interno, essa taxa é recomendada e pode ser alterada pela equipe.
-                  </p>
+                      >
+                        Zerar
+                      </button>
+                    </div>
                 </div>
               </div>
             </div>
@@ -1769,20 +1835,28 @@ export function AppointmentForm({
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className={labelClass}>Valor final</label>
+            <label className={labelClass}>{isEditing ? "Valor final" : "Valor do serviço"}</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
-              <input
-                type="tel"
-                value={finalPrice}
-                readOnly
-                placeholder="0,00"
-                className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
-              />
+              {isEditing ? (
+                <input
+                  type="tel"
+                  value={finalPrice}
+                  readOnly
+                  placeholder="0,00"
+                  className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
+                />
+              ) : (
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={servicePriceDraft}
+                  onChange={(event) => setServicePriceDraft(event.target.value)}
+                  placeholder={selectedService ? formatCurrencyInput(Number(selectedService.price ?? 0)) : "0,00"}
+                  className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
+                />
+              )}
             </div>
-            <p className="text-[10px] text-muted mt-1 ml-1">
-              {priceOverride ? "Valor ajustado manualmente." : "Valor calculado automaticamente."}
-            </p>
           </div>
 
           <div>
@@ -1811,22 +1885,38 @@ export function AppointmentForm({
           </div>
         </div>
 
-        <div className="mb-4">
-          <label className={labelClass}>Ajustar valor (opcional)</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
-            <input
-              name="price_override"
-              type="text"
-              inputMode="decimal"
-              value={priceOverride}
-              onChange={(event) => setPriceOverride(event.target.value)}
-              placeholder={displayedPrice || "0,00"}
-              className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
-            />
+        {isEditing ? (
+          <div className="mb-4">
+            <label className={labelClass}>Ajustar valor (opcional)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
+              <input
+                name="price_override"
+                type="text"
+                inputMode="decimal"
+                value={priceOverride}
+                onChange={(event) => setPriceOverride(event.target.value)}
+                placeholder={displayedPrice || "0,00"}
+                className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
+              />
+            </div>
+            <p className="text-[10px] text-muted mt-1 ml-1">Se deixar vazio, usamos o valor do serviço.</p>
           </div>
-          <p className="text-[10px] text-muted mt-1 ml-1">Se deixar vazio, usamos o valor do serviço.</p>
-        </div>
+        ) : (
+          <div className="mb-4 rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-gray-500">Taxa de deslocamento</span>
+              <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(effectiveDisplacementFee)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm mt-2">
+              <span className="text-gray-500">Subtotal previsto</span>
+              <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
+            </div>
+            <p className="text-[10px] text-muted mt-2">
+              Desconto e resumo financeiro final são definidos na confirmação antes de agendar.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className={labelClass}>Horário</label>
@@ -2423,11 +2513,11 @@ export function AppointmentForm({
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
-                  Aviso de agendamento
+                  Confirmar agendamento
                 </p>
-                <h3 className="text-lg font-serif text-studio-text">Enviar mensagem agora?</h3>
+                <h3 className="text-lg font-serif text-studio-text">Revisar dados antes de criar</h3>
                 <p className="text-xs text-muted mt-1">
-                  Se escolher sim, abriremos o WhatsApp com a mensagem pronta.
+                  Confira os dados do agendamento e ajuste o desconto (se houver) antes de confirmar.
                 </p>
               </div>
               <button
@@ -2439,7 +2529,111 @@ export function AppointmentForm({
               </button>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
+                  Resumo
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Cliente</span>
+                    <span className="text-right font-semibold text-studio-text">
+                      {clientDisplayPreviewLabel || "Cliente"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Serviço</span>
+                    <span className="text-right font-semibold text-studio-text">
+                      {selectedService?.name || "Selecione um serviço"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Data e horário</span>
+                    <span className="text-right font-semibold text-studio-text">
+                      {selectedDate
+                        ? `${format(parseISO(selectedDate), "dd/MM/yyyy", { locale: ptBR })} • ${selectedTime || "--:--"}`
+                        : "--"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Local</span>
+                    <span className="text-right font-semibold text-studio-text">
+                      {isHomeVisit
+                        ? `Domicílio${addressLabel ? ` • ${addressLabel}` : ""}`
+                        : "Estúdio"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-stone-100 bg-white p-4">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
+                  Financeiro
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Serviço</span>
+                    <span className="font-semibold text-studio-text">
+                      R$ {formatCurrencyLabel(effectiveServicePriceDraft)}
+                    </span>
+                  </div>
+                  {isHomeVisit && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-500">Taxa de deslocamento</span>
+                      <span className="font-semibold text-studio-text">
+                        R$ {formatCurrencyLabel(effectiveDisplacementFee)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Subtotal</span>
+                    <span className="font-semibold text-studio-text">
+                      R$ {formatCurrencyLabel(scheduleSubtotal)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
+                      R$
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={scheduleDiscountValue}
+                      onChange={(event) => setScheduleDiscountValue(event.target.value)}
+                      placeholder="0,00"
+                      className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleDiscountValue("")}
+                    className="px-3 py-3 rounded-xl border border-stone-200 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text"
+                  >
+                    Zerar
+                  </button>
+                </div>
+                <div className="mt-2">
+                  <label className={labelClass}>Desconto (opcional)</label>
+                  <input
+                    type="text"
+                    value={scheduleDiscountReason}
+                    onChange={(event) => setScheduleDiscountReason(event.target.value)}
+                    placeholder="Ex: valor combinado"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
+                  <span className="text-base font-bold text-studio-text">
+                    R$ {formatCurrencyLabel(scheduleTotal)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
               <button
                 type="button"
                 onClick={() => handleSchedule(true)}
@@ -2454,6 +2648,7 @@ export function AppointmentForm({
               >
                 Agendar sem enviar
               </button>
+            </div>
             </div>
             </div>
           </div>,

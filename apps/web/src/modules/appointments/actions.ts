@@ -10,6 +10,7 @@ import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { insertAttendanceEvent } from "../../../lib/attendance/attendance-repository";
+import { computeTotals } from "../../../lib/attendance/attendance-domain";
 import {
   cancelAppointmentSchema,
   createInternalAppointmentSchema,
@@ -236,6 +237,11 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const rawDisplacementFee = (formData.get("displacement_fee") as string | null) || null;
   const rawDisplacementDistanceKm =
     (formData.get("displacement_distance_km") as string | null) || null;
+  const rawCheckoutServiceAmount = (formData.get("checkout_service_amount") as string | null) || null;
+  const rawInitialCheckoutDiscountValue =
+    (formData.get("initial_checkout_discount_value") as string | null) || null;
+  const initialCheckoutDiscountReason =
+    ((formData.get("initial_checkout_discount_reason") as string | null) || "").trim() || null;
   const sendCreatedMessage = formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
   const isCourtesyAppointment = formData.get("is_courtesy") === "on";
@@ -256,6 +262,8 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const priceOverride = parseDecimalInput(rawPriceOverride);
   const displacementFee = parseDecimalInput(rawDisplacementFee);
   const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
+  const checkoutServiceAmount = parseDecimalInput(rawCheckoutServiceAmount);
+  const initialCheckoutDiscountValue = parseDecimalInput(rawInitialCheckoutDiscountValue);
 
   const parsed = createInternalAppointmentSchema.safeParse({
     clientId,
@@ -417,16 +425,92 @@ export async function createAppointment(formData: FormData): Promise<void> {
   if (appointmentId) {
     const tenantId = FIXED_TENANT_ID;
     let appointmentClientId: string | null = null;
+    let appointmentServiceName: string | null = null;
+    let appointmentStoredPrice = 0;
+    let appointmentStoredDisplacementFee = 0;
+    let appointmentIsHomeVisit = false;
 
-    if (clientCpf || clientEmail || newClientNameColumns) {
+    if (clientCpf || clientEmail || newClientNameColumns || checkoutServiceAmount !== null || initialCheckoutDiscountValue !== null) {
       const { data: appointmentClientRow } = await supabase
         .from("appointments")
-        .select("client_id")
+        .select("client_id, service_name, price, displacement_fee, is_home_visit")
         .eq("tenant_id", tenantId)
         .eq("id", appointmentId)
         .maybeSingle();
       appointmentClientId = appointmentClientRow?.client_id ?? null;
+      appointmentServiceName = appointmentClientRow?.service_name ?? null;
+      appointmentStoredPrice = Number(appointmentClientRow?.price ?? 0);
+      appointmentStoredDisplacementFee = Number(appointmentClientRow?.displacement_fee ?? 0);
+      appointmentIsHomeVisit = Boolean(appointmentClientRow?.is_home_visit);
     }
+
+    const checkoutFeeAmount = appointmentIsHomeVisit ? Math.max(0, appointmentStoredDisplacementFee) : 0;
+    const checkoutServiceBaseAmount = Math.max(
+      0,
+      checkoutServiceAmount ?? Math.max(appointmentStoredPrice - checkoutFeeAmount, 0)
+    );
+    const normalizedInitialDiscount = Math.max(0, initialCheckoutDiscountValue ?? 0);
+    const checkoutTotals = computeTotals({
+      items: [
+        { amount: checkoutServiceBaseAmount, qty: 1 },
+        ...(checkoutFeeAmount > 0 ? [{ amount: checkoutFeeAmount, qty: 1 }] : []),
+      ],
+      discountType: normalizedInitialDiscount > 0 ? "value" : null,
+      discountValue: normalizedInitialDiscount > 0 ? normalizedInitialDiscount : null,
+    });
+
+    const { error: checkoutUpsertError } = await supabase.from("appointment_checkout").upsert(
+      {
+        appointment_id: appointmentId,
+        tenant_id: tenantId,
+        discount_type: normalizedInitialDiscount > 0 ? "value" : null,
+        discount_value: normalizedInitialDiscount > 0 ? normalizedInitialDiscount : null,
+        discount_reason: normalizedInitialDiscount > 0 ? initialCheckoutDiscountReason : null,
+        subtotal: checkoutTotals.subtotal,
+        total: checkoutTotals.total,
+      },
+      { onConflict: "appointment_id" }
+    );
+    const mappedCheckoutUpsertError = mapSupabaseError(checkoutUpsertError);
+    if (mappedCheckoutUpsertError) throw mappedCheckoutUpsertError;
+
+    const { error: checkoutItemsDeleteError } = await supabase
+      .from("appointment_checkout_items")
+      .delete()
+      .eq("appointment_id", appointmentId);
+    const mappedCheckoutItemsDeleteError = mapSupabaseError(checkoutItemsDeleteError);
+    if (mappedCheckoutItemsDeleteError) throw mappedCheckoutItemsDeleteError;
+
+    const checkoutItems = [
+      {
+        appointment_id: appointmentId,
+        tenant_id: tenantId,
+        type: "service",
+        label: appointmentServiceName || "Serviço",
+        qty: 1,
+        amount: checkoutServiceBaseAmount,
+        sort_order: 1,
+        metadata: null,
+      },
+      ...(checkoutFeeAmount > 0
+        ? [
+            {
+              appointment_id: appointmentId,
+              tenant_id: tenantId,
+              type: "fee",
+              label: "Taxa deslocamento",
+              qty: 1,
+              amount: checkoutFeeAmount,
+              sort_order: 2,
+              metadata: null,
+            },
+          ]
+        : []),
+    ];
+
+    const { error: checkoutItemsError } = await supabase.from("appointment_checkout_items").insert(checkoutItems);
+    const mappedCheckoutItemsError = mapSupabaseError(checkoutItemsError);
+    if (mappedCheckoutItemsError) throw mappedCheckoutItemsError;
 
     if (appointmentClientId && (clientCpf || clientEmail || newClientNameColumns)) {
       const { data: clientRow } = await supabase
