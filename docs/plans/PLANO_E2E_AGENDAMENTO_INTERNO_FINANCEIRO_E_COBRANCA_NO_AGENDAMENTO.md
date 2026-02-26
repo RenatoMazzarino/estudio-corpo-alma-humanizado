@@ -19,6 +19,65 @@ Implementar um fluxo completo de agendamento interno com:
 4. Fluxo manual de WhatsApp deve continuar existindo como fallback.
 5. Automacao e envio manual devem respeitar o momento correto (confirmacao do agendamento vs confirmacao do pagamento).
 
+## Decisoes fechadas (consolidadas no chat)
+
+### Financeiro do agendamento interno
+
+- Itens financeiros podem ser editados livremente pelo usuario.
+- Adicao de itens deve seguir o padrao visual/comportamental do checkout atual.
+- Desconto aceita:
+  - valor em `R$`
+  - percentual `%`
+- Seletor de desconto deve usar seletor unico (`R$` / `%`) no mesmo padrao do checkout.
+- Motivo de desconto nao ganha campo dedicado nesta etapa (usar observacoes do agendamento, se necessario).
+- Regra de preservacao financeira: manter o combinado da Jana (nao recalcular automaticamente depois).
+
+### Cobranca no agendamento (`Cobrar agora`)
+
+- Deve existir nas fases seguintes com 3 opcoes de valor:
+  - integral
+  - sinal (percentual global padrao, com opcao de editar)
+  - personalizado
+- Valor personalizado nao pode ser maior que o total.
+- Minimo operacional:
+  - PIX: `R$ 1,00`
+  - Dinheiro: sem minimo
+- Em falha/cancelamento de cobranca, manter opcoes no mesmo modal/tela:
+  - tentar novamente
+  - cobrar de outra forma
+  - cobrar no atendimento
+- Se usuario decidir `cobrar no atendimento` apos falha, o agendamento segue fluxo padrao (incluindo mensagens).
+
+### Mensagens (manual + automacao)
+
+- Envio manual e automacao sao independentes (um nao anula o outro).
+- Antes de tentar qualquer envio de WhatsApp, validar se ha dados minimos necessarios (ex.: numero).
+- Se nao houver numero de WhatsApp cadastrado:
+  - nao tentar envio
+  - registrar como nao enviado por falta de numero
+- Se `Cobrar no atendimento`: automacao/manual seguem gatilhos do fluxo padrao de agendamento.
+- Se `Cobrar agora`: gatilhos de aviso ocorrem apos confirmacao do pagamento.
+
+### Conteudo das mensagens
+
+- Incluir secao financeira (interno e, quando aplicavel, templates Meta):
+  - valor do servico
+  - taxa de deslocamento (se houver)
+  - desconto (se houver)
+  - total
+  - saldo pendente (quando houver sinal/parcial)
+- Quando pagamento ocorrer no agendamento:
+  - enviar apenas recibo/comprovante de pagamento
+  - voucher fica para fluxo de confirmacao de 24h
+- Nome temporario aceito para parcial:
+  - "Comprovante de pagamento do sinal" (revisar naming depois)
+
+### Templates / rollout
+
+- Implementacao em 2 fases:
+  - Fase 1: textos internos / comportamento DEV
+  - Fase 2: novos templates Meta e adaptacao operacional
+
 ## Escopo desta iniciativa
 
 ### Incluido
@@ -249,10 +308,15 @@ Observacao:
 - criar bottom sheet de confirmacao
 - suportar `Cobrar no atendimento`
 - manter seed do checkout no create
+- adicionar itens no financeiro no mesmo padrao do checkout atual
 
 Saida:
 
 - fluxo novo funcionando com agendamento normal
+
+Status desta fase:
+
+- `Concluida` (UI + seed de checkout com itens extras/desconto `%`/`R$`, mantendo `Cobrar agora` bloqueado para Fase 2)
 
 ### Fase 2 - Cobrar agora: Dinheiro (baixo risco)
 
@@ -363,7 +427,7 @@ Mitigacao:
 - automacao: no momento correto
 - conteudo com valores e links
 
-## Decisoes em aberto (para aprovacao)
+## Decisoes em aberto (apos fechamento da Fase 1)
 
-Ver lista objetiva no chat (mantida fora deste arquivo para facilitar aprovacao rapida).
-
+- Nenhuma decisao bloqueante para Fase 1.
+- Pendencias de decisao ficam concentradas na Fase 2+ (mensagens/template Meta e UX final de cobranca no agendamento), conforme evolucao do piloto.
