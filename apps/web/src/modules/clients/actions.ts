@@ -9,7 +9,6 @@ import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { createClientSchema, updateClientNotesSchema, updateClientSchema } from "../../shared/validation/clients";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
-import type { Json } from "../../../lib/supabase/types";
 import { Buffer } from "buffer";
 import {
   createClient,
@@ -202,7 +201,6 @@ export async function createClientAction(formData: FormData): Promise<void> {
   const emails = parseJson<EmailPayload[]>(formData.get("emails_json"), []);
   const addresses = parseJson<AddressPayload[]>(formData.get("addresses_json"), []);
   const healthItems = parseJson<HealthItemPayload[]>(formData.get("health_items_json"), []);
-  const extraData = parseJson<Record<string, unknown>>(formData.get("extra_data_json"), {});
   const avatarFile = formData.get("avatar");
 
   const normalizedPhones = phones.filter((phone) => phone.number_raw && phone.number_raw.trim().length > 0);
@@ -301,7 +299,6 @@ export async function createClientAction(formData: FormData): Promise<void> {
     como_conheceu: parsed.data.como_conheceu,
     health_tags: parsed.data.health_tags,
     initials: getInitials(parsed.data.name),
-    extra_data: extraData as Json,
     tenant_id: FIXED_TENANT_ID,
   });
 
@@ -484,7 +481,6 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
   const phonesJson = formData.get("phones_json");
   const emailsJson = formData.get("emails_json");
   const healthItemsJson = formData.get("health_items_json");
-  const extraData = parseJson<Record<string, unknown>>(formData.get("extra_data_json"), {});
 
   const parsed = updateClientSchema.safeParse({
     clientId,
@@ -566,7 +562,6 @@ export async function updateClientProfileAction(formData: FormData): Promise<Act
     como_conheceu: parsed.data.como_conheceu,
     health_tags: parsed.data.health_tags,
     initials: getInitials(parsed.data.name),
-    extra_data: extraData as Json,
   };
 
   if (parsed.data.observacoes_gerais !== undefined) {
@@ -723,7 +718,6 @@ export async function importClientsFromContacts(
         estado: primaryAddress?.estado ?? null,
       });
 
-    const rawPayload = (contact.raw ?? { ...contact, photo: null }) as Json;
     const { data: createdClient, error } = await createClient({
       tenant_id: FIXED_TENANT_ID,
       name,
@@ -739,7 +733,6 @@ export async function importClientsFromContacts(
       address_cidade: primaryAddress?.cidade ?? null,
       address_estado: primaryAddress?.estado ?? null,
       initials: getInitials(name),
-      extra_data: rawPayload,
       marketing_opt_in: false,
     });
 

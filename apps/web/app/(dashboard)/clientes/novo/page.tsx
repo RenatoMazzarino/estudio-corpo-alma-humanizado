@@ -284,7 +284,6 @@ export default function NewClientPage() {
           <input type="hidden" name="phones_json" value={JSON.stringify(phonesPayload)} />
           <input type="hidden" name="emails_json" value={JSON.stringify(emailsPayload)} />
           <input type="hidden" name="addresses_json" value={JSON.stringify(addressesPayload)} />
-          <input type="hidden" name="extra_data_json" value="{}" />
           <input type="hidden" name="health_tags" value={healthTagsCombined.join(", ")} />
           <input type="hidden" name="health_items_json" value={JSON.stringify(healthItemsPayload)} />
 

@@ -1,8 +1,3 @@
-function asObject(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
 function normalizeText(value: unknown) {
   if (typeof value !== "string") return "";
   return value.trim();
@@ -17,12 +12,13 @@ export function composeInternalClientName(
   lastName?: string | null,
   reference?: string | null
 ) {
-  const normalizedFirstName = firstName.trim();
+  const normalizedFirstName = (firstName ?? "").trim();
   const normalizedLastName = (lastName ?? "").trim();
   const normalizedReference = normalizeReferenceLabel(reference);
   if (!normalizedReference) {
     return [normalizedFirstName, normalizedLastName].filter((value) => value.length > 0).join(" ").trim();
   }
+  if (!normalizedFirstName) return normalizedReference;
   return `${normalizedFirstName} (${normalizedReference})`;
 }
 
@@ -53,28 +49,30 @@ export function resolveClientNames(input: {
   publicFirstName?: string | null;
   publicLastName?: string | null;
   internalReference?: string | null;
-  extraData?: unknown; // transitional fallback
 }): ResolvedClientNames {
   const internalName = (input.name ?? "").trim();
-  const extra = asObject(input.extraData);
-  const publicFirstName = normalizeText(input.publicFirstName) || normalizeText(extra?.public_first_name);
-  const publicLastName = normalizeText(input.publicLastName) || normalizeText(extra?.public_last_name);
-  const publicFullNameFromExtra =
-    normalizeText(extra?.public_display_name) || composePublicClientFullName(publicFirstName, publicLastName);
-  const fallbackBase = stripReferenceFromInternalName(internalName) || internalName || "Cliente";
+  const publicFirstName = normalizeText(input.publicFirstName);
+  const publicLastName = normalizeText(input.publicLastName);
+  const publicFullNameFromColumns = composePublicClientFullName(publicFirstName, publicLastName);
+  const strippedInternalName = stripReferenceFromInternalName(internalName);
+  const reference = normalizeReferenceLabel(input.internalReference);
+  const referenceOnlyInternalName =
+    !publicFirstName &&
+    !publicLastName &&
+    !!reference &&
+    (!!internalName && (internalName === reference || strippedInternalName === reference));
+  const fallbackBase = referenceOnlyInternalName
+    ? "Cliente"
+    : strippedInternalName || internalName || "Cliente";
   const fallbackFirstName = fallbackBase.split(/\s+/).filter(Boolean)[0] ?? "Cliente";
   const fallbackFullName = fallbackBase || "Cliente";
-  const reference = normalizeReferenceLabel(
-    input.internalReference ??
-      (typeof extra?.internal_reference === "string" ? extra.internal_reference : null)
-  );
 
-  const fullName = publicFullNameFromExtra || fallbackFullName;
+  const fullName = publicFullNameFromColumns || fallbackFullName;
   const firstName = publicFirstName || fullName.split(/\s+/).filter(Boolean)[0] || fallbackFirstName;
   const lastName =
     publicLastName ||
-    (publicFullNameFromExtra
-      ? publicFullNameFromExtra
+    (publicFullNameFromColumns
+      ? publicFullNameFromColumns
           .split(/\s+/)
           .filter(Boolean)
           .slice(1)
