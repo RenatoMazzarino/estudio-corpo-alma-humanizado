@@ -23,8 +23,6 @@ export interface SubmitPublicAppointmentInput {
   date: string;
   time: string;
   clientName: string;
-  clientFirstName?: string;
-  clientLastName?: string;
   clientEmail: string;
   clientPhone: string;
   clientCpf?: string;
@@ -43,6 +41,16 @@ export interface SubmitPublicAppointmentInput {
 const toBrazilDateTime = (date: string, time: string) =>
   new Date(`${date}T${time}:00${BRAZIL_TZ_OFFSET}`);
 
+function splitPublicNameParts(fullName: string) {
+  const cleaned = fullName.trim().replace(/\s+/g, " ");
+  if (!cleaned) return { firstName: "", lastName: "" };
+  const [firstName, ...rest] = cleaned.split(" ");
+  return {
+    firstName: firstName ?? "",
+    lastName: rest.join(" "),
+  };
+}
+
 export async function submitPublicAppointmentAction(
   data: SubmitPublicAppointmentInput
 ): Promise<ActionResult<{ appointmentId: string | null }>> {
@@ -52,10 +60,12 @@ export async function submitPublicAppointmentAction(
   }
 
   const normalizedCpf = (parsed.data.clientCpf ?? "").replace(/\D/g, "").slice(0, 11);
-  const publicFirstName = (parsed.data.clientFirstName ?? "").trim();
-  const publicLastName = (parsed.data.clientLastName ?? "").trim();
+  const normalizedClientName = parsed.data.clientName.trim();
+  const derivedParts = splitPublicNameParts(normalizedClientName);
+  const publicFirstName = (parsed.data.clientFirstName ?? "").trim() || derivedParts.firstName;
+  const publicLastName = (parsed.data.clientLastName ?? "").trim() || derivedParts.lastName;
   const publicFullName =
-    composePublicClientFullName(publicFirstName, publicLastName) || parsed.data.clientName.trim();
+    composePublicClientFullName(publicFirstName, publicLastName) || normalizedClientName;
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   let displacementFee = 0;

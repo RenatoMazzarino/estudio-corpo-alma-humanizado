@@ -176,8 +176,6 @@ export function BookingFlow({
   const [monthAvailability, setMonthAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingMonth, setIsLoadingMonth] = useState(false);
   const [clientName, setClientName] = useState("");
-  const [clientFirstName, setClientFirstName] = useState("");
-  const [clientLastName, setClientLastName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientCpf, setClientCpf] = useState("");
@@ -276,10 +274,7 @@ export function BookingFlow({
   const normalizedClientEmail = clientEmail.trim().toLowerCase();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClientEmail);
   const isExistingClientConfirmed = clientLookupStatus === "confirmed";
-  const publicClientFullName = useMemo(
-    () => [clientFirstName.trim(), clientLastName.trim()].filter(Boolean).join(" ") || clientName,
-    [clientFirstName, clientLastName, clientName]
-  );
+  const publicClientFullName = useMemo(() => clientName.trim(), [clientName]);
   const resolvedClientFullName = useMemo(() => {
     const candidate = (isExistingClientConfirmed ? clientName : publicClientFullName).trim();
     return candidate;
@@ -287,7 +282,7 @@ export function BookingFlow({
   const isIdentityNameReady =
     isExistingClientConfirmed
       ? resolvedClientFullName.length > 0
-      : clientFirstName.trim().length > 0 && clientLastName.trim().length > 0;
+      : clientName.trim().length > 0;
   const clientHeaderFirstName = useMemo(() => {
     const full = (clientName || publicClientFullName || "").trim();
     if (!full) return "Visitante";
@@ -514,8 +509,6 @@ export function BookingFlow({
       setClientLookupStatus("idle");
       setSuggestedClient(null);
       setClientName("");
-      setClientFirstName("");
-      setClientLastName("");
       setClientEmail("");
       setClientCpf("");
       setIdentityCpfAttempts(0);
@@ -539,8 +532,6 @@ export function BookingFlow({
         setSuggestedClient(null);
         setClientLookupStatus("not_found");
         setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
         setClientEmail("");
         setIdentityCpfAttempts(0);
         return;
@@ -565,8 +556,6 @@ export function BookingFlow({
         });
         setClientLookupStatus("found");
         setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
         if (result.data.client.phone) {
           setClientPhone(formatBrazilPhone(result.data.client.phone));
         }
@@ -577,8 +566,6 @@ export function BookingFlow({
         setSuggestedClient(null);
         setClientLookupStatus("not_found");
         setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
         setClientEmail("");
         setClientCpf("");
         setIdentityCpfAttempts(0);
@@ -636,8 +623,6 @@ export function BookingFlow({
         setSelectedTime("");
         setMonthAvailability({});
         setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
         setClientEmail("");
         setClientPhone("");
         setClientCpf("");
@@ -683,8 +668,6 @@ export function BookingFlow({
           }
         : current
     );
-    setClientFirstName(names.publicFirstName);
-    setClientLastName(names.publicLastName);
     setClientName(names.publicFullName || result.data.client.name || "Cliente");
     setClientEmail(result.data.client.email ?? "");
     setClientCpf(formatCpf(result.data.client.cpf ?? normalizedCpfDigits));
@@ -734,8 +717,6 @@ export function BookingFlow({
     setClientPhone("");
     setClientCpf("");
     setClientName("");
-    setClientFirstName("");
-    setClientLastName("");
     setClientEmail("");
     setSuggestedClient(null);
     setClientLookupStatus("idle");
@@ -918,8 +899,6 @@ export function BookingFlow({
         date,
         time: selectedTime,
         clientName: resolvedClientFullName,
-        clientFirstName: clientFirstName.trim(),
-        clientLastName: clientLastName.trim(),
         clientPhone,
         clientEmail: normalizedClientEmail,
         clientCpf,
@@ -954,8 +933,6 @@ export function BookingFlow({
     cep,
     cidade,
     clientCpf,
-    clientFirstName,
-    clientLastName,
     normalizedClientEmail,
     clientPhone,
     complemento,
@@ -1516,8 +1493,6 @@ export function BookingFlow({
     setSelectedTime("");
     setMonthAvailability({});
     setClientName("");
-    setClientFirstName("");
-    setClientLastName("");
     setClientEmail("");
     setClientPhone("");
     setClientCpf("");
@@ -1919,32 +1894,14 @@ export function BookingFlow({
                 <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                      Primeiro nome
+                      Nome completo
                     </label>
                     <input
                       type="text"
                       className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
-                      placeholder="Ex: Maria"
-                      value={clientFirstName}
-                      onChange={(event) => {
-                        setClientFirstName(event.target.value);
-                        setClientName([event.target.value.trim(), clientLastName.trim()].filter(Boolean).join(" "));
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                      Sobrenome
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
-                      placeholder="Ex: Silva Souza"
-                      value={clientLastName}
-                      onChange={(event) => {
-                        setClientLastName(event.target.value);
-                        setClientName([clientFirstName.trim(), event.target.value.trim()].filter(Boolean).join(" "));
-                      }}
+                      placeholder="Ex: Maria Silva Souza"
+                      value={clientName}
+                      onChange={(event) => setClientName(event.target.value)}
                     />
                   </div>
                   <div>
