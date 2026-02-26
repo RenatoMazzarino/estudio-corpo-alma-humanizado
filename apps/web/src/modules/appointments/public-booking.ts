@@ -23,6 +23,8 @@ export interface SubmitPublicAppointmentInput {
   date: string;
   time: string;
   clientName: string;
+  clientFirstName?: string;
+  clientLastName?: string;
   clientEmail: string;
   clientPhone: string;
   clientCpf?: string;
