@@ -54,7 +54,7 @@ Onde:
   - `N..` = baseado em nome (iniciais)
   - `T....` = baseado em telefone (ultimos 4 digitos)
   - `A...` = fallback de apoio
-- `YYMMDD`: data de entrada/geracao do codigo (base BR, usando `created_at`)
+- `YYMMDD`: data agendada do atendimento (base BR, usando `start_time`)
 - `NNNNNN`: sequencia global persistida (nao reutilizavel)
 
 Regras do codigo:
@@ -62,7 +62,7 @@ Regras do codigo:
 - unico por agendamento
 - quando campos-chave mudam (cliente/servico/data), um novo codigo e gerado
 - o codigo antigo nao e reaproveitado (sequencia global)
-- o sequencial global segue ordem de geracao/entrada (nao a data do atendimento)
+- o sequencial global segue ordem de geracao/entrada (`created_at`), e nao a data do atendimento
 
 Nota sobre o `##` mencionado antes:
 - no modelo provisoriamente calculado na UI, `##` era a ordem sequencial do mesmo servico no mesmo dia (`01`, `02`, ...)

@@ -85,7 +85,7 @@ BEGIN
     client_token := rpad(client_token, 4, 'X');
   END IF;
 
-  date_token := to_char(COALESCE(NEW.created_at, now()) AT TIME ZONE 'America/Sao_Paulo', 'YYMMDD');
+  date_token := to_char(COALESCE(NEW.start_time, NEW.created_at, now()) AT TIME ZONE 'America/Sao_Paulo', 'YYMMDD');
   seq_token := lpad(nextval('public.appointments_attendance_code_seq')::text, 6, '0');
 
   NEW.attendance_code := service_token || '-' || client_token || '-' || date_token || '-' || seq_token;
