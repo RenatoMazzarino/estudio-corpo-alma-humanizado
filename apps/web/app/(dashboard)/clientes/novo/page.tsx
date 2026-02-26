@@ -10,6 +10,10 @@ import { createClientAction, searchClientsByName } from "./actions";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import {
+  buildClientExtraDataProfile,
+  composeInternalClientName,
+} from "../../../../src/modules/clients/name-profile";
 
 interface ClientSuggestion {
   id: string;
@@ -71,7 +75,9 @@ function normalizePhone(raw: string) {
 
 export default function NewClientPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [reference, setReference] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [cpf, setCpf] = useState("");
   const [emailField, setEmailField] = useState("");
@@ -111,9 +117,27 @@ export default function NewClientPage() {
   });
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [extraData] = useState<Record<string, unknown>>({});
   const [suggestions, setSuggestions] = useState<ClientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const internalDisplayName = useMemo(
+    () => composeInternalClientName(firstName.trim(), reference.trim() || null),
+    [firstName, reference]
+  );
+  const publicDisplayName = useMemo(
+    () => [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+    [firstName, lastName]
+  );
+  const extraData = useMemo<Record<string, unknown>>(
+    () =>
+      firstName.trim() && lastName.trim()
+        ? buildClientExtraDataProfile({
+            publicFirstName: firstName.trim(),
+            publicLastName: lastName.trim(),
+            reference: reference.trim() || null,
+          })
+        : {},
+    [firstName, lastName, reference]
+  );
 
   const avatarPreview = useMemo(() => {
     if (!avatarFile) return null;
@@ -121,19 +145,19 @@ export default function NewClientPage() {
   }, [avatarFile]);
 
   useEffect(() => {
-    if (!name.trim()) {
+    if (!internalDisplayName.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
     const handle = setTimeout(async () => {
-      const result = await searchClientsByName(name.trim());
+      const result = await searchClientsByName(internalDisplayName.trim());
       setSuggestions(result.data ?? []);
       setShowSuggestions((result.data?.length ?? 0) > 0);
     }, 300);
 
     return () => clearTimeout(handle);
-  }, [name]);
+  }, [internalDisplayName]);
 
   const handleAddTag = (value: string, setTags: Dispatch<SetStateAction<string[]>>, clear: () => void) => {
     const next = value.trim();
@@ -243,9 +267,9 @@ export default function NewClientPage() {
   }, [allergyTags, conditionTags]);
 
   const initials = useMemo(() => {
-    if (!name.trim()) return "CA";
-    return name.trim().slice(0, 2).toUpperCase();
-  }, [name]);
+    if (!internalDisplayName.trim()) return "CA";
+    return internalDisplayName.trim().slice(0, 2).toUpperCase();
+  }, [internalDisplayName]);
 
   return (
     <div className="-mx-4 -mt-4">
@@ -266,6 +290,7 @@ export default function NewClientPage() {
 
       <main className="p-6 pb-28">
         <form action={createClientAction} className="space-y-6">
+          <input type="hidden" name="name" value={internalDisplayName} />
           <input type="hidden" name="phones_json" value={JSON.stringify(phonesPayload)} />
           <input type="hidden" name="emails_json" value={JSON.stringify(emailsPayload)} />
           <input type="hidden" name="addresses_json" value={JSON.stringify(addressesPayload)} />
@@ -297,15 +322,41 @@ export default function NewClientPage() {
                 />
               </label>
               <div className="flex-1">
-                <label className="text-xs font-extrabold text-muted uppercase tracking-widest">Nome completo</label>
+                <label className="text-xs font-extrabold text-muted uppercase tracking-widest">Primeiro nome</label>
                 <input
-                  name="name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Digite o nome"
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  placeholder="Ex: Renato"
                   className="w-full mt-2 px-4 py-3 rounded-2xl bg-paper border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-semibold"
                   required
                 />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  <input
+                    value={lastName}
+                    onChange={(event) => setLastName(event.target.value)}
+                    placeholder="Sobrenome"
+                    className="w-full px-4 py-3 rounded-2xl bg-paper border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-semibold"
+                    required
+                  />
+                  <input
+                    value={reference}
+                    onChange={(event) => setReference(event.target.value)}
+                    placeholder="Referência (uso interno)"
+                    className="w-full px-4 py-3 rounded-2xl bg-paper border border-line focus:outline-none focus:ring-2 focus:ring-studio-green/20 text-sm font-semibold"
+                  />
+                </div>
+                <div className="mt-2 rounded-2xl bg-studio-light border border-line px-3 py-2">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                    Nome no sistema
+                  </p>
+                  <p className="text-sm font-semibold text-studio-text mt-1">
+                    {internalDisplayName || "Primeiro Nome (Referência)"}
+                  </p>
+                  <p className="text-[10px] text-muted mt-2">Nome público (mensagens/telas públicas)</p>
+                  <p className="text-sm font-semibold text-studio-text">
+                    {publicDisplayName || "Primeiro Nome Sobrenome"}
+                  </p>
+                </div>
                 {showSuggestions && (
                   <div className="mt-2 bg-white border border-line rounded-2xl shadow-soft p-2 space-y-1">
                     {suggestions.map((client) => (
