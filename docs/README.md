@@ -7,6 +7,7 @@ Este diretório foi organizado em duas camadas:
 - `README.md` (raiz): setup e visão geral.
 - `MANUAL_RAPIDO.md`: comandos operacionais (dev, build, migrations, deploy).
 - `docs/DOCUMENTATION_CANONICAL_MATRIX.md`: classificação canônica (ativo/legado/histórico) e regra de leitura.
+- `docs/REGRAS_DE_NEGOCIO_E_FLUXOS.md`: referência operacional das regras de negócio (agendamento, atendimento, pagamentos, mensagens, IDs/códigos).
 - `docs/apis/API_GUIDE.md`: APIs internas do app.
 - `docs/integrations/INTEGRATIONS_TECNICO.md`: arquitetura e requisitos técnicos das integrações.
 - `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: operação de produção.

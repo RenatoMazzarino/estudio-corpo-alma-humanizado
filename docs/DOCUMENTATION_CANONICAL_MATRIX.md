@@ -40,6 +40,7 @@ Reduzir ambiguidade de onboarding e manutenção documental, classificando:
 | arquivo | categoria | tema | fonte de verdade? | status | observação | ação recomendada |
 |---|---|---|---|---|---|---|
 | `docs/README.md` | `canônico` | Índice de docs e regra de manutenção | `sim` | `atual` | Define separação ativo vs legado | Manter e referenciar novos docs ativos aqui |
+| `docs/REGRAS_DE_NEGOCIO_E_FLUXOS.md` | `canônico` | Regras de negócio e fluxos operacionais (agendamento, atendimento, pagamentos, mensagens, IDs/códigos) | `parcial` | `atual` | Consolida regras do código para operação; não substitui runtime/schema | Atualizar quando regra de negócio mudar no código |
 | `docs/apis/API_GUIDE.md` | `ativo` | Guia de rotas internas `/api` | `parcial` | `atual` | Cobertura atual dos endpoints do repo; ainda depende de envs e guards runtime | Revisar quando novas rotas `/api` forem criadas/alteradas |
 | `docs/branding/BRAND_TOKENS.md` | `canônico` | Tokens oficiais de marca (cores/logos) | `parcial` | `atual` | Bom para evitar regressão visual e hardcodes | Manter alinhado com `globals.css` |
 | `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md` | `canônico` | Operação diária de integrações | `parcial` | `atual` | Forte valor operacional; depende de envs reais | Atualizar quando mudar fluxo/rotina de produção |
