@@ -2,6 +2,8 @@
 
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createClient } from "../../../lib/supabase/server";
+import { createServiceClient } from "../../../lib/supabase/service";
+import type { Json } from "../../../lib/supabase/types";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
@@ -10,6 +12,7 @@ import { publicBookingSchema } from "../../shared/validation/appointments";
 import { estimateDisplacementFromAddress } from "../../shared/displacement/service";
 import { scheduleAppointmentLifecycleNotifications } from "../notifications/whatsapp-automation";
 import { getTenantBySlug } from "../settings/repository";
+import { buildClientExtraDataProfile, composePublicClientFullName } from "../clients/name-profile";
 
 export interface SubmitPublicAppointmentInput {
   tenantSlug: string;
@@ -17,8 +20,11 @@ export interface SubmitPublicAppointmentInput {
   date: string;
   time: string;
   clientName: string;
+  clientFirstName?: string;
+  clientLastName?: string;
   clientEmail: string;
   clientPhone: string;
+  clientCpf?: string;
   isHomeVisit?: boolean;
   addressCep?: string;
   addressLogradouro?: string;
@@ -41,6 +47,12 @@ export async function submitPublicAppointmentAction(
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos para agendamento", "VALIDATION_ERROR", 400, parsed.error));
   }
+
+  const normalizedCpf = (parsed.data.clientCpf ?? "").replace(/\D/g, "").slice(0, 11);
+  const publicFirstName = (parsed.data.clientFirstName ?? "").trim();
+  const publicLastName = (parsed.data.clientLastName ?? "").trim();
+  const publicFullName =
+    composePublicClientFullName(publicFirstName, publicLastName) || parsed.data.clientName.trim();
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   let displacementFee = 0;
@@ -73,7 +85,7 @@ export async function submitPublicAppointmentAction(
     tenant_slug: parsed.data.tenantSlug,
     service_id: parsed.data.serviceId,
     p_start_time: startDateTime.toISOString(),
-    client_name: parsed.data.clientName,
+    client_name: publicFullName,
     client_phone: parsed.data.clientPhone,
     p_client_email: parsed.data.clientEmail || undefined,
     p_address_cep: parsed.data.addressCep || undefined,
@@ -94,6 +106,47 @@ export async function submitPublicAppointmentAction(
   if (appointmentId) {
     const { data: tenant } = await getTenantBySlug(parsed.data.tenantSlug);
     const tenantId = tenant?.id ?? FIXED_TENANT_ID;
+    const serviceSupabase = createServiceClient();
+
+    const { data: appointment } = await serviceSupabase
+      .from("appointments")
+      .select("client_id")
+      .eq("tenant_id", tenantId)
+      .eq("id", appointmentId)
+      .maybeSingle();
+
+    if (appointment?.client_id) {
+      const { data: clientRow } = await serviceSupabase
+        .from("clients")
+        .select("email, cpf, extra_data")
+        .eq("tenant_id", tenantId)
+        .eq("id", appointment.client_id)
+        .maybeSingle();
+
+      const currentExtra =
+        clientRow?.extra_data &&
+        typeof clientRow.extra_data === "object" &&
+        !Array.isArray(clientRow.extra_data)
+          ? (clientRow.extra_data as Record<string, unknown>)
+          : {};
+      const newProfile =
+        publicFirstName && publicLastName
+          ? buildClientExtraDataProfile({
+              publicFirstName,
+              publicLastName,
+            })
+          : {};
+
+      await serviceSupabase
+        .from("clients")
+        .update({
+          email: parsed.data.clientEmail || clientRow?.email || null,
+          cpf: normalizedCpf || clientRow?.cpf || null,
+          extra_data: { ...currentExtra, ...newProfile } as Json,
+        })
+        .eq("tenant_id", tenantId)
+        .eq("id", appointment.client_id);
+    }
 
     await scheduleAppointmentLifecycleNotifications({
       tenantId,

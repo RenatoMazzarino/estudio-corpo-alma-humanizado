@@ -57,6 +57,8 @@ export const publicBookingSchema = z.object({
   date: z.string().min(10),
   time: z.string().min(4),
   clientName: z.string().min(1),
+  clientFirstName: z.string().optional().default(""),
+  clientLastName: z.string().optional().default(""),
   clientEmail: z.string().email("Email inválido"),
   clientPhone: z
     .string()
@@ -67,6 +69,15 @@ export const publicBookingSchema = z.object({
       const digits = value.replace(/\D/g, "");
       return digits.length === 10 || digits.length === 11;
     }, "Telefone inválido (com DDD)"),
+  clientCpf: z
+    .string()
+    .optional()
+    .default("")
+    .refine((value) => {
+      if (!value) return true;
+      const digits = value.replace(/\D/g, "");
+      return digits.length === 11;
+    }, "CPF inválido"),
   addressCep: z
     .string()
     .optional()

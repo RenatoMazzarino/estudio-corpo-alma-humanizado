@@ -10,6 +10,8 @@ interface ClientLookupResult {
   name: string;
   phone: string | null;
   email: string | null;
+  cpf: string | null;
+  extra_data: unknown;
   address_cep: string | null;
   address_logradouro: string | null;
   address_numero: string | null;
@@ -19,112 +21,183 @@ interface ClientLookupResult {
   address_estado: string | null;
 }
 
-export async function lookupClientByPhone({
+function normalizeCpfValue(value: string) {
+  return value.replace(/\D/g, "").slice(0, 11);
+}
+
+function normalizeEmailValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function isValidLookupEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+type LookupParams = {
+  tenantId: string;
+  phone?: string;
+  email?: string;
+  cpf?: string;
+};
+
+type PhoneRow = {
+  client_id: string;
+  number_raw: string | null;
+  number_e164: string | null;
+  is_primary?: boolean | null;
+};
+
+type EmailRow = {
+  client_id: string;
+  email: string | null;
+  is_primary?: boolean | null;
+  created_at?: string | null;
+};
+
+function buildPhonePatterns(phoneDigits: string) {
+  if (!(phoneDigits.length === 10 || phoneDigits.length === 11)) return [];
+  const shortDigits = phoneDigits.length > 8 ? phoneDigits.slice(-8) : phoneDigits;
+  const shortDigits9 = phoneDigits.length > 9 ? phoneDigits.slice(-9) : phoneDigits;
+  return Array.from(
+    new Set([phoneDigits, shortDigits9, shortDigits].filter((value) => value && value.length >= 8))
+  );
+}
+
+function matchPhoneCandidate(
+  phone: string | null | undefined,
+  variants: string[],
+  extraPhones: Array<{ number_raw: string | null; number_e164: string | null }>
+) {
+  if (phoneMatchesAny(phone, variants)) return true;
+  return extraPhones.some(
+    (entry) => phoneMatchesAny(entry.number_raw, variants) || phoneMatchesAny(entry.number_e164, variants)
+  );
+}
+
+function matchCpfCandidate(cpf: string | null | undefined, targetDigits: string) {
+  if (targetDigits.length !== 11) return false;
+  return normalizeCpfValue(cpf ?? "") === targetDigits;
+}
+
+function matchEmailCandidate(
+  email: string | null | undefined,
+  targetEmail: string,
+  extraEmails: Array<{ email: string | null }>
+) {
+  if (!targetEmail) return false;
+  if (normalizeEmailValue(email ?? "") === targetEmail) return true;
+  return extraEmails.some((entry) => normalizeEmailValue(entry.email ?? "") === targetEmail);
+}
+
+export async function lookupClientIdentity({
   tenantId,
   phone,
-}: {
-  tenantId: string;
-  phone: string;
-}): Promise<ActionResult<{ client: ClientLookupResult | null }>> {
-  const digits = normalizePhoneValue(phone);
-  if (digits.length < 10) {
+  email,
+  cpf,
+}: LookupParams): Promise<ActionResult<{ client: ClientLookupResult | null }>> {
+  const phoneDigits = normalizePhoneValue(phone ?? "");
+  const cpfDigits = normalizeCpfValue(cpf ?? "");
+  const emailNormalized = normalizeEmailValue(email ?? "");
+
+  const validPhone = phoneDigits.length === 10 || phoneDigits.length === 11;
+  const validCpf = cpfDigits.length === 11;
+  const validEmail = emailNormalized.length > 0 && isValidLookupEmail(emailNormalized);
+
+  if (!validPhone && !validCpf && !validEmail) {
     return ok({ client: null });
   }
 
   const supabase = createServiceClient();
-  const shortDigits = digits.length > 8 ? digits.slice(-8) : digits;
-  const shortDigits9 = digits.length > 9 ? digits.slice(-9) : digits;
+  const baseClientSelect =
+    "id, name, phone, email, cpf, extra_data, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado";
 
-  const patterns = Array.from(
-    new Set([digits, shortDigits9, shortDigits].filter((value) => value && value.length >= 8))
-  );
-
-  const loosePatterns = patterns.map((value) => `%${value.split("").join("%")}%`);
-
+  const phonePatterns = buildPhonePatterns(phoneDigits);
+  const phoneLoosePatterns = phonePatterns.map((value) => `%${value.split("").join("%")}%`);
   const phoneFilters = [
-    ...patterns.map((value) => `phone.ilike.%${sanitizeIlike(value)}%`),
-    ...loosePatterns.map((pattern) => `phone.ilike.${pattern}`),
+    ...phonePatterns.map((value) => `phone.ilike.%${sanitizeIlike(value)}%`),
+    ...phoneLoosePatterns.map((pattern) => `phone.ilike.${pattern}`),
   ]
     .filter(Boolean)
     .join(",");
 
-  const { data: clientsByPhone, error: clientsError } = phoneFilters
+  const emailFilter = validEmail ? `email.ilike.${sanitizeIlike(emailNormalized)}` : "";
+  const cpfFilter = validCpf ? `cpf.ilike.%${cpfDigits}%` : "";
+  const combinedClientOrFilters = [phoneFilters, emailFilter, cpfFilter].filter(Boolean).join(",");
+
+  const { data: clientsData, error: clientsError } = combinedClientOrFilters
     ? await supabase
         .from("clients")
-        .select(
-          "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
-        )
+        .select(baseClientSelect)
         .eq("tenant_id", tenantId)
-        .or(phoneFilters)
-    : await supabase
-        .from("clients")
-        .select(
-          "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
-        )
-        .eq("tenant_id", tenantId);
+        .or(combinedClientOrFilters)
+        .limit(200)
+    : await supabase.from("clients").select(baseClientSelect).eq("tenant_id", tenantId).limit(2000);
 
-  const phoneMatchFilters = [
-    ...patterns.map((value) => `number_e164.ilike.%${sanitizeIlike(value)}%`),
-    ...patterns.map((value) => `number_raw.ilike.%${sanitizeIlike(value)}%`),
-    ...loosePatterns.map((pattern) => `number_raw.ilike.${pattern}`),
-    ...loosePatterns.map((pattern) => `number_e164.ilike.${pattern}`),
-  ]
-    .filter(Boolean)
-    .join(",");
-
-  const { data: clientPhones, error: phonesError } = phoneMatchFilters
-    ? await supabase
-        .from("client_phones")
-        .select("client_id, number_raw, number_e164, is_primary")
-        .eq("tenant_id", tenantId)
-        .or(phoneMatchFilters)
-    : await supabase
-        .from("client_phones")
-        .select("client_id, number_raw, number_e164, is_primary")
-        .eq("tenant_id", tenantId);
-
-  if (clientsError || phonesError) {
-    const { data: fallbackClients, error: fallbackError } = await supabase
-      .from("clients")
-      .select(
-        "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
-      )
-      .eq("tenant_id", tenantId)
-      .not("phone", "is", null)
-      .limit(1000);
-
-    if (fallbackError) {
-      return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, fallbackError));
-    }
-
-    const fallbackClient =
-      (fallbackClients ?? []).find((client) => phoneMatchesAny(client.phone, patterns)) ?? null;
-
-    return ok({ client: fallbackClient });
+  if (clientsError) {
+    return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, clientsError));
   }
 
-  const candidateIds = new Set<string>();
-  (clientsByPhone ?? []).forEach((client) => candidateIds.add(client.id));
-  (clientPhones ?? []).forEach((phoneEntry) => candidateIds.add(phoneEntry.client_id));
+  const initialCandidates = (clientsData ?? []) as ClientLookupResult[];
+  const candidateIds = new Set(initialCandidates.map((client) => client.id));
 
-  if (candidateIds.size === 0) {
-    return ok({ client: null });
+  let phoneRows: PhoneRow[] = [];
+  if (validPhone) {
+    const phoneMatchFilters = [
+      ...phonePatterns.map((value) => `number_e164.ilike.%${sanitizeIlike(value)}%`),
+      ...phonePatterns.map((value) => `number_raw.ilike.%${sanitizeIlike(value)}%`),
+      ...phoneLoosePatterns.map((pattern) => `number_raw.ilike.${pattern}`),
+      ...phoneLoosePatterns.map((pattern) => `number_e164.ilike.${pattern}`),
+    ]
+      .filter(Boolean)
+      .join(",");
+
+    const { data, error } = phoneMatchFilters
+      ? await supabase
+          .from("client_phones")
+          .select("client_id, number_raw, number_e164, is_primary")
+          .eq("tenant_id", tenantId)
+          .or(phoneMatchFilters)
+          .limit(200)
+      : await supabase
+          .from("client_phones")
+          .select("client_id, number_raw, number_e164, is_primary")
+          .eq("tenant_id", tenantId)
+          .limit(200);
+
+    if (error) {
+      return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, error));
+    }
+    phoneRows = (data ?? []) as PhoneRow[];
+    phoneRows.forEach((row) => candidateIds.add(row.client_id));
+  }
+
+  let emailRows: EmailRow[] = [];
+  if (validEmail) {
+    const { data, error } = await supabase
+      .from("client_emails")
+      .select("client_id, email, is_primary, created_at")
+      .eq("tenant_id", tenantId)
+      .ilike("email", emailNormalized)
+      .limit(100);
+
+    if (error) {
+      return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, error));
+    }
+    emailRows = (data ?? []) as EmailRow[];
+    emailRows.forEach((row) => candidateIds.add(row.client_id));
   }
 
   const clientMap = new Map<string, ClientLookupResult>();
-  (clientsByPhone ?? []).forEach((client) => {
-    clientMap.set(client.id, client as ClientLookupResult);
-  });
+  initialCandidates.forEach((client) => clientMap.set(client.id, client));
 
   const missingIds = Array.from(candidateIds).filter((id) => !clientMap.has(id));
   if (missingIds.length > 0) {
     const { data: extraClients, error: extraError } = await supabase
       .from("clients")
-      .select(
-        "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
-      )
+      .select(baseClientSelect)
       .eq("tenant_id", tenantId)
       .in("id", missingIds);
+
     if (extraError) {
       return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, extraError));
     }
@@ -133,80 +206,75 @@ export async function lookupClientByPhone({
     });
   }
 
-  const phonesByClient = new Map<string, { number_raw: string | null; number_e164: string | null }[]>();
-  (clientPhones ?? []).forEach((phoneEntry) => {
-    const list = phonesByClient.get(phoneEntry.client_id) ?? [];
-    list.push({ number_raw: phoneEntry.number_raw, number_e164: phoneEntry.number_e164 });
-    phonesByClient.set(phoneEntry.client_id, list);
+  if (clientMap.size === 0) {
+    if (validCpf) {
+      const { data: cpfFallbackClients, error: cpfFallbackError } = await supabase
+        .from("clients")
+        .select(baseClientSelect)
+        .eq("tenant_id", tenantId)
+        .not("cpf", "is", null)
+        .limit(5000);
+      if (cpfFallbackError) {
+        return fail(
+          new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, cpfFallbackError)
+        );
+      }
+      (cpfFallbackClients ?? []).forEach((client) => clientMap.set(client.id, client as ClientLookupResult));
+    }
+    if (clientMap.size === 0) {
+      return ok({ client: null });
+    }
+  }
+
+  const phonesByClient = new Map<string, Array<{ number_raw: string | null; number_e164: string | null }>>();
+  phoneRows.forEach((row) => {
+    const list = phonesByClient.get(row.client_id) ?? [];
+    list.push({ number_raw: row.number_raw, number_e164: row.number_e164 });
+    phonesByClient.set(row.client_id, list);
   });
 
-  const { data: clientEmails, error: emailsError } = await supabase
-    .from("client_emails")
-    .select("client_id, email, is_primary, created_at")
-    .eq("tenant_id", tenantId)
-    .in("client_id", Array.from(candidateIds));
+  const emailsByClient = new Map<string, Array<{ email: string | null }>>();
+  emailRows.forEach((row) => {
+    const list = emailsByClient.get(row.client_id) ?? [];
+    list.push({ email: row.email });
+    emailsByClient.set(row.client_id, list);
+  });
 
-  if (emailsError) {
-    return fail(new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, emailsError));
-  }
+  const validCriteriaCount = [validPhone, validCpf, validEmail].filter(Boolean).length;
 
-  const emailByClient = new Map<string, string>();
-  (clientEmails ?? [])
-    .sort((a, b) => {
-      if (a.is_primary === b.is_primary) {
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      return a.is_primary ? -1 : 1;
+  const rankedCandidates = Array.from(clientMap.values())
+    .map((client) => {
+      const phoneMatched = validPhone
+        ? matchPhoneCandidate(client.phone, phonePatterns, phonesByClient.get(client.id) ?? [])
+        : false;
+      const cpfMatched = validCpf ? matchCpfCandidate(client.cpf, cpfDigits) : false;
+      const emailMatched = validEmail
+        ? matchEmailCandidate(client.email, emailNormalized, emailsByClient.get(client.id) ?? [])
+        : false;
+      const score = [phoneMatched, cpfMatched, emailMatched].filter(Boolean).length;
+      return { client, phoneMatched, cpfMatched, emailMatched, score };
     })
-    .forEach((entry) => {
-      if (!entry.email) return;
-      if (emailByClient.has(entry.client_id)) return;
-      emailByClient.set(entry.client_id, entry.email);
-    });
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
 
-  const candidates = Array.from(candidateIds)
-    .map((id) => {
-      const client = clientMap.get(id);
-      if (!client) return null;
-      return {
-        ...client,
-        email: client.email ?? emailByClient.get(id) ?? null,
-      };
-    })
-    .filter(Boolean) as ClientLookupResult[];
-
-  const matchedClient =
-    candidates.find((client) => phoneMatchesAny(client.phone, patterns)) ||
-    candidates.find((client) =>
-      (phonesByClient.get(client.id) ?? []).some(
-        (phoneEntry) =>
-          phoneMatchesAny(phoneEntry.number_raw, patterns) ||
-          phoneMatchesAny(phoneEntry.number_e164, patterns)
-      )
-    ) ||
-    null;
-
-  if (matchedClient) {
-    return ok({ client: matchedClient });
+  if (rankedCandidates.length === 0) {
+    return ok({ client: null });
   }
 
-  const { data: fallbackClients, error: fallbackClientsError } = await supabase
-    .from("clients")
-    .select(
-      "id, name, phone, email, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado"
-    )
-    .eq("tenant_id", tenantId)
-    .not("phone", "is", null)
-    .limit(500);
+  const strictMatch =
+    validCriteriaCount > 1
+      ? rankedCandidates.find((entry) => entry.score === validCriteriaCount)?.client ?? null
+      : null;
 
-  if (fallbackClientsError) {
-    return fail(
-      new AppError("Não foi possível buscar clientes.", "SUPABASE_ERROR", 500, fallbackClientsError)
-    );
-  }
+  return ok({ client: strictMatch ?? rankedCandidates[0]?.client ?? null });
+}
 
-  const fallbackClient =
-    (fallbackClients ?? []).find((client) => phoneMatchesAny(client.phone, patterns)) ?? null;
-
-  return ok({ client: fallbackClient });
+export async function lookupClientByPhone({
+  tenantId,
+  phone,
+}: {
+  tenantId: string;
+  phone: string;
+}): Promise<ActionResult<{ client: ClientLookupResult | null }>> {
+  return lookupClientIdentity({ tenantId, phone });
 }

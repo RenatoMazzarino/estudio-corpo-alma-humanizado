@@ -25,7 +25,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions/appointments";
-import { lookupClientByPhone } from "./public-actions/clients";
+import { lookupClientIdentity } from "./public-actions/clients";
 import {
   createCardPayment,
   createPixPayment,
@@ -37,6 +37,7 @@ import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
+import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import { VoucherOverlay } from "./components/voucher-overlay";
 import { formatCep, formatCountdown } from "./booking-flow-formatters";
 import {
@@ -151,6 +152,14 @@ declare global {
   }
 }
 
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
 export function BookingFlow({
   tenant,
   services,
@@ -167,8 +176,11 @@ export function BookingFlow({
   const [monthAvailability, setMonthAvailability] = useState<Record<string, string[]>>({});
   const [isLoadingMonth, setIsLoadingMonth] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [clientFirstName, setClientFirstName] = useState("");
+  const [clientLastName, setClientLastName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [clientCpf, setClientCpf] = useState("");
   const [cep, setCep] = useState("");
   const [logradouro, setLogradouro] = useState("");
   const [numero, setNumero] = useState("");
@@ -234,6 +246,8 @@ export function BookingFlow({
   const [suggestedClient, setSuggestedClient] = useState<{
     name: string | null;
     email: string | null;
+    cpf: string | null;
+    extra_data?: unknown;
     address_cep: string | null;
     address_logradouro: string | null;
     address_numero: string | null;
@@ -245,8 +259,28 @@ export function BookingFlow({
 
   const formattedPhoneDigits = clientPhone.replace(/\D/g, "");
   const isPhoneValid = formattedPhoneDigits.length === 10 || formattedPhoneDigits.length === 11;
+  const normalizedCpfDigits = clientCpf.replace(/\D/g, "").slice(0, 11);
+  const isCpfValid = normalizedCpfDigits.length === 11;
   const normalizedClientEmail = clientEmail.trim().toLowerCase();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClientEmail);
+  const hasAnyLookupIdentifier = isPhoneValid || isCpfValid || isEmailValid;
+  const publicClientFullName = useMemo(
+    () => [clientFirstName.trim(), clientLastName.trim()].filter(Boolean).join(" ") || clientName,
+    [clientFirstName, clientLastName, clientName]
+  );
+  const resolvedClientFullName = useMemo(() => {
+    const candidate = (clientLookupStatus === "found" ? clientName : publicClientFullName).trim();
+    return candidate;
+  }, [clientLookupStatus, clientName, publicClientFullName]);
+  const isIdentityNameReady =
+    clientLookupStatus === "found"
+      ? resolvedClientFullName.length > 0
+      : clientFirstName.trim().length > 0 && clientLastName.trim().length > 0;
+  const clientHeaderFirstName = useMemo(() => {
+    const full = (clientName || publicClientFullName || "").trim();
+    if (!full) return "Visitante";
+    return full.split(/\s+/)[0] ?? "Visitante";
+  }, [clientName, publicClientFullName]);
 
   const totalPrice = useMemo(() => {
     if (!selectedService) return 0;
@@ -280,18 +314,25 @@ export function BookingFlow({
     .filter((value) => value && value.trim().length > 0)
     .join(", ");
   const suggestedClientFirstName = useMemo(() => {
-    const name = suggestedClient?.name?.trim();
+    const names = resolveClientNames({
+      name: suggestedClient?.name ?? null,
+      extraData: suggestedClient?.extra_data,
+    });
+    const name = names.publicFirstName.trim();
     if (!name) return "cliente";
     return name.split(/\s+/)[0] ?? "cliente";
-  }, [suggestedClient?.name]);
+  }, [suggestedClient?.extra_data, suggestedClient?.name]);
   const suggestedClientInitials = useMemo(() => {
-    const name = suggestedClient?.name?.trim();
+    const name = resolveClientNames({
+      name: suggestedClient?.name ?? null,
+      extraData: suggestedClient?.extra_data,
+    }).publicFullName.trim();
     if (!name) return "CL";
     const parts = name.split(/\s+/).filter(Boolean);
     if (parts.length === 0) return "CL";
     const [first, second] = parts;
     return `${first?.[0] ?? ""}${second?.[0] ?? first?.[1] ?? ""}`.toUpperCase();
-  }, [suggestedClient?.name]);
+  }, [suggestedClient?.extra_data, suggestedClient?.name]);
   const pixCreatedAtMs = pixPayment?.created_at ? Date.parse(pixPayment.created_at) : Number.NaN;
   const pixExpiresAtMs = pixPayment?.expires_at ? Date.parse(pixPayment.expires_at) : Number.NaN;
   const pixTotalMs =
@@ -415,31 +456,51 @@ export function BookingFlow({
   );
 
   useEffect(() => {
-    if (!isPhoneValid) {
+    if (!hasAnyLookupIdentifier) {
       setClientLookupStatus("idle");
       setSuggestedClient(null);
       setClientName("");
       return;
     }
 
+    const lookupPhone = formattedPhoneDigits;
+    const lookupCpf = normalizedCpfDigits;
+    const lookupEmail = normalizedClientEmail;
+
     const timer = window.setTimeout(async () => {
-      const lookupPhone = formattedPhoneDigits;
       setClientLookupStatus("loading");
       setSuggestedClient(null);
-      const result = await lookupClientByPhone({ tenantId: tenant.id, phone: lookupPhone });
-      if (lookupPhone !== formattedPhoneDigits) {
+      const result = await lookupClientIdentity({
+        tenantId: tenant.id,
+        phone: lookupPhone,
+        cpf: lookupCpf,
+        email: lookupEmail,
+      });
+
+      if (
+        lookupPhone !== formattedPhoneDigits ||
+        lookupCpf !== normalizedCpfDigits ||
+        lookupEmail !== normalizedClientEmail
+      ) {
         return;
       }
+
       if (!result.ok) {
-        setClientName("");
         setSuggestedClient(null);
         setClientLookupStatus("not_found");
         return;
       }
+
       if (result.data.client) {
+        const names = resolveClientNames({
+          name: result.data.client.name ?? null,
+          extraData: result.data.client.extra_data,
+        });
         setSuggestedClient({
           name: result.data.client.name ?? null,
           email: result.data.client.email ?? null,
+          cpf: result.data.client.cpf ?? null,
+          extra_data: result.data.client.extra_data,
           address_cep: result.data.client.address_cep ?? null,
           address_logradouro: result.data.client.address_logradouro ?? null,
           address_numero: result.data.client.address_numero ?? null,
@@ -448,22 +509,41 @@ export function BookingFlow({
           address_cidade: result.data.client.address_cidade ?? null,
           address_estado: result.data.client.address_estado ?? null,
         });
-        setClientName(result.data.client.name ?? "Cliente");
-        setClientEmail(result.data.client.email ?? "");
+        setClientFirstName(names.publicFirstName);
+        setClientLastName(names.publicLastName);
+        setClientName(names.publicFullName || result.data.client.name || "Cliente");
+        if (result.data.client.phone) {
+          setClientPhone(formatBrazilPhone(result.data.client.phone));
+        }
+        if (result.data.client.email) {
+          setClientEmail(result.data.client.email);
+        }
+        if (result.data.client.cpf) {
+          setClientCpf(formatCpf(result.data.client.cpf));
+        }
         setClientLookupStatus("found");
       } else {
-        setClientName("");
         setSuggestedClient(null);
+        setClientName("");
         setClientLookupStatus("not_found");
       }
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [formattedPhoneDigits, isPhoneValid, tenant.id]);
+  }, [
+    formattedPhoneDigits,
+    hasAnyLookupIdentifier,
+    normalizedClientEmail,
+    normalizedCpfDigits,
+    tenant.id,
+  ]);
 
   const handleSwitchAccount = () => {
     setClientPhone("");
+    setClientCpf("");
     setClientName("");
+    setClientFirstName("");
+    setClientLastName("");
     setClientEmail("");
     setSuggestedClient(null);
     setClientLookupStatus("idle");
@@ -619,7 +699,16 @@ export function BookingFlow({
 
   const ensureAppointment = useCallback(async () => {
     if (appointmentId) return appointmentId;
-    if (!selectedService || !date || !selectedTime || !clientName || !isEmailValid) return null;
+    if (
+      !selectedService ||
+      !date ||
+      !selectedTime ||
+      !resolvedClientFullName ||
+      !isEmailValid ||
+      !isPhoneValid
+    ) {
+      return null;
+    }
 
     setIsSubmitting(true);
     try {
@@ -628,9 +717,12 @@ export function BookingFlow({
         serviceId: selectedService.id,
         date,
         time: selectedTime,
-        clientName,
+        clientName: resolvedClientFullName,
+        clientFirstName: clientFirstName.trim(),
+        clientLastName: clientLastName.trim(),
         clientPhone,
         clientEmail: normalizedClientEmail,
+        clientCpf,
         isHomeVisit,
         addressCep: cep,
         addressLogradouro: logradouro,
@@ -661,7 +753,9 @@ export function BookingFlow({
     bairro,
     cep,
     cidade,
-    clientName,
+    clientCpf,
+    clientFirstName,
+    clientLastName,
     normalizedClientEmail,
     clientPhone,
     complemento,
@@ -672,10 +766,12 @@ export function BookingFlow({
     isHomeVisit,
     logradouro,
     numero,
+    resolvedClientFullName,
     selectedService,
     selectedTime,
     tenant.slug,
     isEmailValid,
+    isPhoneValid,
     showToast,
   ]);
 
@@ -710,7 +806,7 @@ export function BookingFlow({
         tenantId: tenant.id,
         amount: payableSignalAmount,
         payerEmail: normalizedClientEmail,
-        payerName: clientName,
+        payerName: resolvedClientFullName,
         payerPhone: clientPhone,
         attempt: normalizedAttempt,
       });
@@ -737,12 +833,12 @@ export function BookingFlow({
     }
   }, [
     appointmentId,
-    clientName,
     clientPhone,
     ensureAppointment,
     normalizedClientEmail,
     payableSignalAmount,
     pixAttempt,
+    resolvedClientFullName,
     selectedService,
     showToast,
     tenant.id,
@@ -1009,7 +1105,7 @@ export function BookingFlow({
               paymentMethodId: data.paymentMethodId,
               installments: Number(data.installments) || 1,
               payerEmail: data.cardholderEmail || normalizedClientEmail,
-              payerName: clientName,
+              payerName: resolvedClientFullName,
               payerPhone: clientPhone,
               identificationType: data.identificationType,
               identificationNumber: data.identificationNumber,
@@ -1068,7 +1164,6 @@ export function BookingFlow({
     };
   }, [
     appointmentId,
-    clientName,
     clientPhone,
     mercadoPagoPublicKey,
     ensureAppointment,
@@ -1077,6 +1172,7 @@ export function BookingFlow({
     paymentMethod,
     selectedService,
     payableSignalAmount,
+    resolvedClientFullName,
     showToast,
     step,
     tenant.id,
@@ -1279,7 +1375,7 @@ export function BookingFlow({
 
   const isNextDisabled = useMemo(() => {
     if (step === "IDENT") {
-      return !isPhoneValid || !clientName.trim() || !isEmailValid;
+      return !isPhoneValid || !isEmailValid || !isIdentityNameReady;
     }
     if (step === "SERVICE") {
       return !selectedService;
@@ -1298,7 +1394,7 @@ export function BookingFlow({
     addressComplete,
     isEmailValid,
     displacementReady,
-    clientName,
+    isIdentityNameReady,
     date,
     isPhoneValid,
     isSubmitting,
@@ -1349,7 +1445,7 @@ export function BookingFlow({
         </div>
         <div className="text-right">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cliente</p>
-          <p className="text-sm font-bold text-studio-text">{clientName || "Visitante"}</p>
+          <p className="text-sm font-bold text-studio-text">{clientHeaderFirstName}</p>
         </div>
       </header>
 
@@ -1408,7 +1504,7 @@ export function BookingFlow({
             <div className="space-y-5">
               <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 transition focus-within:border-studio-green focus-within:ring-4 focus-within:ring-studio-green/10">
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                  Seu WhatsApp
+                  WhatsApp
                 </label>
                 <div className="flex items-center gap-3">
                   <Phone className="h-5 w-5 text-studio-green" />
@@ -1423,8 +1519,45 @@ export function BookingFlow({
                   />
                 </div>
                 <p className="mt-2 text-[11px] text-gray-500">
-                  Vamos identificar seu cadastro automaticamente por este número.
+                  Podemos localizar seu cadastro por WhatsApp, CPF ou email.
                 </p>
+              </div>
+
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 transition focus-within:border-studio-green focus-within:ring-4 focus-within:ring-studio-green/10">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                  CPF
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={14}
+                  className="w-full bg-transparent text-lg font-bold text-studio-text placeholder:text-gray-300 outline-none"
+                  placeholder="000.000.000-00"
+                  value={clientCpf}
+                  onChange={(event) => setClientCpf(formatCpf(event.target.value))}
+                />
+                <p className="mt-2 text-[11px] text-gray-500">
+                  Opcional. Se informar, também usaremos para localizar seu cadastro.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                  Seu Email
+                </label>
+                <input
+                  type="email"
+                  inputMode="email"
+                  className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                  placeholder="voce@exemplo.com"
+                  value={clientEmail}
+                  onChange={(event) => setClientEmail(event.target.value)}
+                />
+                {clientEmail && !isEmailValid && (
+                  <p className="mt-2 text-center text-xs text-red-500">
+                    Informe um email válido para confirmar o agendamento.
+                  </p>
+                )}
               </div>
 
               {clientLookupStatus === "found" && suggestedClient && (
@@ -1441,7 +1574,10 @@ export function BookingFlow({
                             Olá
                           </p>
                           <p className="truncate text-base font-bold text-studio-text">
-                            {suggestedClient.name}
+                            {resolveClientNames({
+                              name: suggestedClient.name ?? null,
+                              extraData: suggestedClient.extra_data,
+                            }).publicFullName}
                           </p>
                         </div>
                       </div>
@@ -1463,46 +1599,45 @@ export function BookingFlow({
                 </>
               )}
 
-              {clientLookupStatus === "not_found" && isPhoneValid && (
+              {clientLookupStatus === "not_found" && hasAnyLookupIdentifier && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Não encontramos cadastro com esse WhatsApp. Para criar seu cadastro, precisamos do
-                  nome completo e do email.
+                  Não encontramos cadastro com os dados informados. Para criar seu cadastro, preencha
+                  seu primeiro nome e sobrenome.
                 </div>
               )}
 
-              {clientLookupStatus === "not_found" && isPhoneValid && (
-                <div>
-                  <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                    Nome completo
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
-                    placeholder="Digite seu nome completo"
-                    value={clientName}
-                    onChange={(event) => setClientName(event.target.value)}
-                  />
-                </div>
-              )}
-
-              {isPhoneValid && (
-                <div>
-                  <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                    Seu Email
-                  </label>
-                  <input
-                    type="email"
-                    inputMode="email"
-                    className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
-                    placeholder="voce@exemplo.com"
-                    value={clientEmail}
-                    onChange={(event) => setClientEmail(event.target.value)}
-                  />
-                  {clientEmail && !isEmailValid && (
-                    <p className="mt-2 text-center text-xs text-red-500">
-                      Informe um email válido para confirmar o agendamento.
-                    </p>
-                  )}
+              {clientLookupStatus === "not_found" && hasAnyLookupIdentifier && (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                      Primeiro nome
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                      placeholder="Ex: Maria"
+                      value={clientFirstName}
+                      onChange={(event) => {
+                        setClientFirstName(event.target.value);
+                        setClientName([event.target.value.trim(), clientLastName.trim()].filter(Boolean).join(" "));
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                      Sobrenome
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                      placeholder="Ex: Silva Souza"
+                      value={clientLastName}
+                      onChange={(event) => {
+                        setClientLastName(event.target.value);
+                        setClientName([clientFirstName.trim(), event.target.value.trim()].filter(Boolean).join(" "));
+                      }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -1991,7 +2126,7 @@ export function BookingFlow({
                   Cliente
                 </p>
                 <p className="text-base font-bold text-studio-text">
-                  {clientName || "Cliente"}
+                  {resolvedClientFullName || "Cliente"}
                 </p>
               </div>
 
@@ -2182,7 +2317,7 @@ export function BookingFlow({
                     <input
                       id="mp-cardholder-name"
                       name="cardholderName"
-                      defaultValue={clientName}
+                      defaultValue={resolvedClientFullName}
                       placeholder="Nome no cartão"
                       className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
                     />
@@ -2357,7 +2492,7 @@ export function BookingFlow({
         onDownload={handleDownloadVoucher}
         onShare={handleShareVoucher}
         voucherRef={voucherRef}
-        clientName={clientName}
+        clientName={resolvedClientFullName || clientName}
         formattedDate={format(selectedDateObj, "dd/MM/yyyy")}
         selectedTime={selectedTime}
         selectedServiceName={selectedService?.name ?? "Serviço"}
