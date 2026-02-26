@@ -329,6 +329,11 @@ Saida:
 
 - caso simples de cobranca no agendamento funcionando E2E
 
+Status desta fase:
+
+- `Concluida`
+- Implementada no `/novo` com criacao sem redirect + pagamento em dinheiro no fluxo embutido de checkout.
+
 ### Fase 3 - Cobrar agora: PIX
 
 - integrar com fluxo PIX atual (reaproveitar componentes/estado)
@@ -341,6 +346,11 @@ Saida:
 
 - PIX no agendamento funcionando E2E
 
+Status desta fase:
+
+- `Concluida`
+- Reaproveita fluxo de PIX MP do checkout do atendimento em modo embutido no bottom sheet do `/novo`.
+
 ### Fase 4 - Cobrar agora: Cartao / Point
 
 - integrar fluxo Point no novo contexto
@@ -350,6 +360,11 @@ Saida:
 Saida:
 
 - cartao no agendamento funcionando E2E
+
+Status desta fase:
+
+- `Concluida`
+- Reaproveita fluxo Point/cartao do checkout do atendimento em modo embutido no bottom sheet do `/novo`.
 
 ### Fase 5 - Templates e textos (interno + Meta)
 
@@ -429,5 +444,5 @@ Mitigacao:
 
 ## Decisoes em aberto (apos fechamento da Fase 1)
 
-- Nenhuma decisao bloqueante para Fase 1.
-- Pendencias de decisao ficam concentradas na Fase 2+ (mensagens/template Meta e UX final de cobranca no agendamento), conforme evolucao do piloto.
+- Nenhuma decisao bloqueante para Fases 1-4 (implementacao funcional concluida no piloto DEV).
+- Pendencias remanescentes concentram-se em refinamentos de mensagens/template Meta e ajustes finos de UX operacional.
