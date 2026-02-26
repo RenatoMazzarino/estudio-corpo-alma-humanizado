@@ -11,6 +11,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function normalizeClient<T extends { clients: unknown }>(appointment: T) {
   const clients = appointment.clients;
   if (Array.isArray(clients)) {
@@ -18,6 +20,8 @@ function normalizeClient<T extends { clients: unknown }>(appointment: T) {
   }
   return appointment;
 }
+
+type VoucherAppointmentRecord = Record<string, unknown> & { clients: unknown };
 
 function VoucherNotFound() {
   return (
@@ -36,15 +40,31 @@ function VoucherNotFound() {
 export default async function VoucherPage(props: PageProps) {
   const params = await props.params;
   const supabase = createServiceClient();
+  const publicId = params.id.trim();
+  const appointmentSelect =
+    "id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name )";
 
-  const { data: appointmentData } = await supabase
-    .from("appointments")
-    .select(
-      "id, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name )"
-    )
-    .eq("id", params.id)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .maybeSingle();
+  let appointmentData: VoucherAppointmentRecord | null = null;
+
+  if (UUID_PATTERN.test(publicId)) {
+    const { data } = await supabase
+      .from("appointments")
+      .select(appointmentSelect)
+      .eq("id", publicId)
+      .eq("tenant_id", FIXED_TENANT_ID)
+      .maybeSingle();
+    appointmentData = (data as VoucherAppointmentRecord | null) ?? null;
+  }
+
+  if (!appointmentData) {
+    const { data } = await supabase
+      .from("appointments")
+      .select(appointmentSelect)
+      .eq("attendance_code", publicId)
+      .eq("tenant_id", FIXED_TENANT_ID)
+      .maybeSingle();
+    appointmentData = (data as VoucherAppointmentRecord | null) ?? null;
+  }
 
   if (!appointmentData) {
     return <VoucherNotFound />;
@@ -52,6 +72,7 @@ export default async function VoucherPage(props: PageProps) {
 
   const appointment = normalizeClient(appointmentData) as {
     id: string;
+    attendance_code?: string | null;
     service_name: string | null;
     start_time: string;
     is_home_visit: boolean | null;
@@ -97,7 +118,7 @@ export default async function VoucherPage(props: PageProps) {
       timeLabel={timeLabel}
       serviceName={appointment.service_name || "Agendamento"}
       locationLabel={locationLine}
-      bookingId={`AGD-${appointment.id.slice(0, 8).toUpperCase()}`}
+      bookingId={appointment.attendance_code?.trim() || `AGD-${appointment.id.slice(0, 8).toUpperCase()}`}
     />
   );
 }

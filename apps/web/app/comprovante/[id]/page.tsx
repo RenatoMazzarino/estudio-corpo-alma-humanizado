@@ -10,6 +10,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
@@ -21,6 +23,8 @@ function normalizeClient<T extends { clients: unknown }>(appointment: T) {
   }
   return appointment;
 }
+
+type ReceiptAppointmentRecord = Record<string, unknown> & { clients: unknown };
 
 function ReceiptNotFound() {
   return (
@@ -39,15 +43,31 @@ function ReceiptNotFound() {
 export default async function ComprovantePage(props: PageProps) {
   const params = await props.params;
   const supabase = createServiceClient();
+  const publicId = params.id.trim();
+  const appointmentSelect =
+    "id, attendance_code, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name )";
 
-  const { data: appointmentData } = await supabase
-    .from("appointments")
-    .select(
-      "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name )"
-    )
-    .eq("id", params.id)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .maybeSingle();
+  let appointmentData: ReceiptAppointmentRecord | null = null;
+
+  if (UUID_PATTERN.test(publicId)) {
+    const { data } = await supabase
+      .from("appointments")
+      .select(appointmentSelect)
+      .eq("id", publicId)
+      .eq("tenant_id", FIXED_TENANT_ID)
+      .maybeSingle();
+    appointmentData = (data as ReceiptAppointmentRecord | null) ?? null;
+  }
+
+  if (!appointmentData) {
+    const { data } = await supabase
+      .from("appointments")
+      .select(appointmentSelect)
+      .eq("attendance_code", publicId)
+      .eq("tenant_id", FIXED_TENANT_ID)
+      .maybeSingle();
+    appointmentData = (data as ReceiptAppointmentRecord | null) ?? null;
+  }
 
   if (!appointmentData) {
     return <ReceiptNotFound />;
@@ -55,6 +75,7 @@ export default async function ComprovantePage(props: PageProps) {
 
   const appointment = normalizeClient(appointmentData) as {
     id: string;
+    attendance_code?: string | null;
     service_name: string;
     start_time: string;
     price: number | null;
