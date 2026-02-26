@@ -11,7 +11,9 @@ interface ClientLookupResult {
   phone: string | null;
   email: string | null;
   cpf: string | null;
-  extra_data: unknown;
+  public_first_name: string | null;
+  public_last_name: string | null;
+  internal_reference: string | null;
   address_cep: string | null;
   address_logradouro: string | null;
   address_numero: string | null;
@@ -109,7 +111,7 @@ export async function lookupClientIdentity({
 
   const supabase = createServiceClient();
   const baseClientSelect =
-    "id, name, phone, email, cpf, extra_data, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado";
+    "id, name, phone, email, cpf, public_first_name, public_last_name, internal_reference, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado";
 
   const phonePatterns = buildPhonePatterns(phoneDigits);
   const phoneLoosePatterns = phonePatterns.map((value) => `%${value.split("").join("%")}%`);
@@ -261,12 +263,12 @@ export async function lookupClientIdentity({
     return ok({ client: null });
   }
 
-  const strictMatch =
-    validCriteriaCount > 1
-      ? rankedCandidates.find((entry) => entry.score === validCriteriaCount)?.client ?? null
-      : null;
+  if (validCriteriaCount > 1) {
+    const strictMatch = rankedCandidates.find((entry) => entry.score === validCriteriaCount)?.client ?? null;
+    return ok({ client: strictMatch });
+  }
 
-  return ok({ client: strictMatch ?? rankedCandidates[0]?.client ?? null });
+  return ok({ client: rankedCandidates[0]?.client ?? null });
 }
 
 export async function lookupClientByPhone({
