@@ -118,7 +118,7 @@ type ClientSelectionMode = "idle" | "existing" | "new";
 type FinanceDraftItemType = "service" | "fee" | "addon" | "adjustment";
 type CollectionTimingDraft = "at_attendance" | "charge_now";
 type ChargeNowAmountMode = "full" | "signal" | "custom";
-type ChargeNowMethodDraft = "cash" | "pix_mp" | "card";
+type ChargeNowMethodDraft = "cash" | "pix_mp" | "card" | "waiver";
 type BookingConfirmationStep = "review" | "creating_charge" | "charge_payment" | "charge_manual_prompt";
 
 interface FinanceDraftItem {
@@ -483,7 +483,6 @@ export function AppointmentForm({
       ? initialAppointment.displacementFee.toFixed(2).replace(".", ",")
       : ""
   );
-  const [isCourtesyAppointment, setIsCourtesyAppointment] = useState(false);
   const [internalNotes, setInternalNotes] = useState(initialAppointment?.internalNotes ?? "");
   const { toast, showToast } = useToast();
   const selectedService = useMemo(
@@ -831,6 +830,7 @@ export function AppointmentForm({
   }, [chargeNowAmountMode, chargeNowMethodDraft, chargeNowSuggestedSignalAmount, parsedChargeNowCustomAmount, scheduleTotal]);
   const chargeNowAmountError = useMemo(() => {
     if (collectionTimingDraft !== "charge_now") return null;
+    if (chargeNowMethodDraft === "waiver") return null;
     if (scheduleTotal <= 0) return "Configure o financeiro antes de cobrar no agendamento.";
     if (chargeNowAmountMode === "custom") {
       const custom = Math.max(0, parsedChargeNowCustomAmount ?? 0);
@@ -847,6 +847,7 @@ export function AppointmentForm({
   }, [chargeNowAmountMode, chargeNowDraftAmount, chargeNowMethodDraft, collectionTimingDraft, parsedChargeNowCustomAmount, scheduleTotal]);
   const createPriceOverrideValue = selectedService ? scheduleTotal.toFixed(2) : "";
   const createCheckoutServiceAmountValue = selectedService ? effectiveServicePriceDraft.toFixed(2) : "";
+  const isCourtesyDraft = !isEditing && collectionTimingDraft === "charge_now" && chargeNowMethodDraft === "waiver";
   const createCheckoutExtraItemsJson = useMemo(
     () =>
       JSON.stringify(
@@ -1844,6 +1845,7 @@ export function AppointmentForm({
           value={collectionTimingDraft}
         />
       )}
+      {!isEditing && isCourtesyDraft && <input type="hidden" name="is_courtesy" value="on" />}
       <input type="hidden" name="client_address_id" value={isHomeVisit ? (selectedAddressId ?? "") : ""} />
       <input type="hidden" name="address_label" value={isHomeVisit ? addressLabel : ""} />
       <input
@@ -2544,28 +2546,6 @@ export function AppointmentForm({
           <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
         </div>
 
-        {!isEditing && (
-          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                name="is_courtesy"
-                type="checkbox"
-                checked={isCourtesyAppointment}
-                onChange={(event) => setIsCourtesyAppointment(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-sky-300 text-sky-600 focus:ring-sky-400"
-              />
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold uppercase tracking-widest text-sky-700">
-                  Marcar como cortesia
-                </p>
-                <p className="text-xs text-sky-800/80 mt-1">
-                  O agendamento será criado com pagamento liberado e o card aparecerá com a tag
-                  <strong> Cortesia</strong>.
-                </p>
-              </div>
-            </label>
-          </div>
-        )}
       </section>
 
       {!isEditing && (
@@ -2831,89 +2811,8 @@ export function AppointmentForm({
               {collectionTimingDraft === "charge_now" && (
                 <div className="mt-4 space-y-3 border-t border-line pt-4">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Valor a cobrar agora</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setChargeNowAmountMode("full")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
-                          chargeNowAmountMode === "full"
-                            ? "border-studio-green bg-studio-light text-studio-green"
-                            : "border-line text-muted hover:bg-paper"
-                        }`}
-                      >
-                        Integral
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setChargeNowAmountMode("signal")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
-                          chargeNowAmountMode === "signal"
-                            ? "border-studio-green bg-studio-light text-studio-green"
-                            : "border-line text-muted hover:bg-paper"
-                        }`}
-                      >
-                        Sinal
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setChargeNowAmountMode("custom")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
-                          chargeNowAmountMode === "custom"
-                            ? "border-studio-green bg-studio-light text-studio-green"
-                            : "border-line text-muted hover:bg-paper"
-                        }`}
-                      >
-                        Personalizado
-                      </button>
-                    </div>
-                  </div>
-
-                  {chargeNowAmountMode === "signal" && (
-                    <div className="grid grid-cols-[1fr_auto] gap-3">
-                      <div className="rounded-2xl border border-line bg-paper px-4 py-3">
-                        <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                          Percentual do sinal (%)
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={chargeNowSignalPercent}
-                          onChange={(event) => setChargeNowSignalPercent(Math.max(0, Number(event.target.value) || 0))}
-                          className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
-                        />
-                      </div>
-                      <div className="rounded-2xl border border-line bg-paper px-4 py-3 min-w-[136px]">
-                        <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                          Valor do sinal
-                        </label>
-                        <p className="mt-1 text-lg font-black text-studio-text tabular-nums">
-                          R$ {formatCurrencyLabel(chargeNowSuggestedSignalAmount)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {chargeNowAmountMode === "custom" && (
-                    <div className="rounded-2xl border border-line bg-paper px-4 py-3">
-                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                        Valor personalizado
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={chargeNowCustomAmount}
-                        onChange={(event) => setChargeNowCustomAmount(event.target.value)}
-                        className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
-                        placeholder="0,00"
-                      />
-                    </div>
-                  )}
-
-                  <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Forma de pagamento</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    <div className="mt-2 grid grid-cols-4 gap-2">
                       <button
                         type="button"
                         onClick={() => setChargeNowMethodDraft("pix_mp")}
@@ -2947,27 +2846,134 @@ export function AppointmentForm({
                       >
                         Dinheiro
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setChargeNowMethodDraft("waiver")}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                          chargeNowMethodDraft === "waiver"
+                            ? "border-sky-500 bg-sky-50 text-sky-700"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        Cortesia
+                      </button>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-line bg-paper px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                        Valor a cobrar agora
-                      </span>
-                      <span className="text-lg font-black text-studio-text tabular-nums">
-                        R$ {formatCurrencyLabel(chargeNowDraftAmount)}
-                      </span>
-                    </div>
-                    {chargeNowAmountError && (
-                      <p className="mt-2 text-[11px] font-semibold text-red-700">{chargeNowAmountError}</p>
-                    )}
-                    {!chargeNowAmountError && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && (
-                      <p className="mt-2 text-[11px] text-muted">
-                        Valor mínimo do PIX Mercado Pago: R$ 1,00.
+                  {chargeNowMethodDraft === "waiver" ? (
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
+                        Cortesia interna
                       </p>
-                    )}
-                  </div>
+                      <p className="mt-1 text-[11px] text-sky-900">
+                        O agendamento será criado com pagamento liberado (<strong>Cortesia</strong>) e não abrirá fluxo de cobrança.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Valor a cobrar agora</p>
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setChargeNowAmountMode("full")}
+                            className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                              chargeNowAmountMode === "full"
+                                ? "border-studio-green bg-studio-light text-studio-green"
+                                : "border-line text-muted hover:bg-paper"
+                            }`}
+                          >
+                            Integral
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChargeNowAmountMode("signal")}
+                            className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                              chargeNowAmountMode === "signal"
+                                ? "border-studio-green bg-studio-light text-studio-green"
+                                : "border-line text-muted hover:bg-paper"
+                            }`}
+                          >
+                            Sinal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChargeNowAmountMode("custom")}
+                            className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                              chargeNowAmountMode === "custom"
+                                ? "border-studio-green bg-studio-light text-studio-green"
+                                : "border-line text-muted hover:bg-paper"
+                            }`}
+                          >
+                            Personalizado
+                          </button>
+                        </div>
+                      </div>
+
+                      {chargeNowAmountMode === "signal" && (
+                        <div className="grid grid-cols-[1fr_auto] gap-3">
+                          <div className="rounded-2xl border border-line bg-paper px-4 py-3">
+                            <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                              Percentual do sinal (%)
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={chargeNowSignalPercent}
+                              onChange={(event) =>
+                                setChargeNowSignalPercent(Math.max(0, Number(event.target.value) || 0))
+                              }
+                              className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
+                            />
+                          </div>
+                          <div className="rounded-2xl border border-line bg-paper px-4 py-3 min-w-[136px]">
+                            <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                              Valor do sinal
+                            </label>
+                            <p className="mt-1 text-lg font-black text-studio-text tabular-nums">
+                              R$ {formatCurrencyLabel(chargeNowSuggestedSignalAmount)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {chargeNowAmountMode === "custom" && (
+                        <div className="rounded-2xl border border-line bg-paper px-4 py-3">
+                          <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                            Valor personalizado
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={chargeNowCustomAmount}
+                            onChange={(event) => setChargeNowCustomAmount(event.target.value)}
+                            className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
+                            placeholder="0,00"
+                          />
+                        </div>
+                      )}
+
+                      <div className="rounded-2xl border border-line bg-paper px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                            Valor a cobrar agora
+                          </span>
+                          <span className="text-lg font-black text-studio-text tabular-nums">
+                            R$ {formatCurrencyLabel(chargeNowDraftAmount)}
+                          </span>
+                        </div>
+                        {chargeNowAmountError && (
+                          <p className="mt-2 text-[11px] font-semibold text-red-700">{chargeNowAmountError}</p>
+                        )}
+                        {!chargeNowAmountError && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && (
+                          <p className="mt-2 text-[11px] text-muted">
+                            Valor mínimo do PIX Mercado Pago: R$ 1,00.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -3718,15 +3724,24 @@ export function AppointmentForm({
                                 ? "PIX"
                                 : chargeNowMethodDraft === "card"
                                   ? "Cartão"
-                                  : "Dinheiro"}
+                                  : chargeNowMethodDraft === "cash"
+                                    ? "Dinheiro"
+                                    : "Cortesia"}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-gray-500">Valor a cobrar agora</span>
-                            <span className="font-semibold text-studio-text">
-                              R$ {formatCurrencyLabel(chargeNowDraftAmount)}
-                            </span>
-                          </div>
+                          {chargeNowMethodDraft !== "waiver" ? (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-gray-500">Valor a cobrar agora</span>
+                              <span className="font-semibold text-studio-text">
+                                R$ {formatCurrencyLabel(chargeNowDraftAmount)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-gray-500">Status financeiro</span>
+                              <span className="font-semibold text-sky-700">Cortesia / pagamento liberado</span>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -3737,7 +3752,7 @@ export function AppointmentForm({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {collectionTimingDraft === "charge_now" ? (
+                    {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver" ? (
                       <>
                         <button
                           type="button"
@@ -3762,14 +3777,14 @@ export function AppointmentForm({
                           onClick={() => handleSchedule(true)}
                           className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
                         >
-                          Agendar e avisar
+                          {isCourtesyDraft ? "Agendar cortesia e avisar" : "Agendar e avisar"}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleSchedule(false)}
                           className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
                         >
-                          Agendar sem enviar
+                          {isCourtesyDraft ? "Agendar cortesia sem enviar" : "Agendar sem enviar"}
                         </button>
                       </>
                     )}

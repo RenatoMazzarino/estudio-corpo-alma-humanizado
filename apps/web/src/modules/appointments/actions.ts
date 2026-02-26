@@ -315,7 +315,7 @@ export async function createAppointment(
   const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
   const checkoutServiceAmount = parseDecimalInput(rawCheckoutServiceAmount);
   const initialCheckoutDiscountValue = parseDecimalInput(rawInitialCheckoutDiscountValue);
-  if (paymentCollectionTiming === "charge_now" && responseMode !== "json") {
+  if (paymentCollectionTiming === "charge_now" && responseMode !== "json" && !isCourtesyAppointment) {
     throw new AppError(
       "Cobrança no agendamento entra na Fase 2 e ainda não está liberada.",
       "VALIDATION_ERROR",
