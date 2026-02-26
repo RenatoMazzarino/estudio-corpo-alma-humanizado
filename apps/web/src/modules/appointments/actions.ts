@@ -289,13 +289,9 @@ export async function createAppointment(
   const financeExtraItems = parseInitialFinanceExtraItems(
     (formData.get("finance_extra_items_json") as string | null) || null
   );
-  const paymentCollectionTiming =
-    ((formData.get("payment_collection_timing") as string | null) || "").trim() === "charge_now"
-      ? "charge_now"
-      : "at_attendance";
   const sendCreatedMessage = !skipManualCreatedMessage && formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
-  const isCourtesyAppointment = formData.get("is_courtesy") === "on";
+  const isCourtesyAppointment = false;
   const rawClientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
   const clientCpf = normalizeCpfDigits(rawClientCpf);
   const clientFirstName = ((formData.get("client_first_name") as string | null) || "").trim();
@@ -315,14 +311,6 @@ export async function createAppointment(
   const displacementDistanceKm = parseDecimalInput(rawDisplacementDistanceKm);
   const checkoutServiceAmount = parseDecimalInput(rawCheckoutServiceAmount);
   const initialCheckoutDiscountValue = parseDecimalInput(rawInitialCheckoutDiscountValue);
-  if (paymentCollectionTiming === "charge_now" && responseMode !== "json" && !isCourtesyAppointment) {
-    throw new AppError(
-      "Cobrança no agendamento entra na Fase 2 e ainda não está liberada.",
-      "VALIDATION_ERROR",
-      400
-    );
-  }
-
   const parsed = createInternalAppointmentSchema.safeParse({
     clientId,
     clientName,

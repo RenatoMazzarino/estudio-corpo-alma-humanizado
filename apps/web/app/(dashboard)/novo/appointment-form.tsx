@@ -404,14 +404,12 @@ export function AppointmentForm({
       : ""
   );
   const [financeExtraItems, setFinanceExtraItems] = useState<FinanceDraftItem[]>([]);
-  const [financeNewItemType, setFinanceNewItemType] = useState<Exclude<FinanceDraftItemType, "service" | "fee">>(
-    "addon"
-  );
   const [financeNewItemLabel, setFinanceNewItemLabel] = useState("");
   const [financeNewItemAmount, setFinanceNewItemAmount] = useState<string>("");
   const [scheduleDiscountType, setScheduleDiscountType] = useState<"value" | "pct">("value");
   const [scheduleDiscountValue, setScheduleDiscountValue] = useState<string>("");
   const [collectionTimingDraft, setCollectionTimingDraft] = useState<CollectionTimingDraft>("at_attendance");
+  const internalBookingFinanceUiEnabled = false;
   const [chargeNowAmountMode, setChargeNowAmountMode] = useState<ChargeNowAmountMode>("full");
   const [chargeNowSignalPercent, setChargeNowSignalPercent] = useState<number>(Math.max(0, signalPercentage ?? 30));
   const [chargeNowCustomAmount, setChargeNowCustomAmount] = useState<string>("");
@@ -673,7 +671,6 @@ export function AppointmentForm({
     setPriceOverride("");
     if (!isEditing) {
       setFinanceExtraItems([]);
-      setFinanceNewItemType("addon");
       setFinanceNewItemLabel("");
       setFinanceNewItemAmount("");
       setScheduleDiscountType("value");
@@ -723,13 +720,12 @@ export function AppointmentForm({
       ...current,
       {
         id: buildDraftItemId(),
-        type: financeNewItemType,
+        type: "addon",
         label,
         qty: 1,
         amount,
       },
     ]);
-    setFinanceNewItemType("addon");
     setFinanceNewItemLabel("");
     setFinanceNewItemAmount("");
   };
@@ -1842,7 +1838,7 @@ export function AppointmentForm({
         <input
           type="hidden"
           name="payment_collection_timing"
-          value={collectionTimingDraft}
+          value="at_attendance"
         />
       )}
       {!isEditing && isCourtesyDraft && <input type="hidden" name="is_courtesy" value="on" />}
@@ -2005,19 +2001,6 @@ export function AppointmentForm({
                 ? "Atualize o cliente e os dados de contato se necessário."
                 : "Digite nome, WhatsApp ou CPF para localizar um cliente. Se não encontrar, cadastre um novo."}
             </p>
-            {!isEditing && isClientReadOnly && (
-              <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
-                  {clientSelectionMode === "existing" ? "Cliente selecionado" : "Novo cliente (rascunho)"}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-studio-text">{clientDisplayPreviewLabel}</p>
-                {clientPublicFullNamePreview && clientPublicFullNamePreview !== clientDisplayPreviewLabel && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Nome público: <span className="font-semibold text-studio-text">{clientPublicFullNamePreview}</span>
-                  </p>
-                )}
-              </div>
-            )}
             {isClientSelectionPending && clientName.trim().length > 0 && (
               <p className="text-[11px] text-amber-700 mt-2 ml-1">
                 Selecione um cliente da lista suspensa ou toque em <strong>Cadastrar cliente</strong>.
@@ -2548,7 +2531,7 @@ export function AppointmentForm({
 
       </section>
 
-      {!isEditing && (
+      {!isEditing && internalBookingFinanceUiEnabled && (
         <section className={sectionCardClass}>
           <div className="flex items-center gap-2 mb-4">
             <div className={sectionNumberClass}>4</div>
@@ -2583,7 +2566,7 @@ export function AppointmentForm({
                       inputMode="decimal"
                       value={servicePriceDraft}
                       onChange={(event) => setServicePriceDraft(event.target.value)}
-                      placeholder={selectedService ? formatCurrencyInput(Number(selectedService.price ?? 0)) : "0,00"}
+                      placeholder={selectedService ? formatCurrencyInput(Number(selectedService?.price ?? 0)) : "0,00"}
                       className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
                     />
                   </div>
@@ -2627,27 +2610,8 @@ export function AppointmentForm({
                       {financeExtraItems.map((item) => (
                         <div
                           key={item.id}
-                          className="grid grid-cols-[88px_1fr_100px_auto] gap-2 items-center"
+                          className="grid grid-cols-[1fr_100px_auto] gap-2 items-center"
                         >
-                          <select
-                            value={item.type}
-                            onChange={(event) =>
-                              setFinanceExtraItems((current) =>
-                                current.map((entry) =>
-                                  entry.id === item.id
-                                    ? {
-                                        ...entry,
-                                        type: event.target.value as Exclude<FinanceDraftItemType, "service" | "fee">,
-                                      }
-                                    : entry
-                                )
-                              )
-                            }
-                            className="rounded-xl border border-line px-2 py-2 text-xs bg-white"
-                          >
-                            <option value="addon">Adicional</option>
-                            <option value="adjustment">Ajuste</option>
-                          </select>
                           <input
                             type="text"
                             value={item.label}
@@ -2695,17 +2659,7 @@ export function AppointmentForm({
             <div className="bg-white border border-gray-100 rounded-3xl p-4">
               <div className="border-t border-line pt-1">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Adicionar item</p>
-                <div className="mt-2 grid grid-cols-4 gap-2">
-                  <select
-                    value={financeNewItemType}
-                    onChange={(event) =>
-                      setFinanceNewItemType(event.target.value as Exclude<FinanceDraftItemType, "service" | "fee">)
-                    }
-                    className="rounded-xl border border-line px-2 py-2 text-xs"
-                  >
-                    <option value="addon">Adicional</option>
-                    <option value="adjustment">Ajuste</option>
-                  </select>
+                <div className="mt-2 grid grid-cols-3 gap-2">
                   <input
                     className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
                     placeholder="Novo item"
@@ -2732,52 +2686,24 @@ export function AppointmentForm({
             </div>
 
             <div className="bg-white border border-gray-100 rounded-3xl p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Desconto</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setScheduleDiscountType("value")}
-                    className={`px-3 py-1.5 rounded-2xl text-[11px] font-extrabold border ${
-                      scheduleDiscountType === "value"
-                        ? "bg-studio-light text-studio-green border-studio-green/10"
-                        : "bg-paper text-muted border-gray-200"
-                    }`}
-                  >
-                    R$
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScheduleDiscountType("pct")}
-                    className={`px-3 py-1.5 rounded-2xl text-[11px] font-extrabold border ${
-                      scheduleDiscountType === "pct"
-                        ? "bg-studio-light text-studio-green border-studio-green/10"
-                        : "bg-paper text-muted border-gray-200"
-                    }`}
-                  >
-                    %
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-[1fr_auto] gap-3">
-                <div className="bg-paper border border-gray-100 rounded-2xl px-4 py-3">
-                  <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Valor</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={scheduleDiscountValue}
-                    onChange={(event) => setScheduleDiscountValue(event.target.value)}
-                    className="w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums mt-1"
-                    placeholder="0,00"
-                  />
-                </div>
-                <div className="bg-paper border border-gray-100 rounded-2xl px-4 py-3 min-w-[120px]">
-                  <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Aplicado</label>
-                  <p className="text-lg font-black text-studio-text tabular-nums mt-1">
-                    R$ {formatCurrencyLabel(effectiveScheduleDiscount)}
-                  </p>
-                </div>
+              <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Desconto</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <select
+                  value={scheduleDiscountType}
+                  onChange={(event) => setScheduleDiscountType(event.target.value === "pct" ? "pct" : "value")}
+                  className="rounded-xl border border-line px-3 py-2 text-xs"
+                >
+                  <option value="value">Desconto em R$</option>
+                  <option value="pct">Desconto em %</option>
+                </select>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={scheduleDiscountValue}
+                  onChange={(event) => setScheduleDiscountValue(event.target.value)}
+                  className="rounded-xl border border-line px-3 py-2 text-xs"
+                  placeholder="0,00"
+                />
               </div>
             </div>
 
@@ -2812,7 +2738,7 @@ export function AppointmentForm({
                 <div className="mt-4 space-y-3 border-t border-line pt-4">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Forma de pagamento</p>
-                    <div className="mt-2 grid grid-cols-4 gap-2">
+                    <div className="mt-2 grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setChargeNowMethodDraft("pix_mp")}
@@ -2927,7 +2853,7 @@ export function AppointmentForm({
                               className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
                             />
                           </div>
-                          <div className="rounded-2xl border border-line bg-paper px-4 py-3 min-w-[136px]">
+                          <div className="rounded-2xl border border-line bg-paper px-4 py-3 min-w-34">
                             <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
                               Valor do sinal
                             </label>
