@@ -137,6 +137,8 @@ const paymentStatusMap = {
   paid: { label: "PAGO", className: "bg-emerald-50 text-emerald-700", textClass: "text-emerald-600" },
   partial: { label: "PARCIAL", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
   pending: { label: "A RECEBER", className: "bg-gray-100 text-gray-500", textClass: "text-gray-500" },
+  waived: { label: "LIBERADO", className: "bg-sky-50 text-sky-700", textClass: "text-sky-600" },
+  refunded: { label: "ESTORNADO", className: "bg-slate-100 text-slate-700", textClass: "text-slate-600" },
 } as const;
 
 type PaymentStatus = keyof typeof paymentStatusMap;
@@ -330,10 +332,18 @@ export function AppointmentDetailsSheet({
   const remainingAmount = Math.max(totalAmount - paidAmount, 0);
   const signalRemaining = Math.min(Math.max(signalAmount - paidAmount, 0), remainingAmount);
   const canRegisterSignal = paymentStatus === "pending" && paidAmount <= 0 && signalRemaining > 0;
-  const canRegisterFull = paymentStatus !== "paid" && remainingAmount > 0;
+  const canRegisterFull = paymentStatus !== "paid" && paymentStatus !== "waived" && remainingAmount > 0;
   const showManualRegister = canRegisterSignal || canRegisterFull;
   const paymentStatusLabel =
-    paymentStatus === "paid" ? "Pago" : paymentStatus === "partial" ? "Parcial" : "Não pago";
+    paymentStatus === "paid"
+      ? "Pago"
+      : paymentStatus === "partial"
+        ? "Parcial"
+        : paymentStatus === "waived"
+          ? "Liberado"
+          : paymentStatus === "refunded"
+            ? "Estornado"
+            : "Não pago";
   const hasReceiptSent = isMessageSent(paymentReceiptMessage?.status);
   const hasChargeSent = isMessageSent(paymentChargeMessage?.status);
   const hasSurveySent = isMessageSent(postSurveyMessage?.status);
@@ -627,7 +637,7 @@ export function AppointmentDetailsSheet({
                       </span>
                     </div>
 
-                    {paymentStatus !== "paid" && (
+                    {paymentStatus !== "paid" && paymentStatus !== "waived" && (
                       <div className="border-t border-line pt-3">
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
                           Incluir pagamento manual
@@ -996,6 +1006,41 @@ export function AppointmentDetailsSheet({
                       >
                         Enviar comprovante
                       </button>
+                    </div>
+                  )}
+
+                  {paymentStatus === "waived" && (
+                    <div className="flex items-center justify-between gap-3 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center">
+                          <Wallet className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-studio-text">Pagamento liberado</p>
+                          <p className="text-[10px] text-sky-600 font-semibold">
+                            Cobrança dispensada por decisão interna
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1.5 rounded-full bg-sky-50 text-sky-700 text-[10px] font-extrabold">
+                        Sem cobrança
+                      </span>
+                    </div>
+                  )}
+
+                  {paymentStatus === "refunded" && (
+                    <div className="flex items-center justify-between gap-3 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                          <Wallet className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-studio-text">Pagamento estornado</p>
+                          <p className="text-[10px] text-slate-600 font-semibold">
+                            Reavalie cobrança complementar, se necessário
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 

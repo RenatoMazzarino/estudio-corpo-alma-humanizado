@@ -36,6 +36,7 @@ import {
   createPointOrderForAppointment,
   getAppointmentPaymentStatusByMethod,
   getPointOrderStatus,
+  recalculateAppointmentPaymentStatus,
   type PointCardMode,
 } from "../../../../src/modules/payments/mercadopago-orders";
 import { getSettings } from "../../../../src/modules/settings/repository";
@@ -124,31 +125,24 @@ function fallbackStructuredEvolution(rawText: string) {
 }
 
 async function updatePaymentStatus(appointmentId: string) {
-  const supabase = createServiceClient();
-  const { data: checkout } = await supabase
-    .from("appointment_checkout")
-    .select("total")
-    .eq("appointment_id", appointmentId)
-    .maybeSingle();
-
-  const total = Number(checkout?.total ?? 0);
-
-  const { data: payments } = await supabase
-    .from("appointment_payments")
-    .select("amount, status")
-    .eq("appointment_id", appointmentId);
-
-  const paid = (payments ?? [])
-    .filter((payment) => payment.status === "paid")
-    .reduce((acc, item) => acc + Number(item.amount ?? 0), 0);
-
-  const paymentStatus = paid >= total && total > 0 ? "paid" : paid > 0 ? "partial" : "pending";
-
-  await updateAppointment(FIXED_TENANT_ID, appointmentId, {
-    payment_status: paymentStatus,
+  const result = await recalculateAppointmentPaymentStatus({
+    appointmentId,
+    tenantId: FIXED_TENANT_ID,
   });
 
-  return { paid, total, paymentStatus };
+  if (!result.ok) {
+    throw result.error;
+  }
+
+  if (!result.data) {
+    return { paid: 0, total: 0, paymentStatus: "pending" as const };
+  }
+
+  return {
+    paid: Number(result.data.paidTotal ?? 0),
+    total: Number(result.data.total ?? 0),
+    paymentStatus: result.data.nextStatus,
+  };
 }
 
 export async function getAttendance(appointmentId: string) {
@@ -669,6 +663,11 @@ export async function recordPayment(payload: {
 
   const supabase = createServiceClient();
   const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  if (chargeSnapshot.paymentStatus === "waived") {
+    return fail(
+      new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
+    );
+  }
   if (chargeSnapshot.remaining <= 0) {
     return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
   }
@@ -733,6 +732,76 @@ export async function recordPayment(payload: {
   return ok({ paymentId: data?.id ?? parsed.data.appointmentId });
 }
 
+export async function waiveCheckoutPayment(payload: {
+  appointmentId: string;
+  reason?: string | null;
+}): Promise<ActionResult<{ appointmentId: string }>> {
+
+  await requireDashboardAccessForServerAction();
+  const parsed = appointmentIdSchema
+    .extend({
+      reason: z.string().max(240).optional().nullable(),
+    })
+    .safeParse(payload);
+  if (!parsed.success) {
+    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const supabase = createServiceClient();
+
+  const { data: appointment, error: appointmentReadError } = await supabase
+    .from("appointments")
+    .select("id, payment_status")
+    .eq("id", parsed.data.appointmentId)
+    .eq("tenant_id", FIXED_TENANT_ID)
+    .maybeSingle();
+
+  const mappedReadError = mapSupabaseError(appointmentReadError);
+  if (mappedReadError) return fail(mappedReadError);
+  if (!appointment) {
+    return fail(new AppError("Atendimento não encontrado", "NOT_FOUND", 404));
+  }
+
+  if (appointment.payment_status === "paid") {
+    return fail(
+      new AppError(
+        "Este atendimento já está quitado. Use a liberação apenas quando houver saldo em aberto.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
+  const now = new Date().toISOString();
+  const { error: checkoutError } = await supabase
+    .from("appointment_checkout")
+    .update({ confirmed_at: now })
+    .eq("appointment_id", parsed.data.appointmentId);
+  const mappedCheckoutError = mapSupabaseError(checkoutError);
+  if (mappedCheckoutError) return fail(mappedCheckoutError);
+
+  const { error: appointmentUpdateError } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+    payment_status: "waived",
+  });
+  const mappedAppointmentError = mapSupabaseError(appointmentUpdateError);
+  if (mappedAppointmentError) return fail(mappedAppointmentError);
+
+  await insertAttendanceEvent({
+    tenantId: FIXED_TENANT_ID,
+    appointmentId: parsed.data.appointmentId,
+    eventType: "payment_waived",
+    payload: {
+      reason: parsed.data.reason?.trim() || null,
+      label: "Cortesia",
+    },
+  });
+
+  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  revalidatePath("/");
+  revalidatePath("/caixa");
+  return ok({ appointmentId: parsed.data.appointmentId });
+}
+
 export async function createAttendancePixPayment(payload: {
   appointmentId: string;
   amount: number;
@@ -769,6 +838,11 @@ export async function createAttendancePixPayment(payload: {
   }
 
   const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  if (chargeSnapshot.paymentStatus === "waived") {
+    return fail(
+      new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
+    );
+  }
   if (chargeSnapshot.remaining <= 0) {
     return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
   }
@@ -868,6 +942,11 @@ export async function createAttendancePointPayment(payload: {
   }
 
   const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  if (chargeSnapshot.paymentStatus === "waived") {
+    return fail(
+      new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
+    );
+  }
   if (chargeSnapshot.remaining <= 0) {
     return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
   }
@@ -976,8 +1055,8 @@ export async function confirmCheckout(payload: { appointmentId: string }): Promi
   }
 
   const supabase = createServiceClient();
-  const { paid, total } = await updatePaymentStatus(parsed.data.appointmentId);
-  if (paid < total) {
+  const { paid, total, paymentStatus } = await updatePaymentStatus(parsed.data.appointmentId);
+  if (paymentStatus !== "waived" && paid < total) {
     return fail(new AppError("Pagamento insuficiente", "VALIDATION_ERROR", 400));
   }
 
@@ -1249,6 +1328,8 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) return fail(mappedAppointmentError);
+
+  await updatePaymentStatus(parsed.data.appointmentId);
 
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,

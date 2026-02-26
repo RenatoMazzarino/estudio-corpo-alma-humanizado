@@ -556,7 +556,7 @@ export async function recalculateAppointmentPaymentStatus({
   const supabase = createServiceClient();
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
-    .select("id, tenant_id, price, price_override")
+    .select("id, tenant_id, status, payment_status, price, price_override")
     .eq("id", appointmentId)
     .eq("tenant_id", tenantId)
     .maybeSingle();
@@ -574,6 +574,23 @@ export async function recalculateAppointmentPaymentStatus({
 
   if (!appointment) {
     return ok(null);
+  }
+
+  const { data: checkout, error: checkoutError } = await supabase
+    .from("appointment_checkout")
+    .select("total")
+    .eq("appointment_id", appointmentId)
+    .maybeSingle();
+
+  if (checkoutError) {
+    return fail(
+      new AppError(
+        "Não foi possível atualizar o status financeiro do agendamento.",
+        "SUPABASE_ERROR",
+        500,
+        checkoutError
+      )
+    );
   }
 
   const { data: paidPayments, error: paidPaymentsError } = await supabase
@@ -594,9 +611,19 @@ export async function recalculateAppointmentPaymentStatus({
     );
   }
 
-  const total = Number(appointment.price_override ?? appointment.price ?? 0);
+  const checkoutTotal =
+    checkout && checkout.total !== null && checkout.total !== undefined
+      ? Number(checkout.total)
+      : null;
+  const fallbackTotal = Number(appointment.price_override ?? appointment.price ?? 0);
+  const total = Number.isFinite(checkoutTotal ?? Number.NaN) ? Number(checkoutTotal) : fallbackTotal;
   const paidTotal = (paidPayments ?? []).reduce((acc, item) => acc + Number(item.amount ?? 0), 0);
-  const nextStatus = paidTotal >= total && total > 0 ? "paid" : paidTotal > 0 ? "partial" : "pending";
+  const nextStatus = deriveAppointmentPaymentStatus({
+    total,
+    paidTotal,
+    appointmentStatus: appointment.status ?? null,
+    currentPaymentStatus: appointment.payment_status ?? null,
+  });
 
   const { error: updateError } = await supabase
     .from("appointments")
@@ -616,6 +643,46 @@ export async function recalculateAppointmentPaymentStatus({
   }
 
   return ok({ nextStatus, paidTotal, total });
+}
+
+function roundCurrencyValue(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function deriveAppointmentPaymentStatus(params: {
+  total: number;
+  paidTotal: number;
+  appointmentStatus?: string | null;
+  currentPaymentStatus?: string | null;
+}) {
+  const total = roundCurrencyValue(Number(params.total ?? 0));
+  const paidTotal = roundCurrencyValue(Number(params.paidTotal ?? 0));
+  const appointmentStatus = params.appointmentStatus ?? null;
+  const currentPaymentStatus = params.currentPaymentStatus ?? null;
+
+  // "Liberado" é decisão manual do estúdio e não deve ser sobrescrito por recálculo automático.
+  if (currentPaymentStatus === "waived") {
+    return "waived" as const;
+  }
+
+  // Mantém estorno visível quando não há valor pago remanescente após refund.
+  if (currentPaymentStatus === "refunded" && paidTotal <= 0) {
+    return "refunded" as const;
+  }
+
+  if (total <= 0) {
+    return "paid" as const;
+  }
+
+  if (paidTotal + 0.009 >= total) {
+    return "paid" as const;
+  }
+
+  if (paidTotal > 0) {
+    return appointmentStatus === "completed" ? ("pending" as const) : ("partial" as const);
+  }
+
+  return "pending" as const;
 }
 
 export async function createOnlineCardOrderForAppointment({

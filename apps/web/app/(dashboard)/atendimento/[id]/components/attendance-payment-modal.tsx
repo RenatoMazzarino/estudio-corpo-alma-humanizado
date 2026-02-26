@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Copy, CreditCard, Loader2, QrCode, Trash2, Wallet } from "lucide-react";
+import { CheckCircle2, Copy, CreditCard, Gift, Loader2, QrCode, Trash2, Wallet } from "lucide-react";
 import Image from "next/image";
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
 import {
@@ -37,6 +37,7 @@ interface AttendancePaymentModalProps {
   checkout: CheckoutRow | null;
   items: CheckoutItem[];
   payments: PaymentRow[];
+  appointmentPaymentStatus?: string | null;
   pixKeyValue: string;
   pixKeyType: "cnpj" | "cpf" | "email" | "phone" | "evp" | null;
   pointEnabled: boolean;
@@ -59,10 +60,15 @@ interface AttendancePaymentModalProps {
   onPollPointStatus: (
     orderId: string
   ) => Promise<{ ok: boolean; status: InternalStatus; paymentId?: string | null }>;
+  onWaivePayment: () => Promise<{ ok: boolean }>;
   onSendReceipt: (paymentId: string) => Promise<void>;
   onAutoSendReceipt?: (paymentId: string) => Promise<{ ok?: boolean; message?: string } | void>;
   receiptFlowMode?: "manual" | "auto";
-  onReceiptPromptResolved?: (payload: { paymentId: string; sentReceipt: boolean }) => Promise<void> | void;
+  onReceiptPromptResolved?: (payload: {
+    paymentId?: string | null;
+    sentReceipt: boolean;
+    outcome?: "paid" | "waived";
+  }) => Promise<void> | void;
 }
 
 const stageMessages = [
@@ -123,6 +129,7 @@ export function AttendancePaymentModal({
   checkout,
   items,
   payments,
+  appointmentPaymentStatus = null,
   pixKeyValue,
   pixKeyType,
   pointEnabled,
@@ -137,12 +144,13 @@ export function AttendancePaymentModal({
   onPollPixStatus,
   onCreatePointPayment,
   onPollPointStatus,
+  onWaivePayment,
   onSendReceipt,
   onAutoSendReceipt,
   receiptFlowMode = "manual",
   onReceiptPromptResolved,
 }: AttendancePaymentModalProps) {
-  const [method, setMethod] = useState<"cash" | "pix_mp" | "pix_key" | "card">("cash");
+  const [method, setMethod] = useState<"cash" | "pix_mp" | "pix_key" | "card" | "waiver">("cash");
   const [draftItems, setDraftItems] = useState(
     items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount }))
   );
@@ -167,6 +175,7 @@ export function AttendancePaymentModal({
   const [stageIndex, setStageIndex] = useState(0);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [receiptPromptPaymentId, setReceiptPromptPaymentId] = useState<string | null>(null);
+  const [waiverSuccess, setWaiverSuccess] = useState(false);
   const [resolvingReceiptPrompt, setResolvingReceiptPrompt] = useState(false);
   const [receiptSent, setReceiptSent] = useState(false);
   const [autoReceiptStatus, setAutoReceiptStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
@@ -219,9 +228,12 @@ export function AttendancePaymentModal({
   const total = Math.max(subtotal - appliedDiscountAmount, 0);
   const remaining = Math.max(total - paidTotal, 0);
   const isFullyPaid = remaining <= 0 && total > 0;
+  const isWaived = appointmentPaymentStatus === "waived" || waiverSuccess;
+  const isSuccessState = Boolean(receiptPromptPaymentId) || waiverSuccess;
 
   useEffect(() => {
     if (!open) return;
+    setMethod(appointmentPaymentStatus === "waived" ? "waiver" : "cash");
     setDraftItems(items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount })));
     setAppliedDiscountType(checkout?.discount_type ?? null);
     setAppliedDiscountValue(checkout?.discount_value ?? 0);
@@ -230,13 +242,14 @@ export function AttendancePaymentModal({
     setDiscountValueInput(checkout?.discount_value ?? 0);
     setDiscountReasonInput(checkout?.discount_reason ?? "");
     setErrorText(null);
+    setWaiverSuccess(false);
     setResolvingReceiptPrompt(false);
     setReceiptSent(false);
     setAutoReceiptStatus("idle");
     setAutoReceiptMessage(null);
     setPixKeyError(null);
     setCheckoutSaving(false);
-  }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
+  }, [open, items, checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason, appointmentPaymentStatus]);
 
   useEffect(() => {
     if (!open) return;
@@ -488,10 +501,28 @@ export function AttendancePaymentModal({
     setPointPayment(result.data);
     if (result.data.internal_status === "paid") {
       setReceiptPromptPaymentId(result.data.id);
+      setWaiverSuccess(false);
       setReceiptSent(false);
       setAutoReceiptStatus("idle");
       setAutoReceiptMessage(null);
     }
+  };
+
+  const handleWaiveAsCourtesy = async () => {
+    if (isWaived) return;
+    setBusy(true);
+    setErrorText(null);
+    const result = await onWaivePayment();
+    setBusy(false);
+    if (!result.ok) {
+      setErrorText("Não foi possível liberar este pagamento como cortesia.");
+      return;
+    }
+    setWaiverSuccess(true);
+    setReceiptPromptPaymentId(null);
+    setReceiptSent(false);
+    setAutoReceiptStatus("idle");
+    setAutoReceiptMessage("Atendimento liberado como cortesia interna.");
   };
 
   const handleSendReceiptFromSuccess = async () => {
@@ -506,24 +537,28 @@ export function AttendancePaymentModal({
     }
   };
 
-  const resolveReceiptSuccess = async () => {
+  const resolveCheckoutSuccess = async () => {
+    const isPaymentSuccess = Boolean(receiptPromptPaymentId);
+    if (!isPaymentSuccess && !waiverSuccess) return;
     const paymentId = receiptPromptPaymentId;
-    if (!paymentId || resolvingReceiptPrompt) return;
+    if (resolvingReceiptPrompt) return;
     setResolvingReceiptPrompt(true);
     try {
       await onReceiptPromptResolved?.({
         paymentId,
-        sentReceipt: receiptSent || autoReceiptStatus === "sent",
+        sentReceipt: isPaymentSuccess ? receiptSent || autoReceiptStatus === "sent" : false,
+        outcome: isPaymentSuccess ? "paid" : "waived",
       });
       setReceiptPromptPaymentId(null);
+      setWaiverSuccess(false);
     } finally {
       setResolvingReceiptPrompt(false);
     }
   };
 
   const handleDismiss = () => {
-    if (receiptPromptPaymentId) {
-      void resolveReceiptSuccess();
+    if (receiptPromptPaymentId || waiverSuccess) {
+      void resolveCheckoutSuccess();
       return;
     }
     onClose();
@@ -618,21 +653,31 @@ export function AttendancePaymentModal({
             </button>
           </div>
 
-          {receiptPromptPaymentId ? (
+          {isSuccessState ? (
             <section className="mt-5 flex min-h-[58vh] flex-col items-center justify-center px-1 pb-1 text-center animate-in zoom-in duration-300">
-              <div className="h-24 w-24 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-5 shadow-soft">
+              <div
+                className={`h-24 w-24 rounded-full flex items-center justify-center mb-5 shadow-soft ${
+                  waiverSuccess ? "bg-sky-100 text-sky-600" : "bg-emerald-100 text-emerald-600"
+                }`}
+              >
                 <CheckCircle2 className="h-11 w-11" />
               </div>
 
-              <h3 className="text-3xl font-serif text-studio-text">Pagamento confirmado!</h3>
+              <h3 className="text-3xl font-serif text-studio-text">
+                {waiverSuccess ? "Cortesia aplicada!" : "Pagamento confirmado!"}
+              </h3>
               <p className="mt-3 max-w-72 text-sm leading-relaxed text-muted">
-                O pagamento foi registrado no atendimento com sucesso.
+                {waiverSuccess
+                  ? "Este atendimento foi liberado de cobrança e seguirá como cortesia interna."
+                  : "O pagamento foi registrado no atendimento com sucesso."}
               </p>
 
               <div className="mt-6 w-full rounded-2xl border border-line bg-white px-4 py-4 text-left shadow-soft">
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
-                  <span className="text-sm font-bold text-emerald-700">Pagamento confirmado</span>
+                  <span className={`text-sm font-bold ${waiverSuccess ? "text-sky-700" : "text-emerald-700"}`}>
+                    {waiverSuccess ? "Cortesia / liberado" : "Pagamento confirmado"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total checkout</span>
@@ -640,13 +685,17 @@ export function AttendancePaymentModal({
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Saldo restante</span>
-                  <span className={`text-sm font-bold ${remaining <= 0 ? "text-emerald-700" : "text-studio-text"}`}>
-                    {remaining <= 0 ? "Quitado" : formatCurrency(remaining)}
+                  <span
+                    className={`text-sm font-bold ${
+                      waiverSuccess ? "text-sky-700" : remaining <= 0 ? "text-emerald-700" : "text-studio-text"
+                    }`}
+                  >
+                    {waiverSuccess ? "Dispensado (cortesia)" : remaining <= 0 ? "Quitado" : formatCurrency(remaining)}
                   </span>
                 </div>
               </div>
 
-              {receiptFlowMode === "auto" ? (
+              {!waiverSuccess && receiptFlowMode === "auto" ? (
                 <div
                   className={`mt-4 w-full rounded-2xl border px-4 py-3 text-sm ${
                     autoReceiptStatus === "failed"
@@ -664,13 +713,17 @@ export function AttendancePaymentModal({
                   )}
                   {autoReceiptStatus !== "sending" && (autoReceiptMessage ?? "Recibo será enviado automaticamente pelo WhatsApp.")}
                 </div>
-              ) : (
+              ) : !waiverSuccess ? (
                 <div className="mt-4 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-studio-text">
                   {receiptSent ? "Recibo enviado pelo WhatsApp (manual)." : "Você pode enviar o recibo manualmente agora."}
                 </div>
+              ) : (
+                <div className="mt-4 w-full rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                  {autoReceiptMessage ?? "Cortesia registrada. Nenhum recibo financeiro será enviado neste fluxo."}
+                </div>
               )}
 
-              {receiptFlowMode === "manual" && (
+              {!waiverSuccess && receiptFlowMode === "manual" && (
                 <button
                   className="mt-5 w-full h-12 rounded-2xl border border-stone-200 bg-white text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors disabled:opacity-60"
                   onClick={() => void handleSendReceiptFromSuccess()}
@@ -682,8 +735,8 @@ export function AttendancePaymentModal({
 
               <button
                 className="mt-3 w-full h-12 rounded-2xl bg-studio-green text-white font-bold uppercase tracking-widest text-xs hover:bg-studio-green-dark transition-colors disabled:opacity-60"
-                onClick={() => void resolveReceiptSuccess()}
-                disabled={resolvingReceiptPrompt || autoReceiptStatus === "sending"}
+                onClick={() => void resolveCheckoutSuccess()}
+                disabled={resolvingReceiptPrompt || (!waiverSuccess && autoReceiptStatus === "sending")}
               >
                 {resolvingReceiptPrompt ? "Saindo..." : "Voltar para agenda"}
               </button>
@@ -839,7 +892,7 @@ export function AttendancePaymentModal({
               <Wallet className="w-3.5 h-3.5" />
               Forma de pagamento
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
                   method === "cash"
@@ -847,6 +900,7 @@ export function AttendancePaymentModal({
                     : "border-line text-muted hover:bg-paper"
                 }`}
                 onClick={() => setMethod("cash")}
+                disabled={isWaived}
               >
                 <Wallet className="mx-auto mb-1 h-3.5 w-3.5" />
                 Dinheiro
@@ -858,6 +912,7 @@ export function AttendancePaymentModal({
                     : "border-line text-muted hover:bg-paper"
                 }`}
                 onClick={() => setMethod("pix_mp")}
+                disabled={isWaived}
               >
                 <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
                 PIX MP
@@ -869,6 +924,7 @@ export function AttendancePaymentModal({
                     : "border-line text-muted hover:bg-paper"
                 }`}
                 onClick={() => setMethod("pix_key")}
+                disabled={isWaived}
               >
                 <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
                 PIX Chave
@@ -880,11 +936,28 @@ export function AttendancePaymentModal({
                     : "border-line text-muted hover:bg-paper"
                 }`}
                 onClick={() => setMethod("card")}
+                disabled={isWaived}
               >
                 <CreditCard className="mx-auto mb-1 h-3.5 w-3.5" />
                 Cartão
               </button>
+              <button
+                className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                  method === "waiver"
+                    ? "border-sky-500 bg-sky-50 text-sky-700"
+                    : "border-line text-muted hover:bg-paper"
+                }`}
+                onClick={() => setMethod("waiver")}
+              >
+                <Gift className="mx-auto mb-1 h-3.5 w-3.5" />
+                Cortesia
+              </button>
             </div>
+            {isWaived && !waiverSuccess && (
+              <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-3 text-xs text-sky-900">
+                Este atendimento já está marcado como <strong>cortesia</strong> (pagamento liberado).
+              </div>
+            )}
           </section>
 
           {method === "cash" && (
@@ -901,7 +974,7 @@ export function AttendancePaymentModal({
               <button
                 className="mt-3 w-full h-10 rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
                 onClick={handleRegisterCash}
-                disabled={isFullyPaid}
+                disabled={isFullyPaid || isWaived}
               >
                 Registrar recebimento
               </button>
@@ -914,7 +987,7 @@ export function AttendancePaymentModal({
                 <button
                   className="w-full h-10 rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
                   onClick={handleCreatePix}
-                  disabled={isFullyPaid}
+                  disabled={isFullyPaid || isWaived}
                 >
                   Gerar PIX MP
                 </button>
@@ -1002,7 +1075,7 @@ export function AttendancePaymentModal({
               <button
                 className="mt-3 w-full h-10 rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
                 onClick={handleRegisterPixKey}
-                disabled={isFullyPaid || !pixKeyConfigured || !pixKeyCode || pixKeyGenerating}
+                disabled={isFullyPaid || isWaived || !pixKeyConfigured || !pixKeyCode || pixKeyGenerating}
               >
                 Registrar pagamento Pix chave
               </button>
@@ -1023,14 +1096,14 @@ export function AttendancePaymentModal({
                 <button
                   className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green disabled:opacity-60"
                   onClick={() => handlePointCharge("debit")}
-                  disabled={!pointEnabled || isFullyPaid}
+                  disabled={!pointEnabled || isFullyPaid || isWaived}
                 >
                   Cobrar no débito
                 </button>
                 <button
                   className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green disabled:opacity-60"
                   onClick={() => handlePointCharge("credit")}
-                  disabled={!pointEnabled || isFullyPaid}
+                  disabled={!pointEnabled || isFullyPaid || isWaived}
                 >
                   Cobrar no crédito
                 </button>
@@ -1040,6 +1113,25 @@ export function AttendancePaymentModal({
                   Cobrança enviada ({pointPayment.card_mode === "debit" ? "débito" : "crédito"}). Aguardando confirmação...
                 </p>
               )}
+            </section>
+          )}
+
+          {method === "waiver" && (
+            <section className="mt-4 rounded-2xl border border-sky-200 px-4 py-4 bg-sky-50">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-sky-700 mb-2">
+                Cortesia interna
+              </p>
+              <p className="text-[11px] text-sky-900 leading-relaxed">
+                Use esta opção quando o estúdio decidir <strong>liberar a cobrança</strong> deste atendimento.
+                O sistema marcará o status financeiro como <strong>Liberado</strong> (sem registrar pagamento recebido).
+              </p>
+              <button
+                className="mt-3 w-full h-10 rounded-xl bg-sky-600 px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
+                onClick={handleWaiveAsCourtesy}
+                disabled={isWaived || busy}
+              >
+                {isWaived ? "Cortesia já aplicada" : "Aplicar cortesia"}
+              </button>
             </section>
           )}
 

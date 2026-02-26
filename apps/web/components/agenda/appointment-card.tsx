@@ -33,6 +33,8 @@ const paymentStatusMap: Record<string, { label: string; compactLabel: string; cl
   paid: { label: "PAGO", compactLabel: "PAGO", className: "bg-emerald-50 text-emerald-700", textClass: "text-emerald-600" },
   partial: { label: "SINAL PAGO", compactLabel: "SINAL", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
   pending: { label: "A RECEBER", compactLabel: "A RECEBER", className: "bg-gray-100 text-gray-500", textClass: "text-gray-500" },
+  waived: { label: "LIBERADO", compactLabel: "LIBERADO", className: "bg-sky-50 text-sky-700", textClass: "text-sky-600" },
+  refunded: { label: "ESTORNADO", compactLabel: "ESTORN.", className: "bg-slate-100 text-slate-700", textClass: "text-slate-600" },
 };
 
 export function AppointmentCard({

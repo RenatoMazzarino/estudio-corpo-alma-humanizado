@@ -20,6 +20,7 @@ import {
   setCheckoutItems,
   setDiscount,
   toggleChecklistItem,
+  waiveCheckoutPayment,
 } from "./actions";
 import { SessionStage } from "./components/session-stage";
 import { AttendancePaymentModal } from "./components/attendance-payment-modal";
@@ -66,6 +67,8 @@ function getHeaderPaymentStatusMeta(status: string | null | undefined) {
       return { label: "Pago", className: "border-emerald-200 bg-emerald-50 text-emerald-700" };
     case "partial":
       return { label: "Parcial", className: "border-amber-200 bg-amber-50 text-amber-700" };
+    case "waived":
+      return { label: "Liberado", className: "border-sky-200 bg-sky-50 text-sky-700" };
     case "refunded":
       return { label: "Estornado", className: "border-slate-300 bg-slate-100 text-slate-700" };
     default:
@@ -494,6 +497,26 @@ export function AttendancePage({
     });
   };
 
+  const handleWaiveCheckoutPayment = async () => {
+    const result = await waiveCheckoutPayment({
+      appointmentId: appointment.id,
+      reason: "Cortesia",
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      return { ok: false as const };
+    }
+
+    showToast(
+      feedbackById("generic_saved", {
+        tone: "success",
+        message: "Pagamento liberado como cortesia.",
+      })
+    );
+    router.refresh();
+    return { ok: true as const };
+  };
+
   const handleFinish = async () => {
     const result = await finishAttendance({ appointmentId: appointment.id });
     if (!result.ok) {
@@ -702,6 +725,7 @@ export function AttendancePage({
           checkout={checkout}
           items={data.checkoutItems}
           payments={data.payments}
+          appointmentPaymentStatus={appointment.payment_status ?? null}
           pixKeyValue={pixKeyValue}
           pixKeyType={pixKeyType}
           pointEnabled={pointEnabled}
@@ -716,6 +740,7 @@ export function AttendancePage({
           onPollPixStatus={handlePollPixStatus}
           onCreatePointPayment={handleCreatePointPayment}
           onPollPointStatus={handlePollPointStatus}
+          onWaivePayment={handleWaiveCheckoutPayment}
           onSendReceipt={handleSendReceipt}
           onReceiptPromptResolved={handleReceiptPromptResolved}
         />

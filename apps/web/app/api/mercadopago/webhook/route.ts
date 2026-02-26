@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import type { Json } from "../../../../lib/supabase/types";
+import { recalculateAppointmentPaymentStatus } from "../../../../src/modules/payments/mercadopago-orders";
 
 type SignatureParts = {
   ts?: string;
@@ -482,38 +483,15 @@ export async function POST(request: Request) {
   }
 
   if (appointment) {
-    const total = appointment.price_override ?? appointment.price ?? 0;
-    const { data: paidPayments, error: paidPaymentsError } = await supabase
-      .from("appointment_payments")
-      .select("amount")
-      .eq("tenant_id", appointment.tenant_id)
-      .eq("appointment_id", appointment.id)
-      .eq("status", "paid");
-    if (paidPaymentsError) {
-      logWebhookError("failed to recalc appointment status (read paid payments)", {
-        error: paidPaymentsError,
+    const recalcResult = await recalculateAppointmentPaymentStatus({
+      appointmentId: appointment.id,
+      tenantId: appointment.tenant_id,
+    });
+    if (!recalcResult.ok) {
+      logWebhookError("failed to recalc appointment payment status", {
+        error: recalcResult.error,
         appointmentId: appointment.id,
         tenantId: appointment.tenant_id,
-      });
-      return NextResponse.json({ ok: false, error: "Failed to recalc appointment status" }, { status: 500 });
-    }
-    const paidTotal = (paidPayments ?? []).reduce(
-      (acc, item) => acc + Number(item.amount ?? 0),
-      0
-    );
-    const nextStatus =
-      paidTotal >= total && total > 0 ? "paid" : paidTotal > 0 ? "partial" : "pending";
-    const { error: updateAppointmentError } = await supabase
-      .from("appointments")
-      .update({ payment_status: nextStatus })
-      .eq("id", appointment.id)
-      .eq("tenant_id", appointment.tenant_id);
-    if (updateAppointmentError) {
-      logWebhookError("failed to update appointment payment status", {
-        error: updateAppointmentError,
-        appointmentId: appointment.id,
-        tenantId: appointment.tenant_id,
-        nextStatus,
       });
       return NextResponse.json({ ok: false, error: "Failed to update appointment payment status" }, { status: 500 });
     }

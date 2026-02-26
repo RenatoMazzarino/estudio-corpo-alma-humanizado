@@ -92,6 +92,8 @@ function getPaymentStatusMeta(status: string | null) {
       return { label: "Parcial", badgeClass: "bg-orange-50 text-orange-700 border-orange-200", dotClass: "bg-orange-500" };
     case "paid":
       return { label: "Pago", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200", dotClass: "bg-emerald-500" };
+    case "waived":
+      return { label: "Liberado", badgeClass: "bg-sky-50 text-sky-700 border-sky-200", dotClass: "bg-sky-500" };
     case "refunded":
       return { label: "Estornado", badgeClass: "bg-slate-100 text-slate-700 border-slate-300", dotClass: "bg-slate-500" };
     default:
