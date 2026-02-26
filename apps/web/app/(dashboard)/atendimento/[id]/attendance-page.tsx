@@ -30,6 +30,7 @@ import { Toast, useToast } from "../../../../components/ui/toast";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 import { applyAutoMessageTemplate } from "../../../../src/shared/auto-messages.utils";
 import type { AutoMessageTemplates } from "../../../../src/shared/auto-messages.types";
+import { buildAppointmentReceiptPath } from "../../../../src/shared/public-links";
 import { ModuleHeader } from "../../../../components/ui/module-header";
 import { ModulePage } from "../../../../components/ui/module-page";
 import { SlideConfirmButton } from "./components/slide-confirm-button";
@@ -466,9 +467,13 @@ export function AttendancePage({
     }
 
     const baseUrl = resolvePublicBaseUrl(publicBaseUrl);
+    const receiptPath = buildAppointmentReceiptPath({
+      appointmentId: appointment.id,
+      attendanceCode: appointment.attendance_code ?? null,
+    });
     const receiptLink = baseUrl
-      ? `${baseUrl}/comprovante/pagamento/${paymentId}`
-      : `${window.location.origin}/comprovante/pagamento/${paymentId}`;
+      ? `${baseUrl}${receiptPath}`
+      : `${window.location.origin}${receiptPath}`;
     const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
     const message = applyAutoMessageTemplate(messageTemplates.payment_receipt, {
       greeting,

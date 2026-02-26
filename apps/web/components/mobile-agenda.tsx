@@ -54,6 +54,7 @@ import {
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
 import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
 import { applyAutoMessageTemplate } from "../src/shared/auto-messages.utils";
+import { buildAppointmentReceiptPath } from "../src/shared/public-links";
 import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 import {
   getDurationHeight,
@@ -820,8 +821,11 @@ export function MobileAgenda({
 
     if (type === "payment_receipt") {
       const base = resolvePublicBaseUrl();
-      const receiptLink =
-        base && options?.paymentId ? `${base}/comprovante/pagamento/${options.paymentId}` : "";
+      const receiptPath = buildAppointmentReceiptPath({
+        appointmentId: appointment.id,
+        attendanceCode: appointment.attendance_code ?? null,
+      });
+      const receiptLink = base && receiptPath ? `${base}${receiptPath}` : "";
       const receiptBlock = receiptLink
         ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`
         : "";
@@ -925,7 +929,11 @@ export function MobileAgenda({
 
     setDetailsActionPending(true);
     const base = resolvePublicBaseUrl();
-    const receiptLink = base ? `${base}/comprovante/pagamento/${paymentId}` : "";
+    const receiptPath = buildAppointmentReceiptPath({
+      appointmentId: detailsData.appointment.id,
+      attendanceCode: detailsData.appointment.attendance_code ?? null,
+    });
+    const receiptLink = base && receiptPath ? `${base}${receiptPath}` : "";
     const message = buildMessage("payment_receipt", detailsData.appointment, { paymentId });
     openWhatsapp(phone, message);
 

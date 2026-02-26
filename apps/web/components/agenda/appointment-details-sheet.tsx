@@ -22,6 +22,7 @@ import type { AttendanceOverview, AppointmentMessage, MessageType } from "../../
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
+import { buildAppointmentReceiptPath } from "../../src/shared/public-links";
 import { feedbackById, type UserFeedback } from "../../src/shared/feedback/user-feedback";
 
 interface AppointmentDetailsSheetProps {
@@ -393,12 +394,15 @@ export function AppointmentDetailsSheet({
     return base ? `${base}/pagamento` : "";
   };
 
-  const buildReceiptLink = (paymentId?: string | null) => {
+  const buildReceiptLink = (_paymentId?: string | null) => {
+    void _paymentId;
     const base = resolvePublicBaseUrl();
     if (!base) return "";
-    if (paymentId) return `${base}/comprovante/pagamento/${paymentId}`;
-    const appointmentId = appointment?.id;
-    return appointmentId ? `${base}/comprovante/${appointmentId}` : "";
+    const receiptPath = buildAppointmentReceiptPath({
+      appointmentId: appointment?.id ?? null,
+      attendanceCode: appointment?.attendance_code ?? null,
+    });
+    return receiptPath ? `${base}${receiptPath}` : "";
   };
 
   const buildSignalChargeMessage = () => {
