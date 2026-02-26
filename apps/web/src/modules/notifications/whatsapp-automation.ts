@@ -1,6 +1,7 @@
 import { createServiceClient } from "../../../lib/supabase/service";
 import type { Json } from "../../../lib/supabase/types";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../shared/config";
+import { buildAppointmentVoucherPath } from "../../shared/public-links";
 import { BRAZIL_TIME_ZONE } from "../../shared/timezone";
 import {
   WHATSAPP_AUTOMATION_ALLOWED_TENANT_IDS,
@@ -1113,9 +1114,34 @@ function resolvePublicBaseUrlFromWebhookOrigin(webhookOrigin?: string) {
   return DEFAULT_PUBLIC_BASE_URL;
 }
 
-function buildAppointmentVoucherLink(appointmentId: string, webhookOrigin?: string) {
-  const base = resolvePublicBaseUrlFromWebhookOrigin(webhookOrigin);
-  return `${base}/voucher/${appointmentId}`;
+async function buildAppointmentVoucherLink(params: {
+  tenantId: string;
+  appointmentId: string;
+  webhookOrigin?: string;
+}) {
+  const base = resolvePublicBaseUrlFromWebhookOrigin(params.webhookOrigin);
+  const supabase = createServiceClient();
+  let attendanceCode: string | null = null;
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("attendance_code")
+    .eq("id", params.appointmentId)
+    .eq("tenant_id", params.tenantId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[whatsapp-automation] Falha ao buscar attendance_code para voucher:", error.message);
+  } else if (data && typeof data.attendance_code === "string") {
+    const normalizedCode = data.attendance_code.trim();
+    attendanceCode = normalizedCode || null;
+  }
+
+  const voucherPath = buildAppointmentVoucherPath({
+    appointmentId: params.appointmentId,
+    attendanceCode,
+  });
+  return `${base}${voucherPath}`;
 }
 
 function buildButtonReplyAutoMessage(params: {
@@ -1327,7 +1353,11 @@ async function processMetaCloudWebhookInboundMessages(params: {
           continue;
         }
 
-        const voucherLink = buildAppointmentVoucherLink(job.appointment_id, params.webhookOrigin);
+        const voucherLink = await buildAppointmentVoucherLink({
+          tenantId: job.tenant_id,
+          appointmentId: job.appointment_id,
+          webhookOrigin: params.webhookOrigin,
+        });
         const replyText = buildButtonReplyAutoMessage({ action, voucherLink });
         const outbound = await sendMetaCloudTextMessage({ to: customerWaId, text: replyText });
         const nowIso = new Date().toISOString();
