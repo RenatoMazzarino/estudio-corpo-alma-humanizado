@@ -228,6 +228,8 @@ export async function createAppointment(formData: FormData): Promise<void> {
     (formData.get("displacement_distance_km") as string | null) || null;
   const sendCreatedMessage = formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
+  const isCourtesyAppointment = formData.get("is_courtesy") === "on";
+  const clientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
 
   const priceOverride = parseDecimalInput(rawPriceOverride);
   const displacementFee = parseDecimalInput(rawDisplacementFee);
@@ -365,6 +367,31 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   if (appointmentId) {
     const tenantId = FIXED_TENANT_ID;
+
+    if (clientCpf) {
+      const { data: appointmentClientRow } = await supabase
+        .from("appointments")
+        .select("client_id")
+        .eq("tenant_id", tenantId)
+        .eq("id", appointmentId)
+        .maybeSingle();
+
+      if (appointmentClientRow?.client_id) {
+        const { error: clientCpfError } = await updateClient(tenantId, appointmentClientRow.client_id, {
+          cpf: clientCpf,
+        });
+        const mappedClientCpfError = mapSupabaseError(clientCpfError);
+        if (mappedClientCpfError) throw mappedClientCpfError;
+      }
+    }
+
+    if (isCourtesyAppointment) {
+      const { error: courtesyUpdateError } = await updateAppointment(tenantId, appointmentId, {
+        payment_status: "waived",
+      });
+      const mappedCourtesyUpdateError = mapSupabaseError(courtesyUpdateError);
+      if (mappedCourtesyUpdateError) throw mappedCourtesyUpdateError;
+    }
 
     await scheduleAppointmentLifecycleNotifications({
       tenantId,
