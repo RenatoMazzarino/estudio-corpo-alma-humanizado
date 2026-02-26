@@ -26,6 +26,11 @@ import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.typ
 import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
 import { feedbackById } from "../../../src/shared/feedback/user-feedback";
 import { formatBrazilPhone } from "../../../src/shared/phone";
+import {
+  composeInternalClientName,
+  normalizeReferenceLabel,
+  resolveClientNames,
+} from "../../../src/modules/clients/name-profile";
 
 interface Service {
   id: string;
@@ -39,7 +44,14 @@ interface Service {
 
 interface AppointmentFormProps {
   services: Service[];
-  clients: { id: string; name: string; phone: string | null; cpf?: string | null }[];
+  clients: {
+    id: string;
+    name: string;
+    phone: string | null;
+    email?: string | null;
+    cpf?: string | null;
+    extra_data?: unknown;
+  }[];
   safeDate: string;
   initialAppointment?: InitialAppointment | null;
   returnTo?: string;
@@ -74,6 +86,15 @@ interface DisplacementEstimate {
 type AddressModalStep = "chooser" | "cep" | "search" | "form";
 type ClientSelectionMode = "idle" | "existing" | "new";
 
+type ClientRecordLite = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email?: string | null;
+  cpf?: string | null;
+  extra_data?: unknown;
+};
+
 interface InitialAppointment {
   id: string;
   serviceId: string | null;
@@ -100,6 +121,43 @@ interface InitialAppointment {
 function formatCep(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 8);
   return digits.replace(/^(\d{5})(\d)/, "$1-$2");
+}
+
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+function normalizeCpfDigits(value?: string | null) {
+  return (value ?? "").replace(/\D/g, "").slice(0, 11);
+}
+
+function normalizePhoneSearchDigits(value?: string | null) {
+  return (value ?? "").replace(/\D/g, "").slice(0, 13);
+}
+
+function isValidEmailAddress(value: string) {
+  if (!value.trim()) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function splitSeedName(value: string) {
+  const cleaned = value.trim();
+  if (!cleaned) {
+    return { firstName: "", lastName: "", reference: "" };
+  }
+  const match = cleaned.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  const base = (match?.[1] ?? cleaned).trim();
+  const reference = normalizeReferenceLabel(match?.[2] ?? "");
+  const [firstName, ...rest] = base.split(/\s+/).filter(Boolean);
+  return {
+    firstName: firstName ?? "",
+    lastName: rest.join(" "),
+    reference,
+  };
 }
 
 function parseDecimalText(value: string): number | null {
@@ -199,6 +257,8 @@ export function AppointmentForm({
   const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
   const sendMessageTextInputRef = useRef<HTMLInputElement | null>(null);
   const clientPhoneInputRef = useRef<HTMLInputElement | null>(null);
+  const clientCpfInputRef = useRef<HTMLInputElement | null>(null);
+  const clientCreateFirstNameInputRef = useRef<HTMLInputElement | null>(null);
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
   const sectionCardClass = "bg-white rounded-2xl shadow-sm p-5 border border-stone-100";
   const sectionHeaderTextClass = "text-xs font-bold text-gray-400 uppercase tracking-widest";
@@ -251,6 +311,12 @@ export function AppointmentForm({
     initialAppointment?.clientPhone ? formatBrazilPhone(initialAppointment.clientPhone) : ""
   );
   const [clientCpf, setClientCpf] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientFirstName, setClientFirstName] = useState("");
+  const [clientLastName, setClientLastName] = useState("");
+  const [clientReference, setClientReference] = useState("");
+  const [isClientCreateModalOpen, setIsClientCreateModalOpen] = useState(false);
+  const [clientCreateError, setClientCreateError] = useState<string | null>(null);
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasBlocks, setHasBlocks] = useState(false);
   const [hasShiftBlock, setHasShiftBlock] = useState(false);
@@ -335,9 +401,21 @@ export function AppointmentForm({
 
   const filteredClients = useMemo(() => {
     if (!clientName.trim()) return [];
-    const lower = clientName.toLowerCase();
+    const query = clientName.trim();
+    const lower = query.toLowerCase();
+    const digits = query.replace(/\D/g, "");
     return clients
-      .filter((client) => client.name.toLowerCase().includes(lower))
+      .filter((client) => {
+        const byName = client.name.toLowerCase().includes(lower);
+        if (byName) return true;
+        if (!digits) return false;
+        const phoneDigits = normalizePhoneSearchDigits(client.phone);
+        const cpfDigits = normalizeCpfDigits(client.cpf ?? null);
+        return (
+          (phoneDigits.length > 0 && phoneDigits.includes(digits)) ||
+          (cpfDigits.length > 0 && cpfDigits.includes(digits))
+        );
+      })
       .slice(0, 8);
   }, [clientName, clients]);
 
@@ -347,26 +425,116 @@ export function AppointmentForm({
     return clients.find((client) => client.name.trim().toLowerCase() === trimmed.toLowerCase()) ?? null;
   }, [clientName, clients]);
 
-  const handleSelectClient = (client: { id: string; name: string; phone: string | null; cpf?: string | null }) => {
+  const handleSelectClient = (client: ClientRecordLite) => {
     setClientName(client.name);
     setClientPhone(client.phone ? formatBrazilPhone(client.phone) : "");
-    setClientCpf(client.cpf ?? "");
+    setClientCpf(formatCpf(client.cpf ?? ""));
+    setClientEmail(client.email?.trim().toLowerCase() ?? "");
+    const names = resolveClientNames({ name: client.name, extraData: client.extra_data });
+    setClientFirstName(names.publicFirstName);
+    setClientLastName(names.publicLastName);
+    setClientReference(names.reference);
     setSelectedClientId(client.id);
     setClientSelectionMode("existing");
     setIsClientDropdownOpen(false);
+    setClientCreateError(null);
   };
 
   const handleCreateNewClientFromName = () => {
     const normalizedName = clientName.trim();
-    if (!normalizedName) return;
-    setClientName(normalizedName);
+    const seed = splitSeedName(normalizedName);
+    setClientCreateError(null);
+    setClientFirstName(seed.firstName);
+    setClientLastName(seed.lastName);
+    setClientReference(seed.reference);
+    setClientPhone("");
+    setClientEmail("");
+    setClientCpf("");
+    setIsClientDropdownOpen(false);
+    setIsClientCreateModalOpen(true);
+    window.setTimeout(() => {
+      clientCreateFirstNameInputRef.current?.focus();
+    }, 40);
+  };
+
+  const clearSelectedClient = () => {
     setSelectedClientId(null);
+    setClientSelectionMode("idle");
+    setClientName("");
     setClientPhone("");
     setClientCpf("");
-    setClientSelectionMode("new");
+    setClientEmail("");
+    setClientFirstName("");
+    setClientLastName("");
+    setClientReference("");
     setIsClientDropdownOpen(false);
+    setClientCreateError(null);
     window.setTimeout(() => {
+      formRef.current?.querySelector<HTMLInputElement>('input[name="clientName"]')?.focus();
+    }, 30);
+  };
+
+  const handleSaveClientDraftFromModal = () => {
+    const firstName = clientFirstName.trim();
+    const lastName = clientLastName.trim();
+    const reference = normalizeReferenceLabel(clientReference);
+    const phoneDigits = clientPhone.replace(/\D/g, "");
+    const emailValue = clientEmail.trim().toLowerCase();
+    const cpfDigits = normalizeCpfDigits(clientCpf);
+
+    if (!firstName) {
+      setClientCreateError("Informe o primeiro nome do cliente.");
+      clientCreateFirstNameInputRef.current?.focus();
+      return;
+    }
+    if (!lastName) {
+      setClientCreateError("Informe o sobrenome do cliente.");
+      return;
+    }
+    if (phoneDigits.length > 0 && !(phoneDigits.length === 10 || phoneDigits.length === 11)) {
+      setClientCreateError("WhatsApp inválido. Informe um número com DDD.");
       clientPhoneInputRef.current?.focus();
+      return;
+    }
+    if (emailValue && !isValidEmailAddress(emailValue)) {
+      setClientCreateError("Email inválido. Verifique e tente novamente.");
+      return;
+    }
+    if (clientCpf.trim() && cpfDigits.length !== 11) {
+      setClientCreateError("CPF inválido. Informe os 11 números do CPF.");
+      clientCpfInputRef.current?.focus();
+      return;
+    }
+
+    setClientName(composeInternalClientName(firstName, reference || null));
+    setClientPhone(phoneDigits ? formatBrazilPhone(phoneDigits) : "");
+    setClientEmail(emailValue);
+    setClientCpf(cpfDigits.length === 11 ? formatCpf(cpfDigits) : "");
+    setClientFirstName(firstName);
+    setClientLastName(lastName);
+    setClientReference(reference);
+    setSelectedClientId(null);
+    setClientSelectionMode("new");
+    setIsClientCreateModalOpen(false);
+    setClientCreateError(null);
+  };
+
+  const handleLinkExistingClientByCpf = () => {
+    if (!duplicateCpfClient) return;
+    handleSelectClient(duplicateCpfClient);
+    showToast(
+      {
+        title: "CPF já cadastrado",
+        message: `Agendamento vinculado ao cliente existente: ${duplicateCpfClient.name}.`,
+        tone: "warning",
+      }
+    );
+  };
+
+  const handleChangeCpfAfterConflict = () => {
+    setClientCpf("");
+    window.setTimeout(() => {
+      clientCpfInputRef.current?.focus();
     }, 40);
   };
 
@@ -659,19 +827,66 @@ export function AppointmentForm({
   });
   const selectedClientRecord =
     (selectedClientId ? clients.find((client) => client.id === selectedClientId) ?? null : null) ?? null;
+  const selectedClientNames = useMemo(
+    () =>
+      selectedClientRecord
+        ? resolveClientNames({
+            name: selectedClientRecord.name,
+            extraData: selectedClientRecord.extra_data,
+          })
+        : null,
+    [selectedClientRecord]
+  );
+  const duplicateCpfClient = useMemo(() => {
+    const normalized = normalizeCpfDigits(clientCpf);
+    if (normalized.length !== 11) return null;
+
+    const match =
+      clients.find((client) => {
+        const clientCpfDigits = normalizeCpfDigits(client.cpf ?? null);
+        return clientCpfDigits.length === 11 && clientCpfDigits === normalized;
+      }) ?? null;
+
+    if (!match) return null;
+    if (selectedClientId && match.id === selectedClientId) return null;
+    return match;
+  }, [clientCpf, clients, selectedClientId]);
+
   const isClientSelectionPending = !isEditing && clientSelectionMode === "idle";
   const shouldShowClientContactFields = isEditing || clientSelectionMode !== "idle";
+  const isClientReadOnly = !isEditing && clientSelectionMode !== "idle";
   const shouldShowCpfField =
     shouldShowClientContactFields &&
-    (clientSelectionMode === "new" ||
-      !selectedClientRecord?.cpf ||
-      selectedClientRecord.cpf.trim().length === 0 ||
-      clientCpf.trim().length > 0);
+    (isEditing
+      ? !selectedClientRecord?.cpf || selectedClientRecord.cpf.trim().length === 0 || clientCpf.trim().length > 0
+      : clientSelectionMode === "new"
+        ? clientCpf.trim().length === 0 || Boolean(duplicateCpfClient)
+        : !selectedClientRecord?.cpf || selectedClientRecord.cpf.trim().length === 0);
   const missingWhatsappWarning =
     shouldShowClientContactFields && clientPhone.replace(/\D/g, "").length === 0;
+  const isExistingClientCpfLocked =
+    clientSelectionMode === "existing" && Boolean(selectedClientRecord?.cpf?.trim());
   const resolvedClientId =
     clientSelectionMode === "existing" ? (selectedClientId ?? exactClientMatch?.id ?? null) : null;
   const resolvedClientPhone = clientPhone || (selectedClientRecord?.phone ? formatBrazilPhone(selectedClientRecord.phone) : "");
+  const clientDisplayPreviewLabel =
+    clientSelectionMode === "existing"
+      ? selectedClientNames?.internalName || clientName
+      : clientName;
+  const clientPublicFullNamePreview =
+    clientSelectionMode === "existing"
+      ? selectedClientNames?.publicFullName || ""
+      : [clientFirstName, clientLastName].filter((value) => value.trim().length > 0).join(" ");
+  const clientMessageFirstName =
+    clientSelectionMode === "existing"
+      ? selectedClientNames?.messagingFirstName || "Cliente"
+      : clientFirstName.trim() || clientName.replace(/\s*\([^)]*\)\s*$/, "").trim().split(/\s+/)[0] || "Cliente";
+  const clientDraftInternalPreview = composeInternalClientName(
+    clientFirstName.trim() || "Primeiro nome",
+    clientReference || null
+  );
+  const clientDraftPublicPreview =
+    [clientFirstName, clientLastName].filter((value) => value.trim().length > 0).join(" ") || "Nome público";
   const canHomeVisit = selectedService?.accepts_home_visit ?? false;
   const selectedAddress = useMemo(
     () => clientAddresses.find((address) => address.id === selectedAddressId) ?? null,
@@ -907,12 +1122,25 @@ export function AppointmentForm({
   };
 
   const handleSchedule = (shouldSendMessage: boolean) => {
+    if (duplicateCpfClient) {
+      showToast(
+        {
+          title: "CPF já cadastrado",
+          message: `O CPF informado já pertence ao cliente ${duplicateCpfClient.name}. Escolha vincular ao cliente existente ou informe outro CPF.`,
+          tone: "warning",
+          durationMs: 3200,
+        }
+      );
+      clientCpfInputRef.current?.focus();
+      return;
+    }
+
     if (!formRef.current) return;
     let shouldRecord = shouldSendMessage;
     let messageText = "";
     if (shouldSendMessage) {
       messageText = buildCreatedMessage({
-        clientName,
+        clientName: clientMessageFirstName,
         date: selectedDate,
         time: selectedTime,
         serviceName: selectedService?.name ?? "",
@@ -945,6 +1173,10 @@ export function AppointmentForm({
       {isEditing && <input type="hidden" name="appointmentId" value={initialAppointment?.id ?? ""} />}
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <input type="hidden" name="clientId" value={resolvedClientId ?? ""} />
+      <input type="hidden" name="client_first_name" value={clientSelectionMode === "new" ? clientFirstName : ""} />
+      <input type="hidden" name="client_last_name" value={clientSelectionMode === "new" ? clientLastName : ""} />
+      <input type="hidden" name="client_reference" value={clientSelectionMode === "new" ? clientReference : ""} />
+      <input type="hidden" name="client_email" value={clientSelectionMode === "new" ? clientEmail : ""} />
       <input type="hidden" name="client_address_id" value={isHomeVisit ? (selectedAddressId ?? "") : ""} />
       <input type="hidden" name="address_label" value={isHomeVisit ? addressLabel : ""} />
       <input
@@ -1004,35 +1236,53 @@ export function AppointmentForm({
 
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>Nome completo</label>
+            <label className={labelClass}>Cliente</label>
             <div className="relative">
               <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 name="clientName"
                 type="text"
-                placeholder="Buscar ou digitar nome..."
+                placeholder="Buscar por nome, WhatsApp ou CPF..."
                 value={clientName}
                 autoComplete="off"
+                readOnly={isClientReadOnly}
                 onFocus={() => {
-                  if (!isEditing) setIsClientDropdownOpen(true);
+                  if (!isEditing && !isClientReadOnly) setIsClientDropdownOpen(true);
                 }}
                 onBlur={() => {
                   if (isEditing) return;
+                  if (isClientReadOnly) return;
                   window.setTimeout(() => setIsClientDropdownOpen(false), 120);
                 }}
                 onChange={(event) => {
+                  if (isClientReadOnly) return;
                   setClientName(event.target.value);
                   if (!isEditing) {
                     setSelectedClientId(null);
                     setClientSelectionMode("idle");
                     setClientPhone("");
                     setClientCpf("");
+                    setClientEmail("");
+                    setClientFirstName("");
+                    setClientLastName("");
+                    setClientReference("");
                     setIsClientDropdownOpen(true);
                   }
                 }}
-                className={inputWithIconClass}
+                className={`${inputWithIconClass} ${isClientReadOnly ? "pr-12 bg-stone-100 text-gray-600" : ""}`}
                 required
               />
+              {!isEditing && isClientReadOnly && (
+                <button
+                  type="button"
+                  onClick={clearSelectedClient}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-stone-200 text-gray-500 hover:text-red-500 hover:border-red-200 flex items-center justify-center"
+                  aria-label="Limpar cliente selecionado"
+                  title="Limpar cliente selecionado"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
 
               {!isEditing && isClientDropdownOpen && clientName.trim().length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-30 mt-2 rounded-2xl border border-stone-200 bg-white shadow-xl overflow-hidden">
@@ -1047,11 +1297,16 @@ export function AppointmentForm({
                           className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between gap-3"
                         >
                           <span className="font-medium truncate">{client.name}</span>
-                          {client.phone && (
-                            <span className="text-xs text-muted shrink-0">
-                              {formatBrazilPhone(client.phone)}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {client.cpf && (
+                              <span className="text-[10px] text-muted hidden sm:inline">
+                                CPF {formatCpf(client.cpf)}
+                              </span>
+                            )}
+                            {client.phone && (
+                              <span className="text-xs text-muted">{formatBrazilPhone(client.phone)}</span>
+                            )}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -1079,8 +1334,21 @@ export function AppointmentForm({
               <Sparkles className="w-3 h-3" />
               {isEditing
                 ? "Atualize o cliente e os dados de contato se necessário."
-                : "Selecione um cliente da lista ou cadastre um novo a partir do nome digitado."}
+                : "Digite nome, WhatsApp ou CPF para localizar um cliente. Se não encontrar, cadastre um novo."}
             </p>
+            {!isEditing && isClientReadOnly && (
+              <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
+                  {clientSelectionMode === "existing" ? "Cliente selecionado" : "Novo cliente (rascunho)"}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-studio-text">{clientDisplayPreviewLabel}</p>
+                {clientPublicFullNamePreview && clientPublicFullNamePreview !== clientDisplayPreviewLabel && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Nome público: <span className="font-semibold text-studio-text">{clientPublicFullNamePreview}</span>
+                  </p>
+                )}
+              </div>
+            )}
             {isClientSelectionPending && clientName.trim().length > 0 && (
               <p className="text-[11px] text-amber-700 mt-2 ml-1">
                 Selecione um cliente da lista suspensa ou toque em <strong>Cadastrar cliente</strong>.
@@ -1102,7 +1370,8 @@ export function AppointmentForm({
                     value={clientPhone}
                     onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
                     inputMode="numeric"
-                    className={inputWithIconClass}
+                    readOnly={clientSelectionMode === "existing"}
+                    className={`${inputWithIconClass} ${clientSelectionMode === "existing" ? "bg-stone-100 text-gray-600" : ""}`}
                   />
                 </div>
                 {missingWhatsappWarning ? (
@@ -1120,16 +1389,45 @@ export function AppointmentForm({
                 <div>
                   <label className={labelClass}>CPF (para emissão de nota)</label>
                   <input
+                    ref={clientCpfInputRef}
                     name="client_cpf"
                     type="text"
                     inputMode="numeric"
                     placeholder="000.000.000-00"
+                    maxLength={14}
                     value={clientCpf}
-                    onChange={(event) => setClientCpf(event.target.value)}
-                    className={inputClass}
+                    onChange={(event) => setClientCpf(formatCpf(event.target.value))}
+                    readOnly={isExistingClientCpfLocked}
+                    className={`${inputClass} ${isExistingClientCpfLocked ? "bg-stone-100 text-gray-600" : ""}`}
                   />
+                  {duplicateCpfClient && (
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800">
+                        CPF já cadastrado
+                      </p>
+                      <p className="text-sm font-semibold text-amber-900 mt-1 leading-snug">
+                        Este CPF já está cadastrado para <strong>{duplicateCpfClient.name}</strong>.
+                      </p>
+                      <div className="mt-3 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={handleLinkExistingClientByCpf}
+                          className="w-full h-10 rounded-xl bg-amber-600 text-white text-[11px] font-extrabold uppercase tracking-wide"
+                        >
+                          Vincular ao cliente existente
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleChangeCpfAfterConflict}
+                          className="w-full h-10 rounded-xl border border-amber-300 bg-white text-amber-800 text-[11px] font-extrabold uppercase tracking-wide"
+                        >
+                          Informar novo CPF
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <p className="text-[11px] text-muted mt-2 ml-1">
-                    Campo opcional. Recomendado para facilitar emissão de nota e futuras buscas.
+                    Campo opcional. Aceita digitação ou colagem com/sem pontos e traço.
                   </p>
                 </div>
               )}
@@ -1609,6 +1907,178 @@ export function AppointmentForm({
           </div>
         )}
       </section>
+
+      {portalTarget &&
+        isClientCreateModalOpen &&
+        createPortal(
+          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 pb-10">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-float border border-line p-5">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
+                    Cliente
+                  </p>
+                  <h3 className="text-lg font-serif text-studio-text">Cadastrar cliente</h3>
+                  <p className="text-xs text-muted mt-1">
+                    Defina nome interno, nome público e dados de contato.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsClientCreateModalOpen(false)}
+                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {clientCreateError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {clientCreateError}
+                  </div>
+                )}
+
+                <div>
+                  <label className={labelClass}>Primeiro nome</label>
+                  <input
+                    ref={clientCreateFirstNameInputRef}
+                    type="text"
+                    value={clientFirstName}
+                    onChange={(event) => {
+                      setClientFirstName(event.target.value);
+                      setClientCreateError(null);
+                    }}
+                    className={inputClass}
+                    placeholder="Ex: Renato"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Sobrenome (completo)</label>
+                  <input
+                    type="text"
+                    value={clientLastName}
+                    onChange={(event) => {
+                      setClientLastName(event.target.value);
+                      setClientCreateError(null);
+                    }}
+                    className={inputClass}
+                    placeholder="Ex: Mazzarino de Farias"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Referência</label>
+                  <input
+                    type="text"
+                    value={clientReference}
+                    onChange={(event) => {
+                      setClientReference(event.target.value);
+                      setClientCreateError(null);
+                    }}
+                    className={inputClass}
+                    placeholder="Ex: Gerente Mercado"
+                  />
+                  <p className="text-[10px] text-muted mt-1 ml-1">
+                    Uso interno. Não aparece em mensagens e telas públicas.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
+                    Prévia do nome no sistema
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-studio-text">{clientDraftInternalPreview}</p>
+                  <p className="mt-2 text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
+                    Nome público (voucher/comprovante/agendamento online)
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-studio-text">{clientDraftPublicPreview}</p>
+                </div>
+
+                <div>
+                  <label className={labelClass}>WhatsApp</label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
+                    <input
+                      ref={clientPhoneInputRef}
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="(00) 00000-0000"
+                      value={clientPhone}
+                      onChange={(event) => {
+                        setClientPhone(formatBrazilPhone(event.target.value));
+                        setClientCreateError(null);
+                      }}
+                      className={inputWithIconClass}
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted mt-2 ml-1">
+                    Opcional. Se preencher, será salvo como telefone principal e WhatsApp do cliente.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Email</label>
+                  <input
+                    type="email"
+                    inputMode="email"
+                    placeholder="cliente@exemplo.com"
+                    value={clientEmail}
+                    onChange={(event) => {
+                      setClientEmail(event.target.value);
+                      setClientCreateError(null);
+                    }}
+                    className={inputClass}
+                  />
+                  {clientEmail.trim() && !isValidEmailAddress(clientEmail) && (
+                    <p className="text-[11px] text-red-600 mt-2 ml-1">
+                      Informe um email válido.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelClass}>CPF (para emissão de nota)</label>
+                  <input
+                    ref={clientCpfInputRef}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    value={clientCpf}
+                    onChange={(event) => {
+                      setClientCpf(formatCpf(event.target.value));
+                      setClientCreateError(null);
+                    }}
+                    className={inputClass}
+                  />
+                  <p className="text-[11px] text-muted mt-2 ml-1">
+                    Opcional. Aceita digitação e colagem com ou sem pontos/traço.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsClientCreateModalOpen(false)}
+                    className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveClientDraftFromModal}
+                    className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
+                  >
+                    Salvar cliente
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          portalTarget
+        )}
 
       {portalTarget &&
         isAddressModalOpen &&

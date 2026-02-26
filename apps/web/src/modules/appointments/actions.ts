@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createServiceClient } from "../../../lib/supabase/service";
+import type { Json } from "../../../lib/supabase/types";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
@@ -20,10 +21,12 @@ import {
 import { z } from "zod";
 import {
   createClient as createClientRecord,
+  findClientByCpf,
   findClientByNamePhone,
   getClientById,
   updateClient,
 } from "../clients/repository";
+import { buildClientExtraDataProfile } from "../clients/name-profile";
 import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
 import {
   scheduleAppointmentCanceledNotification,
@@ -70,6 +73,14 @@ const parseDecimalInput = (value: string | null) => {
   const parsed = Number(normalized);
   return Number.isNaN(parsed) ? null : parsed;
 };
+
+const normalizeCpfDigits = (value: string | null) => {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits.length > 0 ? digits : null;
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function startAppointment(id: string): Promise<ActionResult<{ id: string }>> {
   const parsed = startAppointmentSchema.safeParse({ id });
@@ -229,7 +240,19 @@ export async function createAppointment(formData: FormData): Promise<void> {
   const sendCreatedMessage = formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
   const isCourtesyAppointment = formData.get("is_courtesy") === "on";
-  const clientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
+  const rawClientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
+  const clientCpf = normalizeCpfDigits(rawClientCpf);
+  const clientFirstName = ((formData.get("client_first_name") as string | null) || "").trim();
+  const clientLastName = ((formData.get("client_last_name") as string | null) || "").trim();
+  const clientReference = ((formData.get("client_reference") as string | null) || "").trim();
+  const rawClientEmail = ((formData.get("client_email") as string | null) || "").trim();
+  const clientEmail = rawClientEmail ? rawClientEmail.toLowerCase() : null;
+  if (rawClientCpf && (!clientCpf || clientCpf.length !== 11)) {
+    throw new AppError("CPF inválido. Informe os 11 números do CPF.", "VALIDATION_ERROR", 400);
+  }
+  if (clientEmail && !EMAIL_REGEX.test(clientEmail)) {
+    throw new AppError("Email inválido. Verifique e tente novamente.", "VALIDATION_ERROR", 400);
+  }
 
   const priceOverride = parseDecimalInput(rawPriceOverride);
   const displacementFee = parseDecimalInput(rawDisplacementFee);
@@ -270,6 +293,33 @@ export async function createAppointment(formData: FormData): Promise<void> {
       parsed.data.clientPhone
     );
     resolvedClientId = existingClient?.id ?? null;
+  }
+
+  const newClientExtraData =
+    clientFirstName && clientLastName
+      ? (buildClientExtraDataProfile({
+          publicFirstName: clientFirstName,
+          publicLastName: clientLastName,
+          reference: clientReference || null,
+        }) as Json)
+      : undefined;
+
+  if (clientCpf) {
+    const { data: cpfClient, error: cpfClientLookupError } = await findClientByCpf(FIXED_TENANT_ID, clientCpf);
+    const mappedCpfLookupError = mapSupabaseError(cpfClientLookupError);
+    if (mappedCpfLookupError) throw mappedCpfLookupError;
+
+    if (cpfClient?.id) {
+      if (!resolvedClientId) {
+        resolvedClientId = cpfClient.id;
+      } else if (resolvedClientId !== cpfClient.id) {
+        throw new AppError(
+          `CPF já cadastrado para o cliente ${cpfClient.name}. Vincule o agendamento ao cliente existente ou informe outro CPF.`,
+          "CONFLICT",
+          409
+        );
+      }
+    }
   }
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
@@ -367,22 +417,47 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   if (appointmentId) {
     const tenantId = FIXED_TENANT_ID;
+    let appointmentClientId: string | null = null;
 
-    if (clientCpf) {
+    if (clientCpf || clientEmail || newClientExtraData) {
       const { data: appointmentClientRow } = await supabase
         .from("appointments")
         .select("client_id")
         .eq("tenant_id", tenantId)
         .eq("id", appointmentId)
         .maybeSingle();
+      appointmentClientId = appointmentClientRow?.client_id ?? null;
+    }
 
-      if (appointmentClientRow?.client_id) {
-        const { error: clientCpfError } = await updateClient(tenantId, appointmentClientRow.client_id, {
-          cpf: clientCpf,
-        });
-        const mappedClientCpfError = mapSupabaseError(clientCpfError);
-        if (mappedClientCpfError) throw mappedClientCpfError;
-      }
+    if (appointmentClientId && (clientCpf || clientEmail || newClientExtraData)) {
+      const { data: clientRow } = await supabase
+        .from("clients")
+        .select("cpf, email, extra_data")
+        .eq("tenant_id", tenantId)
+        .eq("id", appointmentClientId)
+        .maybeSingle();
+
+      const currentExtra =
+        clientRow?.extra_data &&
+        typeof clientRow.extra_data === "object" &&
+        !Array.isArray(clientRow.extra_data)
+          ? (clientRow.extra_data as Record<string, unknown>)
+          : {};
+      const patchExtra =
+        newClientExtraData && typeof newClientExtraData === "object" && !Array.isArray(newClientExtraData)
+          ? (newClientExtraData as Record<string, unknown>)
+          : {};
+
+      const { error: clientMetaError } = await updateClient(tenantId, appointmentClientId, {
+        cpf: clientCpf ?? clientRow?.cpf ?? null,
+        email: clientEmail ?? clientRow?.email ?? null,
+        extra_data:
+          Object.keys(patchExtra).length > 0
+            ? ({ ...currentExtra, ...patchExtra } as Json)
+            : clientRow?.extra_data,
+      });
+      const mappedClientMetaError = mapSupabaseError(clientMetaError);
+      if (mappedClientMetaError) throw mappedClientMetaError;
     }
 
     if (isCourtesyAppointment) {

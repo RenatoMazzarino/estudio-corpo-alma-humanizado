@@ -106,6 +106,41 @@ export async function findClientByNamePhone(tenantId: string, name: string, phon
   return { data: null, error: null };
 }
 
+function normalizeCpfDigits(value?: string | null) {
+  return (value ?? "").replace(/\D/g, "").slice(0, 11);
+}
+
+export async function findClientByCpf(tenantId: string, cpf: string) {
+  const normalizedCpf = normalizeCpfDigits(cpf);
+  if (normalizedCpf.length !== 11) {
+    return { data: null, error: null };
+  }
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, name, cpf")
+    .eq("tenant_id", tenantId)
+    .not("cpf", "is", null)
+    .limit(5000);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  const match =
+    (data ?? []).find((client) => normalizeCpfDigits(client.cpf) === normalizedCpf) ?? null;
+
+  if (!match) {
+    return { data: null, error: null };
+  }
+
+  return {
+    data: { id: match.id, name: match.name, cpf: match.cpf },
+    error: null,
+  };
+}
+
 export async function deleteClient(tenantId: string, id: string) {
   const supabase = createServiceClient();
   return supabase.from("clients").delete().eq("id", id).eq("tenant_id", tenantId);
