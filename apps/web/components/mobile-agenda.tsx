@@ -700,6 +700,10 @@ export function MobileAgenda({
     const appointment = detailsData?.appointment;
     if (!appointment) return null;
 
+    const persistedCode =
+      typeof appointment.attendance_code === "string" ? appointment.attendance_code.trim() : "";
+    if (persistedCode) return persistedCode;
+
     const startDate = parseDate(appointment.start_time);
     if (!isValid(startDate)) return null;
 

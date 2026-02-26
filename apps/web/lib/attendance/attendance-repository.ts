@@ -66,7 +66,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
   const { data: appointmentData, error: appointmentError } = await supabase
     .from("appointments")
     .select(
-      `id, service_name, start_time, finished_at, status, payment_status, signal_status, signal_required_amount, signal_paid_amount, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+      `id, attendance_code, service_name, start_time, finished_at, status, payment_status, signal_status, signal_required_amount, signal_paid_amount, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
        address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
         clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
        services ( duration_minutes, price )`

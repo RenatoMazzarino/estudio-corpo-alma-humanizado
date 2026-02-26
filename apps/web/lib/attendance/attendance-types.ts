@@ -143,6 +143,7 @@ export interface AppointmentEvent {
 
 export interface AppointmentDetails {
   id: string;
+  attendance_code?: string | null;
   service_name: string;
   start_time: string;
   finished_at: string | null;

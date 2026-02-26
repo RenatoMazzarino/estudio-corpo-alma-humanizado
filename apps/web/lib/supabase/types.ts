@@ -499,6 +499,7 @@ export type Database = {
       appointments: {
         Row: {
           actual_duration_minutes: number | null
+          attendance_code: string | null
           address_bairro: string | null
           address_cep: string | null
           address_cidade: string | null
@@ -531,6 +532,7 @@ export type Database = {
         }
         Insert: {
           actual_duration_minutes?: number | null
+          attendance_code?: string | null
           address_bairro?: string | null
           address_cep?: string | null
           address_cidade?: string | null
@@ -563,6 +565,7 @@ export type Database = {
         }
         Update: {
           actual_duration_minutes?: number | null
+          attendance_code?: string | null
           address_bairro?: string | null
           address_cep?: string | null
           address_cidade?: string | null
