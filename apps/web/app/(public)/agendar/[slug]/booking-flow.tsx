@@ -7,16 +7,18 @@ import {
   parseISO,
   startOfMonth,
 } from "date-fns";
-import { submitPublicAppointment } from "./public-actions/appointments";
-import { lookupClientIdentity } from "./public-actions/clients";
 import {
   createCardPayment,
   createPixPayment,
   getCardPaymentStatus,
   getPixPaymentStatus,
-} from "./public-actions/payments";
+  lookupClientIdentity,
+  submitPublicAppointment,
+} from "./application/public-booking-service";
 import { usePublicBookingAvailability } from "./hooks/use-public-booking-availability";
 import { usePublicBookingLocation } from "./hooks/use-public-booking-location";
+import { usePublicBookingNavigation } from "./hooks/use-public-booking-navigation";
+import { usePublicBookingPaymentUi } from "./hooks/use-public-booking-payment-ui";
 import type {
   BookingFlowProps,
   CardFormInstance,
@@ -31,7 +33,6 @@ import { formatCpf } from "../../../../src/shared/cpf";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import { VoucherOverlay } from "./components/voucher-overlay";
-import { formatCountdown } from "./booking-flow-formatters";
 import {
   downloadVoucherBlob,
   renderVoucherImageBlob,
@@ -39,12 +40,10 @@ import {
 } from "./voucher-export";
 import {
   cardProcessingStages,
-  footerSteps,
   stepLabels,
 } from "./booking-flow-config";
 import {
   buildWhatsAppLink,
-  computePixProgress,
   isValidCpfDigits,
   isValidEmailAddress,
   isValidPhoneDigits,
@@ -53,7 +52,6 @@ import {
   resolveClientHeaderFirstName,
   resolvePositiveMinutes,
   resolvePublicClientFullName,
-  resolveSignalPercentage,
 } from "./booking-flow.helpers";
 import { BookingHeader } from "./components/booking-header";
 import { BookingFooter } from "./components/booking-footer";
@@ -223,7 +221,6 @@ export function BookingFlow({
     return Number((basePrice + displacementFee).toFixed(2));
   }, [displacementEstimate?.fee, isHomeVisit, selectedService]);
 
-  const normalizedSignalPercentage = resolveSignalPercentage(signalPercentage);
   const onlineCutoffBeforeCloseMinutes = resolvePositiveMinutes(publicBookingCutoffBeforeCloseMinutes, 60);
   const onlineLastSlotBeforeCloseMinutes = resolvePositiveMinutes(publicBookingLastSlotBeforeCloseMinutes, 30);
   const {
@@ -246,10 +243,6 @@ export function BookingFlow({
     setSelectedTime,
     tenantId: tenant.id,
   });
-  const signalAmount = Number((totalPrice * (normalizedSignalPercentage / 100)).toFixed(2));
-  const payableSignalAmount = Number(signalAmount.toFixed(2));
-  const isMercadoPagoMinimumInvalid =
-    payableSignalAmount > 0 && payableSignalAmount < 1;
   const whatsappLink = useMemo(() => buildWhatsAppLink(whatsappNumber), [whatsappNumber]);
 
   const selectedDateObj = useMemo(() => parseISO(`${date}T00:00:00`), [date]);
@@ -303,30 +296,30 @@ export function BookingFlow({
     suggestedClient?.public_first_name,
     suggestedClient?.public_last_name,
   ]);
-  const pixProgress = useMemo(
-    () =>
-      computePixProgress({
-        createdAt: pixPayment?.created_at ?? null,
-        expiresAt: pixPayment?.expires_at ?? null,
-        nowMs: pixNowMs,
-      }),
-    [pixNowMs, pixPayment?.created_at, pixPayment?.expires_at]
-  );
-  const pixRemainingMs = pixProgress.remainingMs;
-  const pixProgressPct = pixProgress.progressPct;
-  const pixQrExpired = pixProgress.isExpired;
-  const pixRemainingLabel = formatCountdown(pixRemainingMs);
-
-  const showCardProcessingOverlay =
-    step === "PAYMENT" &&
-    paymentMethod === "card" &&
-    (cardStatus === "loading" || cardAwaitingConfirmation);
-  const currentCardProcessingStage =
-    cardProcessingStages[Math.min(cardProcessingStageIndex, cardProcessingStages.length - 1)] ??
-    cardProcessingStages[0];
-
-  const showFooter = step !== "WELCOME" && step !== "SUCCESS";
-  const showNextButton = step !== "PAYMENT";
+  const {
+    payableSignalAmount,
+    isMercadoPagoMinimumInvalid,
+    pixProgressPct,
+    pixQrExpired,
+    pixRemainingLabel,
+    showCardProcessingOverlay,
+    currentCardProcessingStage,
+  } = usePublicBookingPaymentUi({
+    totalPrice,
+    signalPercentage,
+    pixPayment: pixPayment
+      ? {
+          created_at: pixPayment.created_at,
+          expires_at: pixPayment.expires_at,
+        }
+      : null,
+    pixNowMs,
+    step,
+    paymentMethod,
+    cardStatus,
+    cardAwaitingConfirmation,
+    cardProcessingStageIndex,
+  });
 
   useEffect(() => {
     if (identitySecuritySessionId) return;
@@ -1230,95 +1223,33 @@ export function BookingFlow({
     setVoucherBusy(false);
   };
 
-  const handleNext = () => {
-    if (step === "CONFIRM") {
-      setStep("PAYMENT");
-      return;
-    }
-    const currentIndex = footerSteps.indexOf(step as (typeof footerSteps)[number]);
-    if (currentIndex >= 0 && currentIndex < footerSteps.length - 1) {
-      const nextStep = footerSteps[currentIndex + 1];
-      if (nextStep) {
-        setStep(nextStep);
-      }
-    }
-  };
-
-  const handleBack = () => {
-    if (step === "IDENT") {
-      setStep("WELCOME");
-      return;
-    }
-    if (step === "PAYMENT") {
-      setStep("CONFIRM");
-      return;
-    }
-    const currentIndex = footerSteps.indexOf(step as (typeof footerSteps)[number]);
-    if (currentIndex > 0) {
-      const previousStep = footerSteps[currentIndex - 1];
-      if (previousStep) {
-        setStep(previousStep);
-      }
-    }
-  };
-
-  const isNextDisabled = useMemo(() => {
-    if (step === "IDENT") {
-      if (!isPhoneValid) return true;
-      if (clientLookupStatus === "loading") return true;
-      if (clientLookupStatus === "confirmed") {
-        return !isEmailValid;
-      }
-      if (clientLookupStatus === "found" || clientLookupStatus === "declined") {
-        return true;
-      }
-      if (clientLookupStatus === "not_found") {
-        return (
-          !isPhoneValid ||
-          !isCpfValid ||
-          !isEmailValid ||
-          !isIdentityNameReady ||
-          !acceptPrivacyPolicy ||
-          !acceptTermsOfService ||
-          !acceptCommunicationConsent
-        );
-      }
-      return true;
-    }
-    if (step === "SERVICE") {
-      return !selectedService;
-    }
-    if (step === "DATETIME") {
-      return !date || !selectedTime;
-    }
-    if (step === "LOCATION") {
-      return !addressComplete || !displacementReady;
-    }
-    if (step === "CONFIRM") {
-      return isSubmitting || !paymentMethod || isMercadoPagoMinimumInvalid;
-    }
-    return false;
-  }, [
-    addressComplete,
+  const {
+    handleNext,
+    handleBack,
+    isNextDisabled,
+    nextLabel,
+    showFooter,
+    showNextButton,
+  } = usePublicBookingNavigation({
+    step,
+    setStep,
+    isSubmitting,
+    isPhoneValid,
+    clientLookupStatus,
     isEmailValid,
     isCpfValid,
-    displacementReady,
     isIdentityNameReady,
-    clientLookupStatus,
-    date,
-    isPhoneValid,
-    isSubmitting,
-    paymentMethod,
-    isMercadoPagoMinimumInvalid,
-    selectedService,
-    selectedTime,
-    step,
     acceptPrivacyPolicy,
     acceptTermsOfService,
     acceptCommunicationConsent,
-  ]);
-
-  const nextLabel = step === "CONFIRM" ? "Ir para Pagamento" : "Continuar";
+    selectedServiceId: selectedService?.id ?? null,
+    date,
+    selectedTime,
+    addressComplete,
+    displacementReady,
+    paymentMethod,
+    isMercadoPagoMinimumInvalid,
+  });
 
   const handleTalkToFlora = () => {
     if (whatsappLink) {
