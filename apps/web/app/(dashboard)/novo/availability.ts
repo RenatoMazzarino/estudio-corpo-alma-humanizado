@@ -1,8 +1,8 @@
 "use server";
 
+import { eachDayOfInterval, endOfDay, endOfMonth, format, isBefore, startOfDay, startOfMonth } from "date-fns";
 import { getAvailableSlots as getAvailableSlotsImpl } from "../../../src/modules/appointments/availability";
 import { listAvailabilityBlocksInRange } from "../../../src/modules/appointments/repository";
-import { startOfDay, endOfDay } from "date-fns";
 import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 
 interface GetSlotsParams {
@@ -17,6 +17,48 @@ export async function getAvailableSlots(params: GetSlotsParams): Promise<string[
 
   await requireDashboardAccessForServerAction();
   return getAvailableSlotsImpl(params);
+}
+
+interface GetMonthAvailabilityParams {
+  tenantId: string;
+  serviceId: string;
+  month: string; // YYYY-MM
+  isHomeVisit?: boolean;
+  ignoreBlocks?: boolean;
+}
+
+export async function getMonthAvailableDays(params: GetMonthAvailabilityParams): Promise<Record<string, boolean>> {
+  await requireDashboardAccessForServerAction();
+
+  const base = new Date(`${params.month}-01T00:00:00`);
+  const start = startOfMonth(base);
+  const end = endOfMonth(base);
+  const today = startOfDay(new Date());
+  const days = eachDayOfInterval({ start, end });
+
+  const results = await Promise.all(
+    days.map(async (day) => {
+      const iso = format(day, "yyyy-MM-dd");
+      if (isBefore(day, today)) return { date: iso, available: false };
+      try {
+        const slots = await getAvailableSlotsImpl({
+          tenantId: params.tenantId,
+          serviceId: params.serviceId,
+          date: iso,
+          isHomeVisit: params.isHomeVisit,
+          ignoreBlocks: params.ignoreBlocks,
+        });
+        return { date: iso, available: slots.length > 0 };
+      } catch {
+        return { date: iso, available: false };
+      }
+    })
+  );
+
+  return results.reduce<Record<string, boolean>>((acc, item) => {
+    acc[item.date] = item.available;
+    return acc;
+  }, {});
 }
 
 interface GetBlockStatusParams {

@@ -7,7 +7,12 @@ import {
   triggerCreatedNotificationsForAppointment,
   updateInternalAppointment as updateAppointmentImpl,
 } from "../../../src/modules/appointments/actions";
-import { listClientAddresses } from "../../../src/modules/clients/repository";
+import { listClientAddresses, createClient, findClientByCpf, getClientById } from "../../../src/modules/clients/repository";
+import {
+  buildClientNameColumnsProfile,
+  composeInternalClientName,
+  normalizeReferenceLabel,
+} from "../../../src/modules/clients/name-profile";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 import {
@@ -26,6 +31,135 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   await requireDashboardAccessForServerAction();
   await createAppointmentImpl(formData);
+}
+
+function normalizeCpfDigits(value?: string | null) {
+  return (value ?? "").replace(/\D/g, "").slice(0, 11);
+}
+
+function normalizePhoneDigits(value?: string | null) {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function getInitials(name: string) {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0]?.slice(0, 2).toUpperCase() ?? null;
+  return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
+}
+
+export async function createClientFromAppointmentDraft(input: {
+  firstName: string;
+  lastName: string;
+  reference?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  cpf?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      data: {
+        id: string;
+        name: string;
+        phone: string | null;
+        email: string | null;
+        cpf: string | null;
+        public_first_name: string | null;
+        public_last_name: string | null;
+        internal_reference: string | null;
+      };
+    }
+  | { ok: false; error: string }
+> {
+  await requireDashboardAccessForServerAction();
+
+  const parsed = z
+    .object({
+      firstName: z.string().trim().min(1, "Informe o primeiro nome."),
+      lastName: z.string().trim().min(1, "Informe o sobrenome."),
+      reference: z.string().trim().max(120).optional().nullable(),
+      phone: z.string().trim().max(32).optional().nullable(),
+      email: z.string().trim().email("Email inválido.").max(180).optional().nullable(),
+      cpf: z.string().trim().max(20).optional().nullable(),
+    })
+    .safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, error: "Dados do cliente inválidos." };
+  }
+
+  const firstName = parsed.data.firstName.trim();
+  const lastName = parsed.data.lastName.trim();
+  const reference = normalizeReferenceLabel(parsed.data.reference ?? null);
+  const phoneDigits = normalizePhoneDigits(parsed.data.phone ?? null);
+  const normalizedPhone = phoneDigits ? parsed.data.phone?.trim() ?? null : null;
+  const normalizedEmail = (parsed.data.email ?? "").trim().toLowerCase() || null;
+  const cpfDigits = normalizeCpfDigits(parsed.data.cpf ?? null);
+
+  if (phoneDigits.length > 0 && phoneDigits.length !== 10 && phoneDigits.length !== 11) {
+    return { ok: false, error: "WhatsApp inválido. Informe um número com DDD." };
+  }
+
+  if (cpfDigits.length > 0 && cpfDigits.length !== 11) {
+    return { ok: false, error: "CPF inválido. Informe os 11 números do CPF." };
+  }
+
+  if (cpfDigits.length === 11) {
+    const { data: cpfClient, error: cpfError } = await findClientByCpf(FIXED_TENANT_ID, cpfDigits);
+    if (cpfError) {
+      return { ok: false, error: "Não foi possível validar o CPF agora. Tente novamente." };
+    }
+    if (cpfClient?.id) {
+      return { ok: false, error: `CPF já cadastrado para o cliente ${cpfClient.name}.` };
+    }
+  }
+
+  const nameColumns = buildClientNameColumnsProfile({
+    publicFirstName: firstName,
+    publicLastName: lastName,
+    reference: reference || null,
+  });
+  const internalName = composeInternalClientName(firstName, lastName, reference || null);
+  const initials = getInitials(internalName);
+
+  const { data: createdClient, error: createError } = await createClient({
+    tenant_id: FIXED_TENANT_ID,
+    name: internalName,
+    phone: normalizedPhone,
+    email: normalizedEmail,
+    cpf: cpfDigits.length === 11 ? cpfDigits : null,
+    public_first_name: nameColumns.public_first_name,
+    public_last_name: nameColumns.public_last_name,
+    internal_reference: nameColumns.internal_reference,
+    initials,
+    marketing_opt_in: false,
+  });
+
+  if (createError || !createdClient?.id) {
+    return { ok: false, error: "Não foi possível salvar o cliente agora." };
+  }
+
+  const { data: clientRow, error: rowError } = await getClientById(FIXED_TENANT_ID, createdClient.id);
+  if (rowError || !clientRow) {
+    return { ok: false, error: "Cliente salvo, mas não foi possível carregar os dados agora." };
+  }
+
+  return {
+    ok: true,
+    data: {
+      id: clientRow.id,
+      name: clientRow.name,
+      phone: clientRow.phone ?? null,
+      email: clientRow.email ?? null,
+      cpf: clientRow.cpf ?? null,
+      public_first_name: clientRow.public_first_name ?? null,
+      public_last_name: clientRow.public_last_name ?? null,
+      internal_reference: clientRow.internal_reference ?? null,
+    },
+  };
 }
 
 function cloneFormData(input: FormData) {

@@ -9,22 +9,23 @@ import {
   Building2,
   Car,
   Check,
+  Copy,
+  Plus,
+  Trash2,
   X,
-  CreditCard,
-  Banknote,
-  Gift,
 } from "lucide-react";
-import { eachDayOfInterval, endOfMonth, format, isBefore, isSameMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
+import { format, isBefore, isSameMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonthCalendar } from "../../../components/agenda/month-calendar";
-import { AttendancePaymentModal } from "../atendimento/[id]/components/attendance-payment-modal";
+import { PaymentMethodIcon } from "../../../components/ui/payment-method-icon";
 import {
   createAppointment,
   createAppointmentForImmediateCharge,
+  createClientFromAppointmentDraft,
   finalizeCreatedAppointmentNotifications,
   getBookingChargeContext,
   getClientAddresses,
@@ -32,15 +33,12 @@ import {
   pollBookingPointPaymentStatus,
   recordBookingChargePayment,
   recordManualCreatedMessage,
-  recordManualPaymentReceiptMessage,
-  saveBookingChargeItems,
   saveClientAddress,
-  setBookingChargeDiscount,
   createBookingPixPayment,
   createBookingPointPayment,
   updateAppointment,
 } from "./appointment-actions"; // Ação importada do arquivo renomeado
-import { getAvailableSlots, getDateBlockStatus } from "./availability";
+import { getAvailableSlots, getDateBlockStatus, getMonthAvailableDays } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Toast, useToast } from "../../../components/ui/toast";
 import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
@@ -48,7 +46,6 @@ import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.typ
 import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
 import { feedbackById } from "../../../src/shared/feedback/user-feedback";
 import { formatBrazilPhone } from "../../../src/shared/phone";
-import { buildAppointmentReceiptPath } from "../../../src/shared/public-links";
 import {
   composeInternalClientName,
   normalizeReferenceLabel,
@@ -142,6 +139,25 @@ interface ChargeBookingState {
   checkoutItems: CheckoutItem[];
   payments: PaymentRow[];
 }
+
+type ChargePaymentStatus = "paid" | "pending" | "failed";
+
+type BookingPixPaymentData = {
+  id: string;
+  order_id: string;
+  qr_code: string | null;
+  qr_code_base64: string | null;
+  expires_at: string;
+  transaction_amount: number;
+};
+
+type BookingPointPaymentData = {
+  id: string;
+  order_id: string;
+  internal_status: ChargePaymentStatus;
+  card_mode: "debit" | "credit";
+  transaction_amount: number;
+};
 
 type ClientRecordLite = {
   id: string;
@@ -249,6 +265,17 @@ function formatCurrencyLabel(value: number) {
   });
 }
 
+function getRemainingSeconds(expiresAt: string) {
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  return Math.max(Math.floor(diff / 1000), 0);
+}
+
+function formatCountdown(totalSeconds: number) {
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const ss = String(totalSeconds % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
 function buildDraftItemId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -275,20 +302,6 @@ function buildAddressQuery(payload: {
     payload.cep,
   ].filter((value) => value && value.trim().length > 0);
   return parts.join(", ");
-}
-
-function resolvePublicBaseUrl(rawBaseUrl: string) {
-  const trimmed = rawBaseUrl.trim();
-  if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/\/$/, "");
-  return `https://${trimmed.replace(/\/$/, "")}`;
-}
-
-function normalizePhoneForWhatsapp(phone: string | null | undefined) {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  return digits.startsWith("55") ? digits : `55${digits}`;
 }
 
 function formatClientAddress(address: ClientAddress) {
@@ -376,9 +389,6 @@ export function AppointmentForm({
   pointEnabled,
   pointTerminalName,
   pointTerminalModel,
-  publicBaseUrl,
-  pixKeyValue,
-  pixKeyType,
 }: AppointmentFormProps) {
   const router = useRouter();
   const isEditing = Boolean(initialAppointment);
@@ -452,7 +462,13 @@ export function AppointmentForm({
   const [chargeNowSignalValueConfirmed, setChargeNowSignalValueConfirmed] = useState(false);
   const [confirmationSheetStep, setConfirmationSheetStep] = useState<BookingConfirmationStep>("review");
   const [creatingChargeBooking, setCreatingChargeBooking] = useState(false);
+  const [runningChargeAction, setRunningChargeAction] = useState(false);
   const [chargeBookingState, setChargeBookingState] = useState<ChargeBookingState | null>(null);
+  const [chargePixPayment, setChargePixPayment] = useState<BookingPixPaymentData | null>(null);
+  const [chargePixAttempt, setChargePixAttempt] = useState(0);
+  const [chargePixRemainingSeconds, setChargePixRemainingSeconds] = useState(0);
+  const [chargePointPayment, setChargePointPayment] = useState<BookingPointPaymentData | null>(null);
+  const [chargePointAttempt, setChargePointAttempt] = useState(0);
   const [chargeFlowError, setChargeFlowError] = useState<string | null>(null);
   const [chargeNotificationsDispatched, setChargeNotificationsDispatched] = useState(false);
   const [finishingChargeFlow, setFinishingChargeFlow] = useState(false);
@@ -461,10 +477,11 @@ export function AppointmentForm({
   const [activeMonth, setActiveMonth] = useState<Date>(() =>
     startOfMonth(parseISO(`${(initialAppointment?.date ?? safeDate)}T00:00:00`))
   );
-  const [monthAvailability, setMonthAvailability] = useState<Record<string, string[]>>({});
+  const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
   const [isLoadingMonthAvailability, setIsLoadingMonthAvailability] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [clientRecords, setClientRecords] = useState<ClientRecordLite[]>(clients);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
   const [clientSelectionMode, setClientSelectionMode] = useState<ClientSelectionMode>(
     initialAppointment?.clientId ? "existing" : "idle"
@@ -481,6 +498,7 @@ export function AppointmentForm({
   const [clientReference, setClientReference] = useState("");
   const [isClientCreateModalOpen, setIsClientCreateModalOpen] = useState(false);
   const [clientCreateError, setClientCreateError] = useState<string | null>(null);
+  const [isClientCreateSaving, setIsClientCreateSaving] = useState(false);
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasLocationChoice, setHasLocationChoice] = useState<boolean>(Boolean(initialAppointment));
   const [hasBlocks, setHasBlocks] = useState(false);
@@ -545,6 +563,10 @@ export function AppointmentForm({
   }, []);
 
   useEffect(() => {
+    setClientRecords(clients);
+  }, [clients]);
+
+  useEffect(() => {
     if (previousClientIdRef.current && previousClientIdRef.current !== selectedClientId) {
       setAddressMode("none");
       setSelectedAddressId(null);
@@ -574,7 +596,7 @@ export function AppointmentForm({
     const query = clientName.trim();
     const lower = query.toLowerCase();
     const digits = query.replace(/\D/g, "");
-    return clients
+    return clientRecords
       .filter((client) => {
         const byName = client.name.toLowerCase().includes(lower);
         if (byName) return true;
@@ -587,13 +609,13 @@ export function AppointmentForm({
         );
       })
       .slice(0, 8);
-  }, [clientName, clients]);
+  }, [clientName, clientRecords]);
 
   const exactClientMatch = useMemo(() => {
     const trimmed = clientName.trim();
     if (!trimmed) return null;
-    return clients.find((client) => client.name.trim().toLowerCase() === trimmed.toLowerCase()) ?? null;
-  }, [clientName, clients]);
+    return clientRecords.find((client) => client.name.trim().toLowerCase() === trimmed.toLowerCase()) ?? null;
+  }, [clientName, clientRecords]);
 
   const handleSelectClient = (client: ClientRecordLite) => {
     setClientName(client.name);
@@ -649,7 +671,7 @@ export function AppointmentForm({
     }, 30);
   };
 
-  const handleSaveClientDraftFromModal = () => {
+  const handleSaveClientDraftFromModal = async () => {
     const firstName = clientFirstName.trim();
     const lastName = clientLastName.trim();
     const reference = normalizeReferenceLabel(clientReference);
@@ -681,17 +703,60 @@ export function AppointmentForm({
       return;
     }
 
-    setClientName(composeInternalClientName(firstName, lastName, reference || null));
-    setClientPhone(phoneDigits ? formatBrazilPhone(phoneDigits) : "");
-    setClientEmail(emailValue);
-    setClientCpf(cpfDigits.length === 11 ? formatCpf(cpfDigits) : "");
-    setClientFirstName(firstName);
-    setClientLastName(lastName);
-    setClientReference(reference);
-    setSelectedClientId(null);
-    setClientSelectionMode("new");
-    setIsClientCreateModalOpen(false);
+    setIsClientCreateSaving(true);
     setClientCreateError(null);
+    try {
+      const result = await createClientFromAppointmentDraft({
+        firstName,
+        lastName,
+        reference: reference || null,
+        phone: phoneDigits ? formatBrazilPhone(phoneDigits) : null,
+        email: emailValue || null,
+        cpf: cpfDigits.length === 11 ? cpfDigits : null,
+      });
+
+      if (!result.ok) {
+        setClientCreateError(result.error ?? "Não foi possível salvar o cliente agora.");
+        return;
+      }
+      if (!result.data) {
+        setClientCreateError("Não foi possível salvar o cliente agora.");
+        return;
+      }
+
+      const createdClient: ClientRecordLite = {
+        id: result.data.id,
+        name: result.data.name,
+        phone: result.data.phone,
+        email: result.data.email,
+        cpf: result.data.cpf,
+        public_first_name: result.data.public_first_name,
+        public_last_name: result.data.public_last_name,
+        internal_reference: result.data.internal_reference,
+      };
+
+      setClientRecords((current) => {
+        const next = current.filter((client) => client.id !== createdClient.id);
+        return [createdClient, ...next];
+      });
+      handleSelectClient(createdClient);
+      setClientName(createdClient.name);
+      setClientPhone(createdClient.phone ? formatBrazilPhone(createdClient.phone) : "");
+      setClientEmail(createdClient.email?.trim().toLowerCase() ?? "");
+      setClientCpf(formatCpf(createdClient.cpf ?? ""));
+      setClientFirstName(firstName);
+      setClientLastName(lastName);
+      setClientReference(reference);
+      setIsClientCreateModalOpen(false);
+      showToast({
+        title: "Cliente",
+        message: "Cliente salvo com sucesso.",
+        tone: "success",
+        durationMs: 1800,
+      });
+    } finally {
+      setIsClientCreateSaving(false);
+    }
   };
 
   const handleLinkExistingClientByCpf = () => {
@@ -801,9 +866,8 @@ export function AppointmentForm({
     if (!selectedServiceId) return true;
     if (selectedService?.accepts_home_visit && !hasLocationChoice) return true;
     const iso = format(day, "yyyy-MM-dd");
-    const slots = monthAvailability[iso];
-    if (!slots) return isLoadingMonthAvailability;
-    return slots.length === 0;
+    if (!(iso in monthAvailability)) return isLoadingMonthAvailability;
+    return monthAvailability[iso] !== true;
   };
 
   const handleAddFinanceItem = () => {
@@ -974,38 +1038,19 @@ export function AppointmentForm({
       }
 
       setIsLoadingMonthAvailability(true);
-      const start = startOfMonth(activeMonth);
-      const end = endOfMonth(activeMonth);
-      const today = startOfDay(new Date());
-      const days = eachDayOfInterval({ start, end });
-
       try {
-        const results = await Promise.all(
-          days.map(async (day) => {
-            const iso = format(day, "yyyy-MM-dd");
-            if (isBefore(day, today)) {
-              return { date: iso, slots: [] as string[] };
-            }
-            try {
-              const slots = await getAvailableSlots({
-                tenantId: FIXED_TENANT_ID,
-                serviceId: selectedServiceId,
-                date: iso,
-                isHomeVisit,
-                ignoreBlocks: true,
-              });
-              return { date: iso, slots };
-            } catch {
-              return { date: iso, slots: [] as string[] };
-            }
-          })
-        );
-        if (!active) return;
-        const map: Record<string, string[]> = {};
-        results.forEach(({ date: day, slots }) => {
-          map[day] = slots;
+        const map = await getMonthAvailableDays({
+          tenantId: FIXED_TENANT_ID,
+          serviceId: selectedServiceId,
+          month: format(activeMonth, "yyyy-MM"),
+          isHomeVisit,
+          ignoreBlocks: true,
         });
+        if (!active) return;
         setMonthAvailability(map);
+      } catch {
+        if (!active) return;
+        setMonthAvailability({});
       } finally {
         if (active) setIsLoadingMonthAvailability(false);
       }
@@ -1020,6 +1065,12 @@ export function AppointmentForm({
   useEffect(() => {
     async function fetchSlots() {
       if (!selectedServiceId || !selectedDate || (selectedService?.accepts_home_visit && !hasLocationChoice)) {
+        setAvailableSlots([]);
+        setSelectedTime("");
+        return;
+      }
+
+      if (monthAvailability[selectedDate] !== true) {
         setAvailableSlots([]);
         setSelectedTime("");
         return;
@@ -1052,7 +1103,7 @@ export function AppointmentForm({
     }
 
     fetchSlots();
-  }, [isEditing, selectedServiceId, selectedDate, isHomeVisit, hasLocationChoice, selectedService]);
+  }, [isEditing, selectedServiceId, selectedDate, isHomeVisit, hasLocationChoice, monthAvailability, selectedService]);
 
   useEffect(() => {
     async function fetchBlockStatus() {
@@ -1264,7 +1315,7 @@ export function AppointmentForm({
     cep,
   });
   const selectedClientRecord =
-    (selectedClientId ? clients.find((client) => client.id === selectedClientId) ?? null : null) ?? null;
+    (selectedClientId ? clientRecords.find((client) => client.id === selectedClientId) ?? null : null) ?? null;
   const selectedClientNames = useMemo(
     () =>
       selectedClientRecord
@@ -1282,7 +1333,7 @@ export function AppointmentForm({
     if (normalized.length !== 11) return null;
 
     const match =
-      clients.find((client) => {
+      clientRecords.find((client) => {
         const clientCpfDigits = normalizeCpfDigits(client.cpf ?? null);
         return clientCpfDigits.length === 11 && clientCpfDigits === normalized;
       }) ?? null;
@@ -1290,7 +1341,7 @@ export function AppointmentForm({
     if (!match) return null;
     if (selectedClientId && match.id === selectedClientId) return null;
     return match;
-  }, [clientCpf, clients, selectedClientId]);
+  }, [clientCpf, clientRecords, selectedClientId]);
 
   const isClientSelectionPending = !isEditing && clientSelectionMode === "idle";
   const shouldShowClientContactFields = isEditing || clientSelectionMode !== "idle";
@@ -1606,7 +1657,7 @@ export function AppointmentForm({
     return `/?${params.toString()}`;
   };
 
-  const refreshChargeBookingState = async (appointmentId: string) => {
+  const refreshChargeBookingState = useCallback(async (appointmentId: string) => {
     const context = await getBookingChargeContext(appointmentId);
     if (!context.ok) {
       setChargeFlowError(context.error ?? "Não foi possível atualizar o checkout.");
@@ -1628,7 +1679,7 @@ export function AppointmentForm({
     } satisfies ChargeBookingState;
     setChargeBookingState(next);
     return next;
-  };
+  }, [chargeBookingState, safeDate, selectedDate]);
 
   const handleBeginImmediateCharge = async () => {
     if (!formRef.current) return;
@@ -1655,7 +1706,13 @@ export function AppointmentForm({
       return;
     }
 
+    setChargePixPayment(null);
+    setChargePixAttempt(0);
+    setChargePixRemainingSeconds(0);
+    setChargePointPayment(null);
+    setChargePointAttempt(0);
     setCreatingChargeBooking(true);
+    setRunningChargeAction(false);
     setChargeFlowError(null);
     setConfirmationSheetStep("creating_charge");
     try {
@@ -1681,24 +1738,83 @@ export function AppointmentForm({
       };
       setChargeBookingState(nextState);
       setChargeNotificationsDispatched(false);
-      setConfirmationSheetStep("charge_payment");
+
+      if (chargeNowMethodDraft === "cash") {
+        setRunningChargeAction(true);
+        const checkoutTotal = Number(nextState.checkout?.total ?? 0);
+        const amountToChargeNow =
+          checkoutTotal > 0
+            ? Math.min(chargeNowDraftAmount, checkoutTotal)
+            : chargeNowDraftAmount;
+        const result = await recordBookingChargePayment({
+          appointmentId: nextState.appointmentId,
+          method: "cash",
+          amount: amountToChargeNow,
+        });
+        if (!result.ok) {
+          const errorMessage =
+            typeof result.error?.message === "string" && result.error.message.trim().length > 0
+              ? result.error.message
+              : "Não foi possível registrar o pagamento em dinheiro.";
+          setChargeFlowError(errorMessage);
+          setConfirmationSheetStep("charge_payment");
+          return;
+        }
+        await refreshChargeBookingState(nextState.appointmentId);
+        await ensureChargeNotificationsDispatched();
+        setChargeFlowError(null);
+        setConfirmationSheetStep("charge_manual_prompt");
+        return;
+      }
+
+      if (chargeNowMethodDraft === "pix_mp") {
+        setRunningChargeAction(true);
+        setConfirmationSheetStep("charge_payment");
+        const result = await createBookingPixPayment({
+          appointmentId: nextState.appointmentId,
+          amount: chargeNowDraftAmount,
+          payerName: clientPublicFullNamePreview || clientName || "Cliente",
+          payerPhone: resolvedClientPhone || clientPhone,
+          payerEmail: clientEmail || selectedClientRecord?.email || null,
+          attempt: 0,
+        });
+        if (!result.ok || !result.data) {
+          setChargeFlowError("Não foi possível gerar o PIX agora.");
+          return;
+        }
+        setChargePixPayment(result.data as BookingPixPaymentData);
+        setChargePixRemainingSeconds(getRemainingSeconds(result.data.expires_at));
+        return;
+      }
+
+      if (chargeNowMethodDraft === "card") {
+        setConfirmationSheetStep("charge_payment");
+        setRunningChargeAction(true);
+        const result = await handleChargeCreatePointPayment(nextState.appointmentId, chargeNowDraftAmount, "credit", 1);
+        if (!result.ok || !result.data) {
+          setChargeFlowError("Não foi possível iniciar a cobrança no cartão.");
+          return;
+        }
+        setChargePointAttempt(1);
+        setChargePointPayment(result.data);
+        if (result.data.internal_status === "paid") {
+          await refreshChargeBookingState(nextState.appointmentId);
+          setChargePointPayment(null);
+          await ensureChargeNotificationsDispatched();
+          setChargeFlowError(null);
+          setConfirmationSheetStep("charge_manual_prompt");
+        }
+        return;
+      }
+
+      setConfirmationSheetStep("review");
     } finally {
       setCreatingChargeBooking(false);
+      setRunningChargeAction(false);
     }
   };
 
-  const resolveChargeAmountForModal = () => {
-    if (collectionTimingDraft !== "charge_now") return null;
-    if (!chargeBookingState?.checkout) return Math.max(0, chargeNowDraftAmount);
-    const total = Number(chargeBookingState.checkout.total ?? 0);
-    const paid = (chargeBookingState.payments ?? [])
-      .filter((payment) => payment.status === "paid")
-      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
-    const remaining = Math.max(total - paid, 0);
-    return Math.max(0, Math.min(chargeNowDraftAmount, remaining));
-  };
-
-  const ensureChargeNotificationsDispatched = async () => {
+  const ensureChargeNotificationsDispatched = useCallback(async () => {
     if (!chargeBookingState || chargeNotificationsDispatched) return true;
     const result = await finalizeCreatedAppointmentNotifications({
       appointmentId: chargeBookingState.appointmentId,
@@ -1715,194 +1831,244 @@ export function AppointmentForm({
     }
     setChargeNotificationsDispatched(true);
     return true;
-  };
+  }, [chargeBookingState, chargeNotificationsDispatched, showToast]);
 
-  const handleChargeSaveItems = async (
-    items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>
-  ) => {
-    if (!chargeBookingState) return false;
-    const result = await saveBookingChargeItems({ appointmentId: chargeBookingState.appointmentId, items });
-    if (!result.ok) {
-      showToast({
-        title: "Checkout",
-        message: "Não foi possível atualizar os itens do checkout.",
-        tone: "error",
-        durationMs: 2600,
-      });
-      return false;
-    }
-    await refreshChargeBookingState(chargeBookingState.appointmentId);
-    return true;
-  };
+  const handleChargePaymentResolved = useCallback(async () => {
+    await ensureChargeNotificationsDispatched();
+    setChargePixPayment(null);
+    setChargePointPayment(null);
+    setChargeFlowError(null);
+    setConfirmationSheetStep("charge_manual_prompt");
+  }, [ensureChargeNotificationsDispatched]);
 
-  const handleChargeSetDiscount = async (type: "value" | "pct" | null, value: number | null, reason?: string) => {
-    if (!chargeBookingState) return false;
-    const result = await setBookingChargeDiscount({
-      appointmentId: chargeBookingState.appointmentId,
-      type,
-      value,
-      reason: reason ?? null,
-    });
-    if (!result.ok) {
-      showToast({
-        title: "Checkout",
-        message: "Não foi possível aplicar o desconto.",
-        tone: "error",
-        durationMs: 2600,
-      });
-      return false;
-    }
-    await refreshChargeBookingState(chargeBookingState.appointmentId);
-    return true;
-  };
-
-  const handleChargeRegisterCashPayment = async (amount: number) => {
-    if (!chargeBookingState) return { ok: false as const, paymentId: null };
-    const result = await recordBookingChargePayment({ appointmentId: chargeBookingState.appointmentId, method: "cash", amount });
-    if (!result.ok) {
-      showToast({
-        title: "Pagamento",
-        message: "Não foi possível registrar o pagamento em dinheiro.",
-        tone: "error",
-        durationMs: 2600,
-      });
-      return { ok: false as const, paymentId: null };
-    }
-    await refreshChargeBookingState(chargeBookingState.appointmentId);
-    return { ok: true as const, paymentId: result.data.paymentId };
-  };
-
-  const handleChargeRegisterPixKeyPayment = async (amount: number) => {
-    if (!chargeBookingState) return { ok: false as const, paymentId: null };
-    const result = await recordBookingChargePayment({ appointmentId: chargeBookingState.appointmentId, method: "pix", amount });
-    if (!result.ok) {
-      showToast({
-        title: "Pagamento",
-        message: "Não foi possível registrar o pagamento Pix.",
-        tone: "error",
-        durationMs: 2600,
-      });
-      return { ok: false as const, paymentId: null };
-    }
-    await refreshChargeBookingState(chargeBookingState.appointmentId);
-    return { ok: true as const, paymentId: result.data.paymentId };
-  };
-
-  const handleChargeCreatePixPayment = async (amount: number, attempt: number) => {
-    if (!chargeBookingState) return { ok: false as const };
-    const payerPhone = resolvedClientPhone || clientPhone;
+  const handleChargeCreatePixPayment = async (appointmentId: string, amount: number, attempt: number) => {
     const result = await createBookingPixPayment({
-      appointmentId: chargeBookingState.appointmentId,
+      appointmentId,
       amount,
       payerName: clientPublicFullNamePreview || clientName || "Cliente",
-      payerPhone,
+      payerPhone: resolvedClientPhone || clientPhone,
       payerEmail: clientEmail || selectedClientRecord?.email || null,
       attempt,
     });
-    if (!result.ok) {
-      showToast({
-        title: "Pagamento",
-        message: "Não foi possível gerar o PIX agora.",
-        tone: "error",
-        durationMs: 2600,
-      });
+    if (!result.ok || !result.data) {
       return { ok: false as const };
     }
-    await refreshChargeBookingState(chargeBookingState.appointmentId);
-    return { ok: true as const, data: result.data };
+    return { ok: true as const, data: result.data as BookingPixPaymentData };
   };
 
-  const handleChargePollPixStatus = async () => {
-    if (!chargeBookingState) return { ok: false as const, status: "pending" as const };
-    const result = await pollBookingPixPaymentStatus({ appointmentId: chargeBookingState.appointmentId });
+  const handleChargePollPixStatus = useCallback(async (appointmentId: string) => {
+    const result = await pollBookingPixPaymentStatus({ appointmentId });
     if (!result.ok) {
-      return { ok: false as const, status: "pending" as const };
+      return { ok: false as const, status: "pending" as ChargePaymentStatus };
     }
-    if (result.data.internal_status !== "pending") {
-      await refreshChargeBookingState(chargeBookingState.appointmentId);
-    }
-    return { ok: true as const, status: result.data.internal_status };
-  };
+    return { ok: true as const, status: result.data.internal_status as ChargePaymentStatus };
+  }, []);
 
-  const handleChargeCreatePointPayment = async (amount: number, cardMode: "debit" | "credit", attempt: number) => {
-    if (!chargeBookingState) return { ok: false as const };
+  const handleChargeCreatePointPayment = async (
+    appointmentId: string,
+    amount: number,
+    cardMode: "debit" | "credit",
+    attempt: number
+  ) => {
     const result = await createBookingPointPayment({
-      appointmentId: chargeBookingState.appointmentId,
+      appointmentId,
       amount,
       cardMode,
       attempt,
     });
-    if (!result.ok) {
-      showToast({
-        title: "Pagamento",
-        message: "Não foi possível iniciar a cobrança no cartão.",
-        tone: "error",
-        durationMs: 2600,
-      });
+    if (!result.ok || !result.data) {
       return { ok: false as const };
     }
-    if (result.data.internal_status !== "pending") {
-      await refreshChargeBookingState(chargeBookingState.appointmentId);
-    }
-    return { ok: true as const, data: result.data };
+    return { ok: true as const, data: result.data as BookingPointPaymentData };
   };
 
-  const handleChargePollPointStatus = async (orderId: string) => {
-    if (!chargeBookingState) return { ok: false as const, status: "pending" as const, paymentId: null };
+  const handleChargePollPointStatus = useCallback(async (appointmentId: string, orderId: string) => {
     const result = await pollBookingPointPaymentStatus({
-      appointmentId: chargeBookingState.appointmentId,
+      appointmentId,
       orderId,
     });
     if (!result.ok) {
-      return { ok: false as const, status: "pending" as const, paymentId: null };
+      return { ok: false as const, status: "pending" as ChargePaymentStatus, paymentId: null };
     }
-    if (result.data.internal_status !== "pending") {
-      await refreshChargeBookingState(chargeBookingState.appointmentId);
+    return {
+      ok: true as const,
+      status: result.data.internal_status as ChargePaymentStatus,
+      paymentId: result.data.id,
+    };
+  }, []);
+
+  const handleCreateChargePixNow = async (attempt: number) => {
+    if (!chargeBookingState) return;
+    setRunningChargeAction(true);
+    setChargeFlowError(null);
+    try {
+      const result = await handleChargeCreatePixPayment(chargeBookingState.appointmentId, chargeNowDraftAmount, attempt);
+      if (!result.ok) {
+        setChargeFlowError("Não foi possível gerar o PIX agora.");
+        return;
+      }
+      setChargePixAttempt(attempt);
+      setChargePixPayment(result.data);
+      setChargePixRemainingSeconds(getRemainingSeconds(result.data.expires_at));
+    } finally {
+      setRunningChargeAction(false);
     }
-    return { ok: true as const, status: result.data.internal_status, paymentId: result.data.id };
   };
 
-  const handleChargeSendReceipt = async (paymentId: string) => {
-    if (!chargeBookingState) return;
-    const phone = normalizePhoneForWhatsapp(resolvedClientPhone || clientPhone);
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
+  const handleCopyChargePixCode = async () => {
+    if (!chargePixPayment?.qr_code) return;
+    try {
+      await navigator.clipboard.writeText(chargePixPayment.qr_code);
+      showToast({
+        title: "PIX",
+        message: "Código copiado.",
+        tone: "success",
+        durationMs: 1600,
+      });
+    } catch {
+      showToast({
+        title: "PIX",
+        message: "Não foi possível copiar o código agora.",
+        tone: "warning",
+        durationMs: 2200,
+      });
+    }
+  };
+
+  const handleSendChargePixViaWhatsapp = () => {
+    if (!chargePixPayment?.qr_code) {
+      showToast({
+        title: "PIX",
+        message: "Gere o QR Code antes de enviar a chave por WhatsApp.",
+        tone: "warning",
+        durationMs: 2200,
+      });
       return;
     }
 
-    const baseUrl = resolvePublicBaseUrl(publicBaseUrl);
-    const receiptPath = buildAppointmentReceiptPath({
-      appointmentId: chargeBookingState.appointmentId,
-      attendanceCode: chargeBookingState.attendanceCode,
-    });
-    const receiptLink = baseUrl ? `${baseUrl}${receiptPath}` : `${window.location.origin}${receiptPath}`;
-    const greeting = clientMessageFirstName ? `Olá, ${clientMessageFirstName}!` : "Olá!";
-    const message = applyAutoMessageTemplate(messageTemplates.payment_receipt, {
-      greeting,
-      service_name: selectedService?.name ?? "atendimento",
-      receipt_link_block: `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`,
-    }).trim();
-
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
-    void recordManualPaymentReceiptMessage({
-      appointmentId: chargeBookingState.appointmentId,
-      paymentId,
-      message,
-      receiptLink,
-    });
+    const firstName =
+      clientSelectionMode === "existing"
+        ? selectedClientNames?.messagingFirstName || "cliente"
+        : clientFirstName.trim() || "cliente";
+    const pixAmountLabel = formatCurrencyLabel(chargeNowDraftAmount);
+    const message = `Olá, ${firstName}! Segue a chave PIX para confirmar seu agendamento.\n\nValor: R$ ${pixAmountLabel}\n\nCódigo PIX (copia e cola):\n${chargePixPayment.qr_code}\n\nAssim que pagar, me avise por aqui.`;
+    openWhatsappFromForm(message);
   };
 
-  const handleChargePaymentResolved = async () => {
-    await ensureChargeNotificationsDispatched();
+  const handleVerifyChargePixNow = useCallback(async () => {
+    if (!chargeBookingState) return;
+    const result = await handleChargePollPixStatus(chargeBookingState.appointmentId);
+    if (!result.ok) return;
+    if (result.status === "failed") {
+      setChargeFlowError("O PIX não foi aprovado. Gere um novo QR Code para continuar.");
+      return;
+    }
+    if (result.status === "paid") {
+      await refreshChargeBookingState(chargeBookingState.appointmentId);
+      setChargePixPayment(null);
+      await handleChargePaymentResolved();
+    }
+  }, [chargeBookingState, handleChargePaymentResolved, handleChargePollPixStatus, refreshChargeBookingState]);
+
+  const handleStartChargeCard = async (cardMode: "debit" | "credit") => {
+    if (!chargeBookingState) return;
+    setRunningChargeAction(true);
     setChargeFlowError(null);
-    setConfirmationSheetStep("charge_manual_prompt");
+    try {
+      const nextAttempt = chargePointAttempt + 1;
+      const result = await handleChargeCreatePointPayment(
+        chargeBookingState.appointmentId,
+        chargeNowDraftAmount,
+        cardMode,
+        nextAttempt
+      );
+      if (!result.ok) {
+        setChargeFlowError("Não foi possível iniciar a cobrança no cartão.");
+        return;
+      }
+      setChargePointAttempt(nextAttempt);
+      setChargePointPayment(result.data);
+      if (result.data.internal_status === "paid") {
+        await refreshChargeBookingState(chargeBookingState.appointmentId);
+        setChargePointPayment(null);
+        await handleChargePaymentResolved();
+      }
+      if (result.data.internal_status === "failed") {
+        setChargeFlowError("A maquininha recusou a cobrança. Tente novamente.");
+      }
+    } finally {
+      setRunningChargeAction(false);
+    }
   };
+
+  const handleVerifyChargeCardNow = useCallback(async () => {
+    if (!chargeBookingState || !chargePointPayment) return;
+    const result = await handleChargePollPointStatus(chargeBookingState.appointmentId, chargePointPayment.order_id);
+    if (!result.ok) return;
+    if (result.status === "failed") {
+      setChargeFlowError("Cobrança não concluída na maquininha. Tente novamente.");
+      return;
+    }
+    if (result.status === "paid") {
+      await refreshChargeBookingState(chargeBookingState.appointmentId);
+      setChargePointPayment(null);
+      await handleChargePaymentResolved();
+    }
+  }, [chargeBookingState, chargePointPayment, handleChargePaymentResolved, handleChargePollPointStatus, refreshChargeBookingState]);
+
+  useEffect(() => {
+    if (!chargePixPayment) {
+      setChargePixRemainingSeconds(0);
+      return;
+    }
+    setChargePixRemainingSeconds(getRemainingSeconds(chargePixPayment.expires_at));
+    const interval = window.setInterval(() => {
+      setChargePixRemainingSeconds(getRemainingSeconds(chargePixPayment.expires_at));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [chargePixPayment]);
+
+  useEffect(() => {
+    if (confirmationSheetStep !== "charge_payment") return;
+    if (chargeNowMethodDraft !== "pix_mp") return;
+    if (!chargeBookingState || !chargePixPayment) return;
+
+    const interval = window.setInterval(() => {
+      void handleVerifyChargePixNow();
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [
+    chargeBookingState,
+    chargeNowMethodDraft,
+    chargePixPayment,
+    confirmationSheetStep,
+    handleVerifyChargePixNow,
+  ]);
+
+  useEffect(() => {
+    if (confirmationSheetStep !== "charge_payment") return;
+    if (chargeNowMethodDraft !== "card") return;
+    if (!chargeBookingState || !chargePointPayment) return;
+
+    const interval = window.setInterval(() => {
+      void handleVerifyChargeCardNow();
+    }, 3500);
+    return () => window.clearInterval(interval);
+  }, [
+    chargeBookingState,
+    chargeNowMethodDraft,
+    chargePointPayment,
+    confirmationSheetStep,
+    handleVerifyChargeCardNow,
+  ]);
 
   const handleSwitchChargeToAttendance = async () => {
     if (!chargeBookingState) return;
     setFinishingChargeFlow(true);
     try {
       await ensureChargeNotificationsDispatched();
+      setChargePixPayment(null);
+      setChargePointPayment(null);
       setConfirmationSheetStep("charge_manual_prompt");
     } finally {
       setFinishingChargeFlow(false);
@@ -1997,6 +2163,11 @@ export function AppointmentForm({
       return;
     }
     if (!formRef.current.reportValidity()) return;
+    setChargePixPayment(null);
+    setChargePixAttempt(0);
+    setChargePixRemainingSeconds(0);
+    setChargePointPayment(null);
+    setChargePointAttempt(0);
     setConfirmationSheetStep("review");
     setChargeFlowError(null);
     setIsSendPromptOpen(true);
@@ -2242,7 +2413,7 @@ export function AppointmentForm({
 
               {shouldShowCpfField && (
                 <div>
-                  <label className={labelClass}>CPF (para emissão de nota)</label>
+                  <label className={labelClass}>CPF (Opcional)</label>
                   <input
                     ref={clientCpfInputRef}
                     name="client_cpf"
@@ -2281,9 +2452,6 @@ export function AppointmentForm({
                       </div>
                     </div>
                   )}
-                  <p className="text-[11px] text-muted mt-2 ml-1">
-                    Campo opcional. Aceita digitação ou colagem com/sem pontos e traço.
-                  </p>
                 </div>
               )}
             </>
@@ -2350,7 +2518,7 @@ export function AppointmentForm({
                       </span>
                     </li>
                     <li className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-muted">Tempo</span>
+                      <span className="font-semibold text-muted">Tempo do serviço</span>
                       <span className="font-semibold text-studio-text">{selectedService.duration_minutes} min</span>
                     </li>
                     <li className="flex items-center justify-between gap-3">
@@ -2419,11 +2587,6 @@ export function AppointmentForm({
                   Em Domicílio
                 </button>
               </div>
-              {!hasLocationChoice && (
-                <p className="text-[11px] text-muted ml-1 mt-2">
-                  Escolha se o atendimento será no estúdio ou em domicílio.
-                </p>
-              )}
             </>
           ) : (
             <>
@@ -2854,46 +3017,21 @@ export function AppointmentForm({
                     <div className="h-px bg-stone-100 mb-2" />
                     <div className="space-y-2">
                       {financeExtraItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="grid grid-cols-[1fr_100px_auto] gap-2 items-center"
-                        >
-                          <input
-                            type="text"
-                            value={item.label}
-                            onChange={(event) =>
-                              setFinanceExtraItems((current) =>
-                                current.map((entry) =>
-                                  entry.id === item.id ? { ...entry, label: event.target.value } : entry
-                                )
-                              )
-                            }
-                            className="rounded-xl border border-line px-3 py-2 text-xs"
-                            placeholder="Descrição"
-                          />
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={formatCurrencyInput(item.amount)}
-                            onChange={(event) =>
-                              setFinanceExtraItems((current) =>
-                                current.map((entry) =>
-                                  entry.id === item.id
-                                    ? { ...entry, amount: Math.max(0, parseDecimalText(event.target.value) ?? 0) }
-                                    : entry
-                                )
-                              )
-                            }
-                            className="rounded-xl border border-line px-3 py-2 text-xs"
-                            placeholder="0,00"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFinanceItem(item.id)}
-                            className="px-2 py-2 rounded-xl border border-line text-[10px] font-extrabold uppercase tracking-wide text-gray-500 hover:text-red-600 hover:border-red-200"
-                          >
-                            Remover
-                          </button>
+                        <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-studio-text">
+                          <span className="truncate pr-3">{item.label || "Item adicional"}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="tabular-nums font-bold">
+                              R$ {formatCurrencyLabel(item.amount * (item.qty ?? 1))}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFinanceItem(item.id)}
+                              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-red-600"
+                              aria-label={`Remover item ${item.label}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2923,9 +3061,9 @@ export function AppointmentForm({
             <div className="bg-white border border-gray-100 rounded-3xl p-4">
               <div className="border-t border-line pt-1">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Adicionar item</p>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-[1fr_88px_40px] gap-2">
                   <input
-                    className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
+                    className="rounded-xl border border-line px-3 py-2 text-xs"
                     placeholder="Novo item"
                     value={financeNewItemLabel}
                     onChange={(event) => setFinanceNewItemLabel(event.target.value)}
@@ -2938,14 +3076,16 @@ export function AppointmentForm({
                     value={financeNewItemAmount}
                     onChange={(event) => setFinanceNewItemAmount(event.target.value)}
                   />
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-10 items-center justify-center rounded-xl border border-line text-studio-text hover:bg-paper"
+                    onClick={handleAddFinanceItem}
+                    aria-label="Adicionar item"
+                    title="Adicionar item"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
-                  onClick={handleAddFinanceItem}
-                >
-                  Adicionar item
-                </button>
               </div>
             </div>
 
@@ -3021,13 +3161,7 @@ export function AppointmentForm({
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
-                        <Image
-                          src="/icons/pix-brazil-symbol-official.svg"
-                          alt=""
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
+                        <PaymentMethodIcon method="pix" className="h-4 w-4" />
                         PIX
                       </button>
                       <button
@@ -3042,7 +3176,7 @@ export function AppointmentForm({
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
-                        <CreditCard className="h-4 w-4" />
+                        <PaymentMethodIcon method="card" className="h-4 w-4" />
                         Cartão
                       </button>
                       <button
@@ -3057,7 +3191,7 @@ export function AppointmentForm({
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
-                        <Banknote className="h-4 w-4" />
+                        <PaymentMethodIcon method="cash" className="h-4 w-4" />
                         Dinheiro
                       </button>
                       <button
@@ -3072,7 +3206,7 @@ export function AppointmentForm({
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
-                        <Gift className="h-4 w-4" />
+                        <PaymentMethodIcon method="waiver" className="h-4 w-4" />
                         Cortesia
                       </button>
                     </div>
@@ -3155,13 +3289,15 @@ export function AppointmentForm({
                             setChargeNowSignalValueConfirmed(true);
                           }
                         }}
-                        className={`rounded-xl border px-3 py-2 text-[10px] font-extrabold uppercase tracking-wide ${
+                        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${
                           chargeNowSignalValueConfirmed
                             ? "border-studio-green bg-studio-light text-studio-green"
                             : "border-line text-muted hover:bg-paper"
                         }`}
+                        aria-label={chargeNowSignalValueConfirmed ? "Valor confirmado" : "Confirmar valor"}
+                        title={chargeNowSignalValueConfirmed ? "Valor confirmado" : "Confirmar valor"}
                       >
-                        {chargeNowSignalValueConfirmed ? "Confirmado" : "Confirmar valor"}
+                        <Check className="h-4 w-4" />
                       </button>
                     </div>
                     {chargeNowAmountError && (
@@ -3202,7 +3338,8 @@ export function AppointmentForm({
                 <button
                   type="button"
                   onClick={() => setIsClientCreateModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+                  disabled={isClientCreateSaving}
+                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center disabled:opacity-60"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -3226,7 +3363,6 @@ export function AppointmentForm({
                       setClientCreateError(null);
                     }}
                     className={inputClass}
-                    placeholder="Ex: Renato"
                   />
                 </div>
 
@@ -3240,7 +3376,6 @@ export function AppointmentForm({
                       setClientCreateError(null);
                     }}
                     className={inputClass}
-                    placeholder="Ex: Mazzarino de Farias"
                   />
                 </div>
 
@@ -3254,7 +3389,6 @@ export function AppointmentForm({
                       setClientCreateError(null);
                     }}
                     className={inputClass}
-                    placeholder="Ex: Gerente Mercado"
                   />
                   <p className="text-[10px] text-muted mt-1 ml-1">
                     Uso interno. Não aparece em mensagens e telas públicas.
@@ -3290,7 +3424,7 @@ export function AppointmentForm({
                     />
                   </div>
                   <p className="text-[11px] text-muted mt-2 ml-1">
-                    Opcional. Se preencher, será salvo como telefone principal e WhatsApp do cliente.
+                    Se preencher, será salvo como telefone principal e WhatsApp do cliente.
                   </p>
                 </div>
 
@@ -3315,7 +3449,7 @@ export function AppointmentForm({
                 </div>
 
                 <div>
-                  <label className={labelClass}>CPF (para emissão de nota)</label>
+                  <label className={labelClass}>CPF (Opcional)</label>
                   <input
                     ref={clientCpfInputRef}
                     type="text"
@@ -3329,27 +3463,26 @@ export function AppointmentForm({
                     }}
                     className={inputClass}
                   />
-                  <p className="text-[11px] text-muted mt-2 ml-1">
-                    Opcional. Aceita digitação e colagem com ou sem pontos/traço.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsClientCreateModalOpen(false)}
-                    className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveClientDraftFromModal}
-                    className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
-                  >
-                    Salvar cliente
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsClientCreateModalOpen(false)}
+                  disabled={isClientCreateSaving}
+                  className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveClientDraftFromModal}
+                  disabled={isClientCreateSaving}
+                  className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
+                >
+                  {isClientCreateSaving ? "Salvando..." : "Salvar cliente"}
+                </button>
+              </div>
               </div>
             </div>
           </div>,
@@ -3730,41 +3863,126 @@ export function AppointmentForm({
                   <p className="mt-1 text-xs text-muted">Isso leva apenas alguns segundos.</p>
                 </div>
               ) : confirmationSheetStep === "charge_payment" && chargeBookingState ? (
-                <div className="space-y-3">
-                  <AttendancePaymentModal
-                    open
-                    variant="embedded"
-                    hideWaiverOption
-                    chargeAmountOverride={resolveChargeAmountForModal()}
-                    checkout={chargeBookingState.checkout}
-                    items={chargeBookingState.checkoutItems}
-                    payments={chargeBookingState.payments}
-                    appointmentPaymentStatus={chargeBookingState.appointmentPaymentStatus}
-                    pixKeyValue={pixKeyValue}
-                    pixKeyType={pixKeyType}
-                    pointEnabled={pointEnabled}
-                    pointTerminalName={pointTerminalName}
-                    pointTerminalModel={pointTerminalModel}
-                    onClose={() => void handleSwitchChargeToAttendance()}
-                    onSaveItems={handleChargeSaveItems}
-                    onSetDiscount={handleChargeSetDiscount}
-                    onRegisterCashPayment={handleChargeRegisterCashPayment}
-                    onRegisterPixKeyPayment={handleChargeRegisterPixKeyPayment}
-                    onCreatePixPayment={handleChargeCreatePixPayment}
-                    onPollPixStatus={handleChargePollPixStatus}
-                    onCreatePointPayment={handleChargeCreatePointPayment}
-                    onPollPointStatus={handleChargePollPointStatus}
-                    onWaivePayment={async () => ({ ok: false })}
-                    onSendReceipt={handleChargeSendReceipt}
-                    receiptFlowMode="manual"
-                    initialMethod={chargeNowMethodDraft ?? "pix_mp"}
-                    successResolveLabel="Continuar"
-                    onReceiptPromptResolved={async () => {
-                      await handleChargePaymentResolved();
-                    }}
-                  />
+                <div className="space-y-4">
+                  {chargeNowMethodDraft === "pix_mp" ? (
+                    <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                      <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted">
+                        <PaymentMethodIcon method="pix" className="h-4 w-4" />
+                        PIX Mercado Pago
+                      </div>
+                      <p className="mt-2 text-xs text-muted">
+                        Valor a cobrar agora: <strong>R$ {formatCurrencyLabel(chargeNowDraftAmount)}</strong>
+                      </p>
 
-                  <div className="grid grid-cols-2 gap-2">
+                      {!chargePixPayment ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateChargePixNow(chargePixAttempt + 1)}
+                          disabled={runningChargeAction}
+                          className="mt-3 w-full h-11 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
+                        >
+                          {runningChargeAction ? "Gerando PIX..." : "Gerar QR Code PIX"}
+                        </button>
+                      ) : (
+                        <>
+                          {chargePixPayment.qr_code_base64 && (
+                            <Image
+                              src={`data:image/png;base64,${chargePixPayment.qr_code_base64}`}
+                              alt="QR Code Pix"
+                              width={200}
+                              height={200}
+                              unoptimized
+                              className="mx-auto mt-4 h-44 w-44 rounded-xl border border-line bg-white p-2"
+                            />
+                          )}
+                          <p className="mt-3 text-center text-xs font-semibold text-studio-green">
+                            Tempo restante: {formatCountdown(chargePixRemainingSeconds)}
+                          </p>
+                          <div className="mt-2 h-2 rounded-full bg-stone-200">
+                            <div
+                              className="h-full rounded-full bg-studio-green transition-all"
+                              style={{ width: `${Math.max((chargePixRemainingSeconds / (15 * 60)) * 100, 0)}%` }}
+                            />
+                          </div>
+                          <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2 text-[11px] text-muted break-all">
+                            {chargePixPayment.qr_code}
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleCopyChargePixCode()}
+                              className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green flex items-center justify-center gap-1.5"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              Copiar chave PIX
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSendChargePixViaWhatsapp}
+                              className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green flex items-center justify-center gap-1.5"
+                            >
+                              <Phone className="h-3.5 w-3.5" />
+                              Enviar WhatsApp
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : chargeNowMethodDraft === "card" ? (
+                    <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                      <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted">
+                        <PaymentMethodIcon method="card" className="h-4 w-4" />
+                        Cobrança na maquininha
+                      </div>
+                      <p className="mt-2 text-xs text-muted">
+                        Valor a cobrar agora: <strong>R$ {formatCurrencyLabel(chargeNowDraftAmount)}</strong>
+                      </p>
+                      <p className="mt-2 text-xs text-muted">
+                        {pointEnabled ? pointTerminalName || "Maquininha Point configurada" : "Point não configurada"}
+                      </p>
+                      <p className="text-[11px] text-muted">{pointTerminalModel || "Configure a maquininha em Configurações."}</p>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleStartChargeCard("debit")}
+                          disabled={!pointEnabled || runningChargeAction}
+                          className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
+                        >
+                          Cobrar no débito
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleStartChargeCard("credit")}
+                          disabled={!pointEnabled || runningChargeAction}
+                          className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
+                        >
+                          Cobrar no crédito
+                        </button>
+                      </div>
+
+                      {chargePointPayment && (
+                        <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2">
+                          <p className="text-xs text-muted">
+                            Cobrança enviada ({chargePointPayment.card_mode === "debit" ? "débito" : "crédito"}). Aguardando confirmação...
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void handleVerifyChargeCardNow()}
+                            className="mt-2 h-9 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green"
+                          >
+                            Verificar agora
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 text-xs text-muted">
+                      Finalize a cobrança no atendimento.
+                    </div>
+                  )}
+
+                  <div className={`grid gap-2 ${chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 ? "grid-cols-2" : "grid-cols-1"}`}>
                     <button
                       type="button"
                       onClick={() => void handleSwitchChargeToAttendance()}
@@ -3773,13 +3991,19 @@ export function AppointmentForm({
                     >
                       {finishingChargeFlow ? "Finalizando..." : "Cobrar no atendimento"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setChargeFlowError(null)}
-                      className="w-full h-12 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs uppercase tracking-wide"
-                    >
-                      Cobrar de outra forma
-                    </button>
+                    {chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChargeFlowError(null);
+                          void handleCreateChargePixNow(chargePixAttempt + 1);
+                        }}
+                        disabled={runningChargeAction}
+                        className="w-full h-12 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs uppercase tracking-wide disabled:opacity-60"
+                      >
+                        Gerar novo pix
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : confirmationSheetStep === "charge_manual_prompt" && chargeBookingState ? (
@@ -3829,12 +4053,19 @@ export function AppointmentForm({
                         </span>
                       </div>
                       <div className="flex items-start justify-between gap-3">
-                        <span className="text-gray-500">Data e horário</span>
+                        <span className="text-gray-500">Data</span>
                         <span className="text-right font-semibold text-studio-text">
                           {selectedDate
-                            ? `${format(parseISO(selectedDate), "dd/MM/yyyy", { locale: ptBR })} • ${selectedTime || "--:--"}`
+                            ? `${format(parseISO(selectedDate), "EEEE", { locale: ptBR }).replace(
+                                /^./,
+                                (char) => char.toUpperCase(),
+                              )}, ${format(parseISO(selectedDate), "dd/MM", { locale: ptBR })}`
                             : "--"}
                         </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-gray-500">Horário</span>
+                        <span className="text-right font-semibold text-studio-text">{selectedTime || "--:--"}</span>
                       </div>
                       <div className="flex items-start justify-between gap-3">
                         <span className="text-gray-500">Local</span>
@@ -3876,14 +4107,16 @@ export function AppointmentForm({
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-gray-500">Cobrança</span>
-                        <span className="font-semibold text-studio-text">
-                          {collectionTimingDraft === "at_attendance" ? "No atendimento" : "No agendamento"}
-                        </span>
-                      </div>
                       {collectionTimingDraft === "charge_now" && (
                         <>
+                          {chargeNowMethodDraft !== "waiver" && (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-gray-500">Valor total do atendimento</span>
+                              <span className="font-semibold text-studio-text">
+                                R$ {formatCurrencyLabel(scheduleTotal)}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-gray-500">Forma</span>
                             <span className="font-semibold text-studio-text">
@@ -3896,14 +4129,7 @@ export function AppointmentForm({
                                     : "Cortesia"}
                             </span>
                           </div>
-                          {chargeNowMethodDraft !== "waiver" ? (
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-gray-500">Valor a cobrar agora</span>
-                              <span className="font-semibold text-studio-text">
-                                R$ {formatCurrencyLabel(chargeNowDraftAmount)}
-                              </span>
-                            </div>
-                          ) : (
+                          {chargeNowMethodDraft === "waiver" && (
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-gray-500">Status financeiro</span>
                               <span className="font-semibold text-sky-700">Cortesia / pagamento liberado</span>
@@ -3911,11 +4137,34 @@ export function AppointmentForm({
                           )}
                         </>
                       )}
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-500">Cobrança</span>
+                        <span className="font-semibold text-studio-text">
+                          {collectionTimingDraft === "at_attendance" ? "No atendimento" : "Agora (No Agendamento)"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
-                      <span className="text-base font-bold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
-                    </div>
+                    {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver" ? (
+                      <div className="mt-3 pt-3 border-t border-stone-100 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-gray-500">Valor Cobrado agora</span>
+                          <span className="shrink-0 whitespace-nowrap text-base font-bold text-studio-text">
+                            R$ {formatCurrencyLabel(chargeNowDraftAmount)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-gray-500">Saldo a cobrar</span>
+                          <span className="shrink-0 whitespace-nowrap text-base font-bold text-studio-text">
+                            R$ {formatCurrencyLabel(Math.max(scheduleTotal - chargeNowDraftAmount, 0))}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
+                        <span className="text-base font-bold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2">
