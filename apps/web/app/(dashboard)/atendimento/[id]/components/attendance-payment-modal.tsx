@@ -12,6 +12,14 @@ import {
   ATTENDANCE_PIX_TXID,
 } from "../../../../../src/shared/config";
 import { buildPixBrCode } from "../../../../../src/shared/pix/brcode";
+import {
+  formatCountdown,
+  formatCurrency,
+  formatPixTypeLabel,
+  getRemainingSeconds,
+  normalizePixKeyForCharge,
+  stageMessages,
+} from "./attendance-payment-modal.helpers";
 
 type InternalStatus = "paid" | "pending" | "failed";
 type PointCardMode = "debit" | "credit";
@@ -75,59 +83,6 @@ interface AttendancePaymentModalProps {
     sentReceipt: boolean;
     outcome?: "paid" | "waived";
   }) => Promise<void> | void;
-}
-
-const stageMessages = [
-  "Arrumando a maca...",
-  "Esquentando as toalhas...",
-  "Conferindo os dados do pagamento...",
-  "Confirmando a sessão no sistema...",
-];
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-}
-
-function getRemainingSeconds(expiresAt: string) {
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  return Math.max(Math.floor(diff / 1000), 0);
-}
-
-function formatCountdown(totalSeconds: number) {
-  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const ss = String(totalSeconds % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
-}
-
-function normalizePixKeyForCharge(
-  value: string,
-  type: "cnpj" | "cpf" | "email" | "phone" | "evp" | null
-) {
-  if (type === "cnpj" || type === "cpf") {
-    return value.replace(/\D/g, "");
-  }
-  if (type === "phone") {
-    const digits = value.replace(/\D/g, "");
-    return digits.startsWith("+") ? digits : `+${digits}`;
-  }
-  return value.trim();
-}
-
-function formatPixTypeLabel(type: "cnpj" | "cpf" | "email" | "phone" | "evp" | null) {
-  switch (type) {
-    case "cnpj":
-      return "CNPJ";
-    case "cpf":
-      return "CPF";
-    case "email":
-      return "E-mail";
-    case "phone":
-      return "Telefone";
-    case "evp":
-      return "Aleatória (EVP)";
-    default:
-      return "Chave";
-  }
 }
 
 export function AttendancePaymentModal({
