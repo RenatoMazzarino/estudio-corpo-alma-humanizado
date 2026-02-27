@@ -1,6 +1,7 @@
 import { createServiceClient } from "../../../lib/supabase/service";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { Database } from "../../../lib/supabase/types";
+import { normalizeCpfDigits } from "../../shared/cpf";
 import { normalizePhoneDigits, phonesMatch } from "../../shared/phone";
 
 export type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
@@ -104,10 +105,6 @@ export async function findClientByNamePhone(tenantId: string, name: string, phon
   }
 
   return { data: null, error: null };
-}
-
-function normalizeCpfDigits(value?: string | null) {
-  return (value ?? "").replace(/\D/g, "").slice(0, 11);
 }
 
 export async function findClientByCpf(tenantId: string, cpf: string) {

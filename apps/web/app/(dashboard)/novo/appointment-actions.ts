@@ -16,6 +16,8 @@ import {
 } from "../../../src/modules/clients/name-profile";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
+import { normalizeCpfDigits } from "../../../src/shared/cpf";
+import { normalizePhoneDigits } from "../../../src/shared/phone";
 import {
   createAttendancePixPayment,
   createAttendancePointPayment,
@@ -32,14 +34,6 @@ export async function createAppointment(formData: FormData): Promise<void> {
 
   await requireDashboardAccessForServerAction();
   await createAppointmentImpl(formData);
-}
-
-function normalizeCpfDigits(value?: string | null) {
-  return (value ?? "").replace(/\D/g, "").slice(0, 11);
-}
-
-function normalizePhoneDigits(value?: string | null) {
-  return (value ?? "").replace(/\D/g, "");
 }
 
 function getInitials(name: string) {

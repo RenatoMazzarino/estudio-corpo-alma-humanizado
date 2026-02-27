@@ -33,6 +33,7 @@ import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
 import { Toast, useToast } from "../../../../components/ui/toast";
+import { formatCpf } from "../../../../src/shared/cpf";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import { VoucherOverlay } from "./components/voucher-overlay";
@@ -148,14 +149,6 @@ declare global {
   interface Window {
     MercadoPago?: MercadoPagoConstructor;
   }
-}
-
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  return digits
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
 export function BookingFlow({

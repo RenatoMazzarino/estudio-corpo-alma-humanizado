@@ -1,3 +1,5 @@
+import { formatCep as formatCepShared } from "../../../../src/shared/address/cep";
+
 export const formatCountdown = (milliseconds: number) => {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -12,7 +14,4 @@ export const formatCountdown = (milliseconds: number) => {
   return `${twoDigits(minutes)}:${twoDigits(seconds)}`;
 };
 
-export const formatCep = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
-};
+export const formatCep = formatCepShared;

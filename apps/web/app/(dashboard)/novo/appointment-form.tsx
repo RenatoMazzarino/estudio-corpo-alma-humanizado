@@ -41,9 +41,12 @@ import {
 import { getAvailableSlots, getDateBlockStatus, getMonthAvailableDays } from "./availability";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Toast, useToast } from "../../../components/ui/toast";
-import { fetchAddressByCep, normalizeCep } from "../../../src/shared/address/cep";
+import { fetchAddressByCep, formatCep, normalizeCep } from "../../../src/shared/address/cep";
 import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
+import { formatCpf, normalizeCpfDigits } from "../../../src/shared/cpf";
+import { formatCurrencyInput, formatCurrencyLabel, parseDecimalInput } from "../../../src/shared/currency";
+import { formatMinutesSeconds, getRemainingSeconds } from "../../../src/shared/datetime";
 import { feedbackById } from "../../../src/shared/feedback/user-feedback";
 import { formatBrazilPhone } from "../../../src/shared/phone";
 import {
@@ -193,23 +196,6 @@ interface InitialAppointment {
   displacementDistanceKm?: number | null;
 }
 
-function formatCep(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
-}
-
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  return digits
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1-$2");
-}
-
-function normalizeCpfDigits(value?: string | null) {
-  return (value ?? "").replace(/\D/g, "").slice(0, 11);
-}
-
 function normalizePhoneSearchDigits(value?: string | null) {
   return (value ?? "").replace(/\D/g, "").slice(0, 13);
 }
@@ -235,46 +221,8 @@ function splitSeedName(value: string) {
   };
 }
 
-function parseDecimalText(value: string): number | null {
-  if (!value) return null;
-  const cleaned = value.trim().replace(/[^\d.,-]/g, "");
-  if (!cleaned) return null;
-
-  let normalized = cleaned;
-  if (cleaned.includes(",") && cleaned.includes(".")) {
-    normalized =
-      cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
-        ? cleaned.replace(/\./g, "").replace(",", ".")
-        : cleaned.replace(/,/g, "");
-  } else if (cleaned.includes(",")) {
-    normalized = cleaned.replace(",", ".");
-  }
-
-  const parsed = Number(normalized);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
-function formatCurrencyInput(value: number) {
-  return Number.isFinite(value) ? value.toFixed(2).replace(".", ",") : "0,00";
-}
-
-function formatCurrencyLabel(value: number) {
-  return value.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function getRemainingSeconds(expiresAt: string) {
-  const diff = new Date(expiresAt).getTime() - Date.now();
-  return Math.max(Math.floor(diff / 1000), 0);
-}
-
-function formatCountdown(totalSeconds: number) {
-  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const ss = String(totalSeconds % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
-}
+const parseDecimalText = parseDecimalInput;
+const formatCountdown = formatMinutesSeconds;
 
 function buildDraftItemId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

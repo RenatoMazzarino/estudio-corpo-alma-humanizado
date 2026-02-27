@@ -9,6 +9,11 @@ export function normalizeCep(value: string) {
   return value.replace(/\D/g, "").slice(0, 8);
 }
 
+export function formatCep(value: string) {
+  const digits = normalizeCep(value);
+  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
+}
+
 export async function fetchAddressByCep(rawCep: string): Promise<CepLookupResult | null> {
   const cep = normalizeCep(rawCep);
   if (cep.length !== 8) return null;

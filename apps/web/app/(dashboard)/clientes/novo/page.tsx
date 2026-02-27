@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Phone, Mail, Plus, Trash2 } from "lucide-react";
 import { AppHeader } from "../../../../components/ui/app-header";
 import { createClientAction, searchClientsByName } from "./actions";
-import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
+import { fetchAddressByCep, formatCep, normalizeCep } from "../../../../src/shared/address/cep";
+import { formatCpf } from "../../../../src/shared/cpf";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import {
@@ -50,19 +51,6 @@ const createId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
-
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  return digits
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1-$2");
-}
-
-function formatCep(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  return digits.replace(/^(\d{5})(\d)/, "$1-$2");
-}
 
 function normalizePhone(raw: string) {
   const parsed = parsePhoneNumberFromString(raw, "BR");
