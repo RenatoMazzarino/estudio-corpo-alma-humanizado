@@ -153,7 +153,7 @@ Em conflito com o código, o código vence.
 - Cron endpoint para lembretes 24h:
   - `GET /api/cron/whatsapp-reminders` (Bearer `CRON_SECRET`)
 - Endpoint interno de processamento:
-  - `GET|POST /api/internal/notifications/whatsapp/process`
+  - `GET|POST /api/internal/notifications/whatsapp/process` (Bearer `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`)
 
 ### Templates automáticos usados (MVP atual)
 
@@ -344,4 +344,3 @@ pnpm build
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
 - `SPOTIFY_REDIRECT_URI` conferido (ou callback dinâmica validada)
-

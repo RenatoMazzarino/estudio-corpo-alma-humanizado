@@ -15,6 +15,8 @@ Este diretório foi organizado em duas camadas:
 - `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`: documento canônico de roadmap/readiness WhatsApp/Meta/coexistência (estratégia, não runtime).
 - `docs/ui-system/*`: design system e padrões canônicos de UI.
 - `docs/sql/README.md`: orientação para snapshots SQL de auditoria.
+- `docs/engineering/MODULARIZATION_CONVENTIONS.md`: convenções técnicas de modularização e fronteiras de camada.
+- `docs/engineering/PR_CHECKLIST_REFACTOR.md`: checklist obrigatório para blocos de refatoração/hardening.
 
 ## 2) Legado da branch Agenda V1 UI (histórico fechado)
 

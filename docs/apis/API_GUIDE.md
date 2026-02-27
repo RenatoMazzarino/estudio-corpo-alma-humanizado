@@ -23,6 +23,7 @@ Escopo: rotas do App Router em `apps/web/app/api/**/route.ts`
 ### Protegidas por segredo (Bearer)
 
 - `GET /api/cron/whatsapp-reminders` (`Authorization: Bearer <CRON_SECRET>`)
+- `GET /api/internal/notifications/whatsapp/process` (`Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`)
 - `POST /api/internal/notifications/whatsapp/process` (`Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`)
 
 ### Protegidas por sessão do dashboard (Supabase auth + guard)
@@ -240,8 +241,9 @@ Função:
 - Endpoint interno de diagnóstico/configuração da automação WhatsApp.
 
 Proteção:
-- Não exige segredo atualmente para `GET` (retorna apenas config/runtime resumido).
-- Tratar como endpoint interno de operação, não para exposição pública.
+- `Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`.
+- sem bearer válido, retorna `401`.
+- se o secret não estiver configurado, retorna `503`.
 
 Resposta:
 - `200` com `{ ok, automation, dispatchEnabled }`
@@ -364,6 +366,5 @@ Respostas:
 
 - `GET /api/search?q=renato&limit=5` (sessão dashboard)
 - `GET /api/cron/whatsapp-reminders` com `Authorization: Bearer <CRON_SECRET>`
-- `GET /api/internal/notifications/whatsapp/process` (diagnóstico interno)
+- `GET /api/internal/notifications/whatsapp/process` com `Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`
 - `POST /api/internal/notifications/whatsapp/process` com `Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`
-

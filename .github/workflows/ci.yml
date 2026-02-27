@@ -21,6 +21,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
+      - name: Lint Architecture
+        run: pnpm --filter web lint:architecture
       - name: Typecheck
         run: pnpm check-types
       - name: Build

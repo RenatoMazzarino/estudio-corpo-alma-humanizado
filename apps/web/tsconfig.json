@@ -3,6 +3,14 @@
   "compilerOptions": {
     "composite": true,
     "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@app/*": ["./app/*"],
+      "@components/*": ["./components/*"],
+      "@lib/*": ["./lib/*"],
+      "@src/*": ["./src/*"]
+    },
     "plugins": [
       {
         "name": "next"

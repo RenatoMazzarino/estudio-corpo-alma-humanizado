@@ -67,10 +67,9 @@ Branch: `main`
 - Recomendacao: decisao de produto/risco (ver secoes 5 e 6).
 
 ## Medio
-1. Endpoint interno de processamento WhatsApp com `GET` aberto para runtime config
+1. Endpoint interno de processamento WhatsApp (`GET`) sem bearer (resolvido)
 - Onde: `apps/web/app/api/internal/notifications/whatsapp/process/route.ts`
-- Risco: exposicao de metadados operacionais (modo, provider, limites), mesmo sem expor secrets.
-- Recomendacao: proteger `GET` com o mesmo bearer secret do `POST` ou restringir em ambiente.
+- Status: corrigido no hardening posterior desta auditoria; agora `GET` e `POST` exigem bearer.
 
 2. Risco operacional por configuracao em producao
 - `DEV_PASSWORD_LOGIN_ENABLED=true` habilita rota de login DEV.
@@ -97,11 +96,7 @@ Branch: `main`
 - Opcao A: manter UX atual (detecta cliente por WhatsApp e pede CPF).
 - Opcao B: mascarar resposta inicial (sempre mensagem neutra) e so revelar identificacao apos dupla validacao.
 
-2. Endpoint `/api/internal/notifications/whatsapp/process` (GET)
-- Opcao A: manter aberto para observabilidade rapida.
-- Opcao B: exigir bearer no GET tambem.
-
-3. Politica de logs em producao
+2. Politica de logs em producao
 - Opcao A: manter logs atuais.
 - Opcao B: reduzir logs informativos e padronizar apenas warning/error estruturado.
 
@@ -115,4 +110,4 @@ Branch: `main`
 ## 7. Conclusao executiva
 - O codigo auditado esta funcionalmente estavel para os fluxos principais revisados e com build/lint/typecheck limpos.
 - Nao foi encontrado bloqueador tecnico critico aberto apos as correcoes aplicadas neste ciclo.
-- Existem pontos de decisao de produto/seguranca (enumeracao, exposicao de runtime config, politica de logs) que nao sao bug de implementacao, mas definem o nivel final de hardening em producao.
+- Existem pontos de decisao de produto/seguranca (enumeracao e politica de logs) que nao sao bug de implementacao, mas definem o nivel final de hardening em producao.

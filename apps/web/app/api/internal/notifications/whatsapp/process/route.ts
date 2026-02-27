@@ -26,7 +26,24 @@ const isAuthorized = (request: NextRequest) => {
   return parseBearerToken(request) === WHATSAPP_AUTOMATION_PROCESSOR_SECRET;
 };
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (!WHATSAPP_AUTOMATION_PROCESSOR_SECRET) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "WHATSAPP_AUTOMATION_PROCESSOR_SECRET não configurado.",
+        automation: getWhatsAppAutomationRuntimeConfig(),
+      },
+      { status: 503 }
+    );
+  }
+
+  const headers = new Headers();
+  headers.set("WWW-Authenticate", 'Bearer realm="whatsapp-automation"');
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401, headers });
+  }
+
   return NextResponse.json({
     ok: true,
     automation: getWhatsAppAutomationRuntimeConfig(),
