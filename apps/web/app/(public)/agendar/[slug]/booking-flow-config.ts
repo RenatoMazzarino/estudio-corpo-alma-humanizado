@@ -28,5 +28,3 @@ export const stepLabels = {
   LOCATION: "Passo 4 de 5",
   CONFIRM: "Passo 5 de 5",
 } as const;
-
-export const minimumMercadoPagoAmount = 1;

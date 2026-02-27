@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Script from "next/script";
 import {
-  eachDayOfInterval,
-  endOfMonth,
   format,
   isBefore,
   isSameMonth,
@@ -32,7 +30,7 @@ import {
   getCardPaymentStatus,
   getPixPaymentStatus,
 } from "./public-actions/payments";
-import { getAvailableSlots } from "./availability";
+import { getAvailableSlots, getMonthAvailableDays } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { Toast, useToast } from "../../../../components/ui/toast";
@@ -48,7 +46,6 @@ import {
 import {
   cardProcessingStages,
   footerSteps,
-  minimumMercadoPagoAmount,
   progressSteps,
   stepLabels,
 } from "./booking-flow-config";
@@ -162,38 +159,6 @@ function formatCpf(value: string) {
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
-function parseTimeToMinutes(time: string) {
-  const [hourRaw, minuteRaw] = time.split(":");
-  const hour = Number(hourRaw ?? "0");
-  const minute = Number(minuteRaw ?? "0");
-  return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
-}
-
-function getBrazilDateKey(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
-  const month = parts.find((part) => part.type === "month")?.value ?? "01";
-  const day = parts.find((part) => part.type === "day")?.value ?? "01";
-  return `${year}-${month}-${day}`;
-}
-
-function getBrazilMinutes(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
-  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
-  return hour * 60 + minute;
-}
-
 export function BookingFlow({
   tenant,
   services,
@@ -209,14 +174,19 @@ export function BookingFlow({
   const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [activeMonth, setActiveMonth] = useState<Date>(startOfMonth(new Date()));
-  const [monthAvailability, setMonthAvailability] = useState<Record<string, string[]>>({});
+  const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
+  const [daySlotsByDate, setDaySlotsByDate] = useState<Record<string, string[]>>({});
   const [isLoadingMonth, setIsLoadingMonth] = useState(false);
+  const [isLoadingDaySlots, setIsLoadingDaySlots] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientFirstName, setClientFirstName] = useState("");
   const [clientLastName, setClientLastName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientCpf, setClientCpf] = useState("");
+  const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
+  const [acceptTermsOfService, setAcceptTermsOfService] = useState(false);
+  const [acceptCommunicationConsent, setAcceptCommunicationConsent] = useState(false);
   const [cep, setCep] = useState("");
   const [logradouro, setLogradouro] = useState("");
   const [numero, setNumero] = useState("");
@@ -337,9 +307,11 @@ export function BookingFlow({
     return Number((basePrice + displacementFee).toFixed(2));
   }, [displacementEstimate?.fee, isHomeVisit, selectedService]);
 
-  const normalizedSignalPercentage = Number.isFinite(Number(signalPercentage))
-    ? Math.min(Math.max(Number(signalPercentage), 0), 100)
-    : 30;
+  const rawSignalPercentage = Number(signalPercentage);
+  const normalizedSignalPercentage =
+    Number.isFinite(rawSignalPercentage) && rawSignalPercentage > 0
+      ? Math.min(rawSignalPercentage, 100)
+      : 30;
   const onlineCutoffBeforeCloseMinutes = Number.isFinite(Number(publicBookingCutoffBeforeCloseMinutes))
     ? Math.max(0, Number(publicBookingCutoffBeforeCloseMinutes))
     : 60;
@@ -347,10 +319,9 @@ export function BookingFlow({
     ? Math.max(0, Number(publicBookingLastSlotBeforeCloseMinutes))
     : 30;
   const signalAmount = Number((totalPrice * (normalizedSignalPercentage / 100)).toFixed(2));
-  const payableSignalAmount = Number(
-    Math.max(signalAmount, minimumMercadoPagoAmount).toFixed(2)
-  );
-  const signalAmountWasAdjusted = payableSignalAmount > signalAmount;
+  const payableSignalAmount = Number(signalAmount.toFixed(2));
+  const isMercadoPagoMinimumInvalid =
+    payableSignalAmount > 0 && payableSignalAmount < 1;
   const whatsappLink = useMemo(() => {
     if (!whatsappNumber) return null;
     const digits = whatsappNumber.replace(/\D/g, "");
@@ -439,32 +410,9 @@ export function BookingFlow({
   const progressIndex = progressSteps.indexOf(step as (typeof progressSteps)[number]);
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
   const showNextButton = step !== "PAYMENT";
-  const filterOnlineBookingSlots = useCallback((dateIso: string, slots: string[]) => {
-    if (!dateIso || slots.length === 0) return slots;
-    const parsedSlotMinutes = slots
-      .map((slot) => parseTimeToMinutes(slot))
-      .filter((minutes) => Number.isFinite(minutes));
-    if (parsedSlotMinutes.length === 0) return [];
-    const closeMinutes = Math.max(...parsedSlotMinutes);
-    const lastAllowedSlotMinutes = closeMinutes - onlineLastSlotBeforeCloseMinutes;
-    if (!Number.isFinite(closeMinutes) || lastAllowedSlotMinutes < 0) return [];
-
-    const now = new Date();
-    const isTodayInBrazil = dateIso === getBrazilDateKey(now);
-    const cutoffMinutes = closeMinutes - onlineCutoffBeforeCloseMinutes;
-    if (isTodayInBrazil && getBrazilMinutes(now) > cutoffMinutes) return [];
-
-    return slots.filter((slot) => {
-      const slotMinutes = parseTimeToMinutes(slot);
-      return Number.isFinite(slotMinutes) && slotMinutes <= lastAllowedSlotMinutes;
-    });
-  }, [
-    onlineCutoffBeforeCloseMinutes,
-    onlineLastSlotBeforeCloseMinutes,
-  ]);
   const availableSlots = useMemo(
-    () => filterOnlineBookingSlots(date, monthAvailability[date] ?? []),
-    [date, filterOnlineBookingSlots, monthAvailability]
+    () => daySlotsByDate[date] ?? [],
+    [date, daySlotsByDate]
   );
 
   const calculateDisplacement = useCallback(async () => {
@@ -585,6 +533,9 @@ export function BookingFlow({
       setClientLastName("");
       setClientEmail("");
       setClientCpf("");
+      setAcceptPrivacyPolicy(false);
+      setAcceptTermsOfService(false);
+      setAcceptCommunicationConsent(false);
       setIdentityCpfAttempts(0);
       return;
     }
@@ -609,6 +560,9 @@ export function BookingFlow({
         setClientFirstName("");
         setClientLastName("");
         setClientEmail("");
+        setAcceptPrivacyPolicy(false);
+        setAcceptTermsOfService(false);
+        setAcceptCommunicationConsent(false);
         setIdentityCpfAttempts(0);
         return;
       }
@@ -639,6 +593,9 @@ export function BookingFlow({
         }
         setClientEmail("");
         setClientCpf("");
+        setAcceptPrivacyPolicy(false);
+        setAcceptTermsOfService(false);
+        setAcceptCommunicationConsent(false);
         setIdentityCpfAttempts(0);
       } else {
         setSuggestedClient(null);
@@ -648,6 +605,9 @@ export function BookingFlow({
         setClientLastName("");
         setClientEmail("");
         setClientCpf("");
+        setAcceptPrivacyPolicy(false);
+        setAcceptTermsOfService(false);
+        setAcceptCommunicationConsent(false);
         setIdentityCpfAttempts(0);
       }
     }, 400);
@@ -708,6 +668,9 @@ export function BookingFlow({
         setClientEmail("");
         setClientPhone("");
         setClientCpf("");
+        setAcceptPrivacyPolicy(false);
+        setAcceptTermsOfService(false);
+        setAcceptCommunicationConsent(false);
         setSuggestedClient(null);
         setClientLookupStatus("idle");
         setIdentityCpfAttempts(0);
@@ -804,6 +767,9 @@ export function BookingFlow({
     setClientFirstName("");
     setClientLastName("");
     setClientEmail("");
+    setAcceptPrivacyPolicy(false);
+    setAcceptTermsOfService(false);
+    setAcceptCommunicationConsent(false);
     setSuggestedClient(null);
     setClientLookupStatus("idle");
     setIdentityCpfAttempts(0);
@@ -1448,41 +1414,27 @@ export function BookingFlow({
   useEffect(() => {
     if (step !== "DATETIME" || !selectedService) return;
     let active = true;
-    const today = startOfDay(new Date());
-    const start = startOfMonth(activeMonth);
-    const end = endOfMonth(activeMonth);
 
     const loadAvailability = async () => {
       setIsLoadingMonth(true);
       setMonthAvailability({});
-      const days = eachDayOfInterval({ start, end });
-      const results = await Promise.all(
-        days.map(async (day) => {
-          const iso = format(day, "yyyy-MM-dd");
-          if (isBefore(day, today)) {
-            return { date: iso, slots: [] as string[] };
-          }
-          try {
-            const slots = await getAvailableSlots({
-              tenantId: tenant.id,
-              serviceId: selectedService.id,
-              date: iso,
-              isHomeVisit,
-            });
-            return { date: iso, slots: filterOnlineBookingSlots(iso, slots) };
-          } catch {
-            return { date: iso, slots: [] as string[] };
-          }
-        })
-      );
-
-      if (!active) return;
-      const map: Record<string, string[]> = {};
-      results.forEach(({ date: day, slots }) => {
-        map[day] = slots;
-      });
-      setMonthAvailability(map);
-      setIsLoadingMonth(false);
+      try {
+        const map = await getMonthAvailableDays({
+          tenantId: tenant.id,
+          serviceId: selectedService.id,
+          month: format(activeMonth, "yyyy-MM"),
+          isHomeVisit,
+          cutoffBeforeCloseMinutes: onlineCutoffBeforeCloseMinutes,
+          lastSlotBeforeCloseMinutes: onlineLastSlotBeforeCloseMinutes,
+        });
+        if (!active) return;
+        setMonthAvailability(map);
+      } catch {
+        if (!active) return;
+        setMonthAvailability({});
+      } finally {
+        if (active) setIsLoadingMonth(false);
+      }
     };
 
     loadAvailability();
@@ -1490,7 +1442,61 @@ export function BookingFlow({
     return () => {
       active = false;
     };
-  }, [activeMonth, filterOnlineBookingSlots, isHomeVisit, selectedService, step, tenant.id]);
+  }, [
+    activeMonth,
+    isHomeVisit,
+    onlineCutoffBeforeCloseMinutes,
+    onlineLastSlotBeforeCloseMinutes,
+    selectedService,
+    step,
+    tenant.id,
+  ]);
+
+  useEffect(() => {
+    if (step !== "DATETIME" || !selectedService || !date) return;
+    if (!monthAvailability[date]) {
+      setSelectedTime("");
+      return;
+    }
+    if (daySlotsByDate[date]) return;
+
+    let active = true;
+    const loadDaySlots = async () => {
+      setIsLoadingDaySlots(true);
+      try {
+        const slots = await getAvailableSlots({
+          tenantId: tenant.id,
+          serviceId: selectedService.id,
+          date,
+          isHomeVisit,
+          cutoffBeforeCloseMinutes: onlineCutoffBeforeCloseMinutes,
+          lastSlotBeforeCloseMinutes: onlineLastSlotBeforeCloseMinutes,
+        });
+        if (!active) return;
+        setDaySlotsByDate((prev) => ({ ...prev, [date]: slots }));
+      } catch {
+        if (!active) return;
+        setDaySlotsByDate((prev) => ({ ...prev, [date]: [] }));
+      } finally {
+        if (active) setIsLoadingDaySlots(false);
+      }
+    };
+
+    loadDaySlots();
+    return () => {
+      active = false;
+    };
+  }, [
+    date,
+    daySlotsByDate,
+    isHomeVisit,
+    monthAvailability,
+    onlineCutoffBeforeCloseMinutes,
+    onlineLastSlotBeforeCloseMinutes,
+    selectedService,
+    step,
+    tenant.id,
+  ]);
 
   useEffect(() => {
     if (!appointmentId) {
@@ -1499,6 +1505,11 @@ export function BookingFlow({
     }
     setProtocol(`AGD-${appointmentId.slice(0, 6).toUpperCase()}`);
   }, [appointmentId]);
+
+  useEffect(() => {
+    setDaySlotsByDate({});
+    setSelectedTime("");
+  }, [isHomeVisit, selectedService?.id]);
 
   const handleChangeMonth = (next: Date) => {
     setActiveMonth(next);
@@ -1567,10 +1578,9 @@ export function BookingFlow({
   const isDayDisabled = (day: Date) => {
     const iso = format(day, "yyyy-MM-dd");
     const isPast = isBefore(day, startOfDay(new Date()));
-    const slots = monthAvailability[iso];
     if (!isSameMonth(day, activeMonth)) return true;
     if (isPast || isLoadingMonth) return true;
-    return !slots || slots.length === 0;
+    return monthAvailability[iso] !== true;
   };
 
   const handleReset = () => {
@@ -1582,12 +1592,17 @@ export function BookingFlow({
     setActiveMonth(startOfMonth(today));
     setSelectedTime("");
     setMonthAvailability({});
+    setDaySlotsByDate({});
+    setIsLoadingDaySlots(false);
     setClientName("");
     setClientFirstName("");
     setClientLastName("");
     setClientEmail("");
     setClientPhone("");
     setClientCpf("");
+    setAcceptPrivacyPolicy(false);
+    setAcceptTermsOfService(false);
+    setAcceptCommunicationConsent(false);
     setUseSuggestedAddress(null);
     setAddressMode(null);
     clearAddressFields();
@@ -1662,7 +1677,15 @@ export function BookingFlow({
         return true;
       }
       if (clientLookupStatus === "not_found") {
-        return !isCpfValid || !isEmailValid || !isIdentityNameReady;
+        return (
+          !isPhoneValid ||
+          !isCpfValid ||
+          !isEmailValid ||
+          !isIdentityNameReady ||
+          !acceptPrivacyPolicy ||
+          !acceptTermsOfService ||
+          !acceptCommunicationConsent
+        );
       }
       return true;
     }
@@ -1676,7 +1699,7 @@ export function BookingFlow({
       return !addressComplete || !displacementReady;
     }
     if (step === "CONFIRM") {
-      return isSubmitting || !paymentMethod;
+      return isSubmitting || !paymentMethod || isMercadoPagoMinimumInvalid;
     }
     return false;
   }, [
@@ -1690,9 +1713,13 @@ export function BookingFlow({
     isPhoneValid,
     isSubmitting,
     paymentMethod,
+    isMercadoPagoMinimumInvalid,
     selectedService,
     selectedTime,
     step,
+    acceptPrivacyPolicy,
+    acceptTermsOfService,
+    acceptCommunicationConsent,
   ]);
 
   const nextLabel = step === "CONFIRM" ? "Ir para Pagamento" : "Continuar";
@@ -1783,7 +1810,7 @@ export function BookingFlow({
         )}
 
         {step === "IDENT" && (
-          <section className="flex-1 flex flex-col px-6 pb-28 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
+          <section className="flex-1 flex flex-col px-6 pb-24 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
             <div className="mb-4">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.IDENT}
@@ -1793,26 +1820,28 @@ export function BookingFlow({
             </div>
 
             <div className="space-y-5">
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 transition focus-within:border-studio-green focus-within:ring-4 focus-within:ring-studio-green/10">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                  WhatsApp
-                </label>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-studio-green" />
-                  <input
-                    ref={phoneInputRef}
-                    type="tel"
-                    inputMode="numeric"
-                    className="w-full bg-transparent text-lg font-bold text-studio-text placeholder:text-gray-300 outline-none"
-                    placeholder="(00) 00000-0000"
-                    value={clientPhone}
-                    onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
-                  />
+              {clientLookupStatus !== "not_found" && (
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 transition focus-within:border-studio-green focus-within:ring-4 focus-within:ring-studio-green/10">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                    WhatsApp
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-studio-green" />
+                    <input
+                      ref={phoneInputRef}
+                      type="tel"
+                      inputMode="numeric"
+                      className="w-full bg-transparent text-lg font-bold text-studio-text placeholder:text-gray-300 outline-none"
+                      placeholder="(00) 00000-0000"
+                      value={clientPhone}
+                      onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] text-gray-500">
+                    Digite seu WhatsApp para localizar seu cadastro e continuar o agendamento.
+                  </p>
                 </div>
-                <p className="mt-2 text-[11px] text-gray-500">
-                  Digite seu WhatsApp para localizar seu cadastro e continuar o agendamento.
-                </p>
-              </div>
+              )}
 
               {clientLookupStatus === "loading" && isPhoneValid && (
                 <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-gray-600">
@@ -1977,8 +2006,7 @@ export function BookingFlow({
 
               {clientLookupStatus === "not_found" && isPhoneValid && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Não encontramos cadastro com este WhatsApp. Como é seu primeiro agendamento, preencha
-                  seus dados para continuar.
+                  Não encontramos cadastro com este WhatsApp. Para seu primeiro agendamento, complete os dados abaixo.
                 </div>
               )}
 
@@ -2005,6 +2033,9 @@ export function BookingFlow({
                     <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
                       Sobrenome
                     </label>
+                    <p className="mb-2 text-xs text-gray-500">
+                      Use seu sobrenome completo para facilitar sua identificação.
+                    </p>
                     <input
                       type="text"
                       className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
@@ -2020,22 +2051,17 @@ export function BookingFlow({
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
-                      CPF
+                      WhatsApp
                     </label>
                     <input
-                      type="text"
+                      ref={phoneInputRef}
+                      type="tel"
                       inputMode="numeric"
-                      maxLength={14}
                       className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
-                      placeholder="000.000.000-00"
-                      value={clientCpf}
-                      onChange={(event) => setClientCpf(formatCpf(event.target.value))}
+                      placeholder="(00) 00000-0000"
+                      value={clientPhone}
+                      onChange={(event) => setClientPhone(formatBrazilPhone(event.target.value))}
                     />
-                    {clientCpf && !isCpfValid && (
-                      <p className="mt-2 text-center text-xs text-red-500">
-                        Informe um CPF válido com 11 números.
-                      </p>
-                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
@@ -2055,6 +2081,82 @@ export function BookingFlow({
                       </p>
                     )}
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-2">
+                      CPF
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={14}
+                      className="w-full bg-white border border-stone-200 rounded-2xl px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
+                      placeholder="000.000.000-00"
+                      value={clientCpf}
+                      onChange={(event) => setClientCpf(formatCpf(event.target.value))}
+                    />
+                    {clientCpf && !isCpfValid && (
+                      <p className="mt-2 text-center text-xs text-red-500">
+                        Informe um CPF válido com 11 números.
+                      </p>
+                    )}
+                    <p className="mt-2 text-center text-xs text-gray-500">
+                      Usamos seu CPF para emissão de nota fiscal e proteção dos seus dados conforme LGPD.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 space-y-3">
+                    <label className="flex items-start gap-3 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={acceptPrivacyPolicy}
+                        onChange={(event) => setAcceptPrivacyPolicy(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
+                      />
+                      <span>
+                        Li e aceito a{" "}
+                        <a
+                          href="/politica-de-privacidade"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-studio-green underline"
+                        >
+                          Política de Privacidade
+                        </a>
+                        .
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={acceptTermsOfService}
+                        onChange={(event) => setAcceptTermsOfService(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
+                      />
+                      <span>
+                        Li e aceito os{" "}
+                        <a
+                          href="/termos-de-servico"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-studio-green underline"
+                        >
+                          Termos de Serviço
+                        </a>
+                        .
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={acceptCommunicationConsent}
+                        onChange={(event) => setAcceptCommunicationConsent(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
+                      />
+                      <span>
+                        Autorizo comunicações sobre agendamento por WhatsApp e email.
+                      </span>
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
@@ -2062,13 +2164,13 @@ export function BookingFlow({
         )}
 
         {step === "SERVICE" && (
-          <section className="flex-1 flex flex-col px-6 pb-28 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
+          <section className="flex-1 flex flex-col px-6 pb-24 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
             <div className="mb-6">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.SERVICE}
               </span>
               <StepTabs />
-              <h2 className="text-3xl font-serif text-studio-text mt-2">Escolha seu ritual</h2>
+              <h2 className="text-3xl font-serif text-studio-text mt-2">Escolha seu cuidado</h2>
             </div>
 
             <div className="space-y-4">
@@ -2118,7 +2220,7 @@ export function BookingFlow({
         )}
 
         {step === "DATETIME" && (
-          <section className="flex-1 flex flex-col px-6 pb-28 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
+          <section className="flex-1 flex flex-col px-6 pb-24 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
             <div className="mb-6">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.DATETIME}
@@ -2161,7 +2263,7 @@ export function BookingFlow({
                 <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-3">
                   Horários Disponíveis
                 </label>
-                {isLoadingMonth && !availableSlots.length ? (
+                {isLoadingDaySlots && !availableSlots.length ? (
                   <div className="text-center text-gray-400 text-xs py-4">Carregando horários...</div>
                 ) : availableSlots.length === 0 ? (
                   <div className="text-center text-gray-400 text-xs py-4">
@@ -2191,7 +2293,7 @@ export function BookingFlow({
         )}
 
         {step === "LOCATION" && (
-          <section className="flex-1 flex flex-col px-6 pb-28 pt-6 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
+          <section className="flex-1 flex flex-col px-6 pb-24 pt-6 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
             <div className="mb-6">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.LOCATION}
@@ -2611,6 +2713,12 @@ export function BookingFlow({
                 {!paymentMethod && (
                   <p className="mt-2 text-xs text-gray-400">Selecione Pix ou Cartão para continuar.</p>
                 )}
+                {isMercadoPagoMinimumInvalid && (
+                  <p className="mt-2 text-xs text-amber-700">
+                    O sinal calculado pela porcentagem ficou abaixo do mínimo do Mercado Pago (R$ 1,00).
+                    Ajuste o percentual do sinal em Configurações para usar pagamento online neste serviço.
+                  </p>
+                )}
               </div>
 
               <p className="text-[10px] text-center text-gray-400">
@@ -2637,11 +2745,6 @@ export function BookingFlow({
                   R$ {payableSignalAmount.toFixed(2)}
                 </span>
               </div>
-              {signalAmountWasAdjusted && (
-                <p className="text-[11px] text-amber-700 mb-4">
-                  Valor mínimo do Mercado Pago: R$ 1,00. O sinal foi ajustado para esse mínimo.
-                </p>
-              )}
               <p className="text-xs text-gray-400 mb-4">
                 Método selecionado:{" "}
                 <span className="font-bold text-studio-text">
@@ -2974,11 +3077,11 @@ export function BookingFlow({
 
       {showFooter && (
         <footer className="absolute bottom-0 left-0 right-0 bg-studio-bg border-t border-stone-100 z-20">
-          <div className={`flex gap-3 px-6 py-4 ${showNextButton ? "" : "justify-start"}`}>
+          <div className={`flex gap-3 px-6 py-3 ${showNextButton ? "" : "justify-start"}`}>
             <button
               type="button"
               onClick={handleBack}
-              className="w-12 h-12 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-studio-text transition-colors shadow-soft"
+              className="w-10 h-10 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-studio-text transition-colors shadow-soft"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -2987,7 +3090,7 @@ export function BookingFlow({
                 type="button"
                 onClick={handleNext}
                 disabled={isNextDisabled}
-                className="flex-1 h-12 bg-studio-green-dark text-white rounded-full font-bold uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 hover:bg-studio-green transition-colors disabled:opacity-40"
+                className="flex-1 h-10 bg-studio-green-dark text-white rounded-full font-bold uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 hover:bg-studio-green transition-colors disabled:opacity-40"
               >
                 <span>{nextLabel}</span>
                 <ArrowRight className="w-4 h-4" />
