@@ -26,6 +26,16 @@ import {
   getPixPaymentStatus,
 } from "./public-actions/payments";
 import { usePublicBookingAvailability } from "./hooks/use-public-booking-availability";
+import type {
+  AddressSearchResult,
+  BookingFlowProps,
+  CardFormInstance,
+  DisplacementEstimate,
+  MercadoPagoConstructor,
+  PaymentMethod,
+  Service,
+  Step,
+} from "./booking-flow.types";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
@@ -47,100 +57,6 @@ import {
   stepLabels,
 } from "./booking-flow-config";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration_minutes: number;
-  accepts_home_visit: boolean;
-  custom_buffer_minutes: number;
-  description: string;
-}
-
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface BookingFlowProps {
-  tenant: Tenant;
-  services: Service[];
-  signalPercentage?: number | null;
-  publicBookingCutoffBeforeCloseMinutes?: number | null;
-  publicBookingLastSlotBeforeCloseMinutes?: number | null;
-  whatsappNumber?: string | null;
-  mercadoPagoPublicKey?: string | null;
-}
-
-type Step =
-  | "WELCOME"
-  | "IDENT"
-  | "SERVICE"
-  | "DATETIME"
-  | "LOCATION"
-  | "CONFIRM"
-  | "PAYMENT"
-  | "SUCCESS";
-
-type PaymentMethod = "pix" | "card" | null;
-
-type DisplacementEstimate = {
-  distanceKm: number;
-  fee: number;
-  rule: "urban" | "road";
-};
-
-type CardFormData = {
-  token: string;
-  paymentMethodId: string;
-  issuerId?: string;
-  installments: string | number;
-  identificationType?: string;
-  identificationNumber?: string;
-  cardholderEmail?: string;
-};
-
-type CardFormInstance = {
-  getCardFormData: () => CardFormData;
-  unmount?: () => void;
-};
-
-type AddressSearchResult = {
-  id: string;
-  placeId: string;
-  label: string;
-};
-
-type CardFormOptions = {
-  amount: string;
-  iframe?: boolean;
-  form: {
-    id: string;
-    cardNumber: { id: string; placeholder?: string };
-    expirationDate: { id: string; placeholder?: string };
-    securityCode: { id: string; placeholder?: string };
-    cardholderName: { id: string; placeholder?: string };
-    issuer: { id: string; placeholder?: string };
-    installments: { id: string; placeholder?: string };
-    identificationType: { id: string; placeholder?: string };
-    identificationNumber: { id: string; placeholder?: string };
-    cardholderEmail: { id: string; placeholder?: string };
-  };
-  callbacks?: {
-    onFormMounted?: (error: unknown) => void;
-    onSubmit?: (event: Event) => void;
-    onFetching?: (resource: string) => void | (() => void);
-  };
-};
-
-type MercadoPagoConstructor = new (
-  publicKey: string,
-  options?: { locale?: string }
-) => {
-  cardForm: (options: CardFormOptions) => CardFormInstance;
-};
 
 declare global {
   interface Window {
