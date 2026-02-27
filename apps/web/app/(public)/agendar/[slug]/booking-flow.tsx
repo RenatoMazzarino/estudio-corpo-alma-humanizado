@@ -16,10 +16,8 @@ import {
   ArrowRight,
   CheckCircle2,
   Copy,
-  CreditCard,
   MapPin,
   Phone,
-  QrCode,
   Sparkles,
 } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions/appointments";
@@ -33,6 +31,7 @@ import {
 import { getAvailableSlots, getMonthAvailableDays } from "./availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
+import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
@@ -2696,7 +2695,7 @@ export function BookingFlow({
                         : "bg-white border-stone-200 text-gray-500"
                     }`}
                   >
-                    <QrCode className="w-4 h-4" /> PIX
+                    <PaymentMethodIcon method="pix" className="h-4 w-4" /> PIX
                   </button>
                   <button
                     type="button"
@@ -2707,7 +2706,7 @@ export function BookingFlow({
                         : "bg-white border-stone-200 text-gray-500"
                     }`}
                   >
-                    <CreditCard className="w-4 h-4" /> Cartão
+                    <PaymentMethodIcon method="card" className="h-4 w-4" /> Cartão
                   </button>
                 </div>
                 {!paymentMethod && (
@@ -2768,7 +2767,7 @@ export function BookingFlow({
                       </div>
                     ) : (
                       <div className="w-32 h-32 bg-white mx-auto rounded-xl flex items-center justify-center shadow-sm mb-4">
-                        <QrCode className="w-16 h-16 text-studio-text" />
+                        <PaymentMethodIcon method="pix" className="h-16 w-16" />
                       </div>
                     )}
                     <p className="text-xs font-bold text-studio-green uppercase mb-2">

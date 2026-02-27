@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import type { AttendanceOverview, AppointmentMessage, MessageType } from "../../lib/attendance/attendance-types";
+import { PaymentMethodIcon } from "../ui/payment-method-icon";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
@@ -648,9 +649,9 @@ export function AppointmentDetailsSheet({
                         </p>
                         <div className="mt-2 grid grid-cols-3 gap-2">
                           {([
-                            { key: "pix", label: "Pix" },
-                            { key: "card", label: "Cartão" },
-                            { key: "cash", label: "Dinheiro" },
+                            { key: "pix", label: "Pix", icon: <PaymentMethodIcon method="pix" className="h-3.5 w-3.5" /> },
+                            { key: "card", label: "Cartão", icon: <PaymentMethodIcon method="card" className="h-3.5 w-3.5" /> },
+                            { key: "cash", label: "Dinheiro", icon: <PaymentMethodIcon method="cash" className="h-3.5 w-3.5" /> },
                           ] as const).map((item) => (
                             <button
                               key={item.key}
@@ -663,7 +664,10 @@ export function AppointmentDetailsSheet({
                                   : "border-line text-muted hover:bg-paper"
                               } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
                             >
-                              {item.label}
+                              <span className="flex items-center justify-center gap-1.5">
+                                {item.icon}
+                                {item.label}
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -1055,9 +1059,9 @@ export function AppointmentDetailsSheet({
                       </p>
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         {([
-                          { key: "pix", label: "Pix" },
-                          { key: "card", label: "Cartão" },
-                          { key: "cash", label: "Dinheiro" },
+                          { key: "pix", label: "Pix", icon: <PaymentMethodIcon method="pix" className="h-3.5 w-3.5" /> },
+                          { key: "card", label: "Cartão", icon: <PaymentMethodIcon method="card" className="h-3.5 w-3.5" /> },
+                          { key: "cash", label: "Dinheiro", icon: <PaymentMethodIcon method="cash" className="h-3.5 w-3.5" /> },
                         ] as const).map((item) => (
                           <button
                             key={item.key}
@@ -1070,7 +1074,10 @@ export function AppointmentDetailsSheet({
                                 : "border-line text-muted hover:bg-paper"
                             } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
                           >
-                            {item.label}
+                            <span className="flex items-center justify-center gap-1.5">
+                              {item.icon}
+                              {item.label}
+                            </span>
                           </button>
                         ))}
                       </div>
