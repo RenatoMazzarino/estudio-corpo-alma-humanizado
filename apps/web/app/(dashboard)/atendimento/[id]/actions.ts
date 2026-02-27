@@ -35,6 +35,7 @@ import {
   recalcCheckoutTotals,
   recalculateCheckoutPaymentStatus,
 } from "../../../../src/modules/attendance/checkout-service";
+import { fallbackStructuredEvolution } from "../../../../src/modules/attendance/evolution-format";
 import { insertTransaction } from "../../../../src/modules/finance/repository";
 import {
   createPixOrderForAppointment,
@@ -67,25 +68,6 @@ async function insertMessageLog(params: {
 
 function roundCurrency(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-function fallbackStructuredEvolution(rawText: string) {
-  const normalized = rawText.trim();
-  if (!normalized) return "";
-
-  return [
-    "Queixa principal:",
-    normalized,
-    "",
-    "Conduta aplicada:",
-    "Descrever técnicas e abordagem realizada na sessão.",
-    "",
-    "Resposta do cliente:",
-    "Descrever resposta durante e após a sessão.",
-    "",
-    "Recomendação:",
-    "Descrever orientação de autocuidado e próximo passo.",
-  ].join("\n");
 }
 
 export async function getAttendance(appointmentId: string) {
