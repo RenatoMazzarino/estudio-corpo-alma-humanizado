@@ -8,7 +8,6 @@ import {
   startOfMonth,
 } from "date-fns";
 import {
-  MapPin,
 } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions/appointments";
 import { lookupClientIdentity } from "./public-actions/clients";
@@ -60,7 +59,6 @@ import {
   resolvePublicClientFullName,
   resolveSignalPercentage,
 } from "./booking-flow.helpers";
-import { StepTabs } from "./components/step-tabs";
 import { DatetimeStep } from "./components/datetime-step";
 import { BookingHeader } from "./components/booking-header";
 import { BookingFooter } from "./components/booking-footer";
@@ -70,6 +68,7 @@ import { PaymentStep } from "./components/payment-step";
 import { ServiceStep } from "./components/service-step";
 import { AddressSearchModal } from "./components/address-search-modal";
 import { IdentityStep } from "./components/identity-step";
+import { LocationStep } from "./components/location-step";
 import { SuccessStep } from "./components/success-step";
 import { WelcomeStep } from "./components/welcome-step";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
@@ -326,6 +325,20 @@ export function BookingFlow({
   const hasSuggestedAddress = Boolean(
     suggestedClient?.address_logradouro || suggestedClient?.address_cep
   );
+  const suggestedAddressSummary = useMemo(() => {
+    const parts = [
+      suggestedClient?.address_logradouro ?? "",
+      suggestedClient?.address_numero ? `, ${suggestedClient.address_numero}` : "",
+      suggestedClient?.address_bairro ? ` - ${suggestedClient.address_bairro}` : "",
+    ]
+      .join("")
+      .trim();
+    return parts;
+  }, [
+    suggestedClient?.address_bairro,
+    suggestedClient?.address_logradouro,
+    suggestedClient?.address_numero,
+  ]);
 
   const requiresAddress = Boolean(selectedService?.accepts_home_visit && isHomeVisit);
   const hasAddressFields = Boolean(logradouro && numero && bairro && cidade && estado);
@@ -749,6 +762,50 @@ export function BookingFlow({
     setCidade("");
     setEstado("");
     setCepStatus("idle");
+  };
+
+  const handleSelectStudioLocation = () => {
+    setIsHomeVisit(false);
+    setDisplacementEstimate(null);
+    setDisplacementStatus("idle");
+    setDisplacementError(null);
+  };
+
+  const handleSelectHomeVisitLocation = () => {
+    if (selectedService?.accepts_home_visit) {
+      setIsHomeVisit(true);
+    }
+  };
+
+  const handleUseSuggestedAddress = () => {
+    setUseSuggestedAddress(true);
+    applySuggestedAddress();
+    setAddressMode(null);
+  };
+
+  const handleChooseOtherAddress = () => {
+    setUseSuggestedAddress(false);
+    clearAddressFields();
+    setAddressMode("cep");
+    setDisplacementEstimate(null);
+    setDisplacementStatus("idle");
+    setDisplacementError(null);
+  };
+
+  const handleSelectLocationAddressMode = (mode: "cep" | "text") => {
+    setAddressMode(mode);
+    if (mode === "text") {
+      setIsAddressSearchModalOpen(true);
+    }
+  };
+
+  const handleLocationCepChange = (value: string) => {
+    setCep(formatCep(value));
+    setCepStatus("idle");
+  };
+
+  const handleLocationStateChange = (value: string) => {
+    setEstado(value.toUpperCase());
   };
 
   const handleServiceSelect = (service: Service) => {
@@ -1646,340 +1703,41 @@ export function BookingFlow({
         )}
 
         {step === "LOCATION" && (
-          <section className="flex-1 flex flex-col px-6 pb-24 pt-6 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
-            <div className="mb-6">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                {stepLabels.LOCATION}
-              </span>
-              <StepTabs step={step} />
-              <h2 className="text-3xl font-serif text-studio-text mt-2">Onde será?</h2>
-            </div>
-
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsHomeVisit(false);
-                  setDisplacementEstimate(null);
-                  setDisplacementStatus("idle");
-                  setDisplacementError(null);
-                }}
-                className={`w-full bg-white border rounded-3xl p-5 shadow-soft text-left transition ${
-                  !isHomeVisit ? "border-studio-green bg-green-50/50" : "border-stone-100"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-bold text-lg text-studio-text mb-1">No Estúdio</p>
-                    <p className="text-xs text-gray-400">Endereço do estúdio</p>
-                  </div>
-                  <span className="font-bold text-studio-green">
-                    R$ {Number(selectedService?.price ?? 0).toFixed(2)}
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectedService?.accepts_home_visit && setIsHomeVisit(true)}
-                className={`w-full bg-white border rounded-3xl p-5 shadow-soft text-left transition ${
-                  isHomeVisit ? "border-studio-green bg-green-50/50" : "border-stone-100"
-                } ${!selectedService?.accepts_home_visit ? "opacity-40 cursor-not-allowed" : ""}`}
-                disabled={!selectedService?.accepts_home_visit}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-bold text-lg text-studio-text mb-1">Em Domicílio</p>
-                    <p className="text-xs text-gray-400">Levamos a maca e materiais até você</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-studio-green block">
-                      R$ {Number(totalPrice).toFixed(2)}
-                    </span>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">
-                      {displacementEstimate
-                        ? `Taxa R$ ${displacementEstimate.fee.toFixed(2)}`
-                        : "Taxa calculada por endereço"}
-                    </span>
-                  </div>
-                </div>
-              </button>
-
-              {isHomeVisit && (
-                <div className="space-y-4 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                  {hasSuggestedAddress && useSuggestedAddress === null && (
-                    <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-soft space-y-3">
-                      <div className="flex items-center gap-2 text-studio-green">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase">Endereço encontrado</span>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {suggestedClient?.address_logradouro}
-                        {suggestedClient?.address_numero
-                          ? `, ${suggestedClient.address_numero}`
-                          : ""}
-                        {suggestedClient?.address_bairro
-                          ? ` - ${suggestedClient.address_bairro}`
-                          : ""}
-                      </p>
-                      <p className="text-xs text-gray-400">Deseja usar este endereço?</p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUseSuggestedAddress(true);
-                            applySuggestedAddress();
-                            setAddressMode(null);
-                          }}
-                          className="flex-1 h-10 rounded-full bg-studio-green text-white text-xs font-bold uppercase tracking-widest"
-                        >
-                          Usar este
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUseSuggestedAddress(false);
-                            clearAddressFields();
-                            setAddressMode("cep");
-                            setDisplacementEstimate(null);
-                            setDisplacementStatus("idle");
-                            setDisplacementError(null);
-                          }}
-                          className="flex-1 h-10 rounded-full border border-stone-200 text-xs font-bold text-gray-500 uppercase tracking-widest"
-                        >
-                          Outro
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {hasSuggestedAddress && useSuggestedAddress === true && (
-                    <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-soft space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-studio-green">
-                          <MapPin className="w-4 h-4" />
-                          <span className="text-xs font-bold uppercase">Endereço selecionado</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setUseSuggestedAddress(false)}
-                          className="text-[10px] font-bold text-gray-400 uppercase"
-                        >
-                          Alterar
-                        </button>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {logradouro}
-                        {numero ? `, ${numero}` : ""}
-                        {bairro ? ` - ${bairro}` : ""}
-                      </p>
-                    </div>
-                  )}
-
-                  {(!hasSuggestedAddress || useSuggestedAddress === false) && (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="h-px bg-gray-200 flex-1" />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">
-                          Preencha o Endereço
-                        </span>
-                        <div className="h-px bg-gray-200 flex-1" />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setAddressMode("cep")}
-                          className={`rounded-2xl border px-4 py-3 text-xs font-bold uppercase ${
-                            addressMode === "cep"
-                              ? "border-studio-green bg-green-50 text-studio-green"
-                              : "border-stone-200 text-gray-500"
-                          }`}
-                        >
-                          Buscar por CEP
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAddressMode("text");
-                            setIsAddressSearchModalOpen(true);
-                          }}
-                          className={`rounded-2xl border px-4 py-3 text-xs font-bold uppercase ${
-                            addressMode === "text"
-                              ? "border-studio-green bg-green-50 text-studio-green"
-                              : "border-stone-200 text-gray-500"
-                          }`}
-                        >
-                          Buscar endereço
-                        </button>
-                      </div>
-
-                      {addressMode === "cep" && (
-                        <div className="space-y-3">
-                          <div className="flex gap-3">
-                            <div className="flex-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                                CEP
-                              </label>
-                              <input
-                                value={cep}
-                                onChange={(event) => {
-                                  setCep(formatCep(event.target.value));
-                                  setCepStatus("idle");
-                                }}
-                                className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                                inputMode="numeric"
-                                placeholder="00000-000"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleCepLookup}
-                              className="bg-gray-100 hover:bg-gray-200 text-studio-text font-bold rounded-2xl px-4 mt-5 transition-colors"
-                            >
-                              Buscar
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {addressMode === "text" && (
-                        <div className="bg-white border border-stone-100 rounded-2xl p-4 text-sm text-gray-500">
-                          <p>Procure seu endereço completo.</p>
-                          <button
-                            type="button"
-                            onClick={() => setIsAddressSearchModalOpen(true)}
-                            className="mt-3 text-xs font-bold text-studio-green uppercase tracking-widest"
-                          >
-                            Buscar endereço
-                          </button>
-                        </div>
-                      )}
-
-                      {addressMode && (
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                              Rua / Av
-                            </label>
-                            <input
-                              value={logradouro}
-                              onChange={(event) => setLogradouro(event.target.value)}
-                              className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                              placeholder="Endereço"
-                            />
-                          </div>
-
-                          <div className="flex gap-3">
-                            <div className="w-1/3">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                                Número
-                              </label>
-                              <input
-                                value={numero}
-                                onChange={(event) => setNumero(event.target.value)}
-                                className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                                placeholder="Nº"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                                Complemento
-                              </label>
-                              <input
-                                value={complemento}
-                                onChange={(event) => setComplemento(event.target.value)}
-                                className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                                placeholder="Apto/Bloco"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex gap-3">
-                            <div className="flex-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                                Bairro
-                              </label>
-                              <input
-                                value={bairro}
-                                onChange={(event) => setBairro(event.target.value)}
-                                className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                                placeholder="Bairro"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                                Cidade
-                              </label>
-                              <input
-                                value={cidade}
-                                onChange={(event) => setCidade(event.target.value)}
-                                className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                                placeholder="Cidade"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
-                              Estado
-                            </label>
-                            <input
-                              value={estado}
-                              onChange={(event) => setEstado(event.target.value.toUpperCase())}
-                              maxLength={2}
-                              className="w-full bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700 uppercase"
-                              placeholder="UF"
-                            />
-                          </div>
-
-                          {mapsQuery && (
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                mapsQuery
-                              )}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-studio-green font-semibold"
-                            >
-                              Ver endereço no Maps
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="rounded-2xl border border-stone-100 bg-white p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
-                          Taxa de deslocamento
-                        </p>
-                        {displacementStatus === "loading" && (
-                          <p className="text-sm font-semibold text-studio-text">
-                            Calculando com base no trajeto de carro...
-                          </p>
-                        )}
-                        {displacementStatus !== "loading" && displacementEstimate && (
-                          <div className="space-y-1">
-                            <p className="text-base font-bold text-studio-green">
-                              R$ {displacementEstimate.fee.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Distância estimada: {displacementEstimate.distanceKm.toFixed(2)} km (
-                              {displacementEstimate.rule === "urban" ? "regra urbana" : "regra rodoviária"}).
-                            </p>
-                          </div>
-                        )}
-                        {displacementStatus === "idle" && !displacementEstimate && (
-                          <p className="text-xs text-gray-500">
-                            Informe o endereço para calcular automaticamente a taxa.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
+          <LocationStep
+            label={stepLabels.LOCATION}
+            isHomeVisit={isHomeVisit}
+            homeVisitAllowed={Boolean(selectedService?.accepts_home_visit)}
+            selectedServicePrice={Number(selectedService?.price ?? 0)}
+            totalPrice={totalPrice}
+            displacementEstimate={displacementEstimate}
+            displacementStatus={displacementStatus}
+            hasSuggestedAddress={hasSuggestedAddress}
+            useSuggestedAddress={useSuggestedAddress}
+            suggestedAddressSummary={suggestedAddressSummary}
+            addressMode={addressMode}
+            cep={cep}
+            logradouro={logradouro}
+            numero={numero}
+            complemento={complemento}
+            bairro={bairro}
+            cidade={cidade}
+            estado={estado}
+            mapsQuery={mapsQuery}
+            onSelectStudio={handleSelectStudioLocation}
+            onSelectHomeVisit={handleSelectHomeVisitLocation}
+            onUseSuggestedAddress={handleUseSuggestedAddress}
+            onChooseOtherAddress={handleChooseOtherAddress}
+            onSelectAddressMode={handleSelectLocationAddressMode}
+            onChangeCep={handleLocationCepChange}
+            onLookupCep={() => void handleCepLookup()}
+            onOpenSearchModal={() => setIsAddressSearchModalOpen(true)}
+            onChangeLogradouro={setLogradouro}
+            onChangeNumero={setNumero}
+            onChangeComplemento={setComplemento}
+            onChangeBairro={setBairro}
+            onChangeCidade={setCidade}
+            onChangeEstado={handleLocationStateChange}
+          />
         )}
 
         {step === "CONFIRM" && (
