@@ -27,16 +27,20 @@ import {
   timerStartSchema,
   timerSyncSchema,
 } from "../../../../src/shared/validation/attendance";
-import { computeElapsedSeconds, computeTotals } from "../../../../lib/attendance/attendance-domain";
+import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
 import { getAttendanceOverview, insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
 import { updateAppointment, updateAppointmentReturning } from "../../../../src/modules/appointments/repository";
+import {
+  getCheckoutChargeSnapshot,
+  recalcCheckoutTotals,
+  recalculateCheckoutPaymentStatus,
+} from "../../../../src/modules/attendance/checkout-service";
 import { insertTransaction } from "../../../../src/modules/finance/repository";
 import {
   createPixOrderForAppointment,
   createPointOrderForAppointment,
   getAppointmentPaymentStatusByMethod,
   getPointOrderStatus,
-  recalculateAppointmentPaymentStatus,
   type PointCardMode,
 } from "../../../../src/modules/payments/mercadopago-orders";
 import { getSettings } from "../../../../src/modules/settings/repository";
@@ -61,48 +65,8 @@ async function insertMessageLog(params: {
   });
 }
 
-async function recalcCheckoutTotals(appointmentId: string) {
-  const supabase = createServiceClient();
-  const { data: items } = await supabase
-    .from("appointment_checkout_items")
-    .select("amount, qty")
-    .eq("appointment_id", appointmentId);
-  const { data: checkout } = await supabase
-    .from("appointment_checkout")
-    .select("discount_type, discount_value")
-    .eq("appointment_id", appointmentId)
-    .maybeSingle();
-
-  const totals = computeTotals({
-    items: (items ?? []).map((item) => ({
-      amount: Number(item.amount ?? 0),
-      qty: item.qty ?? 1,
-    })),
-    discountType: (checkout?.discount_type as "value" | "pct" | null) ?? null,
-    discountValue: checkout?.discount_value ?? 0,
-  });
-
-  await supabase
-    .from("appointment_checkout")
-    .update({ subtotal: totals.subtotal, total: totals.total })
-    .eq("appointment_id", appointmentId);
-
-  return totals;
-}
-
 function roundCurrency(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-async function getCheckoutChargeSnapshot(appointmentId: string) {
-  await recalcCheckoutTotals(appointmentId);
-  const { paid, total, paymentStatus } = await updatePaymentStatus(appointmentId);
-  return {
-    paid: roundCurrency(paid),
-    total: roundCurrency(total),
-    remaining: roundCurrency(Math.max(total - paid, 0)),
-    paymentStatus,
-  };
 }
 
 function fallbackStructuredEvolution(rawText: string) {
@@ -122,27 +86,6 @@ function fallbackStructuredEvolution(rawText: string) {
     "Recomendação:",
     "Descrever orientação de autocuidado e próximo passo.",
   ].join("\n");
-}
-
-async function updatePaymentStatus(appointmentId: string) {
-  const result = await recalculateAppointmentPaymentStatus({
-    appointmentId,
-    tenantId: FIXED_TENANT_ID,
-  });
-
-  if (!result.ok) {
-    throw result.error;
-  }
-
-  if (!result.data) {
-    return { paid: 0, total: 0, paymentStatus: "pending" as const };
-  }
-
-  return {
-    paid: Number(result.data.paidTotal ?? 0),
-    total: Number(result.data.total ?? 0),
-    paymentStatus: result.data.nextStatus,
-  };
 }
 
 export async function getAttendance(appointmentId: string) {
@@ -612,7 +555,7 @@ export async function setCheckoutItems(payload: {
 
   await recalcCheckoutTotals(parsed.data.appointmentId);
   try {
-    await updatePaymentStatus(parsed.data.appointmentId);
+    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
   } catch (error) {
     if (error instanceof AppError) return fail(error);
     return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
@@ -650,7 +593,7 @@ export async function setDiscount(payload: {
 
   await recalcCheckoutTotals(parsed.data.appointmentId);
   try {
-    await updatePaymentStatus(parsed.data.appointmentId);
+    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
   } catch (error) {
     if (error instanceof AppError) return fail(error);
     return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
@@ -674,7 +617,7 @@ export async function recordPayment(payload: {
   }
 
   const supabase = createServiceClient();
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
   if (chargeSnapshot.paymentStatus === "waived") {
     return fail(
       new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
@@ -731,7 +674,7 @@ export async function recordPayment(payload: {
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  await updatePaymentStatus(parsed.data.appointmentId);
+  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
 
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
@@ -849,7 +792,7 @@ export async function createAttendancePixPayment(payload: {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
   if (chargeSnapshot.paymentStatus === "waived") {
     return fail(
       new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
@@ -953,7 +896,7 @@ export async function createAttendancePointPayment(payload: {
     );
   }
 
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId);
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
   if (chargeSnapshot.paymentStatus === "waived") {
     return fail(
       new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
@@ -1067,7 +1010,10 @@ export async function confirmCheckout(payload: { appointmentId: string }): Promi
   }
 
   const supabase = createServiceClient();
-  const { paid, total, paymentStatus } = await updatePaymentStatus(parsed.data.appointmentId);
+  const { paid, total, paymentStatus } = await recalculateCheckoutPaymentStatus(
+    parsed.data.appointmentId,
+    FIXED_TENANT_ID
+  );
   if (paymentStatus !== "waived" && paid < total) {
     return fail(new AppError("Pagamento insuficiente", "VALIDATION_ERROR", 400));
   }
@@ -1341,7 +1287,7 @@ export async function finishAttendance(payload: { appointmentId: string }): Prom
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) return fail(mappedAppointmentError);
 
-  await updatePaymentStatus(parsed.data.appointmentId);
+  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
 
   await insertAttendanceEvent({
     tenantId: FIXED_TENANT_ID,
