@@ -55,18 +55,11 @@ import {
   resolvePublicClientFullName,
   resolveSignalPercentage,
 } from "./booking-flow.helpers";
-import { DatetimeStep } from "./components/datetime-step";
 import { BookingHeader } from "./components/booking-header";
 import { BookingFooter } from "./components/booking-footer";
 import { CardProcessingOverlay } from "./components/card-processing-overlay";
-import { ConfirmStep } from "./components/confirm-step";
-import { PaymentStep } from "./components/payment-step";
-import { ServiceStep } from "./components/service-step";
 import { AddressSearchModal } from "./components/address-search-modal";
-import { IdentityStep } from "./components/identity-step";
-import { LocationStep } from "./components/location-step";
-import { SuccessStep } from "./components/success-step";
-import { WelcomeStep } from "./components/welcome-step";
+import { BookingStepContent } from "./components/booking-step-content";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
 declare global {
@@ -1346,161 +1339,106 @@ export function BookingFlow({
       <BookingHeader clientName={clientHeaderFirstName} />
 
       <main className="flex-1 relative overflow-hidden flex flex-col">
-        {step === "WELCOME" && (
-          <WelcomeStep
-            onStart={() => setStep("IDENT")}
-            onTalkToAssistant={handleTalkToFlora}
-          />
-        )}
-
-        {step === "IDENT" && (
-          <IdentityStep
-            label={stepLabels.IDENT}
-            clientLookupStatus={clientLookupStatus}
-            phoneInputRef={phoneInputRef}
-            clientPhone={clientPhone}
-            onPhoneChange={handleIdentityPhoneChange}
-            isPhoneValid={isPhoneValid}
-            hasSuggestedClient={Boolean(suggestedClient)}
-            clientCpf={clientCpf}
-            onClientCpfChange={handleIdentityCpfChange}
-            identityCaptchaPrompt={identityCaptchaPrompt}
-            identityCaptchaAnswer={identityCaptchaAnswer}
-            onCaptchaAnswerChange={handleIdentityCaptchaAnswerChange}
-            identityGuardNotice={identityGuardNotice}
-            onVerifyExistingClientCpf={() => void handleVerifyExistingClientCpf()}
-            isCpfValid={isCpfValid}
-            isVerifyingClientCpf={isVerifyingClientCpf}
-            identityCpfAttempts={identityCpfAttempts}
-            suggestedClientInitials={suggestedClientInitials}
-            suggestedClientPublicName={suggestedClientPublicName}
-            identityWelcomeCountdown={identityWelcomeCountdown}
-            onGoServiceNow={() => setStep("SERVICE")}
-            isEmailValid={isEmailValid}
-            clientEmail={clientEmail}
-            onClientEmailChange={setClientEmail}
-            onSwitchAccount={handleSwitchAccount}
-            suggestedClientFirstName={suggestedClientFirstName}
-            clientFirstName={clientFirstName}
-            onClientFirstNameChange={handleNewClientFirstNameChange}
-            clientLastName={clientLastName}
-            onClientLastNameChange={handleNewClientLastNameChange}
-            acceptPrivacyPolicy={acceptPrivacyPolicy}
-            onAcceptPrivacyPolicyChange={setAcceptPrivacyPolicy}
-            acceptTermsOfService={acceptTermsOfService}
-            onAcceptTermsOfServiceChange={setAcceptTermsOfService}
-            acceptCommunicationConsent={acceptCommunicationConsent}
-            onAcceptCommunicationConsentChange={setAcceptCommunicationConsent}
-          />
-        )}
-
-        {step === "SERVICE" && (
-          <ServiceStep
-            label={stepLabels.SERVICE}
-            services={services}
-            selectedServiceId={selectedService?.id ?? null}
-            onSelectService={handleServiceSelect}
-          />
-        )}
-
-        {step === "DATETIME" && (
-          <DatetimeStep
-            label={stepLabels.DATETIME}
-            serviceName={selectedService?.name ?? "—"}
-            totalPrice={totalPrice}
-            activeMonth={activeMonth}
-            selectedDate={selectedDateObj}
-            onSelectDay={handleSelectDay}
-            onChangeMonth={handleChangeMonth}
-            isDayDisabled={isDayDisabled}
-            isLoadingDaySlots={isLoadingDaySlots}
-            availableSlots={availableSlots}
-            selectedTime={selectedTime}
-            onSelectTime={setSelectedTime}
-          />
-        )}
-
-        {step === "LOCATION" && (
-          <LocationStep
-            label={stepLabels.LOCATION}
-            isHomeVisit={isHomeVisit}
-            homeVisitAllowed={Boolean(selectedService?.accepts_home_visit)}
-            selectedServicePrice={Number(selectedService?.price ?? 0)}
-            totalPrice={totalPrice}
-            displacementEstimate={displacementEstimate}
-            displacementStatus={displacementStatus}
-            hasSuggestedAddress={hasSuggestedAddress}
-            useSuggestedAddress={useSuggestedAddress}
-            suggestedAddressSummary={suggestedAddressSummary}
-            addressMode={addressMode}
-            cep={cep}
-            logradouro={logradouro}
-            numero={numero}
-            complemento={complemento}
-            bairro={bairro}
-            cidade={cidade}
-            estado={estado}
-            mapsQuery={mapsQuery}
-            onSelectStudio={handleSelectStudioLocation}
-            onSelectHomeVisit={handleSelectHomeVisitLocation}
-            onUseSuggestedAddress={handleUseSuggestedAddress}
-            onChooseOtherAddress={handleChooseOtherAddress}
-            onSelectAddressMode={handleSelectLocationAddressMode}
-            onChangeCep={handleLocationCepChange}
-            onLookupCep={() => void handleCepLookup()}
-            onOpenSearchModal={() => setIsAddressSearchModalOpen(true)}
-            onChangeLogradouro={setLogradouro}
-            onChangeNumero={setNumero}
-            onChangeComplemento={setComplemento}
-            onChangeBairro={setBairro}
-            onChangeCidade={setCidade}
-            onChangeEstado={handleLocationStateChange}
-          />
-        )}
-
-        {step === "CONFIRM" && (
-          <ConfirmStep
-            label={stepLabels.CONFIRM}
-            clientName={resolvedClientFullName || "Cliente"}
-            serviceName={selectedService?.name ?? "Serviço"}
-            selectedDate={selectedDateObj}
-            selectedTime={selectedTime}
-            isHomeVisit={isHomeVisit}
-            totalPrice={totalPrice}
-            paymentMethod={paymentMethod}
-            isMercadoPagoMinimumInvalid={isMercadoPagoMinimumInvalid}
-            protocol={protocol}
-            onSelectPayment={handleSelectPayment}
-          />
-        )}
-
-        {step === "PAYMENT" && (
-          <PaymentStep
-            payableSignalAmount={payableSignalAmount}
-            paymentMethod={paymentMethod}
-            pixPayment={pixPayment}
-            pixStatus={pixStatus}
-            pixRemainingLabel={pixRemainingLabel}
-            pixProgressPct={pixProgressPct}
-            pixQrExpired={pixQrExpired}
-            cardStatus={cardStatus}
-            resolvedClientFullName={resolvedClientFullName}
-            normalizedClientEmail={normalizedClientEmail}
-            appointmentId={appointmentId}
-            onCopyPix={handleCopyPix}
-          />
-        )}
-
-        {step === "SUCCESS" && (
-          <SuccessStep
-            date={selectedDateObj}
-            selectedTime={selectedTime}
-            serviceName={selectedService?.name ?? "Serviço"}
-            protocol={protocol}
-            onOpenVoucher={() => setIsVoucherOpen(true)}
-            onReset={handleReset}
-          />
-        )}
+        <BookingStepContent
+          step={step}
+          stepLabels={stepLabels}
+          onStartWelcome={() => setStep("IDENT")}
+          onTalkToAssistant={handleTalkToFlora}
+          phoneInputRef={phoneInputRef}
+          clientLookupStatus={clientLookupStatus}
+          clientPhone={clientPhone}
+          onPhoneChange={handleIdentityPhoneChange}
+          isPhoneValid={isPhoneValid}
+          suggestedClient={suggestedClient}
+          clientCpf={clientCpf}
+          onClientCpfChange={handleIdentityCpfChange}
+          identityCaptchaPrompt={identityCaptchaPrompt}
+          identityCaptchaAnswer={identityCaptchaAnswer}
+          onCaptchaAnswerChange={handleIdentityCaptchaAnswerChange}
+          identityGuardNotice={identityGuardNotice}
+          onVerifyExistingClientCpf={() => void handleVerifyExistingClientCpf()}
+          isCpfValid={isCpfValid}
+          isVerifyingClientCpf={isVerifyingClientCpf}
+          identityCpfAttempts={identityCpfAttempts}
+          suggestedClientInitials={suggestedClientInitials}
+          suggestedClientPublicName={suggestedClientPublicName}
+          identityWelcomeCountdown={identityWelcomeCountdown}
+          onGoServiceNow={() => setStep("SERVICE")}
+          isEmailValid={isEmailValid}
+          clientEmail={clientEmail}
+          onClientEmailChange={setClientEmail}
+          onSwitchAccount={handleSwitchAccount}
+          suggestedClientFirstName={suggestedClientFirstName}
+          clientFirstName={clientFirstName}
+          onClientFirstNameChange={handleNewClientFirstNameChange}
+          clientLastName={clientLastName}
+          onClientLastNameChange={handleNewClientLastNameChange}
+          acceptPrivacyPolicy={acceptPrivacyPolicy}
+          onAcceptPrivacyPolicyChange={setAcceptPrivacyPolicy}
+          acceptTermsOfService={acceptTermsOfService}
+          onAcceptTermsOfServiceChange={setAcceptTermsOfService}
+          acceptCommunicationConsent={acceptCommunicationConsent}
+          onAcceptCommunicationConsentChange={setAcceptCommunicationConsent}
+          services={services}
+          selectedService={selectedService}
+          onSelectService={handleServiceSelect}
+          totalPrice={totalPrice}
+          activeMonth={activeMonth}
+          selectedDateObj={selectedDateObj}
+          onSelectDay={handleSelectDay}
+          onChangeMonth={handleChangeMonth}
+          isDayDisabled={isDayDisabled}
+          isLoadingDaySlots={isLoadingDaySlots}
+          availableSlots={availableSlots}
+          selectedTime={selectedTime}
+          onSelectTime={setSelectedTime}
+          isHomeVisit={isHomeVisit}
+          displacementEstimate={displacementEstimate}
+          displacementStatus={displacementStatus}
+          hasSuggestedAddress={hasSuggestedAddress}
+          useSuggestedAddress={Boolean(useSuggestedAddress)}
+          suggestedAddressSummary={suggestedAddressSummary}
+          addressMode={addressMode}
+          cep={cep}
+          logradouro={logradouro}
+          numero={numero}
+          complemento={complemento}
+          bairro={bairro}
+          cidade={cidade}
+          estado={estado}
+          mapsQuery={mapsQuery}
+          onSelectStudio={handleSelectStudioLocation}
+          onSelectHomeVisit={handleSelectHomeVisitLocation}
+          onUseSuggestedAddress={handleUseSuggestedAddress}
+          onChooseOtherAddress={handleChooseOtherAddress}
+          onSelectAddressMode={handleSelectLocationAddressMode}
+          onChangeCep={handleLocationCepChange}
+          onLookupCep={() => void handleCepLookup()}
+          onOpenSearchModal={() => setIsAddressSearchModalOpen(true)}
+          onChangeLogradouro={setLogradouro}
+          onChangeNumero={setNumero}
+          onChangeComplemento={setComplemento}
+          onChangeBairro={setBairro}
+          onChangeCidade={setCidade}
+          onChangeEstado={handleLocationStateChange}
+          resolvedClientFullName={resolvedClientFullName}
+          paymentMethod={paymentMethod}
+          isMercadoPagoMinimumInvalid={isMercadoPagoMinimumInvalid}
+          protocol={protocol}
+          onSelectPayment={handleSelectPayment}
+          payableSignalAmount={payableSignalAmount}
+          pixPayment={pixPayment}
+          pixStatus={pixStatus}
+          pixRemainingLabel={pixRemainingLabel}
+          pixProgressPct={pixProgressPct}
+          pixQrExpired={pixQrExpired}
+          cardStatus={cardStatus}
+          normalizedClientEmail={normalizedClientEmail}
+          appointmentId={appointmentId}
+          onCopyPix={handleCopyPix}
+          onReset={handleReset}
+          onOpenVoucher={() => setIsVoucherOpen(true)}
+        />
       </main>
 
       <CardProcessingOverlay
