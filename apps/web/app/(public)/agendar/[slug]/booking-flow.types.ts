@@ -63,6 +63,25 @@ export type AddressSearchResult = {
   label: string;
 };
 
+export type LocationAddressMode = "cep" | "text" | null;
+
+export interface SuggestedClientLookup {
+  id: string;
+  name: string | null;
+  email: string | null;
+  cpf: string | null;
+  public_first_name?: string | null;
+  public_last_name?: string | null;
+  internal_reference?: string | null;
+  address_cep: string | null;
+  address_logradouro: string | null;
+  address_numero: string | null;
+  address_complemento: string | null;
+  address_bairro: string | null;
+  address_cidade: string | null;
+  address_estado: string | null;
+}
+
 export type CardFormOptions = {
   amount: string;
   iframe?: boolean;

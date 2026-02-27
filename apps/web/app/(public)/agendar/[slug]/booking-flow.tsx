@@ -7,8 +7,6 @@ import {
   parseISO,
   startOfMonth,
 } from "date-fns";
-import {
-} from "lucide-react";
 import { submitPublicAppointment } from "./public-actions/appointments";
 import { lookupClientIdentity } from "./public-actions/clients";
 import {
@@ -18,23 +16,22 @@ import {
   getPixPaymentStatus,
 } from "./public-actions/payments";
 import { usePublicBookingAvailability } from "./hooks/use-public-booking-availability";
+import { usePublicBookingLocation } from "./hooks/use-public-booking-location";
 import type {
-  AddressSearchResult,
   BookingFlowProps,
   CardFormInstance,
-  DisplacementEstimate,
   MercadoPagoConstructor,
   PaymentMethod,
   Service,
+  SuggestedClientLookup,
   Step,
 } from "./booking-flow.types";
-import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatCpf } from "../../../../src/shared/cpf";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import { VoucherOverlay } from "./components/voucher-overlay";
-import { formatCep, formatCountdown } from "./booking-flow-formatters";
+import { formatCountdown } from "./booking-flow-formatters";
 import {
   downloadVoucherBlob,
   renderVoucherImageBlob,
@@ -46,7 +43,6 @@ import {
   stepLabels,
 } from "./booking-flow-config";
 import {
-  buildMapsQuery,
   buildWhatsAppLink,
   computePixProgress,
   isValidCpfDigits,
@@ -103,30 +99,6 @@ export function BookingFlow({
   const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
   const [acceptTermsOfService, setAcceptTermsOfService] = useState(false);
   const [acceptCommunicationConsent, setAcceptCommunicationConsent] = useState(false);
-  const [cep, setCep] = useState("");
-  const [logradouro, setLogradouro] = useState("");
-  const [numero, setNumero] = useState("");
-  const [complemento, setComplemento] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [estado, setEstado] = useState("");
-  const [useSuggestedAddress, setUseSuggestedAddress] = useState<boolean | null>(null);
-  const [addressMode, setAddressMode] = useState<"cep" | "text" | null>(null);
-  const [isAddressSearchModalOpen, setIsAddressSearchModalOpen] = useState(false);
-  const [addressSearchQuery, setAddressSearchQuery] = useState("");
-  const [addressSearchResults, setAddressSearchResults] = useState<AddressSearchResult[]>([]);
-  const [addressSearchLoading, setAddressSearchLoading] = useState(false);
-  const [, setAddressSearchError] = useState<string | null>(null);
-  const [displacementEstimate, setDisplacementEstimate] = useState<DisplacementEstimate | null>(
-    null
-  );
-  const [displacementStatus, setDisplacementStatus] = useState<"idle" | "loading" | "error">(
-    "idle"
-  );
-  const [, setDisplacementError] = useState<string | null>(null);
-  const [, setCepStatus] = useState<"idle" | "loading" | "error" | "success">(
-    "idle"
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appointmentId, setAppointmentId] = useState<string | null>(null);
   const [protocol, setProtocol] = useState<string>("");
@@ -160,7 +132,6 @@ export function BookingFlow({
   const pixAutoRefreshByPaymentRef = useRef<string | null>(null);
   const pixFailureStatusRef = useRef<string | null>(null);
   const cardFailureStatusRef = useRef<string | null>(null);
-  const displacementFailureNotifiedRef = useRef(false);
   const mpInitToastShownRef = useRef(false);
   const voucherRef = useRef<HTMLDivElement | null>(null);
   const identityCpfLookupKeyRef = useRef<string | null>(null);
@@ -174,22 +145,54 @@ export function BookingFlow({
   const [identityCaptchaAnswer, setIdentityCaptchaAnswer] = useState("");
   const [identityGuardNotice, setIdentityGuardNotice] = useState<string | null>(null);
   const [isVerifyingClientCpf, setIsVerifyingClientCpf] = useState(false);
-  const [suggestedClient, setSuggestedClient] = useState<{
-    id: string;
-    name: string | null;
-    email: string | null;
-    cpf: string | null;
-    public_first_name?: string | null;
-    public_last_name?: string | null;
-    internal_reference?: string | null;
-    address_cep: string | null;
-    address_logradouro: string | null;
-    address_numero: string | null;
-    address_complemento: string | null;
-    address_bairro: string | null;
-    address_cidade: string | null;
-    address_estado: string | null;
-  } | null>(null);
+  const [suggestedClient, setSuggestedClient] = useState<SuggestedClientLookup | null>(null);
+  const {
+    cep,
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    estado,
+    setLogradouro,
+    setNumero,
+    setComplemento,
+    setBairro,
+    setCidade,
+    useSuggestedAddress,
+    addressMode,
+    isAddressSearchModalOpen,
+    setIsAddressSearchModalOpen,
+    addressSearchQuery,
+    setAddressSearchQuery,
+    addressSearchResults,
+    addressSearchLoading,
+    displacementEstimate,
+    displacementStatus,
+    mapsQuery,
+    hasSuggestedAddress,
+    suggestedAddressSummary,
+    addressComplete,
+    displacementReady,
+    closeAddressSearchModal,
+    handleSelectAddressResult,
+    handleSelectStudioLocation,
+    handleSelectHomeVisitLocation,
+    handleUseSuggestedAddress,
+    handleChooseOtherAddress,
+    handleSelectLocationAddressMode,
+    handleLocationCepChange,
+    handleLocationStateChange,
+    handleCepLookup,
+    resetLocationState,
+    enforceStudioLocationOnly,
+  } = usePublicBookingLocation({
+    isHomeVisit,
+    setIsHomeVisit,
+    homeVisitAllowed: Boolean(selectedService?.accepts_home_visit),
+    suggestedClient,
+    showToast,
+  });
 
   const formattedPhoneDigits = normalizePhoneDigits(clientPhone);
   const isPhoneValid = isValidPhoneDigits(formattedPhoneDigits);
@@ -258,7 +261,6 @@ export function BookingFlow({
 
   const selectedDateObj = useMemo(() => parseISO(`${date}T00:00:00`), [date]);
 
-  const mapsQuery = buildMapsQuery([logradouro, numero, complemento, bairro, cidade, estado, cep]);
   const suggestedClientPublicName = useMemo(
     () =>
       resolveClientNames({
@@ -322,34 +324,6 @@ export function BookingFlow({
   const pixQrExpired = pixProgress.isExpired;
   const pixRemainingLabel = formatCountdown(pixRemainingMs);
 
-  const hasSuggestedAddress = Boolean(
-    suggestedClient?.address_logradouro || suggestedClient?.address_cep
-  );
-  const suggestedAddressSummary = useMemo(() => {
-    const parts = [
-      suggestedClient?.address_logradouro ?? "",
-      suggestedClient?.address_numero ? `, ${suggestedClient.address_numero}` : "",
-      suggestedClient?.address_bairro ? ` - ${suggestedClient.address_bairro}` : "",
-    ]
-      .join("")
-      .trim();
-    return parts;
-  }, [
-    suggestedClient?.address_bairro,
-    suggestedClient?.address_logradouro,
-    suggestedClient?.address_numero,
-  ]);
-
-  const requiresAddress = Boolean(selectedService?.accepts_home_visit && isHomeVisit);
-  const hasAddressFields = Boolean(logradouro && numero && bairro && cidade && estado);
-  const addressComplete = !requiresAddress
-    ? true
-    : hasSuggestedAddress && useSuggestedAddress === null
-      ? false
-      : hasAddressFields;
-  const displacementReady = !requiresAddress
-    ? true
-    : displacementStatus !== "loading" && Boolean(displacementEstimate);
   const showCardProcessingOverlay =
     step === "PAYMENT" &&
     paymentMethod === "card" &&
@@ -360,74 +334,6 @@ export function BookingFlow({
 
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
   const showNextButton = step !== "PAYMENT";
-
-  const calculateDisplacement = useCallback(async () => {
-    if (!requiresAddress || !addressComplete) {
-      setDisplacementEstimate(null);
-      setDisplacementStatus("idle");
-      setDisplacementError(null);
-      displacementFailureNotifiedRef.current = false;
-      return;
-    }
-
-    setDisplacementStatus("loading");
-    setDisplacementError(null);
-    try {
-      const response = await fetch("/api/displacement-fee", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cep,
-          logradouro,
-          numero,
-          complemento,
-          bairro,
-          cidade,
-          estado,
-        }),
-      });
-      const payload = (await response.json()) as
-        | DisplacementEstimate
-        | {
-            error?: string;
-          };
-      if (!response.ok) {
-        const errorPayload = payload as { error?: string };
-        throw new Error(errorPayload.error || "Não foi possível calcular a taxa de deslocamento.");
-      }
-      if (
-        !("fee" in payload) ||
-        typeof payload.fee !== "number" ||
-        typeof payload.distanceKm !== "number"
-      ) {
-        throw new Error("Não foi possível calcular a taxa de deslocamento.");
-      }
-      setDisplacementEstimate(payload);
-      setDisplacementStatus("idle");
-      displacementFailureNotifiedRef.current = false;
-    } catch (error) {
-      setDisplacementEstimate(null);
-      setDisplacementStatus("error");
-      const message =
-        error instanceof Error ? error.message : "Não foi possível calcular a taxa de deslocamento.";
-      setDisplacementError(message);
-      if (!displacementFailureNotifiedRef.current) {
-        displacementFailureNotifiedRef.current = true;
-        showToast(feedbackById("displacement_calc_failed"));
-      }
-    }
-  }, [
-    addressComplete,
-    bairro,
-    cep,
-    cidade,
-    complemento,
-    estado,
-    logradouro,
-    numero,
-    requiresAddress,
-    showToast,
-  ]);
 
   useEffect(() => {
     if (identitySecuritySessionId) return;
@@ -711,7 +617,7 @@ export function BookingFlow({
     setIdentityGuardNotice(null);
     setIsVerifyingClientCpf(false);
     identityCpfLookupKeyRef.current = null;
-    setUseSuggestedAddress(null);
+    resetLocationState();
     window.setTimeout(() => phoneInputRef.current?.focus(), 0);
   };
 
@@ -742,194 +648,12 @@ export function BookingFlow({
     setClientName([clientFirstName.trim(), value.trim()].filter(Boolean).join(" "));
   };
 
-  const applySuggestedAddress = () => {
-    if (!suggestedClient) return;
-    setCep(suggestedClient.address_cep ?? "");
-    setLogradouro(suggestedClient.address_logradouro ?? "");
-    setNumero(suggestedClient.address_numero ?? "");
-    setComplemento(suggestedClient.address_complemento ?? "");
-    setBairro(suggestedClient.address_bairro ?? "");
-    setCidade(suggestedClient.address_cidade ?? "");
-    setEstado(suggestedClient.address_estado ?? "");
-  };
-
-  const clearAddressFields = () => {
-    setCep("");
-    setLogradouro("");
-    setNumero("");
-    setComplemento("");
-    setBairro("");
-    setCidade("");
-    setEstado("");
-    setCepStatus("idle");
-  };
-
-  const handleSelectStudioLocation = () => {
-    setIsHomeVisit(false);
-    setDisplacementEstimate(null);
-    setDisplacementStatus("idle");
-    setDisplacementError(null);
-  };
-
-  const handleSelectHomeVisitLocation = () => {
-    if (selectedService?.accepts_home_visit) {
-      setIsHomeVisit(true);
-    }
-  };
-
-  const handleUseSuggestedAddress = () => {
-    setUseSuggestedAddress(true);
-    applySuggestedAddress();
-    setAddressMode(null);
-  };
-
-  const handleChooseOtherAddress = () => {
-    setUseSuggestedAddress(false);
-    clearAddressFields();
-    setAddressMode("cep");
-    setDisplacementEstimate(null);
-    setDisplacementStatus("idle");
-    setDisplacementError(null);
-  };
-
-  const handleSelectLocationAddressMode = (mode: "cep" | "text") => {
-    setAddressMode(mode);
-    if (mode === "text") {
-      setIsAddressSearchModalOpen(true);
-    }
-  };
-
-  const handleLocationCepChange = (value: string) => {
-    setCep(formatCep(value));
-    setCepStatus("idle");
-  };
-
-  const handleLocationStateChange = (value: string) => {
-    setEstado(value.toUpperCase());
-  };
-
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
     if (!service.accepts_home_visit) {
-      setIsHomeVisit(false);
-      setDisplacementEstimate(null);
-      setDisplacementStatus("idle");
-      setDisplacementError(null);
+      enforceStudioLocationOnly();
     }
     setSelectedTime("");
-  };
-
-  const handleCepLookup = async () => {
-    const normalized = normalizeCep(cep);
-    if (normalized.length !== 8) {
-      setCepStatus("error");
-      showToast(feedbackById("address_cep_invalid"));
-      return;
-    }
-    setCepStatus("loading");
-    const result = await fetchAddressByCep(normalized);
-    if (!result) {
-      setCepStatus("error");
-      showToast(feedbackById("address_cep_not_found"));
-      return;
-    }
-    setLogradouro(result.logradouro);
-    setBairro(result.bairro);
-    setCidade(result.cidade);
-    setEstado(result.estado);
-    setCepStatus("success");
-    showToast(feedbackById("address_cep_found"));
-  };
-
-  useEffect(() => {
-    if (!isAddressSearchModalOpen) return;
-    const query = addressSearchQuery.trim();
-    if (query.length < 3) {
-      setAddressSearchResults([]);
-      setAddressSearchError(null);
-      setAddressSearchLoading(false);
-      return;
-    }
-    const controller = new AbortController();
-    const runSearch = async () => {
-      setAddressSearchLoading(true);
-      setAddressSearchError(null);
-      try {
-        const response = await fetch(`/api/address-search?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error("Falha na busca");
-        }
-        const data = (await response.json()) as AddressSearchResult[];
-        setAddressSearchResults(Array.isArray(data) ? data : []);
-      } catch (error) {
-        if ((error as { name?: string }).name === "AbortError") return;
-        setAddressSearchResults([]);
-        setAddressSearchError("Não foi possível buscar endereços. Tente novamente.");
-        showToast(feedbackById("address_search_failed"));
-      } finally {
-        setAddressSearchLoading(false);
-      }
-    };
-    runSearch();
-    return () => controller.abort();
-  }, [addressSearchQuery, isAddressSearchModalOpen, showToast]);
-
-  useEffect(() => {
-    if (!requiresAddress || !addressComplete) {
-      setDisplacementEstimate(null);
-      setDisplacementStatus("idle");
-      setDisplacementError(null);
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void calculateDisplacement();
-    }, 350);
-
-    return () => window.clearTimeout(timer);
-  }, [addressComplete, calculateDisplacement, requiresAddress]);
-
-  const closeAddressSearchModal = () => {
-    setIsAddressSearchModalOpen(false);
-    setAddressSearchQuery("");
-    setAddressSearchResults([]);
-    setAddressSearchLoading(false);
-    setAddressSearchError(null);
-  };
-
-  const handleSelectAddressResult = async (result: AddressSearchResult) => {
-    setAddressSearchLoading(true);
-    setAddressSearchError(null);
-    try {
-      const response = await fetch(
-        `/api/address-details?placeId=${encodeURIComponent(result.placeId)}`
-      );
-      if (!response.ok) {
-        throw new Error("Falha ao carregar endereço");
-      }
-      const data = (await response.json()) as {
-        cep?: string;
-        logradouro?: string;
-        numero?: string;
-        bairro?: string;
-        cidade?: string;
-        estado?: string;
-      };
-      setCep(data.cep ?? "");
-      setLogradouro(data.logradouro ?? "");
-      setNumero(data.numero ?? "");
-      setBairro(data.bairro ?? "");
-      setCidade(data.cidade ?? "");
-      setEstado(data.estado ?? "");
-      setCepStatus(data.cep ? "success" : "idle");
-      closeAddressSearchModal();
-    } catch {
-      setAddressSearchError("Não foi possível carregar o endereço. Tente novamente.");
-      showToast(feedbackById("address_details_failed"));
-      setAddressSearchLoading(false);
-    }
   };
 
   const ensureAppointment = useCallback(async () => {
@@ -1488,13 +1212,7 @@ export function BookingFlow({
     setAcceptPrivacyPolicy(false);
     setAcceptTermsOfService(false);
     setAcceptCommunicationConsent(false);
-    setUseSuggestedAddress(null);
-    setAddressMode(null);
-    clearAddressFields();
-    closeAddressSearchModal();
-    setDisplacementEstimate(null);
-    setDisplacementStatus("idle");
-    setDisplacementError(null);
+    resetLocationState();
     setAppointmentId(null);
     setProtocol("");
     setSuggestedClient(null);
