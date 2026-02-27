@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   MapPin,
   Phone,
-  Sparkles,
 } from "lucide-react";
 import { submitPublicAppointment } from "./public-actions/appointments";
 import { lookupClientIdentity } from "./public-actions/clients";
@@ -67,9 +66,11 @@ import { StepTabs } from "./components/step-tabs";
 import { DatetimeStep } from "./components/datetime-step";
 import { BookingHeader } from "./components/booking-header";
 import { BookingFooter } from "./components/booking-footer";
+import { CardProcessingOverlay } from "./components/card-processing-overlay";
 import { ConfirmStep } from "./components/confirm-step";
 import { PaymentStep } from "./components/payment-step";
 import { ServiceStep } from "./components/service-step";
+import { AddressSearchModal } from "./components/address-search-modal";
 import { SuccessStep } from "./components/success-step";
 import { WelcomeStep } from "./components/welcome-step";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
@@ -2298,64 +2299,13 @@ export function BookingFlow({
         )}
       </main>
 
-      {showCardProcessingOverlay && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center px-6">
-          <div className="absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]" />
-          <div className="relative w-full max-w-sm rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-studio-green/10">
-              <div className="h-7 w-7 rounded-full border-[3px] border-studio-green/30 border-t-studio-green animate-spin" />
-            </div>
-            <p className="text-center text-[10px] font-bold uppercase tracking-widest text-studio-green">
-              Processando pagamento
-            </p>
-            <h3 className="mt-2 text-center text-xl font-serif text-studio-text">
-              {currentCardProcessingStage.title}
-            </h3>
-            <p className="mt-1 text-center text-xs text-gray-500">
-              {currentCardProcessingStage.description}
-            </p>
-
-            <div className="mt-5 space-y-2">
-              {cardProcessingStages.map((stage, index) => {
-                const isDone = index < cardProcessingStageIndex;
-                const isActive = index === cardProcessingStageIndex;
-                return (
-                  <div key={stage.title} className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex h-4 w-4 items-center justify-center rounded-full border ${
-                        isDone
-                          ? "border-studio-green bg-studio-green"
-                          : isActive
-                            ? "border-studio-green bg-studio-green/20"
-                            : "border-stone-300 bg-stone-100"
-                      }`}
-                    >
-                      {isDone ? (
-                        <CheckCircle2 className="h-3 w-3 text-white" />
-                      ) : isActive ? (
-                        <Sparkles className="h-2.5 w-2.5 text-studio-green animate-pulse" />
-                      ) : null}
-                    </span>
-                    <span
-                      className={`text-xs ${
-                        isDone || isActive ? "text-studio-text font-semibold" : "text-gray-400"
-                      }`}
-                    >
-                      {stage.title}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {cardAwaitingConfirmation && (
-              <p className="mt-4 text-center text-[11px] text-gray-500">
-                Aguardando confirmação da operadora. Não feche esta tela.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
+      <CardProcessingOverlay
+        open={showCardProcessingOverlay}
+        stages={cardProcessingStages}
+        stageIndex={cardProcessingStageIndex}
+        awaitingConfirmation={cardAwaitingConfirmation}
+        currentStage={currentCardProcessingStage}
+      />
 
       <VoucherOverlay
         open={isVoucherOpen}
@@ -2373,59 +2323,15 @@ export function BookingFlow({
         protocol={protocol}
       />
 
-      {isAddressSearchModalOpen && (
-        <div className="absolute inset-0 z-40">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-            onClick={closeAddressSearchModal}
-          />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-4xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-studio-text">Buscar endereço</h3>
-                <p className="text-xs text-gray-400">Digite rua, número, bairro...</p>
-              </div>
-              <button
-                type="button"
-                onClick={closeAddressSearchModal}
-                className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <input
-                value={addressSearchQuery}
-                onChange={(event) => setAddressSearchQuery(event.target.value)}
-                className="w-full bg-stone-50 border border-stone-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700"
-                placeholder="Digite o endereço"
-              />
-
-              {addressSearchLoading && (
-                <p className="text-xs text-gray-400">Buscando endereços...</p>
-              )}
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {addressSearchResults.map((result) => (
-                  <button
-                    key={result.placeId}
-                    type="button"
-                    onClick={() => handleSelectAddressResult(result)}
-                    className="w-full text-left bg-white border border-stone-100 rounded-2xl px-4 py-3 text-sm text-gray-600 hover:border-studio-green hover:text-studio-green transition"
-                  >
-                    {result.label}
-                  </button>
-                ))}
-                {!addressSearchLoading &&
-                  addressSearchQuery.trim().length >= 3 &&
-                  addressSearchResults.length === 0 && (
-                    <p className="text-xs text-gray-400">Nenhum endereço encontrado.</p>
-                  )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddressSearchModal
+        open={isAddressSearchModalOpen}
+        query={addressSearchQuery}
+        results={addressSearchResults}
+        loading={addressSearchLoading}
+        onClose={closeAddressSearchModal}
+        onQueryChange={setAddressSearchQuery}
+        onSelectResult={handleSelectAddressResult}
+      />
 
       <BookingFooter
         visible={showFooter}
