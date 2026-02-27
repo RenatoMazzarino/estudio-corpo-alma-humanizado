@@ -14,7 +14,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { format, isBefore, isSameMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,7 @@ import {
   splitSeedName,
 } from "./appointment-form.helpers";
 import { useAppointmentFinance } from "./hooks/use-appointment-finance";
+import { useInternalScheduleAvailability } from "./hooks/use-internal-schedule-availability";
 import {
   createAppointment,
   createAppointmentForImmediateCharge,
@@ -49,8 +50,6 @@ import {
   createBookingPointPayment,
   updateAppointment,
 } from "./appointment-actions"; // Ação importada do arquivo renomeado
-import { getAvailableSlots, getDateBlockStatus, getMonthAvailableDays } from "./availability";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Toast, useToast } from "../../../components/ui/toast";
 import { fetchAddressByCep, formatCep, normalizeCep } from "../../../src/shared/address/cep";
 import { formatCpf, normalizeCpfDigits } from "../../../src/shared/cpf";
@@ -181,13 +180,6 @@ export function AppointmentForm({
   const [finishingChargeFlow, setFinishingChargeFlow] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? "");
   const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
-  const [activeMonth, setActiveMonth] = useState<Date>(() =>
-    startOfMonth(parseISO(`${(initialAppointment?.date ?? safeDate)}T00:00:00`))
-  );
-  const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
-  const [isLoadingMonthAvailability, setIsLoadingMonthAvailability] = useState(false);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [clientRecords, setClientRecords] = useState<ClientRecordLite[]>(clients);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
   const [clientSelectionMode, setClientSelectionMode] = useState<ClientSelectionMode>(
@@ -208,9 +200,6 @@ export function AppointmentForm({
   const [isClientCreateSaving, setIsClientCreateSaving] = useState(false);
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
   const [hasLocationChoice, setHasLocationChoice] = useState<boolean>(Boolean(initialAppointment));
-  const [hasBlocks, setHasBlocks] = useState(false);
-  const [hasShiftBlock, setHasShiftBlock] = useState(false);
-  const [blockStatus, setBlockStatus] = useState<"idle" | "loading">("idle");
   const [clientAddresses, setClientAddresses] = useState<ClientAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     initialAppointment?.clientAddressId ?? null
@@ -254,6 +243,31 @@ export function AppointmentForm({
     () => services.find((service) => service.id === selectedServiceId) ?? null,
     [selectedServiceId, services]
   );
+  const {
+    activeMonth,
+    availableSlots,
+    blockStatus,
+    handleChangeScheduleMonth,
+    handleSelectScheduleDay,
+    hasBlocks,
+    hasShiftBlock,
+    isLoadingMonthAvailability,
+    isLoadingSlots,
+    isScheduleDayDisabled,
+  } = useInternalScheduleAvailability({
+    safeDate,
+    initialDate: initialAppointment?.date ?? null,
+    selectedDate,
+    selectedServiceId,
+    selectedServiceAcceptsHomeVisit: Boolean(selectedService?.accepts_home_visit),
+    hasLocationChoice,
+    isHomeVisit,
+    isEditing,
+    initialTimeRef,
+    selectedTimeRef,
+    setSelectedDate,
+    setSelectedTime,
+  });
   const selectedDateObj = useMemo(
     () => (selectedDate ? parseISO(`${selectedDate}T00:00:00`) : null),
     [selectedDate]
@@ -556,27 +570,6 @@ export function AppointmentForm({
     applyServiceSelection("");
   };
 
-  const handleSelectScheduleDay = (day: Date) => {
-    const iso = format(day, "yyyy-MM-dd");
-    setSelectedDate(iso);
-    setSelectedTime("");
-  };
-
-  const handleChangeScheduleMonth = (nextMonth: Date) => {
-    setActiveMonth(startOfMonth(nextMonth));
-    setSelectedTime("");
-  };
-
-  const isScheduleDayDisabled = (day: Date) => {
-    if (!isSameMonth(day, activeMonth)) return true;
-    if (isBefore(day, startOfDay(new Date()))) return true;
-    if (!selectedServiceId) return true;
-    if (selectedService?.accepts_home_visit && !hasLocationChoice) return true;
-    const iso = format(day, "yyyy-MM-dd");
-    if (!(iso in monthAvailability)) return isLoadingMonthAvailability;
-    return monthAvailability[iso] !== true;
-  };
-
   const handleAddFinanceItem = () => {
     const label = financeNewItemLabel.trim();
     const amount = Math.max(0, parseDecimalText(financeNewItemAmount) ?? 0);
@@ -637,112 +630,6 @@ export function AppointmentForm({
     const fee = effectiveDisplacementFee;
     setDisplayedPrice((basePrice + fee).toFixed(2));
   }, [selectedService, effectiveDisplacementFee]);
-
-  useEffect(() => {
-    if (!selectedDate) return;
-    const parsed = parseISO(`${selectedDate}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) return;
-    setActiveMonth(startOfMonth(parsed));
-  }, [selectedDate]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadMonthAvailability() {
-      if (!selectedServiceId || (selectedService?.accepts_home_visit && !hasLocationChoice)) {
-        setMonthAvailability({});
-        return;
-      }
-
-      setIsLoadingMonthAvailability(true);
-      try {
-        const map = await getMonthAvailableDays({
-          tenantId: FIXED_TENANT_ID,
-          serviceId: selectedServiceId,
-          month: format(activeMonth, "yyyy-MM"),
-          isHomeVisit,
-          ignoreBlocks: true,
-        });
-        if (!active) return;
-        setMonthAvailability(map);
-      } catch {
-        if (!active) return;
-        setMonthAvailability({});
-      } finally {
-        if (active) setIsLoadingMonthAvailability(false);
-      }
-    }
-
-    loadMonthAvailability();
-    return () => {
-      active = false;
-    };
-  }, [activeMonth, hasLocationChoice, isHomeVisit, selectedService, selectedServiceId]);
-
-  useEffect(() => {
-    async function fetchSlots() {
-      if (!selectedServiceId || !selectedDate || (selectedService?.accepts_home_visit && !hasLocationChoice)) {
-        setAvailableSlots([]);
-        setSelectedTime("");
-        return;
-      }
-
-      if (monthAvailability[selectedDate] !== true) {
-        setAvailableSlots([]);
-        setSelectedTime("");
-        return;
-      }
-
-      setIsLoadingSlots(true);
-      try {
-        const slots = await getAvailableSlots({
-          tenantId: FIXED_TENANT_ID,
-          serviceId: selectedServiceId,
-          date: selectedDate,
-          isHomeVisit,
-          ignoreBlocks: true,
-        });
-        const normalizedSlots = slots;
-        setAvailableSlots(normalizedSlots);
-        const preferred = isEditing ? selectedTimeRef.current || initialTimeRef.current : "";
-        if (preferred && normalizedSlots.includes(preferred)) {
-          setSelectedTime(preferred);
-        } else {
-          setSelectedTime("");
-        }
-      } catch (error) {
-        console.error(error);
-        setAvailableSlots([]);
-        setSelectedTime("");
-      } finally {
-        setIsLoadingSlots(false);
-      }
-    }
-
-    fetchSlots();
-  }, [isEditing, selectedServiceId, selectedDate, isHomeVisit, hasLocationChoice, monthAvailability, selectedService]);
-
-  useEffect(() => {
-    async function fetchBlockStatus() {
-      if (!selectedDate) {
-        setHasBlocks(false);
-        setHasShiftBlock(false);
-        return;
-      }
-      setBlockStatus("loading");
-      try {
-        const result = await getDateBlockStatus({ tenantId: FIXED_TENANT_ID, date: selectedDate });
-        setHasBlocks(result.hasBlocks);
-        setHasShiftBlock(result.hasShift);
-      } catch {
-        setHasBlocks(false);
-        setHasShiftBlock(false);
-      } finally {
-        setBlockStatus("idle");
-      }
-    }
-
-    fetchBlockStatus();
-  }, [selectedDate]);
 
   useEffect(() => {
     if (isHomeVisit) return;
