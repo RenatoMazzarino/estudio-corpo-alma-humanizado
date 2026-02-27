@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import Script from "next/script";
 import {
   format,
@@ -10,7 +9,6 @@ import {
 } from "date-fns";
 import {
   CheckCircle2,
-  Copy,
   MapPin,
   Phone,
   Sparkles,
@@ -35,7 +33,6 @@ import type {
   Step,
 } from "./booking-flow.types";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
-import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatCpf } from "../../../../src/shared/cpf";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
@@ -70,6 +67,8 @@ import { StepTabs } from "./components/step-tabs";
 import { DatetimeStep } from "./components/datetime-step";
 import { BookingHeader } from "./components/booking-header";
 import { BookingFooter } from "./components/booking-footer";
+import { ConfirmStep } from "./components/confirm-step";
+import { PaymentStep } from "./components/payment-step";
 import { ServiceStep } from "./components/service-step";
 import { SuccessStep } from "./components/success-step";
 import { WelcomeStep } from "./components/welcome-step";
@@ -2255,266 +2254,36 @@ export function BookingFlow({
         )}
 
         {step === "CONFIRM" && (
-          <section className="flex-1 flex flex-col px-6 pb-32 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
-            <div className="mb-4">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                {stepLabels.CONFIRM}
-              </span>
-              <StepTabs step={step} />
-              <h2 className="text-2xl font-serif text-studio-text mt-3">Tudo certo?</h2>
-            </div>
-
-            <div className="bg-white rounded-3xl shadow-soft border border-stone-100 p-6 space-y-5">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                  Cliente
-                </p>
-                <p className="text-base font-bold text-studio-text">
-                  {resolvedClientFullName || "Cliente"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                  Serviço
-                </p>
-                <p className="font-serif text-lg text-studio-text">
-                  {selectedService?.name}
-                </p>
-              </div>
-
-              <div className="border-t-2 border-dashed border-gray-100" />
-
-              <div className="space-y-2 text-sm text-gray-500 font-semibold">
-                <div className="flex justify-between">
-                  <span>Data</span>
-                  <span>
-                    {format(selectedDateObj, "dd/MM")} às {selectedTime}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Local</span>
-                  <span>{isHomeVisit ? "Em Domicílio" : "No Estúdio"}</span>
-                </div>
-              </div>
-
-              <div className="bg-white border border-stone-200 rounded-2xl px-4 py-3 flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                  Total
-                </span>
-                <span className="text-lg font-bold text-studio-green">
-                  R$ {totalPrice.toFixed(2)}
-                </span>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
-                  Forma de pagamento
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPayment("pix")}
-                    className={`py-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                      paymentMethod === "pix"
-                        ? "bg-green-50 border-studio-green text-studio-green"
-                        : "bg-white border-stone-200 text-gray-500"
-                    }`}
-                  >
-                    <PaymentMethodIcon method="pix" className="h-4 w-4" /> PIX
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectPayment("card")}
-                    className={`py-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                      paymentMethod === "card"
-                        ? "bg-green-50 border-studio-green text-studio-green"
-                        : "bg-white border-stone-200 text-gray-500"
-                    }`}
-                  >
-                    <PaymentMethodIcon method="card" className="h-4 w-4" /> Cartão
-                  </button>
-                </div>
-                {!paymentMethod && (
-                  <p className="mt-2 text-xs text-gray-400">Selecione Pix ou Cartão para continuar.</p>
-                )}
-                {isMercadoPagoMinimumInvalid && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    O sinal calculado pela porcentagem ficou abaixo do mínimo do Mercado Pago (R$ 1,00).
-                    Ajuste o percentual do sinal em Configurações para usar pagamento online neste serviço.
-                  </p>
-                )}
-              </div>
-
-              <p className="text-[10px] text-center text-gray-400">
-                Protocolo: {protocol || "AGD-000"}
-              </p>
-            </div>
-          </section>
+          <ConfirmStep
+            label={stepLabels.CONFIRM}
+            clientName={resolvedClientFullName || "Cliente"}
+            serviceName={selectedService?.name ?? "Serviço"}
+            selectedDate={selectedDateObj}
+            selectedTime={selectedTime}
+            isHomeVisit={isHomeVisit}
+            totalPrice={totalPrice}
+            paymentMethod={paymentMethod}
+            isMercadoPagoMinimumInvalid={isMercadoPagoMinimumInvalid}
+            protocol={protocol}
+            onSelectPayment={handleSelectPayment}
+          />
         )}
 
         {step === "PAYMENT" && (
-          <section className="flex-1 flex flex-col px-6 pb-32 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
-
-            <div className="mb-6">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Etapa Final
-              </span>
-              <h2 className="text-3xl font-serif text-studio-text mt-2">Pagamento</h2>
-            </div>
-
-            <div className="bg-white p-6 rounded-[28px] border border-stone-100 shadow-soft mb-6">
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-sm font-bold text-gray-500">Total a pagar</span>
-                <span className="text-2xl font-serif font-bold text-studio-text">
-                  R$ {payableSignalAmount.toFixed(2)}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mb-4">
-                Método selecionado:{" "}
-                <span className="font-bold text-studio-text">
-                  {paymentMethod === "pix" ? "Pix" : "Cartão"}
-                </span>
-              </p>
-
-              {paymentMethod === "pix" && (
-                <div className="space-y-4">
-                  <div className="text-center bg-stone-50 rounded-2xl p-6 border border-dashed border-gray-300">
-                    {pixPayment?.qr_code_base64 ? (
-                      <div className="w-32 h-32 bg-white mx-auto rounded-xl flex items-center justify-center shadow-sm mb-4">
-                        <Image
-                          src={`data:image/png;base64,${pixPayment.qr_code_base64}`}
-                          alt="QR Code Pix"
-                          width={160}
-                          height={160}
-                          className="object-contain"
-                          unoptimized
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-32 h-32 bg-white mx-auto rounded-xl flex items-center justify-center shadow-sm mb-4">
-                        <PaymentMethodIcon method="pix" className="h-16 w-16" />
-                      </div>
-                    )}
-                    <p className="text-xs font-bold text-studio-green uppercase mb-2">
-                      {pixStatus === "loading" ? "Gerando Pix..." : "Aguardando Pagamento"}
-                    </p>
-                    <p className="text-xs text-gray-400">QR Code do Mercado Pago</p>
-                    {pixPayment && (
-                      <div className="mt-4 space-y-2">
-                        <div className="flex items-center justify-between text-[11px] text-gray-500">
-                          <span>Tempo máximo para pagamento</span>
-                          <span className="font-bold text-studio-text">{pixRemainingLabel}</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-stone-200">
-                          <div
-                            className="h-full bg-studio-green transition-[width] duration-1000"
-                            style={{ width: `${pixProgressPct}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {pixPayment?.qr_code && (
-                    <div className="bg-white border border-gray-200 rounded-xl p-3 text-[11px] text-gray-600 wrap-break-word">
-                      {pixPayment.qr_code}
-                    </div>
-                  )}
-
-                  {pixQrExpired && <span className="sr-only">QR Code expirado</span>}
-
-                  <button
-                    type="button"
-                    onClick={handleCopyPix}
-                    disabled={!pixPayment?.qr_code || pixStatus === "loading" || pixQrExpired}
-                    className="w-full border-2 border-dashed border-studio-green text-studio-green font-bold py-3 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40"
-                  >
-                    <Copy className="w-4 h-4" /> Copiar chave Pix
-                  </button>
-                  <p className="text-[11px] text-center text-gray-500">
-                    Assim que o Pix for aprovado, esta tela avança automaticamente.
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "card" && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    Pagamento com cartão
-                  </p>
-
-                  <form id="mp-card-form" className="grid gap-3">
-                    <div
-                      className="h-12 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm"
-                      id="mp-card-number"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <div
-                        className="h-12 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm"
-                        id="mp-card-expiration"
-                      />
-                      <div
-                        className="h-12 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm"
-                        id="mp-card-security"
-                      />
-                    </div>
-                    <input
-                      id="mp-cardholder-name"
-                      name="cardholderName"
-                      defaultValue={resolvedClientFullName}
-                      placeholder="Nome no cartão"
-                      className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <select
-                        id="mp-card-issuer"
-                        name="issuer"
-                        className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
-                      />
-                      <select
-                        id="mp-card-installments"
-                        name="installments"
-                        className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <select
-                        id="mp-card-identification-type"
-                        name="identificationType"
-                        className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
-                      />
-                      <input
-                        id="mp-card-identification-number"
-                        name="identificationNumber"
-                        placeholder="CPF"
-                        className="h-12 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
-                      />
-                    </div>
-                    <input
-                      id="mp-card-email"
-                      name="cardholderEmail"
-                      type="email"
-                      readOnly
-                      value={normalizedClientEmail}
-                      className="hidden"
-                    />
-                    <button
-                      type="submit"
-                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-bold text-sm uppercase tracking-wide"
-                      disabled={cardStatus === "loading"}
-                    >
-                      {cardStatus === "loading" ? "Processando cartão..." : "Pagar com cartão"}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {appointmentId && (
-                <p className="text-[10px] text-gray-400 mt-4">Agendamento #{appointmentId}</p>
-              )}
-            </div>
-          </section>
+          <PaymentStep
+            payableSignalAmount={payableSignalAmount}
+            paymentMethod={paymentMethod}
+            pixPayment={pixPayment}
+            pixStatus={pixStatus}
+            pixRemainingLabel={pixRemainingLabel}
+            pixProgressPct={pixProgressPct}
+            pixQrExpired={pixQrExpired}
+            cardStatus={cardStatus}
+            resolvedClientFullName={resolvedClientFullName}
+            normalizedClientEmail={normalizedClientEmail}
+            appointmentId={appointmentId}
+            onCopyPix={handleCopyPix}
+          />
         )}
 
         {step === "SUCCESS" && (
