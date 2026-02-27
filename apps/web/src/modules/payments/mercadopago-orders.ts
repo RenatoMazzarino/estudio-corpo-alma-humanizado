@@ -11,15 +11,19 @@ import {
   mapMercadoPagoUserMessage,
   mapProviderStatusToInternal,
   minimumTransactionAmount,
-  normalizeMercadoPagoToken,
   parseApiPayload,
   parseIsoDate,
   parseNumericAmount,
   resolvePayerEmail,
   splitName,
   splitPhone,
-  usesUnsupportedOrdersTestCredential,
 } from "./mercadopago-orders.helpers";
+import { resolveMercadoPagoAccessToken } from "./mercadopago-access-token";
+export {
+  configurePointDeviceToPdv,
+  listPointDevices,
+  type PointDevice,
+} from "./mercadopago-point-devices";
 
 export { normalizeMercadoPagoToken } from "./mercadopago-orders.helpers";
 
@@ -69,14 +73,6 @@ export interface PointOrderStatusResult {
   point_terminal_id: string | null;
   card_mode: PointCardMode | null;
   appointment_id: string | null;
-}
-
-export interface PointDevice {
-  id: string;
-  name: string;
-  model: string | null;
-  external_id: string | null;
-  status: string | null;
 }
 
 type MercadoPagoOrderPaymentMethod = {
@@ -137,9 +133,6 @@ type MercadoPagoOrderResponse = {
   } | null;
 };
 
-const ordersCredentialsMessage =
-  "Checkout Transparente (Orders API) não aceita credenciais TEST-. Configure MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_PUBLIC_KEY com credenciais de PRODUÇÃO da mesma aplicação.";
-
 async function ensureValidPaymentContext({
   appointmentId,
   tenantId,
@@ -186,23 +179,6 @@ async function ensureValidPaymentContext({
   }
 
   return ok(appointment);
-}
-
-async function resolveAccessToken() {
-  const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
-  if (!accessToken) {
-    return fail(
-      new AppError(
-        "MERCADOPAGO_ACCESS_TOKEN ausente: configure a chave no ambiente.",
-        "CONFIG_ERROR",
-        500
-      )
-    );
-  }
-  if (usesUnsupportedOrdersTestCredential(accessToken)) {
-    return fail(new AppError(ordersCredentialsMessage, "CONFIG_ERROR", 500));
-  }
-  return ok(accessToken);
 }
 
 function extractOrder(payload: Record<string, unknown> | null) {
@@ -456,7 +432,7 @@ export async function createOnlineCardOrderForAppointment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const tokenResult = await resolveAccessToken();
+  const tokenResult = resolveMercadoPagoAccessToken();
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -594,7 +570,7 @@ export async function createPixOrderForAppointment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const tokenResult = await resolveAccessToken();
+  const tokenResult = resolveMercadoPagoAccessToken();
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -724,7 +700,7 @@ export async function createPointOrderForAppointment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const tokenResult = await resolveAccessToken();
+  const tokenResult = resolveMercadoPagoAccessToken();
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -837,7 +813,7 @@ export async function createPointOrderForAppointment({
 }
 
 export async function getOrderById(orderId: string): Promise<ActionResult<PointOrderStatusResult>> {
-  const tokenResult = await resolveAccessToken();
+  const tokenResult = resolveMercadoPagoAccessToken();
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -934,133 +910,6 @@ export async function getPointOrderStatus({
   }
 
   return ok(statusData);
-}
-
-function resolveDeviceArray(payload: Record<string, unknown> | null) {
-  if (!payload) return [];
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.results)) return payload.results;
-  if (payload.data && typeof payload.data === "object") {
-    const dataObj = payload.data as Record<string, unknown>;
-    if (Array.isArray(dataObj.results)) return dataObj.results;
-    if (Array.isArray(dataObj.devices)) return dataObj.devices;
-  }
-  if (Array.isArray(payload.devices)) return payload.devices;
-  return [];
-}
-
-export async function listPointDevices({
-  offset = 0,
-  limit = 50,
-}: {
-  offset?: number;
-  limit?: number;
-} = {}): Promise<ActionResult<PointDevice[]>> {
-  const tokenResult = await resolveAccessToken();
-  if (!tokenResult.ok) return tokenResult;
-  const accessToken = tokenResult.data;
-
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://api.mercadopago.com/point/integration-api/devices?offset=${offset}&limit=${limit}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-  } catch (error) {
-    const details = error instanceof Error ? error.message : String(error);
-    return fail(new AppError("Falha de rede ao listar maquininhas.", "UNKNOWN", 500, details));
-  }
-
-  const payloadText = await response.text();
-  const payload = parseApiPayload(payloadText);
-  if (!response.ok) {
-    const message = getPayloadMessage(payload, "Não foi possível listar maquininhas Point.");
-    return fail(new AppError(message, "SUPABASE_ERROR", response.status, payload));
-  }
-
-  const devices = resolveDeviceArray(payload)
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return null;
-      const record = entry as Record<string, unknown>;
-      const id =
-        (typeof record.id === "string" && record.id) ||
-        (typeof record.terminal_id === "string" && record.terminal_id) ||
-        (typeof record.terminalId === "string" && record.terminalId) ||
-        "";
-      if (!id) return null;
-      return {
-        id,
-        name:
-          (typeof record.name === "string" && record.name) ||
-          (typeof record.device_name === "string" && record.device_name) ||
-          "Point",
-        model:
-          (typeof record.model === "string" && record.model) ||
-          (typeof record.device_model === "string" && record.device_model) ||
-          null,
-        external_id:
-          (typeof record.external_id === "string" && record.external_id) ||
-          (typeof record.externalId === "string" && record.externalId) ||
-          null,
-        status:
-          (typeof record.status === "string" && record.status) ||
-          (typeof record.connection_status === "string" && record.connection_status) ||
-          null,
-      } satisfies PointDevice;
-    })
-    .filter((item): item is PointDevice => Boolean(item));
-
-  return ok(devices);
-}
-
-export async function configurePointDeviceToPdv({
-  terminalId,
-  externalId,
-}: {
-  terminalId: string;
-  externalId: string;
-}): Promise<ActionResult<{ terminalId: string; externalId: string }>> {
-  const tokenResult = await resolveAccessToken();
-  if (!tokenResult.ok) return tokenResult;
-  const accessToken = tokenResult.data;
-
-  const terminal = terminalId.trim();
-  const external = externalId.trim();
-  if (!terminal || !external) {
-    return fail(new AppError("Terminal e identificador externo são obrigatórios.", "VALIDATION_ERROR", 400));
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`https://api.mercadopago.com/point/integration-api/devices/${terminal}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        external_id: external,
-      }),
-    });
-  } catch (error) {
-    const details = error instanceof Error ? error.message : String(error);
-    return fail(new AppError("Falha de rede ao configurar maquininha.", "UNKNOWN", 500, details));
-  }
-
-  const payloadText = await response.text();
-  const payload = parseApiPayload(payloadText);
-  if (!response.ok) {
-    const message = getPayloadMessage(payload, "Não foi possível configurar a maquininha Point.");
-    return fail(new AppError(message, "SUPABASE_ERROR", response.status, payload));
-  }
-
-  return ok({ terminalId: terminal, externalId: external });
 }
 
 export async function getAppointmentPaymentStatusByMethod({
