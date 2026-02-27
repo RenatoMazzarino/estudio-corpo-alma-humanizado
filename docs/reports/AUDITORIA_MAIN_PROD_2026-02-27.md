@@ -4,6 +4,8 @@ Atualizacao de consolidacao (2026-02-27):
 
 - Este relatorio original (foco no range recente da `main`) foi consolidado com o backlog de modularizacao no plano mestre:
   - `docs/plans/BACKLOG_REFACTOR_MODULARIZACAO_REPO.md`
+- Certificacao operacional consolidada:
+  - `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-02-27.md`
 - O plano mestre inclui auditoria do repo completo (nao apenas commits recentes), matriz de hotspots e roadmap detalhado de modularizacao enterprise.
 
 Data: 2026-02-27
