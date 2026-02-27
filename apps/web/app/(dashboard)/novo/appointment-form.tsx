@@ -9,19 +9,17 @@ import {
   Building2,
   Car,
   Check,
-  Copy,
   Plus,
   Trash2,
   X,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import Image from "next/image";
+import { parseISO } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonthCalendar } from "../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../components/ui/payment-method-icon";
+import { AppointmentConfirmationSheet } from "./components/appointment-confirmation-sheet";
 import { ClientCreateModal } from "./components/client-create-modal";
 import { GoogleMapsAddressButton } from "./components/google-maps-address-button";
 import {
@@ -3195,410 +3193,54 @@ export function AppointmentForm({
           portalTarget
         )}
 
-      {portalTarget &&
-        isSendPromptOpen &&
-        createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
-            <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
-                    {confirmationSheetStep === "charge_payment" ? "Cobrança no agendamento" : "Confirmar agendamento"}
-                  </p>
-                  <h3 className="text-lg font-serif text-studio-text">
-                    {confirmationSheetStep === "creating_charge"
-                      ? "Criando agendamento..."
-                      : confirmationSheetStep === "charge_payment"
-                        ? "Pagamento do agendamento"
-                        : confirmationSheetStep === "charge_manual_prompt"
-                          ? "Aviso manual do agendamento"
-                          : "Revisar dados antes de criar"}
-                  </h3>
-                  <p className="text-xs text-muted mt-1">
-                    {confirmationSheetStep === "creating_charge"
-                      ? "Estamos criando o agendamento e preparando o checkout."
-                      : confirmationSheetStep === "charge_payment"
-                        ? "Finalize a cobrança agora ou jogue para pagar no atendimento."
-                        : confirmationSheetStep === "charge_manual_prompt"
-                          ? "Escolha se deseja enviar o aviso manual de agendamento agora."
-                          : "Confira os dados do agendamento antes de confirmar."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleConfirmationSheetClose}
-                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {chargeFlowError && (
-                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
-                  {chargeFlowError}
-                </div>
-              )}
-
-              {confirmationSheetStep === "creating_charge" ? (
-                <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-5 text-center">
-                  <div className="mx-auto h-10 w-10 rounded-full border-2 border-studio-green/20 border-t-studio-green animate-spin" />
-                  <p className="mt-3 text-sm font-semibold text-studio-text">Preparando cobrança...</p>
-                  <p className="mt-1 text-xs text-muted">Isso leva apenas alguns segundos.</p>
-                </div>
-              ) : confirmationSheetStep === "charge_payment" && chargeBookingState ? (
-                <div className="space-y-4">
-                  {chargeNowMethodDraft === "pix_mp" ? (
-                    <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                      <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted">
-                        <PaymentMethodIcon method="pix" className="h-4 w-4" />
-                        PIX Mercado Pago
-                      </div>
-                      <p className="mt-2 text-xs text-muted">
-                        Valor a cobrar agora: <strong>R$ {formatCurrencyLabel(chargeNowDraftAmount)}</strong>
-                      </p>
-
-                      {!chargePixPayment ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleCreateChargePixNow(chargePixAttempt + 1)}
-                          disabled={runningChargeAction}
-                          className="mt-3 w-full h-11 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
-                        >
-                          {runningChargeAction ? "Gerando PIX..." : "Gerar QR Code PIX"}
-                        </button>
-                      ) : (
-                        <>
-                          {chargePixPayment.qr_code_base64 && (
-                            <Image
-                              src={`data:image/png;base64,${chargePixPayment.qr_code_base64}`}
-                              alt="QR Code Pix"
-                              width={200}
-                              height={200}
-                              unoptimized
-                              className="mx-auto mt-4 h-44 w-44 rounded-xl border border-line bg-white p-2"
-                            />
-                          )}
-                          <p className="mt-3 text-center text-xs font-semibold text-studio-green">
-                            Tempo restante: {formatCountdown(chargePixRemainingSeconds)}
-                          </p>
-                          <div className="mt-2 h-2 rounded-full bg-stone-200">
-                            <div
-                              className="h-full rounded-full bg-studio-green transition-all"
-                              style={{ width: `${Math.max((chargePixRemainingSeconds / (15 * 60)) * 100, 0)}%` }}
-                            />
-                          </div>
-                          <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2 text-[11px] text-muted break-all">
-                            {chargePixPayment.qr_code}
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => void handleCopyChargePixCode()}
-                              className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green flex items-center justify-center gap-1.5"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                              Copiar chave PIX
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleSendChargePixViaWhatsapp}
-                              className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green flex items-center justify-center gap-1.5"
-                            >
-                              <Phone className="h-3.5 w-3.5" />
-                              Enviar WhatsApp
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : chargeNowMethodDraft === "card" ? (
-                    <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                      <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted">
-                        <PaymentMethodIcon method="card" className="h-4 w-4" />
-                        Cobrança na maquininha
-                      </div>
-                      <p className="mt-2 text-xs text-muted">
-                        Valor a cobrar agora: <strong>R$ {formatCurrencyLabel(chargeNowDraftAmount)}</strong>
-                      </p>
-                      <p className="mt-2 text-xs text-muted">
-                        {pointEnabled ? pointTerminalName || "Maquininha Point configurada" : "Point não configurada"}
-                      </p>
-                      <p className="text-[11px] text-muted">{pointTerminalModel || "Configure a maquininha em Configurações."}</p>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void handleStartChargeCard("debit")}
-                          disabled={!pointEnabled || runningChargeAction}
-                          className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
-                        >
-                          Cobrar no débito
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleStartChargeCard("credit")}
-                          disabled={!pointEnabled || runningChargeAction}
-                          className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
-                        >
-                          Cobrar no crédito
-                        </button>
-                      </div>
-
-                      {chargePointPayment && (
-                        <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2">
-                          <p className="text-xs text-muted">
-                            Cobrança enviada ({chargePointPayment.card_mode === "debit" ? "débito" : "crédito"}). Aguardando confirmação...
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => void handleVerifyChargeCardNow()}
-                            className="mt-2 h-9 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green"
-                          >
-                            Verificar agora
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 text-xs text-muted">
-                      Finalize a cobrança no atendimento.
-                    </div>
-                  )}
-
-                  <div className={`grid gap-2 ${chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 ? "grid-cols-2" : "grid-cols-1"}`}>
-                    <button
-                      type="button"
-                      onClick={() => void handleSwitchChargeToAttendance()}
-                      disabled={finishingChargeFlow}
-                      className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
-                    >
-                      {finishingChargeFlow ? "Finalizando..." : "Cobrar no atendimento"}
-                    </button>
-                    {chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setChargeFlowError(null);
-                          void handleCreateChargePixNow(chargePixAttempt + 1);
-                        }}
-                        disabled={runningChargeAction}
-                        className="w-full h-12 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs uppercase tracking-wide disabled:opacity-60"
-                      >
-                        Gerar novo pix
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : confirmationSheetStep === "charge_manual_prompt" && chargeBookingState ? (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-                    <p className="text-xs font-semibold text-studio-text">
-                      Agendamento criado{chargeBookingState.appointmentPaymentStatus === "paid" ? " e pagamento confirmado" : ""}.
-                    </p>
-                    <p className="text-xs text-muted mt-1">
-                      Agora você pode decidir se quer enviar o aviso manual pelo WhatsApp.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleResolveDeferredManualPrompt(true)}
-                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
-                    >
-                      Enviar aviso manual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleResolveDeferredManualPrompt(false)}
-                      className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
-                    >
-                      Não enviar aviso manual
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
-                      Resumo
-                    </p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-gray-500">Cliente</span>
-                        <span className="text-right font-semibold text-studio-text">
-                          {clientDisplayPreviewLabel || "Cliente"}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-gray-500">Serviço</span>
-                        <span className="text-right font-semibold text-studio-text">
-                          {selectedService?.name || "Selecione um serviço"}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-gray-500">Data</span>
-                        <span className="text-right font-semibold text-studio-text">
-                          {selectedDate
-                            ? `${format(parseISO(selectedDate), "EEEE", { locale: ptBR }).replace(
-                                /^./,
-                                (char) => char.toUpperCase(),
-                              )}, ${format(parseISO(selectedDate), "dd/MM", { locale: ptBR })}`
-                            : "--"}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-gray-500">Horário</span>
-                        <span className="text-right font-semibold text-studio-text">{selectedTime || "--:--"}</span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-gray-500">Local</span>
-                        <span className="text-right font-semibold text-studio-text">
-                          {isHomeVisit ? `Domicílio${addressLabel ? ` • ${addressLabel}` : ""}` : "Estúdio"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-stone-100 bg-white p-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
-                      Financeiro
-                    </p>
-                    <div className="space-y-2 text-sm">
-                      {financeDraftItems.length > 0 ? (
-                        financeDraftItems.map((item, index) => (
-                          <div key={`${item.type}-${item.label}-${index}`} className="flex items-center justify-between gap-3">
-                            <span className="text-gray-500">{item.label}</span>
-                            <span className="font-semibold text-studio-text">
-                              R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-muted">Sem itens financeiros configurados.</p>
-                      )}
-                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-stone-100">
-                        <span className="text-gray-500">Subtotal</span>
-                        <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
-                      </div>
-                      {effectiveScheduleDiscount > 0 && (
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-gray-500">
-                            Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
-                          </span>
-                          <span className="font-semibold text-studio-text">
-                            - R$ {formatCurrencyLabel(effectiveScheduleDiscount)}
-                          </span>
-                        </div>
-                      )}
-                      {collectionTimingDraft === "charge_now" && (
-                        <>
-                          {chargeNowMethodDraft !== "waiver" && (
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-gray-500">Valor total do atendimento</span>
-                              <span className="font-semibold text-studio-text">
-                                R$ {formatCurrencyLabel(scheduleTotal)}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-gray-500">Forma</span>
-                            <span className="font-semibold text-studio-text">
-                              {chargeNowMethodDraft === "pix_mp"
-                                ? "PIX"
-                                : chargeNowMethodDraft === "card"
-                                  ? "Cartão"
-                                  : chargeNowMethodDraft === "cash"
-                                    ? "Dinheiro"
-                                    : "Cortesia"}
-                            </span>
-                          </div>
-                          {chargeNowMethodDraft === "waiver" && (
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-gray-500">Status financeiro</span>
-                              <span className="font-semibold text-sky-700">Cortesia / pagamento liberado</span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-gray-500">Cobrança</span>
-                        <span className="font-semibold text-studio-text">
-                          {collectionTimingDraft === "at_attendance" ? "No atendimento" : "Agora (No Agendamento)"}
-                        </span>
-                      </div>
-                    </div>
-                    {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver" ? (
-                      <div className="mt-3 pt-3 border-t border-stone-100 space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm font-semibold text-gray-500">Valor Cobrado agora</span>
-                          <span className="shrink-0 whitespace-nowrap text-base font-bold text-studio-text">
-                            R$ {formatCurrencyLabel(chargeNowDraftAmount)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm font-semibold text-gray-500">Saldo a cobrar</span>
-                          <span className="shrink-0 whitespace-nowrap text-base font-bold text-studio-text">
-                            R$ {formatCurrencyLabel(Math.max(scheduleTotal - chargeNowDraftAmount, 0))}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
-                        <span className="text-base font-bold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver" ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => void handleBeginImmediateCharge()}
-                          disabled={
-                            creatingChargeBooking ||
-                            !isChargeNowMethodChosen ||
-                            !isChargeNowAmountConfirmed ||
-                            Boolean(chargeNowAmountError)
-                          }
-                          className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-                        >
-                          {creatingChargeBooking ? "Preparando cobrança..." : "Cobrar"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleConfirmationSheetClose}
-                          className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleSchedule(true)}
-                          className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10"
-                        >
-                          {isCourtesyDraft ? "Agendar cortesia e avisar" : "Agendar e avisar"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSchedule(false)}
-                          className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide"
-                        >
-                          {isCourtesyDraft ? "Agendar cortesia sem enviar" : "Agendar sem enviar"}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>,
-          portalTarget
-        )}
+      <AppointmentConfirmationSheet
+        portalTarget={portalTarget}
+        open={isSendPromptOpen}
+        step={confirmationSheetStep}
+        chargeFlowError={chargeFlowError}
+        chargeBookingState={chargeBookingState}
+        chargeNowMethodDraft={chargeNowMethodDraft}
+        chargeNowDraftAmount={chargeNowDraftAmount}
+        chargePixPayment={chargePixPayment}
+        chargePixAttempt={chargePixAttempt}
+        runningChargeAction={runningChargeAction}
+        chargePixRemainingSeconds={chargePixRemainingSeconds}
+        pointEnabled={pointEnabled}
+        pointTerminalName={pointTerminalName}
+        pointTerminalModel={pointTerminalModel}
+        chargePointPayment={chargePointPayment}
+        finishingChargeFlow={finishingChargeFlow}
+        clientDisplayPreviewLabel={clientDisplayPreviewLabel}
+        selectedServiceName={selectedService?.name ?? null}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        isHomeVisit={isHomeVisit}
+        addressLabel={addressLabel}
+        financeDraftItems={financeDraftItems}
+        scheduleSubtotal={scheduleSubtotal}
+        effectiveScheduleDiscount={effectiveScheduleDiscount}
+        scheduleDiscountType={scheduleDiscountType}
+        effectiveScheduleDiscountInputValue={effectiveScheduleDiscountInputValue}
+        collectionTimingDraft={collectionTimingDraft}
+        scheduleTotal={scheduleTotal}
+        isChargeNowMethodChosen={isChargeNowMethodChosen}
+        isChargeNowAmountConfirmed={isChargeNowAmountConfirmed}
+        chargeNowAmountError={chargeNowAmountError}
+        creatingChargeBooking={creatingChargeBooking}
+        isCourtesyDraft={isCourtesyDraft}
+        formatCountdown={formatCountdown}
+        onClose={handleConfirmationSheetClose}
+        onCreateChargePixNow={(attempt) => handleCreateChargePixNow(attempt)}
+        onCopyChargePixCode={handleCopyChargePixCode}
+        onSendChargePixViaWhatsapp={handleSendChargePixViaWhatsapp}
+        onStartChargeCard={(mode) => handleStartChargeCard(mode)}
+        onVerifyChargeCardNow={handleVerifyChargeCardNow}
+        onSwitchChargeToAttendance={handleSwitchChargeToAttendance}
+        onClearChargeFlowError={() => setChargeFlowError(null)}
+        onResolveDeferredManualPrompt={handleResolveDeferredManualPrompt}
+        onBeginImmediateCharge={handleBeginImmediateCharge}
+        onSchedule={handleSchedule}
+      />
 
       {(isEditing || isStep4Unlocked) && (
       <section className={sectionCardClass}>
