@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServiceClient } from "../../../lib/supabase/service";
 import {
@@ -7,7 +8,7 @@ import {
   triggerCreatedNotificationsForAppointment,
   updateInternalAppointment as updateAppointmentImpl,
 } from "../../../src/modules/appointments/actions";
-import { listClientAddresses, createClient, findClientByCpf, getClientById } from "../../../src/modules/clients/repository";
+import { listClientAddresses, createClient, findClientByCpf } from "../../../src/modules/clients/repository";
 import {
   buildClientNameColumnsProfile,
   composeInternalClientName,
@@ -142,22 +143,19 @@ export async function createClientFromAppointmentDraft(input: {
     return { ok: false, error: "Não foi possível salvar o cliente agora." };
   }
 
-  const { data: clientRow, error: rowError } = await getClientById(FIXED_TENANT_ID, createdClient.id);
-  if (rowError || !clientRow) {
-    return { ok: false, error: "Cliente salvo, mas não foi possível carregar os dados agora." };
-  }
+  revalidatePath("/clientes");
 
   return {
     ok: true,
     data: {
-      id: clientRow.id,
-      name: clientRow.name,
-      phone: clientRow.phone ?? null,
-      email: clientRow.email ?? null,
-      cpf: clientRow.cpf ?? null,
-      public_first_name: clientRow.public_first_name ?? null,
-      public_last_name: clientRow.public_last_name ?? null,
-      internal_reference: clientRow.internal_reference ?? null,
+      id: createdClient.id,
+      name: internalName,
+      phone: normalizedPhone,
+      email: normalizedEmail,
+      cpf: cpfDigits.length === 11 ? cpfDigits : null,
+      public_first_name: nameColumns.public_first_name,
+      public_last_name: nameColumns.public_last_name,
+      internal_reference: nameColumns.internal_reference,
     },
   };
 }

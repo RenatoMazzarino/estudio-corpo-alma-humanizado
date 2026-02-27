@@ -1,9 +1,10 @@
 "use server";
 
-import { eachDayOfInterval, endOfDay, endOfMonth, format, isBefore, startOfDay, startOfMonth } from "date-fns";
+import { eachDayOfInterval, endOfMonth, format, isBefore, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { getAvailableSlots as getAvailableSlotsImpl } from "../../../src/modules/appointments/availability";
 import { listAvailabilityBlocksInRange } from "../../../src/modules/appointments/repository";
 import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
+import { BRAZIL_TZ_OFFSET } from "../../../src/shared/timezone";
 
 interface GetSlotsParams {
   tenantId: string;
@@ -30,7 +31,7 @@ interface GetMonthAvailabilityParams {
 export async function getMonthAvailableDays(params: GetMonthAvailabilityParams): Promise<Record<string, boolean>> {
   await requireDashboardAccessForServerAction();
 
-  const base = new Date(`${params.month}-01T00:00:00`);
+  const base = parseISO(`${params.month}-01T00:00:00${BRAZIL_TZ_OFFSET}`);
   const start = startOfMonth(base);
   const end = endOfMonth(base);
   const today = startOfDay(new Date());
@@ -71,9 +72,8 @@ export async function getDateBlockStatus(
 ): Promise<{ hasBlocks: boolean; hasShift: boolean }> {
 
   await requireDashboardAccessForServerAction();
-  const base = new Date(`${params.date}T00:00:00`);
-  const start = startOfDay(base).toISOString();
-  const end = endOfDay(base).toISOString();
+  const start = new Date(`${params.date}T00:00:00${BRAZIL_TZ_OFFSET}`).toISOString();
+  const end = new Date(`${params.date}T23:59:59.999${BRAZIL_TZ_OFFSET}`).toISOString();
 
   const { data } = await listAvailabilityBlocksInRange(params.tenantId, start, end);
   const blocks = data ?? [];

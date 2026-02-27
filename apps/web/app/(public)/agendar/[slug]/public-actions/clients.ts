@@ -147,10 +147,21 @@ function sha256Hex(value: string) {
 }
 
 function getCaptchaSecret() {
-  return (
-    process.env.CRON_SECRET ||
-    process.env.WHATSAPP_AUTOMATION_PROCESSOR_SECRET ||
-    "public-booking-lookup-captcha-dev-secret"
+  const configuredSecret =
+    process.env.PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET?.trim() ||
+    process.env.CRON_SECRET?.trim() ||
+    process.env.WHATSAPP_AUTOMATION_PROCESSOR_SECRET?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (configuredSecret) return configuredSecret;
+  if (process.env.NODE_ENV !== "production") {
+    return "public-booking-lookup-captcha-dev-secret";
+  }
+
+  throw new AppError(
+    "Configuração obrigatória ausente: defina PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET (ou CRON_SECRET) para validação de segurança do agendamento online.",
+    "CONFIG_ERROR",
+    500
   );
 }
 
