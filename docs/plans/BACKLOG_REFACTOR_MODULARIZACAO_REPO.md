@@ -5,6 +5,32 @@ Versao: 2026-02-27
 Escopo: repositorio completo (nao apenas commits recentes)  
 Consolidacao: este documento unifica o backlog de modularizacao + a auditoria de producao de `docs/reports/AUDITORIA_MAIN_PROD_2026-02-27.md`.
 
+## 0) Atualizacao de Execucao (2026-02-27)
+
+Blocos ja executados na `main` (com gate completo em cada bloco):
+
+1. extração de etapas/modais do fluxo público de agendamento (`booking-flow`) para componentes dedicados;
+2. extração de hook de localização/endereço do agendamento público (`use-public-booking-location`);
+3. extração do client de transporte Meta (`whatsapp-meta-client`);
+4. extração de processadores de webhook Meta em módulos separados:
+  - `whatsapp-webhook-status.ts`
+  - `whatsapp-webhook-inbound.ts`
+5. extração de módulos Mercado Pago:
+  - `mercadopago-access-token.ts`
+  - `mercadopago-point-devices.ts`
+6. extração de helpers do `mobile-agenda` para arquivo dedicado testável.
+
+Snapshot atual de hotspots (linhas):
+
+1. `apps/web/app/(dashboard)/novo/appointment-form.tsx`: `3139`
+2. `apps/web/components/mobile-agenda.tsx`: `1673`
+3. `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`: `1467`
+4. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1141`
+5. `apps/web/src/modules/appointments/actions.ts`: `1133`
+6. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`: `1109`
+7. `apps/web/src/modules/notifications/whatsapp-automation.ts`: `920`
+8. `apps/web/src/modules/payments/mercadopago-orders.ts`: `920`
+
 ## 1) Objetivo de negocio e engenharia
 
 Transformar o repo para padrao enterprise, com modularizacao real por responsabilidade, previsibilidade de mudancas e menor risco de regressao em producao.
@@ -145,8 +171,11 @@ Ja enderecado nesta rodada:
 
 Pendencias de decisao:
 
-1. `GET` de runtime em `/api/internal/notifications/whatsapp/process` aberto sem bearer.
-2. trade-off de UX vs privacidade no passo de identidade do agendamento online.
+1. trade-off de UX vs privacidade no passo de identidade do agendamento online.
+
+Observacao:
+
+1. endpoint interno `/api/internal/notifications/whatsapp/process` ja exige `Authorization: Bearer`.
 
 ## 3.6 Governanca documental
 
