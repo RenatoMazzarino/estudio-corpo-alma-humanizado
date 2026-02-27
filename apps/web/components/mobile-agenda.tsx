@@ -40,6 +40,11 @@ import { Toast, useToast } from "./ui/toast";
 import { AppointmentCard } from "./agenda/appointment-card";
 import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
 import { AppointmentDetailsSheet } from "./agenda/appointment-details-sheet";
+import {
+  formatAgendaDuration,
+  getAgendaServiceDuration,
+  parseAgendaDate,
+} from "./agenda/mobile-agenda.helpers";
 import { AvailabilityManager, type AvailabilityManagerHandle } from "./availability-manager";
 import {
   buildClientReferenceCode,
@@ -182,11 +187,6 @@ export function MobileAgenda({
     [timeGridConfig, pxPerMinute]
   );
 
-  const parseDate = useCallback((value: string) => {
-    const parsed = parseISO(value);
-    return isValid(parsed) ? parsed : new Date(value);
-  }, []);
-
   const monthDays = useMemo<Date[]>(
     () =>
       eachDayOfInterval({
@@ -204,13 +204,13 @@ export function MobileAgenda({
   const appointmentsByDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     visibleAppointments.forEach((appt) => {
-      const key = format(parseDate(appt.start_time), "yyyy-MM-dd");
+      const key = format(parseAgendaDate(appt.start_time), "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(appt);
       map.set(key, list);
     });
     return map;
-  }, [visibleAppointments, parseDate]);
+  }, [visibleAppointments]);
 
   const syncViewToUrl = useCallback(
     (nextView: AgendaView, nextDate?: Date) => {
@@ -235,13 +235,13 @@ export function MobileAgenda({
   const blocksByDay = useMemo(() => {
     const map = new Map<string, AvailabilityBlock[]>();
     blocks.forEach((block) => {
-      const key = format(parseDate(block.start_time), "yyyy-MM-dd");
+      const key = format(parseAgendaDate(block.start_time), "yyyy-MM-dd");
       const list = map.get(key) ?? [];
       list.push(block);
       map.set(key, list);
     });
     return map;
-  }, [blocks, parseDate]);
+  }, [blocks]);
 
   useEffect(() => {
     if (view === "month") return;
@@ -430,7 +430,7 @@ export function MobileAgenda({
       return;
     }
 
-    const targetDate = parseDate(targetAppointment.start_time);
+    const targetDate = parseAgendaDate(targetAppointment.start_time);
     if (isValid(targetDate) && !isSameDay(targetDate, selectedDateRef.current)) {
       setSelectedDate(targetDate);
       setCurrentMonth(startOfMonth(targetDate));
@@ -444,7 +444,7 @@ export function MobileAgenda({
     params.delete("openAppointment");
     params.delete("fromAttendance");
     router.replace(`/?${params.toString()}`, { scroll: false });
-  }, [appointments, openDetailsForAppointment, parseDate, router, searchParams]);
+  }, [appointments, openDetailsForAppointment, router, searchParams]);
 
   useEffect(() => {
     if (searchParams.get("openAppointment")) return;
@@ -463,10 +463,10 @@ export function MobileAgenda({
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
     const dayAppointments = (appointmentsByDay.get(key) ?? []).slice().sort((a, b) =>
-      parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime()
+      parseAgendaDate(a.start_time).getTime() - parseAgendaDate(b.start_time).getTime()
     );
     const dayBlocks = (blocksByDay.get(key) ?? []).slice().sort((a, b) =>
-      parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime()
+      parseAgendaDate(a.start_time).getTime() - parseAgendaDate(b.start_time).getTime()
     );
 
     const blockItems = dayBlocks
@@ -510,7 +510,7 @@ export function MobileAgenda({
         address: appt.clients?.endereco_completo ?? null,
       })),
       ...blockItems,
-    ].sort((a, b) => parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime());
+    ].sort((a, b) => parseAgendaDate(a.start_time).getTime() - parseAgendaDate(b.start_time).getTime());
 
     return { dayAppointments, dayBlocks, items };
   };
@@ -607,36 +607,6 @@ export function MobileAgenda({
     return eachDayOfInterval({ start, end });
   }, [selectedDate]);
 
-
-  const formatDuration = (minutes: number | null) => {
-    if (!minutes) return "";
-    if (minutes < 60) return `${minutes}min`;
-    const hours = Math.floor(minutes / 60);
-    const remainder = minutes % 60;
-    if (!remainder) return `${hours}h`;
-    return `${hours}h ${remainder}m`;
-  };
-
-  const getServiceDuration = (item: DayItem) => {
-    // For blocked slots, duration comes from start/end interval.
-    // For appointments, keep planned duration so the card height stays stable
-    // even after finishing earlier/later than expected.
-    if (item.type === "block" && item.finished_at) {
-      const startTime = parseDate(item.start_time);
-      const endTime = parseDate(item.finished_at);
-      const diffMinutes = Math.max(15, Math.round((endTime.getTime() - startTime.getTime()) / 60000));
-      return diffMinutes;
-    }
-    if (item.service_duration_minutes) return item.service_duration_minutes;
-    if (item.total_duration_minutes) {
-      const bufferBefore = item.buffer_before_minutes ?? 0;
-      const bufferAfter = item.buffer_after_minutes ?? 0;
-      const serviceMinutes = item.total_duration_minutes - bufferBefore - bufferAfter;
-      return serviceMinutes > 0 ? serviceMinutes : item.total_duration_minutes;
-    }
-    return 60;
-  };
-
   const toWhatsappLink = useCallback((phone?: string | null) => {
     if (!phone) return null;
     const digits = phone.replace(/\D/g, "");
@@ -662,7 +632,7 @@ export function MobileAgenda({
       typeof appointment.attendance_code === "string" ? appointment.attendance_code.trim() : "";
     if (persistedCode) return persistedCode;
 
-    const startDate = parseDate(appointment.start_time);
+    const startDate = parseAgendaDate(appointment.start_time);
     if (!isValid(startDate)) return null;
 
     const serviceCode = buildServiceReferenceCode(appointment.service_name);
@@ -676,7 +646,7 @@ export function MobileAgenda({
     const normalizedServiceName = normalizeReferenceToken(appointment.service_name ?? "");
     const sameServiceDayAppointments = appointments
       .filter((item) => {
-        const itemDate = parseDate(item.start_time);
+        const itemDate = parseAgendaDate(item.start_time);
         if (!isValid(itemDate)) return false;
         return (
           format(itemDate, "yyyy-MM-dd") === dayKey &&
@@ -685,7 +655,7 @@ export function MobileAgenda({
       })
       .slice()
       .sort((a, b) => {
-        const timeDiff = parseDate(a.start_time).getTime() - parseDate(b.start_time).getTime();
+        const timeDiff = parseAgendaDate(a.start_time).getTime() - parseAgendaDate(b.start_time).getTime();
         if (timeDiff !== 0) return timeDiff;
         return a.id.localeCompare(b.id);
       });
@@ -695,7 +665,7 @@ export function MobileAgenda({
     const dateToken = format(startDate, "ddMMyy");
 
     return `${serviceCode}-${clientCode}-${dateToken}-${sequence}`;
-  }, [appointments, detailsData?.appointment, parseDate]);
+  }, [appointments, detailsData?.appointment]);
 
   const buildMessage = (
     type: MessageType,
@@ -1327,8 +1297,8 @@ export function MobileAgenda({
                         style={{
                           height: (() => {
                             const maxBottom = items.reduce((max, item) => {
-                              const startTimeDate = parseDate(item.start_time);
-                              const durationMinutes = getServiceDuration(item);
+                              const startTimeDate = parseAgendaDate(item.start_time);
+                              const durationMinutes = getAgendaServiceDuration(item);
                               const bufferAfter = item.buffer_after_minutes ?? 0;
                               const endTimeDate = addMinutes(startTimeDate, durationMinutes + bufferAfter);
                               const endOffset = getOffsetForTime(endTimeDate, timeGridConfig);
@@ -1369,12 +1339,12 @@ export function MobileAgenda({
                         )}
 
                         {items.map((item) => {
-                          const startTimeDate = parseDate(item.start_time);
+                          const startTimeDate = parseAgendaDate(item.start_time);
                           const startLabel = format(startTimeDate, "HH:mm");
                           const isBlock = item.type === "block";
                           const isHomeVisit =
                             typeof item.is_home_visit === "boolean" ? item.is_home_visit : Boolean(item.address);
-                          const durationMinutes = getServiceDuration(item);
+                          const durationMinutes = getAgendaServiceDuration(item);
                           const isCompact = durationMinutes <= 30;
                           const bufferBefore = item.buffer_before_minutes ?? 0;
                           const bufferAfter = item.buffer_after_minutes ?? 0;
@@ -1394,7 +1364,7 @@ export function MobileAgenda({
 
                           let endLabel = "";
                           if (isBlock && item.finished_at) {
-                            endLabel = format(parseDate(item.finished_at), "HH:mm");
+                            endLabel = format(parseAgendaDate(item.finished_at), "HH:mm");
                           } else if (durationMinutes) {
                             endLabel = format(addMinutes(startTimeDate, durationMinutes), "HH:mm");
                           }
@@ -1442,7 +1412,7 @@ export function MobileAgenda({
                                         style={bufferStyle}
                                       >
                                         <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted/80 leading-none whitespace-nowrap">
-                                          Buffer Pré · {formatDuration(bufferBefore)}
+                                          Buffer Pré · {formatAgendaDuration(bufferBefore)}
                                         </span>
                                       </div>
                                     </div>
@@ -1453,7 +1423,7 @@ export function MobileAgenda({
                                       data-card
                                       name={item.clientName}
                                       service={item.serviceName}
-                                      durationLabel={durationMinutes ? formatDuration(durationMinutes) : null}
+                                      durationLabel={durationMinutes ? formatAgendaDuration(durationMinutes) : null}
                                       startLabel={startLabel}
                                       endLabel={endLabel}
                                       status={item.status}
@@ -1483,7 +1453,7 @@ export function MobileAgenda({
                                         style={bufferStyle}
                                       >
                                         <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted/80 leading-none whitespace-nowrap">
-                                          Buffer Pós · {formatDuration(bufferAfter)}
+                                          Buffer Pós · {formatAgendaDuration(bufferAfter)}
                                         </span>
                                       </div>
                                     </div>
@@ -1574,7 +1544,7 @@ export function MobileAgenda({
                       {dayAppointments.slice(0, 3).map((appt) => (
                         <div key={appt.id} className="flex items-center gap-2 text-sm">
                           <span className="text-xs font-semibold text-muted">
-                            {format(parseDate(appt.start_time), "HH:mm")}
+                            {format(parseAgendaDate(appt.start_time), "HH:mm")}
                           </span>
                           <span className="text-xs text-muted">•</span>
                           <span className="font-bold text-studio-text truncate">
@@ -1665,7 +1635,7 @@ export function MobileAgenda({
                 <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
                 <div className="text-xs text-muted">
                   {actionSheet.serviceName} •{" "}
-                  {format(parseDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
+                  {format(parseAgendaDate(actionSheet.startTime), "dd MMM • HH:mm", { locale: ptBR })}
                 </div>
 
                 <div className="mt-4 space-y-2">
