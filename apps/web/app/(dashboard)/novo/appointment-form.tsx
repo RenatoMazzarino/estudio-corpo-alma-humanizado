@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonthCalendar } from "../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../components/ui/payment-method-icon";
+import { ClientCreateModal } from "./components/client-create-modal";
 import { GoogleMapsAddressButton } from "./components/google-maps-address-button";
 import {
   buildAddressQuery,
@@ -2823,174 +2824,53 @@ export function AppointmentForm({
         </section>
       )}
 
-      {portalTarget &&
-        isClientCreateModalOpen &&
-        createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
-            <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">
-                    Cliente
-                  </p>
-                  <h3 className="text-lg font-serif text-studio-text">Cadastrar cliente</h3>
-                  <p className="text-xs text-muted mt-1">
-                    Defina nome interno, nome público e dados de contato.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsClientCreateModalOpen(false)}
-                  disabled={isClientCreateSaving}
-                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center disabled:opacity-60"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {clientCreateError && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                    {clientCreateError}
-                  </div>
-                )}
-
-                <div>
-                  <label className={labelClass}>Primeiro nome</label>
-                  <input
-                    ref={clientCreateFirstNameInputRef}
-                    type="text"
-                    value={clientFirstName}
-                    onChange={(event) => {
-                      setClientFirstName(event.target.value);
-                      setClientCreateError(null);
-                    }}
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Sobrenome (completo)</label>
-                  <input
-                    type="text"
-                    value={clientLastName}
-                    onChange={(event) => {
-                      setClientLastName(event.target.value);
-                      setClientCreateError(null);
-                    }}
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Referência</label>
-                  <input
-                    type="text"
-                    value={clientReference}
-                    onChange={(event) => {
-                      setClientReference(event.target.value);
-                      setClientCreateError(null);
-                    }}
-                    className={inputClass}
-                  />
-                  <p className="text-[10px] text-muted mt-1 ml-1">
-                    Uso interno. Não aparece em mensagens e telas públicas.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
-                    Prévia do nome no sistema
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-studio-text">{clientDraftInternalPreview}</p>
-                  <p className="mt-2 text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
-                    Nome público (voucher/comprovante/agendamento online)
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-studio-text">{clientDraftPublicPreview}</p>
-                </div>
-
-                <div>
-                  <label className={labelClass}>WhatsApp</label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-                    <input
-                      ref={clientPhoneInputRef}
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="(00) 00000-0000"
-                      value={clientPhone}
-                      onChange={(event) => {
-                        setClientPhone(formatBrazilPhone(event.target.value));
-                        setClientCreateError(null);
-                      }}
-                      className={inputWithIconClass}
-                    />
-                  </div>
-                  <p className="text-[11px] text-muted mt-2 ml-1">
-                    Se preencher, será salvo como telefone principal e WhatsApp do cliente.
-                  </p>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Email</label>
-                  <input
-                    type="email"
-                    inputMode="email"
-                    placeholder="cliente@exemplo.com"
-                    value={clientEmail}
-                    onChange={(event) => {
-                      setClientEmail(event.target.value);
-                      setClientCreateError(null);
-                    }}
-                    className={inputClass}
-                  />
-                  {clientEmail.trim() && !isValidEmailAddress(clientEmail) && (
-                    <p className="text-[11px] text-red-600 mt-2 ml-1">
-                      Informe um email válido.
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className={labelClass}>CPF (Opcional)</label>
-                  <input
-                    ref={clientCpfInputRef}
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="000.000.000-00"
-                    maxLength={14}
-                    value={clientCpf}
-                    onChange={(event) => {
-                      setClientCpf(formatCpf(event.target.value));
-                      setClientCreateError(null);
-                    }}
-                    className={inputClass}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsClientCreateModalOpen(false)}
-                  disabled={isClientCreateSaving}
-                  className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-60"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveClientDraftFromModal}
-                  disabled={isClientCreateSaving}
-                  className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-                >
-                  {isClientCreateSaving ? "Salvando..." : "Salvar cliente"}
-                </button>
-              </div>
-              </div>
-            </div>
-          </div>,
-          portalTarget
-        )}
+      <ClientCreateModal
+        portalTarget={portalTarget}
+        open={isClientCreateModalOpen}
+        saving={isClientCreateSaving}
+        error={clientCreateError}
+        labelClass={labelClass}
+        inputClass={inputClass}
+        inputWithIconClass={inputWithIconClass}
+        firstNameInputRef={clientCreateFirstNameInputRef}
+        phoneInputRef={clientPhoneInputRef}
+        cpfInputRef={clientCpfInputRef}
+        firstName={clientFirstName}
+        lastName={clientLastName}
+        reference={clientReference}
+        internalPreview={clientDraftInternalPreview}
+        publicPreview={clientDraftPublicPreview}
+        phone={clientPhone}
+        email={clientEmail}
+        cpf={clientCpf}
+        showInvalidEmailHint={clientEmail.trim().length > 0 && !isValidEmailAddress(clientEmail)}
+        onClose={() => setIsClientCreateModalOpen(false)}
+        onFirstNameChange={(value) => {
+          setClientFirstName(value);
+          setClientCreateError(null);
+        }}
+        onLastNameChange={(value) => {
+          setClientLastName(value);
+          setClientCreateError(null);
+        }}
+        onReferenceChange={(value) => {
+          setClientReference(value);
+          setClientCreateError(null);
+        }}
+        onPhoneChange={(value) => {
+          setClientPhone(formatBrazilPhone(value));
+          setClientCreateError(null);
+        }}
+        onEmailChange={(value) => {
+          setClientEmail(value);
+          setClientCreateError(null);
+        }}
+        onCpfChange={(value) => {
+          setClientCpf(formatCpf(value));
+          setClientCreateError(null);
+        }}
+        onSave={() => void handleSaveClientDraftFromModal()}
+      />
 
       {portalTarget &&
         isAddressModalOpen &&
