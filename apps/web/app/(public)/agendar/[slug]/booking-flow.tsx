@@ -5,10 +5,7 @@ import Image from "next/image";
 import Script from "next/script";
 import {
   format,
-  isBefore,
-  isSameMonth,
   parseISO,
-  startOfDay,
   startOfMonth,
 } from "date-fns";
 import {
@@ -28,7 +25,7 @@ import {
   getCardPaymentStatus,
   getPixPaymentStatus,
 } from "./public-actions/payments";
-import { getAvailableSlots, getMonthAvailableDays } from "./availability";
+import { usePublicBookingAvailability } from "./hooks/use-public-booking-availability";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
@@ -166,10 +163,6 @@ export function BookingFlow({
   const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [activeMonth, setActiveMonth] = useState<Date>(startOfMonth(new Date()));
-  const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
-  const [daySlotsByDate, setDaySlotsByDate] = useState<Record<string, string[]>>({});
-  const [isLoadingMonth, setIsLoadingMonth] = useState(false);
-  const [isLoadingDaySlots, setIsLoadingDaySlots] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientFirstName, setClientFirstName] = useState("");
   const [clientLastName, setClientLastName] = useState("");
@@ -310,6 +303,26 @@ export function BookingFlow({
   const onlineLastSlotBeforeCloseMinutes = Number.isFinite(Number(publicBookingLastSlotBeforeCloseMinutes))
     ? Math.max(0, Number(publicBookingLastSlotBeforeCloseMinutes))
     : 30;
+  const {
+    availableSlots,
+    handleChangeMonth,
+    handleSelectDay,
+    isDayDisabled,
+    isLoadingDaySlots,
+    resetAvailability,
+  } = usePublicBookingAvailability({
+    activeMonth,
+    date,
+    enabled: step === "DATETIME",
+    isHomeVisit,
+    onlineCutoffBeforeCloseMinutes,
+    onlineLastSlotBeforeCloseMinutes,
+    selectedServiceId: selectedService?.id ?? null,
+    setActiveMonth,
+    setDate,
+    setSelectedTime,
+    tenantId: tenant.id,
+  });
   const signalAmount = Number((totalPrice * (normalizedSignalPercentage / 100)).toFixed(2));
   const payableSignalAmount = Number(signalAmount.toFixed(2));
   const isMercadoPagoMinimumInvalid =
@@ -402,10 +415,6 @@ export function BookingFlow({
   const progressIndex = progressSteps.indexOf(step as (typeof progressSteps)[number]);
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
   const showNextButton = step !== "PAYMENT";
-  const availableSlots = useMemo(
-    () => daySlotsByDate[date] ?? [],
-    [date, daySlotsByDate]
-  );
 
   const calculateDisplacement = useCallback(async () => {
     if (!requiresAddress || !addressComplete) {
@@ -650,10 +659,7 @@ export function BookingFlow({
         setSelectedService(null);
         setIsHomeVisit(false);
         const today = new Date();
-        setDate(format(today, "yyyy-MM-dd"));
-        setActiveMonth(startOfMonth(today));
-        setSelectedTime("");
-        setMonthAvailability({});
+        resetAvailability(today);
         setClientName("");
         setClientFirstName("");
         setClientLastName("");
@@ -727,6 +733,7 @@ export function BookingFlow({
     isPhoneValid,
     isVerifyingClientCpf,
     normalizedCpfDigits,
+    resetAvailability,
     showToast,
     suggestedClient,
     tenant.id,
@@ -1404,110 +1411,12 @@ export function BookingFlow({
   ]);
 
   useEffect(() => {
-    if (step !== "DATETIME" || !selectedService) return;
-    let active = true;
-
-    const loadAvailability = async () => {
-      setIsLoadingMonth(true);
-      setMonthAvailability({});
-      try {
-        const map = await getMonthAvailableDays({
-          tenantId: tenant.id,
-          serviceId: selectedService.id,
-          month: format(activeMonth, "yyyy-MM"),
-          isHomeVisit,
-          cutoffBeforeCloseMinutes: onlineCutoffBeforeCloseMinutes,
-          lastSlotBeforeCloseMinutes: onlineLastSlotBeforeCloseMinutes,
-        });
-        if (!active) return;
-        setMonthAvailability(map);
-      } catch {
-        if (!active) return;
-        setMonthAvailability({});
-      } finally {
-        if (active) setIsLoadingMonth(false);
-      }
-    };
-
-    loadAvailability();
-
-    return () => {
-      active = false;
-    };
-  }, [
-    activeMonth,
-    isHomeVisit,
-    onlineCutoffBeforeCloseMinutes,
-    onlineLastSlotBeforeCloseMinutes,
-    selectedService,
-    step,
-    tenant.id,
-  ]);
-
-  useEffect(() => {
-    if (step !== "DATETIME" || !selectedService || !date) return;
-    if (!monthAvailability[date]) {
-      setSelectedTime("");
-      return;
-    }
-    if (daySlotsByDate[date]) return;
-
-    let active = true;
-    const loadDaySlots = async () => {
-      setIsLoadingDaySlots(true);
-      try {
-        const slots = await getAvailableSlots({
-          tenantId: tenant.id,
-          serviceId: selectedService.id,
-          date,
-          isHomeVisit,
-          cutoffBeforeCloseMinutes: onlineCutoffBeforeCloseMinutes,
-          lastSlotBeforeCloseMinutes: onlineLastSlotBeforeCloseMinutes,
-        });
-        if (!active) return;
-        setDaySlotsByDate((prev) => ({ ...prev, [date]: slots }));
-      } catch {
-        if (!active) return;
-        setDaySlotsByDate((prev) => ({ ...prev, [date]: [] }));
-      } finally {
-        if (active) setIsLoadingDaySlots(false);
-      }
-    };
-
-    loadDaySlots();
-    return () => {
-      active = false;
-    };
-  }, [
-    date,
-    daySlotsByDate,
-    isHomeVisit,
-    monthAvailability,
-    onlineCutoffBeforeCloseMinutes,
-    onlineLastSlotBeforeCloseMinutes,
-    selectedService,
-    step,
-    tenant.id,
-  ]);
-
-  useEffect(() => {
     if (!appointmentId) {
       setProtocol("");
       return;
     }
     setProtocol(`AGD-${appointmentId.slice(0, 6).toUpperCase()}`);
   }, [appointmentId]);
-
-  useEffect(() => {
-    setDaySlotsByDate({});
-    setSelectedTime("");
-  }, [isHomeVisit, selectedService?.id]);
-
-  const handleChangeMonth = (next: Date) => {
-    setActiveMonth(next);
-    setDate(format(next, "yyyy-MM-01"));
-    setSelectedTime("");
-  };
 
   const handleSelectPayment = (method: PaymentMethod) => {
     if (method === paymentMethod) return;
@@ -1561,31 +1470,12 @@ export function BookingFlow({
     );
   }, [buildVoucherBlob, protocol]);
 
-  const handleSelectDay = (day: Date) => {
-    const iso = format(day, "yyyy-MM-dd");
-    setDate(iso);
-    setSelectedTime("");
-  };
-
-  const isDayDisabled = (day: Date) => {
-    const iso = format(day, "yyyy-MM-dd");
-    const isPast = isBefore(day, startOfDay(new Date()));
-    if (!isSameMonth(day, activeMonth)) return true;
-    if (isPast || isLoadingMonth) return true;
-    return monthAvailability[iso] !== true;
-  };
-
   const handleReset = () => {
     setStep("WELCOME");
     setSelectedService(null);
     setIsHomeVisit(false);
     const today = new Date();
-    setDate(format(today, "yyyy-MM-dd"));
-    setActiveMonth(startOfMonth(today));
-    setSelectedTime("");
-    setMonthAvailability({});
-    setDaySlotsByDate({});
-    setIsLoadingDaySlots(false);
+    resetAvailability(today);
     setClientName("");
     setClientFirstName("");
     setClientLastName("");
