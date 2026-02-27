@@ -37,7 +37,6 @@ import type {
   Step,
 } from "./booking-flow.types";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
-import { MonthCalendar } from "../../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatCpf } from "../../../../src/shared/cpf";
@@ -70,6 +69,8 @@ import {
   resolveSignalPercentage,
 } from "./booking-flow.helpers";
 import { StepTabs } from "./components/step-tabs";
+import { DatetimeStep } from "./components/datetime-step";
+import { ServiceStep } from "./components/service-step";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
 declare global {
@@ -1948,132 +1949,29 @@ export function BookingFlow({
         )}
 
         {step === "SERVICE" && (
-          <section className="flex-1 flex flex-col px-6 pb-24 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
-            <div className="mb-6">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                {stepLabels.SERVICE}
-              </span>
-              <StepTabs step={step} />
-              <h2 className="text-3xl font-serif text-studio-text mt-2">Escolha seu cuidado</h2>
-            </div>
-
-            <div className="space-y-4">
-              {services.map((service) => {
-                const selected = selectedService?.id === service.id;
-                return (
-                  <button
-                    key={service.id}
-                    type="button"
-                    onClick={() => handleServiceSelect(service)}
-                    className={`w-full bg-white border rounded-3xl p-5 shadow-soft text-left transition ${
-                      selected
-                        ? "border-studio-green bg-stone-50"
-                        : "border-stone-100 hover:border-studio-green/40"
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${
-                          selected ? "bg-studio-green text-white" : "bg-stone-50 text-gray-400"
-                        }`}
-                      >
-                        <Sparkles className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-studio-text text-lg leading-tight">
-                          {service.name}
-                        </h3>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {service.duration_minutes} min • R$ {service.price.toFixed(2)}
-                        </p>
-                        {service.description && (
-                          <p className="text-xs text-gray-500 mt-2">{service.description}</p>
-                        )}
-                      </div>
-                      {service.accepts_home_visit && (
-                        <span className="text-[10px] font-bold bg-dom/20 text-dom-strong px-2 py-1 rounded-full uppercase">
-                          Home
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          <ServiceStep
+            label={stepLabels.SERVICE}
+            services={services}
+            selectedServiceId={selectedService?.id ?? null}
+            onSelectService={handleServiceSelect}
+          />
         )}
 
         {step === "DATETIME" && (
-          <section className="flex-1 flex flex-col px-6 pb-24 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500">
-            <div className="mb-6">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                {stepLabels.DATETIME}
-              </span>
-              <StepTabs step={step} />
-              <h2 className="text-3xl font-serif text-studio-text mt-2">Reserve o tempo</h2>
-            </div>
-
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Serviço</p>
-                <p className="font-serif font-bold text-studio-text text-lg">
-                  {selectedService?.name ?? "—"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Valor</p>
-                <p className="font-bold text-studio-green text-lg">
-                  R$ {totalPrice.toFixed(2)}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-8">
-              <div>
-                <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-3">
-                  Escolha o Dia
-                </label>
-                <MonthCalendar
-                  currentMonth={activeMonth}
-                  selectedDate={selectedDateObj}
-                  onSelectDay={handleSelectDay}
-                  onChangeMonth={handleChangeMonth}
-                  isDayDisabled={isDayDisabled}
-                  enableSwipe
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-studio-green uppercase tracking-widest mb-3">
-                  Horários Disponíveis
-                </label>
-                {isLoadingDaySlots && !availableSlots.length ? (
-                  <div className="text-center text-gray-400 text-xs py-4">Carregando horários...</div>
-                ) : availableSlots.length === 0 ? (
-                  <div className="text-center text-gray-400 text-xs py-4">
-                    Sem horários disponíveis para esta data.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-3">
-                    {availableSlots.map((time) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => setSelectedTime(time)}
-                        className={`px-3 py-3 rounded-2xl border text-xs font-bold transition ${
-                          selectedTime === time
-                            ? "bg-studio-green-dark text-white border-studio-green-dark"
-                            : "bg-white border-stone-200 text-gray-500 hover:border-studio-green hover:text-studio-green"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+          <DatetimeStep
+            label={stepLabels.DATETIME}
+            serviceName={selectedService?.name ?? "—"}
+            totalPrice={totalPrice}
+            activeMonth={activeMonth}
+            selectedDate={selectedDateObj}
+            onSelectDay={handleSelectDay}
+            onChangeMonth={handleChangeMonth}
+            isDayDisabled={isDayDisabled}
+            isLoadingDaySlots={isLoadingDaySlots}
+            availableSlots={availableSlots}
+            selectedTime={selectedTime}
+            onSelectTime={setSelectedTime}
+          />
         )}
 
         {step === "LOCATION" && (
