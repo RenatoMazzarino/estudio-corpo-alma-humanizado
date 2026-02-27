@@ -33,5 +33,9 @@
     "PowerShell 7": {
       "path": "pwsh.exe"
     }
+  },
+  "sonarlint.connectedMode.project": {
+    "connectionId": "renatomazzarino",
+    "projectKey": "RenatoMazzarino_estudio-corpo-alma-humanizado"
   }
 }
