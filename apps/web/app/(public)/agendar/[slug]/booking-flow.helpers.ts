@@ -25,6 +25,7 @@ export function resolveSignalPercentage(value: number | null | undefined) {
 }
 
 export function resolvePositiveMinutes(value: number | null | undefined, fallback: number) {
+  if (value === null || value === undefined) return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(0, parsed);
