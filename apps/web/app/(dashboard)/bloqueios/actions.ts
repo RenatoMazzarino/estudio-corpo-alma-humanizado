@@ -1,6 +1,6 @@
 "use server";
 
-import { addMinutes, endOfDay, endOfMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
+import { addMinutes, endOfMonth, parseISO, startOfMonth } from "date-fns";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
@@ -66,8 +66,8 @@ export async function createAvailabilityBlock(
     return fail(new AppError("Informe horário inicial e final", "VALIDATION_ERROR", 400));
   }
 
-  const dayStart = startOfDay(parseISO(`${date}T00:00:00${BRAZIL_TZ_OFFSET}`));
-  const dayEnd = endOfDay(dayStart);
+  const dayStart = new Date(`${date}T00:00:00${BRAZIL_TZ_OFFSET}`);
+  const dayEnd = new Date(`${date}T23:59:59${BRAZIL_TZ_OFFSET}`);
 
   const blockStart = fullDay
     ? dayStart

@@ -190,8 +190,8 @@ export function MobileAgenda({
   const autoOpenedAppointmentRef = useRef<string | null>(null);
   const pendingAutoOpenAppointmentRef = useRef<string | null>(null);
   const pendingAutoOpenDelayMsRef = useRef<number>(0);
-  const timeColumnWidth = 72;
-  const timeColumnGap = 16;
+  const timeColumnWidth = 44;
+  const timeColumnGap = 6;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
   const timeGridConfig = useMemo<TimeGridConfig>(
     () => ({
@@ -1279,7 +1279,7 @@ export function MobileAgenda({
                 <div
                   key={day.toISOString()}
                   data-date={format(day, "yyyy-MM-dd")}
-                  className="min-w-full snap-center px-6 pb-0 pt-5 flex flex-col"
+                  className="min-w-full snap-center px-3 pb-0 pt-5 flex flex-col"
                   style={{ scrollSnapStop: "always" }}
                 >
                   <div className="text-center mb-5">
@@ -1345,14 +1345,20 @@ export function MobileAgenda({
                   </div>
 
                   {items.length > 0 ? (
-                    <div className="grid grid-cols-[72px_1fr] gap-4">
+                    <div
+                      className="grid"
+                      style={{
+                        gridTemplateColumns: `${timeColumnWidth}px minmax(0, 1fr)`,
+                        columnGap: timeColumnGap,
+                      }}
+                    >
                       <div className="flex flex-col items-end text-xs text-muted font-semibold">
                         {timeSlots.map((slot) => (
                           <div
                             key={slot.key}
                             style={{ height: slotHeight }}
                             className={`flex items-start justify-end w-full ${
-                              slot.isHalf ? "text-[10px] text-muted/60 pr-2" : "pr-1"
+                              slot.isHalf ? "text-[10px] text-muted/60 pr-1" : "pr-0.5"
                             }`}
                           >
                             {slot.label}
@@ -1449,7 +1455,7 @@ export function MobileAgenda({
                           return (
                             <div
                               key={item.id}
-                              className="absolute left-0 right-0 pr-2 pointer-events-auto"
+                              className="absolute left-0 right-0 pr-1 pointer-events-auto"
                               style={{ top: wrapperTop, height: wrapperHeight }}
                             >
                               {isBlock ? (
