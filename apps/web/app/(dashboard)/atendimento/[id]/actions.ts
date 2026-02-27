@@ -1,86 +1,67 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
-import { createServiceClient } from "../../../../lib/supabase/service";
 import type { Json } from "../../../../lib/supabase/types";
-import { AppError } from "../../../../src/shared/errors/AppError";
-import { mapSupabaseError } from "../../../../src/shared/errors/mapSupabaseError";
-import { fail, ok, type ActionResult } from "../../../../src/shared/errors/result";
-import {
-  appointmentIdSchema,
-  checklistToggleSchema,
-  checklistUpsertSchema,
-  finishAttendanceSchema,
-  internalNotesSchema,
-  recordPaymentSchema,
-  saveEvolutionSchema,
-  savePostSchema,
-  setCheckoutItemsSchema,
-  setDiscountSchema,
-} from "../../../../src/shared/validation/attendance";
-import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
-import { getAttendanceOverview, insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
-import { updateAppointment, updateAppointmentReturning } from "../../../../src/modules/appointments/repository";
-import {
-  getCheckoutChargeSnapshot,
-  recalcCheckoutTotals,
-  recalculateCheckoutPaymentStatus,
-} from "../../../../src/modules/attendance/checkout-service";
-import { fallbackStructuredEvolution } from "../../../../src/modules/attendance/evolution-format";
-import {
-  cancelPreConfirmationOperation,
-  confirmPreOperation,
-  insertMessageLogOperation,
-  recordMessageStatusOperation,
-  sendMessageOperation,
-  sendReminder24hOperation,
-} from "../../../../src/modules/attendance/communication-actions";
+import type { ActionResult } from "../../../../src/shared/errors/result";
+import { requireDashboardAccessForServerAction } from "../../../../src/modules/auth/dashboard-access";
+import type { PointCardMode } from "../../../../src/modules/payments/mercadopago-orders";
 import {
   pauseTimerOperation,
   resumeTimerOperation,
   startTimerOperation,
   syncTimerOperation,
 } from "../../../../src/modules/attendance/timer-actions";
-import { insertTransaction } from "../../../../src/modules/finance/repository";
 import {
-  createPixOrderForAppointment,
-  createPointOrderForAppointment,
-  getAppointmentPaymentStatusByMethod,
-  getPointOrderStatus,
-  type PointCardMode,
-} from "../../../../src/modules/payments/mercadopago-orders";
-import { getSettings } from "../../../../src/modules/settings/repository";
-import { runFloraAudioTranscription, runFloraText } from "../../../../src/shared/ai/flora";
-import { requireDashboardAccessForServerAction } from "../../../../src/modules/auth/dashboard-access";
-
-function roundCurrency(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
+  cancelPreConfirmationImpl,
+  confirmPreImpl,
+  getAttendanceImpl,
+  recordMessageStatusImpl,
+  recordSurveyAnswerImpl,
+  sendMessageImpl,
+  sendReminder24hImpl,
+  sendSurveyImpl,
+} from "./actions/communication";
+import {
+  finishAttendanceImpl,
+  saveEvolutionImpl,
+  saveInternalNotesImpl,
+  savePostImpl,
+  structureEvolutionFromAudioImpl,
+  toggleChecklistItemImpl,
+  transcribeEvolutionFromAudioImpl,
+  upsertChecklistImpl,
+} from "./actions/checklist-evolution";
+import {
+  confirmCheckoutImpl,
+  recordPaymentImpl,
+  setCheckoutItemsImpl,
+  setDiscountImpl,
+  waiveCheckoutPaymentImpl,
+} from "./actions/checkout-finance";
+import {
+  createAttendancePixPaymentImpl,
+  createAttendancePointPaymentImpl,
+  getAttendancePixPaymentStatusImpl,
+  getAttendancePointPaymentStatusImpl,
+} from "./actions/payment-provider";
 
 export async function getAttendance(appointmentId: string) {
-
   await requireDashboardAccessForServerAction();
-  return getAttendanceOverview(FIXED_TENANT_ID, appointmentId);
+  return getAttendanceImpl(appointmentId);
 }
 
 export async function confirmPre(payload: { appointmentId: string; channel?: string }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  return confirmPreOperation(payload);
+  return confirmPreImpl(payload);
 }
 
 export async function cancelPreConfirmation(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  return cancelPreConfirmationOperation(payload);
+  return cancelPreConfirmationImpl(payload);
 }
 
 export async function sendReminder24h(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  return sendReminder24hOperation(payload);
+  return sendReminder24hImpl(payload);
 }
 
 export async function sendMessage(payload: {
@@ -89,9 +70,8 @@ export async function sendMessage(payload: {
   channel?: string | null;
   payload?: Json | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  return sendMessageOperation(payload);
+  return sendMessageImpl(payload);
 }
 
 export async function recordMessageStatus(payload: {
@@ -99,85 +79,26 @@ export async function recordMessageStatus(payload: {
   messageId: string;
   status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
 }): Promise<ActionResult<{ messageId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  return recordMessageStatusOperation(payload);
+  return recordMessageStatusImpl(payload);
 }
 
 export async function saveInternalNotes(payload: { appointmentId: string; internalNotes?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = internalNotesSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const { error } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
-    internal_notes: parsed.data.internalNotes ?? null,
-  });
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "internal_notes_updated",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return saveInternalNotesImpl(payload);
 }
 
 export async function toggleChecklistItem(payload: { appointmentId: string; itemId: string; completed: boolean }): Promise<ActionResult<{ itemId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = checklistToggleSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-  const supabase = createServiceClient();
-  const completedAt = parsed.data.completed ? new Date().toISOString() : null;
-  const { error } = await supabase
-    .from("appointment_checklist_items")
-    .update({ completed_at: completedAt })
-    .eq("appointment_id", parsed.data.appointmentId)
-    .eq("id", parsed.data.itemId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ itemId: parsed.data.itemId });
+  return toggleChecklistItemImpl(payload);
 }
 
 export async function upsertChecklist(payload: {
   appointmentId: string;
   items: Array<{ id?: string; label: string; sortOrder: number; completed?: boolean }>;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = checklistUpsertSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const inserts = parsed.data.items.map((item) => ({
-    id: item.id,
-    appointment_id: parsed.data.appointmentId,
-    tenant_id: FIXED_TENANT_ID,
-    label: item.label,
-    sort_order: item.sortOrder,
-    completed_at: item.completed ? new Date().toISOString() : null,
-  }));
-
-  const { error } = await supabase.from("appointment_checklist_items").upsert(inserts);
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return upsertChecklistImpl(payload);
 }
 
 export async function saveEvolution(payload: {
@@ -186,125 +107,16 @@ export async function saveEvolution(payload: {
     text?: string | null;
   };
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = saveEvolutionSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const evolutionText = parsed.data.payload.text?.trim() ?? null;
-  const { data: existingEntry, error: existingEntryError } = await supabase
-    .from("appointment_evolution_entries")
-    .select("id")
-    .eq("appointment_id", parsed.data.appointmentId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const mappedExistingEntryError = mapSupabaseError(existingEntryError);
-  if (mappedExistingEntryError) return fail(mappedExistingEntryError);
-
-  if (existingEntry) {
-    const { error } = await supabase
-      .from("appointment_evolution_entries")
-      .update({
-        evolution_text: evolutionText,
-      })
-      .eq("id", existingEntry.id);
-
-    const mapped = mapSupabaseError(error);
-    if (mapped) return fail(mapped);
-  } else {
-    const insertPayload = {
-      appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
-      evolution_text: evolutionText,
-    };
-
-    let { error } = await supabase.from("appointment_evolution_entries").insert(insertPayload as never);
-
-    const insertErrorText = `${error?.message ?? ""} ${error?.details ?? ""}`.toLowerCase();
-    const needsLegacyVersionFallback =
-      !!error &&
-      ["version", "appointment_evolution_entries_unique", "null value in column"].some((pattern) =>
-        insertErrorText.includes(pattern)
-      );
-
-    if (needsLegacyVersionFallback) {
-      const legacyInsert = await supabase.from("appointment_evolution_entries").insert({
-        ...insertPayload,
-        version: 1,
-        status: "draft",
-      } as never);
-      error = legacyInsert.error;
-    }
-
-    const mapped = mapSupabaseError(error);
-    if (mapped) return fail(mapped);
-  }
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "evolution_saved",
-    payload: { has_text: Boolean(evolutionText) },
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return saveEvolutionImpl(payload);
 }
 
 export async function structureEvolutionFromAudio(payload: {
   appointmentId: string;
   transcript: string;
 }): Promise<ActionResult<{ transcript: string; structuredText: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = z
-    .object({
-      appointmentId: z.string().uuid(),
-      transcript: z.string().min(4),
-    })
-    .safeParse(payload);
-
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const transcript = parsed.data.transcript.trim();
-  if (!transcript) {
-    return fail(new AppError("Áudio sem conteúdo para estruturar.", "VALIDATION_ERROR", 400));
-  }
-
-  const floraResponse = await runFloraText({
-    systemPrompt:
-      "Você é Flora, assistente clínica do Estúdio Corpo & Alma. Estruture uma evolução de atendimento em português, com texto objetivo, humanizado e profissional. Não invente dados.",
-    userPrompt: [
-      "Estruture a evolução abaixo no formato:",
-      "Queixa principal:",
-      "Conduta aplicada:",
-      "Resposta do cliente:",
-      "Recomendação:",
-      "",
-      "Transcrição do profissional:",
-      transcript,
-    ].join("\n"),
-    temperature: 0.1,
-    maxOutputTokens: 900,
-  });
-
-  const structuredText = floraResponse?.trim() || fallbackStructuredEvolution(transcript);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "evolution_audio_structured",
-    payload: { transcript_length: transcript.length, used_ai: Boolean(floraResponse) },
-  });
-
-  return ok({ transcript, structuredText });
+  return structureEvolutionFromAudioImpl(payload);
 }
 
 export async function transcribeEvolutionFromAudio(payload: {
@@ -312,93 +124,16 @@ export async function transcribeEvolutionFromAudio(payload: {
   audioBase64: string;
   mimeType?: string | null;
 }): Promise<ActionResult<{ transcript: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = z
-    .object({
-      appointmentId: z.string().uuid(),
-      audioBase64: z.string().min(100),
-      mimeType: z.string().optional().nullable(),
-    })
-    .safeParse(payload);
-
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const mimeType = (parsed.data.mimeType ?? "audio/webm").trim() || "audio/webm";
-
-  const transcriptRaw = await runFloraAudioTranscription({
-    audioBase64: parsed.data.audioBase64,
-    mimeType,
-  });
-
-  const transcript = transcriptRaw?.trim() ?? "";
-  if (!transcript) {
-    return fail(
-      new AppError(
-        "Não foi possível transcrever o áudio. Tente gravar novamente em ambiente mais silencioso.",
-        "VALIDATION_ERROR",
-        400
-      )
-    );
-  }
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "evolution_audio_transcribed",
-    payload: { transcript_length: transcript.length, mime_type: mimeType },
-  });
-
-  return ok({ transcript });
+  return transcribeEvolutionFromAudioImpl(payload);
 }
 
 export async function setCheckoutItems(payload: {
   appointmentId: string;
   items: Array<{ type: "service" | "fee" | "addon" | "adjustment"; label: string; qty?: number; amount: number; metadata?: Record<string, unknown> }>;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = setCheckoutItemsSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { error: deleteError } = await supabase
-    .from("appointment_checkout_items")
-    .delete()
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mappedDeleteError = mapSupabaseError(deleteError);
-  if (mappedDeleteError) return fail(mappedDeleteError);
-
-  const items = parsed.data.items.map((item, index) => ({
-    appointment_id: parsed.data.appointmentId,
-    tenant_id: FIXED_TENANT_ID,
-    type: item.type,
-    label: item.label,
-    qty: item.qty ?? 1,
-    amount: item.amount,
-    metadata: (item.metadata ?? null) as Json | null,
-    sort_order: index + 1,
-  }));
-
-  const { error } = await supabase.from("appointment_checkout_items").insert(items);
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await recalcCheckoutTotals(parsed.data.appointmentId);
-  try {
-    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
-  } catch (error) {
-    if (error instanceof AppError) return fail(error);
-    return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
-  }
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return setCheckoutItemsImpl(payload);
 }
 
 export async function setDiscount(payload: {
@@ -407,36 +142,8 @@ export async function setDiscount(payload: {
   value: number | null;
   reason?: string | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = setDiscountSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("appointment_checkout")
-    .update({
-      discount_type: parsed.data.type,
-      discount_value: parsed.data.value,
-      discount_reason: parsed.data.reason ?? null,
-    })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await recalcCheckoutTotals(parsed.data.appointmentId);
-  try {
-    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
-  } catch (error) {
-    if (error instanceof AppError) return fail(error);
-    return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
-  }
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return setDiscountImpl(payload);
 }
 
 export async function recordPayment(payload: {
@@ -445,152 +152,16 @@ export async function recordPayment(payload: {
   amount: number;
   transactionId?: string | null;
 }): Promise<ActionResult<{ paymentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = recordPaymentSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
-  if (chargeSnapshot.paymentStatus === "waived") {
-    return fail(
-      new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
-    );
-  }
-  if (chargeSnapshot.remaining <= 0) {
-    return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
-  }
-
-  const requestedAmount = roundCurrency(parsed.data.amount);
-  if (requestedAmount > chargeSnapshot.remaining + 0.01) {
-    return fail(
-      new AppError(
-        "O valor informado é maior que o saldo atual do atendimento. Atualize o checkout e tente novamente.",
-        "VALIDATION_ERROR",
-        400
-      )
-    );
-  }
-
-  let transactionId = parsed.data.transactionId ?? null;
-
-  if (!transactionId) {
-    const description = `Pagamento Atendimento #${parsed.data.appointmentId.slice(0, 8)}`;
-    const { data: transactionData, error: transactionError } = await insertTransaction({
-      tenant_id: FIXED_TENANT_ID,
-      appointment_id: parsed.data.appointmentId,
-      type: "income",
-      category: "Serviço",
-      description,
-      amount: requestedAmount,
-      payment_method: parsed.data.method,
-    });
-
-    if (!transactionError && transactionData && Array.isArray(transactionData) && transactionData[0]) {
-      transactionId = transactionData[0].id;
-    }
-  }
-
-  const { data, error } = await supabase
-    .from("appointment_payments")
-    .insert({
-      appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
-      method: parsed.data.method,
-      amount: requestedAmount,
-      status: "paid",
-      paid_at: new Date().toISOString(),
-      transaction_id: transactionId,
-    })
-    .select("id")
-    .single();
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "payment_recorded",
-    payload: { method: parsed.data.method, amount: requestedAmount },
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ paymentId: data?.id ?? parsed.data.appointmentId });
+  return recordPaymentImpl(payload);
 }
 
 export async function waiveCheckoutPayment(payload: {
   appointmentId: string;
   reason?: string | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = appointmentIdSchema
-    .extend({
-      reason: z.string().max(240).optional().nullable(),
-    })
-    .safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-
-  const { data: appointment, error: appointmentReadError } = await supabase
-    .from("appointments")
-    .select("id, payment_status")
-    .eq("id", parsed.data.appointmentId)
-    .eq("tenant_id", FIXED_TENANT_ID)
-    .maybeSingle();
-
-  const mappedReadError = mapSupabaseError(appointmentReadError);
-  if (mappedReadError) return fail(mappedReadError);
-  if (!appointment) {
-    return fail(new AppError("Atendimento não encontrado", "NOT_FOUND", 404));
-  }
-
-  if (appointment.payment_status === "paid") {
-    return fail(
-      new AppError(
-        "Este atendimento já está quitado. Use a liberação apenas quando houver saldo em aberto.",
-        "VALIDATION_ERROR",
-        400
-      )
-    );
-  }
-
-  const now = new Date().toISOString();
-  const { error: checkoutError } = await supabase
-    .from("appointment_checkout")
-    .update({ confirmed_at: now })
-    .eq("appointment_id", parsed.data.appointmentId);
-  const mappedCheckoutError = mapSupabaseError(checkoutError);
-  if (mappedCheckoutError) return fail(mappedCheckoutError);
-
-  const { error: appointmentUpdateError } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
-    payment_status: "waived",
-  });
-  const mappedAppointmentError = mapSupabaseError(appointmentUpdateError);
-  if (mappedAppointmentError) return fail(mappedAppointmentError);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "payment_waived",
-    payload: {
-      reason: parsed.data.reason?.trim() || null,
-      label: "Cortesia",
-    },
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  revalidatePath("/");
-  revalidatePath("/caixa");
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return waiveCheckoutPaymentImpl(payload);
 }
 
 export async function createAttendancePixPayment(payload: {
@@ -613,74 +184,14 @@ export async function createAttendancePixPayment(payload: {
   expires_at: string;
 }>> {
   await requireDashboardAccessForServerAction();
-  const parsed = z
-    .object({
-      appointmentId: z.string().uuid(),
-      amount: z.number().positive(),
-      payerName: z.string().min(2),
-      payerPhone: z.string().min(8),
-      payerEmail: z.string().email().optional().nullable(),
-      attempt: z.number().int().min(0).optional(),
-    })
-    .safeParse(payload);
-
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
-  if (chargeSnapshot.paymentStatus === "waived") {
-    return fail(
-      new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
-    );
-  }
-  if (chargeSnapshot.remaining <= 0) {
-    return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
-  }
-  const chargeAmount = chargeSnapshot.remaining;
-
-  const result = await createPixOrderForAppointment({
-    appointmentId: parsed.data.appointmentId,
-    tenantId: FIXED_TENANT_ID,
-    amount: chargeAmount,
-    payerName: parsed.data.payerName,
-    payerPhone: parsed.data.payerPhone,
-    payerEmail: parsed.data.payerEmail,
-    attempt: parsed.data.attempt,
-  });
-  if (!result.ok) return result;
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "payment_pix_created",
-    payload: {
-      payment_id: result.data.id,
-      order_id: result.data.order_id,
-      amount: result.data.transaction_amount,
-      status: result.data.internal_status,
-    },
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok(result.data);
+  return createAttendancePixPaymentImpl(payload);
 }
 
 export async function getAttendancePixPaymentStatus(payload: {
   appointmentId: string;
 }): Promise<ActionResult<{ internal_status: "paid" | "pending" | "failed" }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = appointmentIdSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  return getAppointmentPaymentStatusByMethod({
-    appointmentId: parsed.data.appointmentId,
-    tenantId: FIXED_TENANT_ID,
-    method: "pix",
-  });
+  return getAttendancePixPaymentStatusImpl(payload);
 }
 
 export async function createAttendancePointPayment(payload: {
@@ -700,75 +211,7 @@ export async function createAttendancePointPayment(payload: {
   card_mode: PointCardMode;
 }>> {
   await requireDashboardAccessForServerAction();
-  const parsed = z
-    .object({
-      appointmentId: z.string().uuid(),
-      amount: z.number().positive(),
-      cardMode: z.enum(["debit", "credit"]),
-      terminalId: z.string().optional().nullable(),
-      attempt: z.number().int().min(0).optional(),
-    })
-    .safeParse(payload);
-
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  let terminalId = parsed.data.terminalId?.trim() ?? "";
-  if (!terminalId) {
-    const { data: settings, error } = await getSettings(FIXED_TENANT_ID);
-    const mapped = mapSupabaseError(error);
-    if (mapped) return fail(mapped);
-    terminalId = settings?.mp_point_terminal_id?.trim() ?? "";
-  }
-
-  if (!terminalId) {
-    return fail(
-      new AppError(
-        "Nenhuma maquininha Point configurada. Ajuste em Configurações antes de cobrar.",
-        "VALIDATION_ERROR",
-        400
-      )
-    );
-  }
-
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
-  if (chargeSnapshot.paymentStatus === "waived") {
-    return fail(
-      new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
-    );
-  }
-  if (chargeSnapshot.remaining <= 0) {
-    return fail(new AppError("Este atendimento já está com pagamento quitado.", "VALIDATION_ERROR", 400));
-  }
-  const chargeAmount = chargeSnapshot.remaining;
-
-  const result = await createPointOrderForAppointment({
-    appointmentId: parsed.data.appointmentId,
-    tenantId: FIXED_TENANT_ID,
-    amount: chargeAmount,
-    terminalId,
-    cardMode: parsed.data.cardMode,
-    attempt: parsed.data.attempt,
-  });
-  if (!result.ok) return result;
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "payment_point_charge_started",
-    payload: {
-      payment_id: result.data.id,
-      order_id: result.data.order_id,
-      amount: result.data.transaction_amount,
-      card_mode: result.data.card_mode,
-      point_terminal_id: result.data.point_terminal_id,
-      status: result.data.internal_status,
-    },
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok(result.data);
+  return createAttendancePointPaymentImpl(payload);
 }
 
 export async function getAttendancePointPaymentStatus(payload: {
@@ -786,106 +229,25 @@ export async function getAttendancePointPaymentStatus(payload: {
   appointment_id: string | null;
 }>> {
   await requireDashboardAccessForServerAction();
-  const parsed = z
-    .object({
-      appointmentId: z.string().uuid(),
-      orderId: z.string().min(4),
-    })
-    .safeParse(payload);
-
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const result = await getPointOrderStatus({
-    orderId: parsed.data.orderId,
-    tenantId: FIXED_TENANT_ID,
-    expectedAppointmentId: parsed.data.appointmentId,
-  });
-  if (!result.ok) return result;
-
-  const resolvedAppointmentId = result.data.appointment_id ?? parsed.data.appointmentId;
-  if (resolvedAppointmentId !== parsed.data.appointmentId) {
-    return fail(
-      new AppError(
-        "Esta cobrança da maquininha pertence a outro atendimento.",
-        "VALIDATION_ERROR",
-        409,
-        {
-          expectedAppointmentId: parsed.data.appointmentId,
-          receivedAppointmentId: resolvedAppointmentId,
-          orderId: parsed.data.orderId,
-        }
-      )
-    );
-  }
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: resolvedAppointmentId,
-    eventType: "payment_point_charge_status",
-    payload: {
-      payment_id: result.data.id,
-      order_id: result.data.order_id,
-      status: result.data.internal_status,
-      status_detail: result.data.status_detail,
-      amount: result.data.transaction_amount,
-    },
-  });
-
-  revalidatePath(`/atendimento/${resolvedAppointmentId}`);
-  return ok(result.data);
+  return getAttendancePointPaymentStatusImpl(payload);
 }
 
 export async function confirmCheckout(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = appointmentIdSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { paid, total, paymentStatus } = await recalculateCheckoutPaymentStatus(
-    parsed.data.appointmentId,
-    FIXED_TENANT_ID
-  );
-  if (paymentStatus !== "waived" && paid < total) {
-    return fail(new AppError("Pagamento insuficiente", "VALIDATION_ERROR", 400));
-  }
-
-  const { error } = await supabase
-    .from("appointment_checkout")
-    .update({ confirmed_at: new Date().toISOString() })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "checkout_confirmed",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return confirmCheckoutImpl(payload);
 }
 
 export async function startTimer(payload: { appointmentId: string; plannedSeconds?: number | null }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
   return startTimerOperation(payload);
 }
 
 export async function pauseTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
   return pauseTimerOperation(payload);
 }
 
 export async function resumeTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
   return resumeTimerOperation(payload);
 }
@@ -899,7 +261,6 @@ export async function syncTimer(payload: {
   plannedSeconds: number | null;
   actualSeconds?: number | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
   return syncTimerOperation(payload);
 }
@@ -913,157 +274,21 @@ export async function savePost(payload: {
   surveyScore?: number | null;
   kpiTotalSeconds?: number | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = savePostSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("appointment_post")
-    .update({
-      post_notes: parsed.data.postNotes ?? undefined,
-      follow_up_due_at: parsed.data.followUpDueAt ?? undefined,
-      follow_up_note: parsed.data.followUpNote ?? undefined,
-      survey_status: parsed.data.surveyStatus ?? undefined,
-      survey_score: parsed.data.surveyScore ?? undefined,
-      kpi_total_seconds: parsed.data.kpiTotalSeconds ?? undefined,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return savePostImpl(payload);
 }
 
 export async function finishAttendance(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = finishAttendanceSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { data: attendance } = await supabase
-    .from("appointment_attendances")
-    .select("timer_started_at, timer_paused_at, paused_total_seconds, timer_status, planned_seconds")
-    .eq("appointment_id", parsed.data.appointmentId)
-    .maybeSingle();
-
-  const actualSeconds = computeElapsedSeconds({
-    startedAt: attendance?.timer_started_at ?? null,
-    pausedAt: attendance?.timer_paused_at ?? null,
-    pausedTotalSeconds: attendance?.paused_total_seconds ?? 0,
-  });
-
-  const { error } = await supabase
-    .from("appointment_attendances")
-    .update({
-      timer_status: "finished",
-      actual_seconds: actualSeconds,
-    })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  const actualDurationMinutes = actualSeconds > 0 ? Math.round(actualSeconds / 60) : null;
-  const { error: postError } = await supabase
-    .from("appointment_post")
-    .update({ kpi_total_seconds: actualSeconds, updated_at: new Date().toISOString() })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mappedPostError = mapSupabaseError(postError);
-  if (mappedPostError) return fail(mappedPostError);
-
-  const { error: appointmentError } = await updateAppointmentReturning(
-    FIXED_TENANT_ID,
-    parsed.data.appointmentId,
-    {
-      status: "completed",
-      finished_at: new Date().toISOString(),
-      actual_duration_minutes: actualDurationMinutes ?? undefined,
-    },
-    "id"
-  );
-
-  const mappedAppointmentError = mapSupabaseError(appointmentError);
-  if (mappedAppointmentError) return fail(mappedAppointmentError);
-
-  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "attendance_finished",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  revalidatePath("/");
-  revalidatePath("/caixa");
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return finishAttendanceImpl(payload);
 }
 
 export async function sendSurvey(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("appointment_post")
-    .update({ survey_status: "sent", updated_at: new Date().toISOString() })
-    .eq("appointment_id", parsed.data.appointmentId);
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-  await insertMessageLogOperation({
-    appointmentId: parsed.data.appointmentId,
-    type: "post_survey",
-    status: "sent_manual",
-    sentAt: new Date().toISOString(),
-    payload: parsed.data.message ? { message: parsed.data.message } : null,
-  });
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "survey_sent",
-  });
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return sendSurveyImpl(payload);
 }
 
 export async function recordSurveyAnswer(payload: { appointmentId: string; score: number }): Promise<ActionResult<{ appointmentId: string }>> {
-
   await requireDashboardAccessForServerAction();
-  const parsed = appointmentIdSchema.extend({ score: savePostSchema.shape.surveyScore }).safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("appointment_post")
-    .update({ survey_status: "answered", survey_score: parsed.data.score ?? null, updated_at: new Date().toISOString() })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "survey_answered",
-    payload: { score: parsed.data.score },
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return recordSurveyAnswerImpl(payload);
 }
