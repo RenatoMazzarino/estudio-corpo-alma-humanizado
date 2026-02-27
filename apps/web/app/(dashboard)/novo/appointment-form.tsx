@@ -32,6 +32,7 @@ import {
   normalizePhoneSearchDigits,
   splitSeedName,
 } from "./appointment-form.helpers";
+import { useAppointmentFinance } from "./hooks/use-appointment-finance";
 import {
   createAppointment,
   createAppointmentForImmediateCharge,
@@ -79,7 +80,6 @@ import type {
   CollectionTimingDraft,
   DisplacementEstimate,
   FinanceDraftItem,
-  FinanceDraftItemType,
 } from "./appointment-form.types";
 
 const parseDecimalText = parseDecimalInput;
@@ -599,128 +599,37 @@ export function AppointmentForm({
     setFinanceExtraItems((current) => current.filter((item) => item.id !== itemId));
   };
 
-  const parsedManualDisplacementFee = useMemo(
-    () => parseDecimalText(manualDisplacementFee),
-    [manualDisplacementFee]
-  );
-  const effectiveDisplacementFee = isHomeVisit
-    ? Math.max(0, parsedManualDisplacementFee ?? displacementEstimate?.fee ?? 0)
-    : 0;
-  const parsedServicePriceDraft = useMemo(() => parseDecimalText(servicePriceDraft), [servicePriceDraft]);
-  const effectiveServicePriceDraft = useMemo(() => {
-    const serviceCatalogPrice = Number(selectedService?.price ?? 0);
-    return Math.max(0, parsedServicePriceDraft ?? serviceCatalogPrice);
-  }, [parsedServicePriceDraft, selectedService?.price]);
-  const parsedScheduleDiscountValue = useMemo(
-    () => parseDecimalText(scheduleDiscountValue),
-    [scheduleDiscountValue]
-  );
-  const parsedChargeNowCustomAmount = useMemo(
-    () => parseDecimalText(chargeNowCustomAmount),
-    [chargeNowCustomAmount]
-  );
-  const financeExtraSubtotal = useMemo(
-    () =>
-      financeExtraItems.reduce(
-        (acc, item) => acc + Math.max(0, Number(item.amount ?? 0)) * Math.max(1, Number(item.qty ?? 1)),
-        0
-      ),
-    [financeExtraItems]
-  );
-  const financeDraftItems = useMemo(() => {
-    const items: Array<{ type: FinanceDraftItemType; label: string; qty: number; amount: number }> = [];
-    if (selectedService) {
-      items.push({
-        type: "service",
-        label: selectedService.name,
-        qty: 1,
-        amount: effectiveServicePriceDraft,
-      });
-    }
-    if (isHomeVisit && effectiveDisplacementFee > 0) {
-      items.push({
-        type: "fee",
-        label: "Taxa deslocamento",
-        qty: 1,
-        amount: effectiveDisplacementFee,
-      });
-    }
-    financeExtraItems.forEach((item) => {
-      items.push({
-        type: item.type,
-        label: item.label,
-        qty: item.qty,
-        amount: Math.max(0, Number(item.amount ?? 0)),
-      });
-    });
-    return items;
-  }, [effectiveDisplacementFee, effectiveServicePriceDraft, financeExtraItems, isHomeVisit, selectedService]);
-  const scheduleSubtotal = useMemo(
-    () => Math.max(0, effectiveServicePriceDraft + effectiveDisplacementFee + financeExtraSubtotal),
-    [effectiveDisplacementFee, effectiveServicePriceDraft, financeExtraSubtotal]
-  );
-  const effectiveScheduleDiscount = useMemo(() => {
-    const raw = Math.max(0, parsedScheduleDiscountValue ?? 0);
-    if (scheduleDiscountType === "pct") {
-      return Math.min(scheduleSubtotal, scheduleSubtotal * (raw / 100));
-    }
-    return Math.min(scheduleSubtotal, raw);
-  }, [parsedScheduleDiscountValue, scheduleDiscountType, scheduleSubtotal]);
-  const scheduleTotal = useMemo(
-    () => Math.max(0, scheduleSubtotal - effectiveScheduleDiscount),
-    [effectiveScheduleDiscount, scheduleSubtotal]
-  );
-  const effectiveSignalPercentageDraft = useMemo(
-    () => Math.min(100, Math.max(0, Number(chargeNowSignalPercent || 0))),
-    [chargeNowSignalPercent]
-  );
-  const chargeNowSuggestedSignalAmount = useMemo(() => {
-    if (scheduleTotal <= 0) return 0;
-    const rawSignal = scheduleTotal * (effectiveSignalPercentageDraft / 100);
-    if (rawSignal <= 0) return 0;
-    const minimumPix = chargeNowMethodDraft === "pix_mp" ? 1 : 0;
-    return Math.min(scheduleTotal, Math.max(minimumPix, rawSignal));
-  }, [chargeNowMethodDraft, effectiveSignalPercentageDraft, scheduleTotal]);
-  const chargeNowDraftAmount = useMemo(() => {
-    if (scheduleTotal <= 0) return 0;
-    if (chargeNowAmountMode === "full") return scheduleTotal;
-    const signalValue = Math.max(0, parsedChargeNowCustomAmount ?? 0);
-    if (signalValue > 0) return Math.min(scheduleTotal, signalValue);
-    return chargeNowSuggestedSignalAmount;
-  }, [chargeNowAmountMode, chargeNowSuggestedSignalAmount, parsedChargeNowCustomAmount, scheduleTotal]);
-  const chargeNowAmountError = useMemo(() => {
-    if (collectionTimingDraft !== "charge_now") return null;
-    if (chargeNowMethodDraft === "waiver") return null;
-    if (scheduleTotal <= 0) return "Configure o financeiro antes de cobrar no agendamento.";
-    if (chargeNowAmountMode === "signal") {
-      const signalValue = Math.max(0, parsedChargeNowCustomAmount ?? 0);
-      if (signalValue <= 0) return "Informe o valor do sinal.";
-      if (signalValue > scheduleTotal) return "O valor do sinal não pode ser maior que o total do agendamento.";
-      if (chargeNowMethodDraft === "pix_mp" && signalValue < 1) {
-        return "Para PIX Mercado Pago, o valor mínimo é R$ 1,00.";
-      }
-    }
-    return null;
-  }, [chargeNowAmountMode, chargeNowMethodDraft, collectionTimingDraft, parsedChargeNowCustomAmount, scheduleTotal]);
-  const createPriceOverrideValue = selectedService ? scheduleTotal.toFixed(2) : "";
-  const createCheckoutServiceAmountValue = selectedService ? effectiveServicePriceDraft.toFixed(2) : "";
-  const isCourtesyDraft = !isEditing && collectionTimingDraft === "charge_now" && chargeNowMethodDraft === "waiver";
-  const createCheckoutExtraItemsJson = useMemo(
-    () =>
-      JSON.stringify(
-        financeExtraItems.map((item) => ({
-          type: item.type,
-          label: item.label.trim(),
-          qty: Math.max(1, Number(item.qty ?? 1)),
-          amount: Math.max(0, Number(item.amount ?? 0)),
-        }))
-      ),
-    [financeExtraItems]
-  );
-  const effectiveScheduleDiscountInputValue = useMemo(
-    () => (parsedScheduleDiscountValue && parsedScheduleDiscountValue > 0 ? parsedScheduleDiscountValue : 0),
-    [parsedScheduleDiscountValue]
-  );
+  const {
+    effectiveDisplacementFee,
+    effectiveScheduleDiscount,
+    effectiveScheduleDiscountInputValue,
+    effectiveSignalPercentageDraft,
+    financeDraftItems,
+    scheduleSubtotal,
+    scheduleTotal,
+    chargeNowSuggestedSignalAmount,
+    chargeNowDraftAmount,
+    chargeNowAmountError,
+    createPriceOverrideValue,
+    createCheckoutServiceAmountValue,
+    isCourtesyDraft,
+    createCheckoutExtraItemsJson,
+  } = useAppointmentFinance({
+    manualDisplacementFee,
+    displacementEstimate,
+    isHomeVisit,
+    servicePriceDraft,
+    selectedService,
+    scheduleDiscountValue,
+    scheduleDiscountType,
+    chargeNowCustomAmount,
+    financeExtraItems,
+    chargeNowMethodDraft,
+    chargeNowAmountMode,
+    chargeNowSignalPercent,
+    collectionTimingDraft,
+    isEditing,
+  });
 
   useEffect(() => {
     if (!selectedService) return;
