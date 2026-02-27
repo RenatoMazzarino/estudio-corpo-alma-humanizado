@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Copy, Loader2, Plus, Trash2 } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import Image from "next/image";
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
 import { PaymentMethodIcon } from "../../../../../components/ui/payment-method-icon";
@@ -20,6 +20,9 @@ import {
   normalizePixKeyForCharge,
   stageMessages,
 } from "./attendance-payment-modal.helpers";
+import { AttendancePaymentCompositionPanel } from "./attendance-payment-composition-panel";
+import { AttendancePaymentSuccessPanel } from "./attendance-payment-success-panel";
+import type { ReceiptFlowMode } from "./attendance-payment.types";
 
 type InternalStatus = "paid" | "pending" | "failed";
 type PointCardMode = "debit" | "credit";
@@ -72,7 +75,7 @@ interface AttendancePaymentModalProps {
   onWaivePayment: () => Promise<{ ok: boolean }>;
   onSendReceipt: (paymentId: string) => Promise<void>;
   onAutoSendReceipt?: (paymentId: string) => Promise<{ ok?: boolean; message?: string } | void>;
-  receiptFlowMode?: "manual" | "auto";
+  receiptFlowMode?: ReceiptFlowMode;
   variant?: "modal" | "embedded";
   chargeAmountOverride?: number | null;
   hideWaiverOption?: boolean;
@@ -681,233 +684,51 @@ export function AttendancePaymentModal({
           </div>
 
           {isSuccessState ? (
-            <section className="mt-5 flex min-h-[58vh] flex-col items-center justify-center px-1 pb-1 text-center animate-in zoom-in duration-300">
-              <div
-                className={`h-24 w-24 rounded-full flex items-center justify-center mb-5 shadow-soft ${
-                  waiverSuccess ? "bg-sky-100 text-sky-600" : "bg-emerald-100 text-emerald-600"
-                }`}
-              >
-                <CheckCircle2 className="h-11 w-11" />
-              </div>
-
-              <h3 className="text-3xl font-serif text-studio-text">
-                {waiverSuccess ? "Cortesia aplicada!" : "Pagamento confirmado!"}
-              </h3>
-              <p className="mt-3 max-w-72 text-sm leading-relaxed text-muted">
-                {waiverSuccess
-                  ? "Este atendimento foi liberado de cobrança e seguirá como cortesia interna."
-                  : "O pagamento foi registrado no atendimento com sucesso."}
-              </p>
-
-              <div className="mt-6 w-full rounded-2xl border border-line bg-white px-4 py-4 text-left shadow-soft">
-                <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Status</span>
-                  <span className={`text-sm font-bold ${waiverSuccess ? "text-sky-700" : "text-emerald-700"}`}>
-                    {waiverSuccess ? "Cortesia / liberado" : "Pagamento confirmado"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Total checkout</span>
-                  <span className="text-sm font-bold text-studio-text">{formatCurrency(total)}</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Saldo restante</span>
-                  <span
-                    className={`text-sm font-bold ${
-                      waiverSuccess ? "text-sky-700" : remaining <= 0 ? "text-emerald-700" : "text-studio-text"
-                    }`}
-                  >
-                    {waiverSuccess ? "Dispensado (cortesia)" : remaining <= 0 ? "Quitado" : formatCurrency(remaining)}
-                  </span>
-                </div>
-              </div>
-
-              {!waiverSuccess && receiptFlowMode === "auto" ? (
-                <div
-                  className={`mt-4 w-full rounded-2xl border px-4 py-3 text-sm ${
-                    autoReceiptStatus === "failed"
-                      ? "border-amber-200 bg-amber-50 text-amber-800"
-                      : autoReceiptStatus === "sent"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-line bg-paper text-studio-text"
-                  }`}
-                >
-                  {autoReceiptStatus === "sending" && (
-                    <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-studio-green" />
-                      {autoReceiptMessage ?? "Enviando recibo automaticamente..."}
-                    </span>
-                  )}
-                  {autoReceiptStatus !== "sending" && (autoReceiptMessage ?? "Recibo será enviado automaticamente pelo WhatsApp.")}
-                </div>
-              ) : !waiverSuccess ? (
-                <div className="mt-4 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-studio-text">
-                  {receiptSent ? "Recibo enviado pelo WhatsApp (manual)." : "Você pode enviar o recibo manualmente agora."}
-                </div>
-              ) : (
-                <div className="mt-4 w-full rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                  {autoReceiptMessage ?? "Cortesia registrada. Nenhum recibo financeiro será enviado neste fluxo."}
-                </div>
-              )}
-
-              {!waiverSuccess && receiptFlowMode === "manual" && (
-                <button
-                  className="mt-5 w-full h-12 rounded-2xl border border-stone-200 bg-white text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors disabled:opacity-60"
-                  onClick={() => void handleSendReceiptFromSuccess()}
-                  disabled={resolvingReceiptPrompt}
-                >
-                  {resolvingReceiptPrompt ? "Enviando recibo..." : receiptSent ? "Reenviar recibo" : "Enviar recibo"}
-                </button>
-              )}
-
-              <button
-                className="mt-3 w-full h-12 rounded-2xl bg-studio-green text-white font-bold uppercase tracking-widest text-xs hover:bg-studio-green-dark transition-colors disabled:opacity-60"
-                onClick={() => void resolveCheckoutSuccess()}
-                disabled={resolvingReceiptPrompt || (!waiverSuccess && autoReceiptStatus === "sending")}
-              >
-                {resolvingReceiptPrompt ? "Saindo..." : successResolveLabel}
-              </button>
-            </section>
+            <AttendancePaymentSuccessPanel
+              waiverSuccess={waiverSuccess}
+              totalLabel={formatCurrency(total)}
+              remainingLabel={remaining <= 0 ? "Quitado" : formatCurrency(remaining)}
+              receiptFlowMode={receiptFlowMode}
+              autoReceiptStatus={autoReceiptStatus}
+              autoReceiptMessage={autoReceiptMessage}
+              receiptSent={receiptSent}
+              resolvingReceiptPrompt={resolvingReceiptPrompt}
+              successResolveLabel={successResolveLabel}
+              onSendReceipt={() => void handleSendReceiptFromSuccess()}
+              onResolve={() => void resolveCheckoutSuccess()}
+            />
           ) : (
             <>
-          <section className="mt-5 rounded-2xl border border-line px-4 py-4 bg-white">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <PaymentMethodIcon method="card" className="h-3.5 w-3.5" />
-              Composição da cobrança
-            </div>
-
-            <div className="space-y-2">
-              {serviceItems.map(({ item, index }) => (
-                <div key={`service-${index}`} className="flex items-center justify-between gap-3 text-sm text-studio-text">
-                  <span className="truncate pr-3">
-                    {item.label}
-                    {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
-                  </span>
-                  <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
-                </div>
-              ))}
-
-              {displacementItems.map(({ item, index }) => (
-                <div key={`displacement-${index}`} className="flex items-center justify-between gap-3 text-sm text-studio-text">
-                  <span className="truncate pr-3">
-                    {item.label}
-                    {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
-                  </span>
-                  <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
-                </div>
-              ))}
-
-              {otherItems.map(({ item, index }) => (
-                <div key={`extra-${index}`} className="flex items-center justify-between gap-3 text-sm text-studio-text">
-                  <span className="truncate pr-3">
-                    {item.label}
-                    {(item.qty ?? 1) > 1 ? ` x${item.qty}` : ""}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold">{formatCurrency(item.amount * (item.qty ?? 1))}</span>
-                    {isRemovableItem(item) && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRemoveItem(index)}
-                          disabled={checkoutSaving}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-white text-muted hover:text-red-600"
-                          aria-label={`Remover item ${item.label}`}
-                        >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Adicionar item</p>
-              <div className="mt-2 grid grid-cols-[1fr_88px_40px] gap-2">
-                <input
-                  className="rounded-xl border border-line px-3 py-2 text-xs"
-                  placeholder="Novo item"
-                  value={newItem.label}
-                  disabled={checkoutSaving}
-                  onChange={(event) => setNewItem((current) => ({ ...current, label: event.target.value }))}
-                />
-                <input
-                  className="rounded-xl border border-line px-3 py-2 text-xs"
-                  type="number"
-                  value={newItem.amount}
-                  disabled={checkoutSaving}
-                  onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
-                />
-                <button
-                  className="inline-flex h-9 w-10 items-center justify-center rounded-xl border border-line text-studio-text hover:bg-paper disabled:opacity-60"
-                  onClick={handleAddItem}
-                  disabled={checkoutSaving}
-                  aria-label="Adicionar item"
-                  title="Adicionar item"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Desconto</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <select
-                  value={discountTypeInput}
-                  disabled={checkoutSaving}
-                  onChange={(event) => setDiscountTypeInput(event.target.value === "pct" ? "pct" : "value")}
-                  className="rounded-xl border border-line px-3 py-2 text-xs"
-                >
-                  <option value="value">Desconto em R$</option>
-                  <option value="pct">Desconto em %</option>
-                </select>
-                <input
-                  type="number"
-                  value={discountValueInput}
-                  disabled={checkoutSaving}
-                  onChange={(event) => setDiscountValueInput(Number(event.target.value))}
-                  className="rounded-xl border border-line px-3 py-2 text-xs"
-                />
-              </div>
-              <input
-                value={discountReasonInput}
-                disabled={checkoutSaving}
-                onChange={(event) => setDiscountReasonInput(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
-                placeholder="Motivo do desconto"
+              <AttendancePaymentCompositionPanel
+                serviceItems={serviceItems}
+                displacementItems={displacementItems}
+                otherItems={otherItems}
+                checkoutSaving={checkoutSaving}
+                newItem={newItem}
+                discountTypeInput={discountTypeInput}
+                discountValueInput={discountValueInput}
+                discountReasonInput={discountReasonInput}
+                appliedDiscountAmount={appliedDiscountAmount}
+                appliedDiscountType={appliedDiscountType}
+                appliedDiscountValue={appliedDiscountValue}
+                appliedDiscountReason={appliedDiscountReason}
+                paidTotal={paidTotal}
+                totalLabel={formatCurrency(total)}
+                effectiveChargeAmountLabel={formatCurrency(effectiveChargeAmount)}
+                formatCurrency={formatCurrency}
+                isRemovableItem={isRemovableItem}
+                onAddItem={handleAddItem}
+                onRemoveItem={(index) => void handleRemoveItem(index)}
+                onChangeNewItemLabel={(label) =>
+                  setNewItem((current) => ({ ...current, label }))
+                }
+                onChangeNewItemAmount={(amount) =>
+                  setNewItem((current) => ({ ...current, amount }))
+                }
+                onChangeDiscountType={setDiscountTypeInput}
+                onChangeDiscountValue={setDiscountValueInput}
+                onChangeDiscountReason={setDiscountReasonInput}
               />
-            </div>
-
-            <div className="mt-4 border-t border-dashed border-line pt-3 space-y-2">
-              {appliedDiscountAmount > 0 && (
-                <div className="flex items-center justify-between text-sm text-studio-text">
-                  <span className="truncate pr-3">
-                    {appliedDiscountReason
-                      ? `Desconto • ${appliedDiscountReason}`
-                      : appliedDiscountType === "pct"
-                        ? `Desconto aplicado (${appliedDiscountValue}%)`
-                        : "Desconto aplicado"}
-                  </span>
-                  <span className="font-bold text-studio-green">- {formatCurrency(appliedDiscountAmount)}</span>
-                </div>
-              )}
-              {paidTotal > 0 && (
-                <div className="flex items-center justify-between text-sm text-studio-text">
-                  <span>Já pago</span>
-                  <span className="font-bold text-studio-green">- {formatCurrency(paidTotal)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-muted">
-                <span>Total do checkout</span>
-                <span className="text-base font-black text-studio-text">{formatCurrency(total)}</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-muted">
-                <span>Valor a cobrar agora</span>
-                <span className="text-lg font-black text-studio-text">{formatCurrency(effectiveChargeAmount)}</span>
-              </div>
-            </div>
-          </section>
 
           <section className="mt-5">
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
