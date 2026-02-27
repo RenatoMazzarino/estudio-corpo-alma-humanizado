@@ -53,9 +53,23 @@ import {
 import {
   cardProcessingStages,
   footerSteps,
-  progressSteps,
   stepLabels,
 } from "./booking-flow-config";
+import {
+  buildMapsQuery,
+  buildWhatsAppLink,
+  computePixProgress,
+  isValidCpfDigits,
+  isValidEmailAddress,
+  isValidPhoneDigits,
+  normalizeCpfDigits,
+  normalizePhoneDigits,
+  resolveClientHeaderFirstName,
+  resolvePositiveMinutes,
+  resolvePublicClientFullName,
+  resolveSignalPercentage,
+} from "./booking-flow.helpers";
+import { StepTabs } from "./components/step-tabs";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
 declare global {
@@ -176,15 +190,20 @@ export function BookingFlow({
     address_estado: string | null;
   } | null>(null);
 
-  const formattedPhoneDigits = clientPhone.replace(/\D/g, "");
-  const isPhoneValid = formattedPhoneDigits.length === 10 || formattedPhoneDigits.length === 11;
-  const normalizedCpfDigits = clientCpf.replace(/\D/g, "").slice(0, 11);
-  const isCpfValid = normalizedCpfDigits.length === 11;
+  const formattedPhoneDigits = normalizePhoneDigits(clientPhone);
+  const isPhoneValid = isValidPhoneDigits(formattedPhoneDigits);
+  const normalizedCpfDigits = normalizeCpfDigits(clientCpf);
+  const isCpfValid = isValidCpfDigits(normalizedCpfDigits);
   const normalizedClientEmail = clientEmail.trim().toLowerCase();
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedClientEmail);
+  const isEmailValid = isValidEmailAddress(normalizedClientEmail);
   const isExistingClientConfirmed = clientLookupStatus === "confirmed";
   const publicClientFullName = useMemo(
-    () => [clientFirstName.trim(), clientLastName.trim()].filter(Boolean).join(" ") || clientName.trim(),
+    () =>
+      resolvePublicClientFullName({
+        firstName: clientFirstName,
+        lastName: clientLastName,
+        fallbackName: clientName,
+      }),
     [clientFirstName, clientLastName, clientName]
   );
   const resolvedClientFullName = useMemo(() => {
@@ -195,11 +214,10 @@ export function BookingFlow({
     isExistingClientConfirmed
       ? resolvedClientFullName.length > 0
       : clientFirstName.trim().length > 0 && clientLastName.trim().length > 0;
-  const clientHeaderFirstName = useMemo(() => {
-    const full = (clientName || publicClientFullName || "").trim();
-    if (!full) return "Visitante";
-    return full.split(/\s+/)[0] ?? "Visitante";
-  }, [clientName, publicClientFullName]);
+  const clientHeaderFirstName = useMemo(
+    () => resolveClientHeaderFirstName(clientName || publicClientFullName || ""),
+    [clientName, publicClientFullName]
+  );
 
   const totalPrice = useMemo(() => {
     if (!selectedService) return 0;
@@ -208,17 +226,9 @@ export function BookingFlow({
     return Number((basePrice + displacementFee).toFixed(2));
   }, [displacementEstimate?.fee, isHomeVisit, selectedService]);
 
-  const rawSignalPercentage = Number(signalPercentage);
-  const normalizedSignalPercentage =
-    Number.isFinite(rawSignalPercentage) && rawSignalPercentage > 0
-      ? Math.min(rawSignalPercentage, 100)
-      : 30;
-  const onlineCutoffBeforeCloseMinutes = Number.isFinite(Number(publicBookingCutoffBeforeCloseMinutes))
-    ? Math.max(0, Number(publicBookingCutoffBeforeCloseMinutes))
-    : 60;
-  const onlineLastSlotBeforeCloseMinutes = Number.isFinite(Number(publicBookingLastSlotBeforeCloseMinutes))
-    ? Math.max(0, Number(publicBookingLastSlotBeforeCloseMinutes))
-    : 30;
+  const normalizedSignalPercentage = resolveSignalPercentage(signalPercentage);
+  const onlineCutoffBeforeCloseMinutes = resolvePositiveMinutes(publicBookingCutoffBeforeCloseMinutes, 60);
+  const onlineLastSlotBeforeCloseMinutes = resolvePositiveMinutes(publicBookingLastSlotBeforeCloseMinutes, 30);
   const {
     availableSlots,
     handleChangeMonth,
@@ -243,22 +253,11 @@ export function BookingFlow({
   const payableSignalAmount = Number(signalAmount.toFixed(2));
   const isMercadoPagoMinimumInvalid =
     payableSignalAmount > 0 && payableSignalAmount < 1;
-  const whatsappLink = useMemo(() => {
-    if (!whatsappNumber) return null;
-    const digits = whatsappNumber.replace(/\D/g, "");
-    if (!digits) return null;
-    const normalized = digits.length <= 11 ? `55${digits}` : digits;
-    const message = encodeURIComponent(
-      "Olá! Gostaria de falar com a Flora sobre meu agendamento."
-    );
-    return `https://wa.me/${normalized}?text=${message}`;
-  }, [whatsappNumber]);
+  const whatsappLink = useMemo(() => buildWhatsAppLink(whatsappNumber), [whatsappNumber]);
 
   const selectedDateObj = useMemo(() => parseISO(`${date}T00:00:00`), [date]);
 
-  const mapsQuery = [logradouro, numero, complemento, bairro, cidade, estado, cep]
-    .filter((value) => value && value.trim().length > 0)
-    .join(", ");
+  const mapsQuery = buildMapsQuery([logradouro, numero, complemento, bairro, cidade, estado, cep]);
   const suggestedClientFirstName = useMemo(() => {
     const names = resolveClientNames({
       name: suggestedClient?.name ?? null,
@@ -293,17 +292,18 @@ export function BookingFlow({
     suggestedClient?.public_first_name,
     suggestedClient?.public_last_name,
   ]);
-  const pixCreatedAtMs = pixPayment?.created_at ? Date.parse(pixPayment.created_at) : Number.NaN;
-  const pixExpiresAtMs = pixPayment?.expires_at ? Date.parse(pixPayment.expires_at) : Number.NaN;
-  const pixTotalMs =
-    Number.isFinite(pixCreatedAtMs) && Number.isFinite(pixExpiresAtMs) && pixExpiresAtMs > pixCreatedAtMs
-      ? pixExpiresAtMs - pixCreatedAtMs
-      : 24 * 60 * 60 * 1000;
-  const pixRemainingMs = Number.isFinite(pixExpiresAtMs)
-    ? Math.max(0, pixExpiresAtMs - pixNowMs)
-    : pixTotalMs;
-  const pixProgressPct = Math.max(0, Math.min(100, (pixRemainingMs / pixTotalMs) * 100));
-  const pixQrExpired = pixRemainingMs <= 0;
+  const pixProgress = useMemo(
+    () =>
+      computePixProgress({
+        createdAt: pixPayment?.created_at ?? null,
+        expiresAt: pixPayment?.expires_at ?? null,
+        nowMs: pixNowMs,
+      }),
+    [pixNowMs, pixPayment?.created_at, pixPayment?.expires_at]
+  );
+  const pixRemainingMs = pixProgress.remainingMs;
+  const pixProgressPct = pixProgress.progressPct;
+  const pixQrExpired = pixProgress.isExpired;
   const pixRemainingLabel = formatCountdown(pixRemainingMs);
 
   const hasSuggestedAddress = Boolean(
@@ -328,7 +328,6 @@ export function BookingFlow({
     cardProcessingStages[Math.min(cardProcessingStageIndex, cardProcessingStages.length - 1)] ??
     cardProcessingStages[0];
 
-  const progressIndex = progressSteps.indexOf(step as (typeof progressSteps)[number]);
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
   const showNextButton = step !== "PAYMENT";
 
@@ -399,19 +398,6 @@ export function BookingFlow({
     requiresAddress,
     showToast,
   ]);
-
-  const StepTabs = () => (
-    <div className="mt-3 flex gap-1">
-      {progressSteps.map((item, index) => (
-        <div
-          key={item}
-          className={`h-1.5 flex-1 rounded-full ${
-            index <= progressIndex ? "bg-studio-green" : "bg-studio-light"
-          }`}
-        />
-      ))}
-    </div>
-  );
 
   useEffect(() => {
     if (identitySecuritySessionId) return;
@@ -1613,7 +1599,7 @@ export function BookingFlow({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.IDENT}
               </span>
-              <StepTabs />
+              <StepTabs step={step} />
               <h2 className="text-3xl font-serif text-studio-text mt-2">Quem é você?</h2>
             </div>
 
@@ -1967,7 +1953,7 @@ export function BookingFlow({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.SERVICE}
               </span>
-              <StepTabs />
+              <StepTabs step={step} />
               <h2 className="text-3xl font-serif text-studio-text mt-2">Escolha seu cuidado</h2>
             </div>
 
@@ -2023,7 +2009,7 @@ export function BookingFlow({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.DATETIME}
               </span>
-              <StepTabs />
+              <StepTabs step={step} />
               <h2 className="text-3xl font-serif text-studio-text mt-2">Reserve o tempo</h2>
             </div>
 
@@ -2096,7 +2082,7 @@ export function BookingFlow({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.LOCATION}
               </span>
-              <StepTabs />
+              <StepTabs step={step} />
               <h2 className="text-3xl font-serif text-studio-text mt-2">Onde será?</h2>
             </div>
 
@@ -2433,7 +2419,7 @@ export function BookingFlow({
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 {stepLabels.CONFIRM}
               </span>
-              <StepTabs />
+              <StepTabs step={step} />
               <h2 className="text-2xl font-serif text-studio-text mt-3">Tudo certo?</h2>
             </div>
 
