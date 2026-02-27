@@ -291,7 +291,7 @@ export async function createAppointment(
   );
   const sendCreatedMessage = !skipManualCreatedMessage && formData.get("send_created_message") === "1";
   const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
-  const isCourtesyAppointment = false;
+  const isCourtesyAppointment = formData.get("is_courtesy") === "on";
   const rawClientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
   const clientCpf = normalizeCpfDigits(rawClientCpf);
   const clientFirstName = ((formData.get("client_first_name") as string | null) || "").trim();

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Clock,
   Sparkles,
   Phone,
   MapPin,
@@ -9,15 +8,19 @@ import {
   ChevronDown,
   Building2,
   Car,
-  Tag,
   Check,
   X,
+  CreditCard,
+  Banknote,
+  Gift,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { eachDayOfInterval, endOfMonth, format, isBefore, isSameMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { MonthCalendar } from "../../../components/agenda/month-calendar";
 import { AttendancePaymentModal } from "../atendimento/[id]/components/attendance-payment-modal";
 import {
   createAppointment,
@@ -117,7 +120,7 @@ type AddressModalStep = "chooser" | "cep" | "search" | "form";
 type ClientSelectionMode = "idle" | "existing" | "new";
 type FinanceDraftItemType = "service" | "fee" | "addon" | "adjustment";
 type CollectionTimingDraft = "at_attendance" | "charge_now";
-type ChargeNowAmountMode = "full" | "signal" | "custom";
+type ChargeNowAmountMode = "full" | "signal";
 type ChargeNowMethodDraft = "cash" | "pix_mp" | "card" | "waiver";
 type BookingConfirmationStep = "review" | "creating_charge" | "charge_payment" | "charge_manual_prompt";
 
@@ -332,6 +335,36 @@ function buildCreatedMessage(params: {
   }).trim();
 }
 
+function buildGoogleMapsSearchHref(query: string | null | undefined) {
+  const normalized = (query ?? "").trim();
+  if (!normalized) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(normalized)}`;
+}
+
+function GoogleMapsAddressButton({ query }: { query: string | null | undefined }) {
+  const href = buildGoogleMapsSearchHref(query);
+  if (!href) return null;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="shrink-0 w-9 h-9 rounded-xl border border-dom/35 bg-white text-dom-strong hover:bg-dom/15 transition flex items-center justify-center"
+      aria-label="Abrir endereço no Google Maps"
+      title="Ver no Google Maps"
+    >
+      <Image
+        src="/icons/google-maps-icon-official.svg"
+        alt=""
+        width={18}
+        height={18}
+        className="h-4.5 w-4.5"
+      />
+    </a>
+  );
+}
+
 export function AppointmentForm({
   services,
   clients,
@@ -408,20 +441,28 @@ export function AppointmentForm({
   const [financeNewItemAmount, setFinanceNewItemAmount] = useState<string>("");
   const [scheduleDiscountType, setScheduleDiscountType] = useState<"value" | "pct">("value");
   const [scheduleDiscountValue, setScheduleDiscountValue] = useState<string>("");
-  const [collectionTimingDraft, setCollectionTimingDraft] = useState<CollectionTimingDraft>("at_attendance");
-  const internalBookingFinanceUiEnabled = false;
+  const [collectionTimingDraft, setCollectionTimingDraft] = useState<CollectionTimingDraft | null>(
+    isEditing ? "at_attendance" : null
+  );
   const [chargeNowAmountMode, setChargeNowAmountMode] = useState<ChargeNowAmountMode>("full");
+  const [hasChargeNowAmountModeChoice, setHasChargeNowAmountModeChoice] = useState<boolean>(isEditing);
   const [chargeNowSignalPercent, setChargeNowSignalPercent] = useState<number>(Math.max(0, signalPercentage ?? 30));
   const [chargeNowCustomAmount, setChargeNowCustomAmount] = useState<string>("");
-  const [chargeNowMethodDraft, setChargeNowMethodDraft] = useState<ChargeNowMethodDraft>("pix_mp");
+  const [chargeNowMethodDraft, setChargeNowMethodDraft] = useState<ChargeNowMethodDraft | null>(null);
+  const [chargeNowSignalValueConfirmed, setChargeNowSignalValueConfirmed] = useState(false);
   const [confirmationSheetStep, setConfirmationSheetStep] = useState<BookingConfirmationStep>("review");
   const [creatingChargeBooking, setCreatingChargeBooking] = useState(false);
   const [chargeBookingState, setChargeBookingState] = useState<ChargeBookingState | null>(null);
   const [chargeFlowError, setChargeFlowError] = useState<string | null>(null);
   const [chargeNotificationsDispatched, setChargeNotificationsDispatched] = useState(false);
   const [finishingChargeFlow, setFinishingChargeFlow] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? safeDate);
+  const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? "");
   const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
+  const [activeMonth, setActiveMonth] = useState<Date>(() =>
+    startOfMonth(parseISO(`${(initialAppointment?.date ?? safeDate)}T00:00:00`))
+  );
+  const [monthAvailability, setMonthAvailability] = useState<Record<string, string[]>>({});
+  const [isLoadingMonthAvailability, setIsLoadingMonthAvailability] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
@@ -441,6 +482,7 @@ export function AppointmentForm({
   const [isClientCreateModalOpen, setIsClientCreateModalOpen] = useState(false);
   const [clientCreateError, setClientCreateError] = useState<string | null>(null);
   const [isHomeVisit, setIsHomeVisit] = useState(initialAppointment?.isHomeVisit ?? false);
+  const [hasLocationChoice, setHasLocationChoice] = useState<boolean>(Boolean(initialAppointment));
   const [hasBlocks, setHasBlocks] = useState(false);
   const [hasShiftBlock, setHasShiftBlock] = useState(false);
   const [blockStatus, setBlockStatus] = useState<"idle" | "loading">("idle");
@@ -487,6 +529,12 @@ export function AppointmentForm({
     () => services.find((service) => service.id === selectedServiceId) ?? null,
     [selectedServiceId, services]
   );
+  const selectedDateObj = useMemo(
+    () => (selectedDate ? parseISO(`${selectedDate}T00:00:00`) : null),
+    [selectedDate]
+  );
+  const selectedServiceBufferMinutes = Math.max(0, Number(selectedService?.custom_buffer_minutes ?? 0));
+  const selectedServiceTotalMinutes = (selectedService?.duration_minutes ?? 0) + selectedServiceBufferMinutes;
 
   useEffect(() => {
     selectedTimeRef.current = selectedTime;
@@ -665,26 +713,29 @@ export function AppointmentForm({
     }, 40);
   };
 
-  const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const serviceId = e.target.value;
+  const applyServiceSelection = (serviceId: string) => {
     setSelectedServiceId(serviceId);
     setPriceOverride("");
-    if (!isEditing) {
-      setFinanceExtraItems([]);
-      setFinanceNewItemLabel("");
-      setFinanceNewItemAmount("");
-      setScheduleDiscountType("value");
-      setScheduleDiscountValue("");
-      setCollectionTimingDraft("at_attendance");
-      setChargeNowAmountMode("full");
-      setChargeNowSignalPercent(Math.max(0, signalPercentage ?? 30));
-      setChargeNowCustomAmount("");
-      setChargeNowMethodDraft("pix_mp");
-      setConfirmationSheetStep("review");
-      setChargeBookingState(null);
-      setChargeFlowError(null);
-      setChargeNotificationsDispatched(false);
-    }
+      if (!isEditing) {
+        setFinanceExtraItems([]);
+        setFinanceNewItemLabel("");
+        setFinanceNewItemAmount("");
+        setScheduleDiscountType("value");
+        setScheduleDiscountValue("");
+        setSelectedDate("");
+        setSelectedTime("");
+        setCollectionTimingDraft(null);
+        setChargeNowAmountMode("full");
+        setHasChargeNowAmountModeChoice(false);
+        setChargeNowSignalPercent(Math.max(0, signalPercentage ?? 30));
+        setChargeNowCustomAmount("");
+        setChargeNowMethodDraft(null);
+        setChargeNowSignalValueConfirmed(false);
+        setConfirmationSheetStep("review");
+        setChargeBookingState(null);
+        setChargeFlowError(null);
+        setChargeNotificationsDispatched(false);
+      }
 
     const service = services.find((s) => s.id === serviceId);
     if (service) {
@@ -692,7 +743,19 @@ export function AppointmentForm({
       if (!isEditing) {
         setServicePriceDraft(formatCurrencyInput(service.price));
       }
-      if (!service.accepts_home_visit) {
+      if (service.accepts_home_visit) {
+        if (isEditing) {
+          setHasLocationChoice(true);
+        } else {
+          setHasLocationChoice(false);
+          setIsHomeVisit(false);
+          setDisplacementEstimate(null);
+          setDisplacementStatus("idle");
+          setDisplacementError(null);
+          setManualDisplacementFee("");
+        }
+      } else {
+        setHasLocationChoice(true);
         setIsHomeVisit(false);
         setDisplacementEstimate(null);
         setDisplacementStatus("idle");
@@ -704,12 +767,43 @@ export function AppointmentForm({
       if (!isEditing) {
         setServicePriceDraft("");
       }
+      setHasLocationChoice(false);
       setIsHomeVisit(false);
       setDisplacementEstimate(null);
       setDisplacementStatus("idle");
       setDisplacementError(null);
       setManualDisplacementFee("");
     }
+  };
+
+  const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    applyServiceSelection(e.target.value);
+  };
+
+  const handleClearSelectedService = () => {
+    applyServiceSelection("");
+  };
+
+  const handleSelectScheduleDay = (day: Date) => {
+    const iso = format(day, "yyyy-MM-dd");
+    setSelectedDate(iso);
+    setSelectedTime("");
+  };
+
+  const handleChangeScheduleMonth = (nextMonth: Date) => {
+    setActiveMonth(startOfMonth(nextMonth));
+    setSelectedTime("");
+  };
+
+  const isScheduleDayDisabled = (day: Date) => {
+    if (!isSameMonth(day, activeMonth)) return true;
+    if (isBefore(day, startOfDay(new Date()))) return true;
+    if (!selectedServiceId) return true;
+    if (selectedService?.accepts_home_visit && !hasLocationChoice) return true;
+    const iso = format(day, "yyyy-MM-dd");
+    const slots = monthAvailability[iso];
+    if (!slots) return isLoadingMonthAvailability;
+    return slots.length === 0;
   };
 
   const handleAddFinanceItem = () => {
@@ -819,28 +913,24 @@ export function AppointmentForm({
   const chargeNowDraftAmount = useMemo(() => {
     if (scheduleTotal <= 0) return 0;
     if (chargeNowAmountMode === "full") return scheduleTotal;
-    if (chargeNowAmountMode === "signal") return chargeNowSuggestedSignalAmount;
-    const custom = Math.max(0, parsedChargeNowCustomAmount ?? 0);
-    if (chargeNowMethodDraft === "pix_mp" && custom > 0 && custom < 1) return custom;
-    return custom;
-  }, [chargeNowAmountMode, chargeNowMethodDraft, chargeNowSuggestedSignalAmount, parsedChargeNowCustomAmount, scheduleTotal]);
+    const signalValue = Math.max(0, parsedChargeNowCustomAmount ?? 0);
+    if (signalValue > 0) return Math.min(scheduleTotal, signalValue);
+    return chargeNowSuggestedSignalAmount;
+  }, [chargeNowAmountMode, chargeNowSuggestedSignalAmount, parsedChargeNowCustomAmount, scheduleTotal]);
   const chargeNowAmountError = useMemo(() => {
     if (collectionTimingDraft !== "charge_now") return null;
     if (chargeNowMethodDraft === "waiver") return null;
     if (scheduleTotal <= 0) return "Configure o financeiro antes de cobrar no agendamento.";
-    if (chargeNowAmountMode === "custom") {
-      const custom = Math.max(0, parsedChargeNowCustomAmount ?? 0);
-      if (custom <= 0) return "Informe o valor personalizado da cobrança.";
-      if (custom > scheduleTotal) return "O valor personalizado não pode ser maior que o total do agendamento.";
-      if (chargeNowMethodDraft === "pix_mp" && custom < 1) {
+    if (chargeNowAmountMode === "signal") {
+      const signalValue = Math.max(0, parsedChargeNowCustomAmount ?? 0);
+      if (signalValue <= 0) return "Informe o valor do sinal.";
+      if (signalValue > scheduleTotal) return "O valor do sinal não pode ser maior que o total do agendamento.";
+      if (chargeNowMethodDraft === "pix_mp" && signalValue < 1) {
         return "Para PIX Mercado Pago, o valor mínimo é R$ 1,00.";
       }
     }
-    if (chargeNowAmountMode === "signal" && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && chargeNowDraftAmount < 1) {
-      return "Para PIX Mercado Pago, o valor mínimo é R$ 1,00.";
-    }
     return null;
-  }, [chargeNowAmountMode, chargeNowDraftAmount, chargeNowMethodDraft, collectionTimingDraft, parsedChargeNowCustomAmount, scheduleTotal]);
+  }, [chargeNowAmountMode, chargeNowMethodDraft, collectionTimingDraft, parsedChargeNowCustomAmount, scheduleTotal]);
   const createPriceOverrideValue = selectedService ? scheduleTotal.toFixed(2) : "";
   const createCheckoutServiceAmountValue = selectedService ? effectiveServicePriceDraft.toFixed(2) : "";
   const isCourtesyDraft = !isEditing && collectionTimingDraft === "charge_now" && chargeNowMethodDraft === "waiver";
@@ -869,8 +959,67 @@ export function AppointmentForm({
   }, [selectedService, effectiveDisplacementFee]);
 
   useEffect(() => {
+    if (!selectedDate) return;
+    const parsed = parseISO(`${selectedDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return;
+    setActiveMonth(startOfMonth(parsed));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadMonthAvailability() {
+      if (!selectedServiceId || (selectedService?.accepts_home_visit && !hasLocationChoice)) {
+        setMonthAvailability({});
+        return;
+      }
+
+      setIsLoadingMonthAvailability(true);
+      const start = startOfMonth(activeMonth);
+      const end = endOfMonth(activeMonth);
+      const today = startOfDay(new Date());
+      const days = eachDayOfInterval({ start, end });
+
+      try {
+        const results = await Promise.all(
+          days.map(async (day) => {
+            const iso = format(day, "yyyy-MM-dd");
+            if (isBefore(day, today)) {
+              return { date: iso, slots: [] as string[] };
+            }
+            try {
+              const slots = await getAvailableSlots({
+                tenantId: FIXED_TENANT_ID,
+                serviceId: selectedServiceId,
+                date: iso,
+                isHomeVisit,
+                ignoreBlocks: true,
+              });
+              return { date: iso, slots };
+            } catch {
+              return { date: iso, slots: [] as string[] };
+            }
+          })
+        );
+        if (!active) return;
+        const map: Record<string, string[]> = {};
+        results.forEach(({ date: day, slots }) => {
+          map[day] = slots;
+        });
+        setMonthAvailability(map);
+      } finally {
+        if (active) setIsLoadingMonthAvailability(false);
+      }
+    }
+
+    loadMonthAvailability();
+    return () => {
+      active = false;
+    };
+  }, [activeMonth, hasLocationChoice, isHomeVisit, selectedService, selectedServiceId]);
+
+  useEffect(() => {
     async function fetchSlots() {
-      if (!selectedServiceId || !selectedDate) {
+      if (!selectedServiceId || !selectedDate || (selectedService?.accepts_home_visit && !hasLocationChoice)) {
         setAvailableSlots([]);
         setSelectedTime("");
         return;
@@ -885,14 +1034,13 @@ export function AppointmentForm({
           isHomeVisit,
           ignoreBlocks: true,
         });
-        const preferred = selectedTimeRef.current || initialTimeRef.current;
-        const normalizedSlots =
-          preferred && !slots.includes(preferred) ? [preferred, ...slots] : slots;
+        const normalizedSlots = slots;
         setAvailableSlots(normalizedSlots);
+        const preferred = isEditing ? selectedTimeRef.current || initialTimeRef.current : "";
         if (preferred && normalizedSlots.includes(preferred)) {
           setSelectedTime(preferred);
         } else {
-          setSelectedTime(normalizedSlots[0] ?? "");
+          setSelectedTime("");
         }
       } catch (error) {
         console.error(error);
@@ -904,7 +1052,7 @@ export function AppointmentForm({
     }
 
     fetchSlots();
-  }, [selectedServiceId, selectedDate, isHomeVisit]);
+  }, [isEditing, selectedServiceId, selectedDate, isHomeVisit, hasLocationChoice, selectedService]);
 
   useEffect(() => {
     async function fetchBlockStatus() {
@@ -1181,6 +1329,25 @@ export function AppointmentForm({
   const clientDraftPublicPreview =
     [clientFirstName, clientLastName].filter((value) => value.trim().length > 0).join(" ") || "Nome público";
   const canHomeVisit = selectedService?.accepts_home_visit ?? false;
+  const isLocationChoiceRequired = Boolean(selectedServiceId) && canHomeVisit;
+  const isLocationChoiceResolved = Boolean(selectedServiceId) && (!canHomeVisit || hasLocationChoice);
+  const isStep1Unlocked = isEditing || clientSelectionMode !== "idle";
+  const isStep2Unlocked = isStep1Unlocked;
+  const isStep3Unlocked =
+    isEditing || (isStep2Unlocked && isLocationChoiceResolved && (!isHomeVisit || addressConfirmed));
+  const isStep4Unlocked = isEditing || (isStep3Unlocked && Boolean(selectedDate) && Boolean(selectedTime));
+  const isChargeNowMethodChosen = collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== null;
+  const isChargeNowAmountConfirmed =
+    collectionTimingDraft === "charge_now" &&
+    (chargeNowMethodDraft === "waiver" ||
+      (hasChargeNowAmountModeChoice &&
+        !chargeNowAmountError &&
+        (chargeNowAmountMode === "full" || chargeNowSignalValueConfirmed)));
+  const canOpenConfirmation = isEditing
+    ? true
+    : isStep4Unlocked &&
+      (collectionTimingDraft === "at_attendance" ||
+        (collectionTimingDraft === "charge_now" && isChargeNowMethodChosen && isChargeNowAmountConfirmed));
   const selectedAddress = useMemo(
     () => clientAddresses.find((address) => address.id === selectedAddressId) ?? null,
     [clientAddresses, selectedAddressId]
@@ -1466,6 +1633,23 @@ export function AppointmentForm({
   const handleBeginImmediateCharge = async () => {
     if (!formRef.current) return;
     if (!formRef.current.reportValidity()) return;
+    if (chargeNowMethodDraft === null) {
+      showToast({ title: "Financeiro", message: "Escolha a forma de pagamento.", tone: "warning", durationMs: 2600 });
+      return;
+    }
+    if (chargeNowMethodDraft !== "waiver" && !hasChargeNowAmountModeChoice) {
+      showToast({ title: "Financeiro", message: "Escolha se vai cobrar integral ou sinal.", tone: "warning", durationMs: 2600 });
+      return;
+    }
+    if (chargeNowMethodDraft !== "waiver" && chargeNowAmountMode === "signal" && !chargeNowSignalValueConfirmed) {
+      showToast({
+        title: "Financeiro",
+        message: "Confirme o valor do sinal para continuar.",
+        tone: "warning",
+        durationMs: 2600,
+      });
+      return;
+    }
     if (chargeNowAmountError) {
       showToast({ title: "Financeiro", message: chargeNowAmountError, tone: "warning", durationMs: 2600 });
       return;
@@ -1793,6 +1977,25 @@ export function AppointmentForm({
 
   const handleOpenConfirmationPrompt = () => {
     if (!formRef.current) return;
+    if (!canOpenConfirmation) {
+      showToast({
+        title: "Finalize o financeiro",
+        message:
+          "Escolha quando cobrar e, se for cobrança no agendamento, defina a forma de pagamento e o valor para liberar a confirmação.",
+        tone: "warning",
+        durationMs: 3200,
+      });
+      return;
+    }
+    if (isLocationChoiceRequired && !hasLocationChoice) {
+      showToast({
+        title: "Local do atendimento",
+        message: "Escolha se o atendimento será no estúdio ou em domicílio para continuar.",
+        tone: "warning",
+        durationMs: 2600,
+      });
+      return;
+    }
     if (!formRef.current.reportValidity()) return;
     setConfirmationSheetStep("review");
     setChargeFlowError(null);
@@ -1838,7 +2041,7 @@ export function AppointmentForm({
         <input
           type="hidden"
           name="payment_collection_timing"
-          value="at_attendance"
+          value={collectionTimingDraft ?? ""}
         />
       )}
       {!isEditing && isCourtesyDraft && <input type="hidden" name="is_courtesy" value="on" />}
@@ -2087,7 +2290,7 @@ export function AppointmentForm({
           )}
         </div>
       </section>
-
+      {isStep2Unlocked && (
       <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
           <div className={sectionNumberClass}>2</div>
@@ -2096,92 +2299,158 @@ export function AppointmentForm({
 
         <div className="mb-6">
           <label className={labelClass}>Procedimento</label>
-          <div className="relative">
-            <select
-              name="serviceId"
-              value={selectedServiceId}
-              onChange={handleServiceChange}
-              className={selectClass}
-              required
-            >
-              <option value="" disabled>
-                Selecione...
-              </option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} ({service.duration_minutes} min)
+          {!selectedService ? (
+            <div className="relative">
+              <select
+                name="serviceId"
+                value={selectedServiceId}
+                onChange={handleServiceChange}
+                className={selectClass}
+                required
+              >
+                <option value="" disabled>
+                  Selecione...
                 </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-muted absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {selectedService && (
-            <div className="mt-3 p-3 bg-studio-green/10 rounded-2xl flex items-center justify-between border border-studio-green/10">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-soft">
-                  <Clock className="w-3 h-3" />
-                </div>
-                <span className="text-xs font-bold text-muted">{selectedService.duration_minutes} min</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-studio-green shadow-soft">
-                  <Tag className="w-3 h-3" />
-                </div>
-                <span className="text-xs font-bold text-muted">R$ {displayedPrice || "0,00"}</span>
-              </div>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name} ({service.duration_minutes} min)
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-muted absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
+          ) : (
+            <>
+              <input type="hidden" name="serviceId" value={selectedServiceId} />
+              <div className="mt-1 rounded-2xl border border-studio-green/15 bg-studio-green/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-studio-green">
+                      Procedimento selecionado
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-studio-text leading-snug">{selectedService.name}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedService}
+                    className="shrink-0 w-9 h-9 rounded-xl border border-studio-green/20 bg-white text-studio-green hover:bg-studio-light transition flex items-center justify-center"
+                    aria-label="Trocar procedimento"
+                    title="Trocar procedimento"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5">
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start justify-between gap-3">
+                      <span className="font-semibold text-muted">Procedimento</span>
+                      <span className="min-w-0 text-right font-semibold text-studio-text leading-snug">
+                        {selectedService.name}
+                      </span>
+                    </li>
+                    <li className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-muted">Tempo</span>
+                      <span className="font-semibold text-studio-text">{selectedService.duration_minutes} min</span>
+                    </li>
+                    <li className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-muted">Tempo total</span>
+                      <span className="font-semibold text-studio-text">{selectedServiceTotalMinutes} min</span>
+                    </li>
+                    <li className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-muted">Aceita domiciliar?</span>
+                      <span className="font-semibold text-studio-text">
+                        {selectedService.accepts_home_visit ? "Sim" : "Não"}
+                      </span>
+                    </li>
+                    <li className="flex items-center justify-between gap-3 border-t border-stone-100 pt-2">
+                      <span className="font-semibold text-muted">Valor</span>
+                      <span className="font-semibold text-studio-text">R$ {displayedPrice || "0,00"}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
         <div>
           <label className={labelClass}>Local</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsHomeVisit(false);
-                setDisplacementEstimate(null);
-                setDisplacementStatus("idle");
-                setDisplacementError(null);
-              }}
-              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
-                !isHomeVisit
-                  ? "border-studio-green bg-green-50 text-studio-green"
-                  : "border-stone-100 bg-stone-50 text-gray-400"
-              }`}
-            >
-              <Building2 className="w-5 h-5" />
-              No Estúdio
-            </button>
+          {!selectedService ? (
+            <p className="text-[11px] text-muted ml-1 mt-2">Selecione primeiro o procedimento.</p>
+          ) : canHomeVisit ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasLocationChoice(true);
+                    setIsHomeVisit(false);
+                    setDisplacementEstimate(null);
+                    setDisplacementStatus("idle");
+                    setDisplacementError(null);
+                  }}
+                  className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
+                    hasLocationChoice && !isHomeVisit
+                      ? "border-studio-green bg-green-50 text-studio-green"
+                      : "border-stone-100 bg-stone-50 text-gray-400"
+                  }`}
+                >
+                  <Building2 className="w-5 h-5" />
+                  No Estúdio
+                </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsHomeVisit(true);
-                setDisplacementEstimate(null);
-                setDisplacementStatus("idle");
-                setDisplacementError(null);
-              }}
-              disabled={!canHomeVisit}
-              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
-                isHomeVisit
-                  ? "border-dom bg-dom/20 text-dom-strong"
-                  : "border-stone-100 bg-stone-50 text-gray-400"
-              } ${!canHomeVisit ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <Car className="w-5 h-5" />
-              Em Domicílio
-            </button>
-          </div>
-          <input type="hidden" name="is_home_visit" value={isHomeVisit ? "on" : ""} />
-          {!canHomeVisit && selectedServiceId && (
-            <p className="text-[11px] text-muted ml-1 mt-2">Serviço sem opção domiciliar.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasLocationChoice(true);
+                    setIsHomeVisit(true);
+                    setDisplacementEstimate(null);
+                    setDisplacementStatus("idle");
+                    setDisplacementError(null);
+                  }}
+                  className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
+                    hasLocationChoice && isHomeVisit
+                      ? "border-dom bg-dom/20 text-dom-strong"
+                      : "border-stone-100 bg-stone-50 text-gray-400"
+                  }`}
+                >
+                  <Car className="w-5 h-5" />
+                  Em Domicílio
+                </button>
+              </div>
+              {!hasLocationChoice && (
+                <p className="text-[11px] text-muted ml-1 mt-2">
+                  Escolha se o atendimento será no estúdio ou em domicílio.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasLocationChoice(true);
+                    setIsHomeVisit(false);
+                    setDisplacementEstimate(null);
+                    setDisplacementStatus("idle");
+                    setDisplacementError(null);
+                  }}
+                  className="py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border border-studio-green bg-green-50 text-studio-green"
+                >
+                  <Building2 className="w-5 h-5" />
+                  No Estúdio
+                </button>
+              </div>
+              <p className="text-[11px] text-muted ml-1 mt-2">Serviço sem opção domiciliar.</p>
+            </>
           )}
+          <input type="hidden" name="is_home_visit" value={isHomeVisit && hasLocationChoice ? "on" : ""} />
 
           <div
             className={`transition-all duration-300 overflow-hidden ${
-              isHomeVisit ? "max-h-200 opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
+              isHomeVisit && hasLocationChoice ? "max-h-200 opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
             }`}
           >
             <div className="space-y-4">
@@ -2196,6 +2465,15 @@ export function AppointmentForm({
                   <div className="space-y-2">
                     {clientAddresses.map((address, index) => {
                       const isSelected = address.id === selectedAddressId;
+                      const addressMapsQuery = buildAddressQuery({
+                        logradouro: address.address_logradouro ?? "",
+                        numero: address.address_numero ?? "",
+                        complemento: address.address_complemento ?? "",
+                        bairro: address.address_bairro ?? "",
+                        cidade: address.address_cidade ?? "",
+                        estado: address.address_estado ?? "",
+                        cep: address.address_cep ?? "",
+                      });
                       return (
                         <div
                           key={address.id}
@@ -2213,17 +2491,20 @@ export function AppointmentForm({
                                 {formatClientAddress(address) || "Endereço cadastrado"}
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectExistingAddress(address.id)}
-                              className={`shrink-0 px-3 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border ${
-                                isSelected
-                                  ? "bg-dom/15 border-dom/40 text-dom-strong"
-                                  : "bg-white border-dom/30 text-dom-strong hover:bg-dom/10"
-                              }`}
-                            >
-                              {isSelected ? "Selecionado" : "Usar esse"}
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <GoogleMapsAddressButton query={addressMapsQuery} />
+                              <button
+                                type="button"
+                                onClick={() => handleSelectExistingAddress(address.id)}
+                                className={`px-3 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border ${
+                                  isSelected
+                                    ? "bg-dom/15 border-dom/40 text-dom-strong"
+                                    : "bg-white border-dom/30 text-dom-strong hover:bg-dom/10"
+                                }`}
+                              >
+                                {isSelected ? "Selecionado" : "Usar esse"}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -2252,6 +2533,17 @@ export function AppointmentForm({
                     {formatClientAddress(selectedAddress) || "Endereço cadastrado"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <GoogleMapsAddressButton
+                      query={buildAddressQuery({
+                        logradouro: selectedAddress.address_logradouro ?? "",
+                        numero: selectedAddress.address_numero ?? "",
+                        complemento: selectedAddress.address_complemento ?? "",
+                        bairro: selectedAddress.address_bairro ?? "",
+                        cidade: selectedAddress.address_cidade ?? "",
+                        estado: selectedAddress.address_estado ?? "",
+                        cep: selectedAddress.address_cep ?? "",
+                      })}
+                    />
                     {clientAddresses.length > 1 && (
                       <button
                         type="button"
@@ -2284,6 +2576,7 @@ export function AppointmentForm({
                     {mapsQuery || "Endereço informado"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <GoogleMapsAddressButton query={mapsQuery} />
                     <button
                       type="button"
                       onClick={openAddressCreateModal}
@@ -2325,17 +2618,6 @@ export function AppointmentForm({
                 </div>
               )}
 
-              {mapsQuery && addressConfirmed && (
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-semibold text-dom-strong hover:underline inline-flex"
-                >
-                  Ver endereço no Maps
-                </a>
-              )}
-
               <div className="rounded-2xl border border-stone-100 bg-white p-4">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1">
                   Taxa de deslocamento
@@ -2347,9 +2629,6 @@ export function AppointmentForm({
                 )}
                 {displacementStatus !== "loading" && displacementEstimate && (
                   <div className="space-y-1.5">
-                    <p className="text-base font-bold text-dom-strong">
-                      R$ {formatCurrencyLabel(displacementEstimate.fee)}
-                    </p>
                     <p className="text-xs text-gray-500">
                       Distância estimada: {displacementEstimate.distanceKm.toFixed(2)} km.
                     </p>
@@ -2392,11 +2671,13 @@ export function AppointmentForm({
           </div>
         </div>
       </section>
+      )}
 
+      {isStep3Unlocked && (
       <section className={sectionCardClass}>
         <div className="flex items-center gap-2 mb-4">
           <div className={sectionNumberClass}>3</div>
-          <h2 className={sectionHeaderTextClass}>Finalização</h2>
+          <h2 className={sectionHeaderTextClass}>Quando?</h2>
         </div>
 
         <div className={`grid ${isEditing ? "grid-cols-2" : "grid-cols-1"} gap-4 mb-4`}>
@@ -2418,14 +2699,19 @@ export function AppointmentForm({
 
           <div>
             <label className={labelClass}>Data</label>
-            <input
-              name="date"
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-              className={inputClass}
-              required
+            <input type="hidden" name="date" value={selectedDate} />
+            <MonthCalendar
+              currentMonth={activeMonth}
+              selectedDate={selectedDateObj}
+              onSelectDay={handleSelectScheduleDay}
+              onChangeMonth={handleChangeScheduleMonth}
+              isDayDisabled={isScheduleDayDisabled}
+              className="rounded-2xl shadow-none border border-stone-100 p-3"
+              enableSwipe
             />
+            {isLoadingMonthAvailability && (
+              <p className="text-[11px] text-muted mt-2 ml-1">Carregando disponibilidade do mês...</p>
+            )}
             {blockStatus === "loading" && (
               <p className="text-[11px] text-muted mt-2 ml-1">Verificando bloqueios...</p>
             )}
@@ -2463,30 +2749,34 @@ export function AppointmentForm({
 
         <div>
           <label className={labelClass}>Horário</label>
-          <div className="grid grid-cols-4 gap-2">
-            {!selectedServiceId || !selectedDate ? (
-              <div className="col-span-4 text-xs text-muted">Selecione data e serviço para ver horários.</div>
-            ) : isLoadingSlots ? (
-              <div className="col-span-4 text-xs text-muted">Carregando horários...</div>
-            ) : availableSlots.length === 0 ? (
-              <div className="col-span-4 text-xs text-muted">Sem horários disponíveis.</div>
-            ) : (
-              availableSlots.map((slot) => (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => setSelectedTime(slot)}
-                  className={`py-2 rounded-xl text-xs font-bold transition ${
-                    selectedTime === slot
-                      ? "bg-studio-green text-white shadow-sm transform scale-105"
-                      : "border border-stone-100 text-gray-400 hover:border-studio-green hover:text-studio-green"
-                  }`}
-                >
-                  {slot}
-                </button>
-              ))
-            )}
-          </div>
+          {!selectedDate ? (
+            <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-3 text-xs text-muted">
+              Selecione um dia no calendário para abrir os horários.
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {isLoadingSlots ? (
+                <div className="col-span-4 text-xs text-muted">Carregando horários...</div>
+              ) : availableSlots.length === 0 ? (
+                <div className="col-span-4 text-xs text-muted">Sem horários disponíveis para esta data.</div>
+              ) : (
+                availableSlots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedTime(slot)}
+                    className={`py-2 rounded-xl text-xs font-bold transition ${
+                      selectedTime === slot
+                        ? "bg-studio-green text-white shadow-sm transform scale-105"
+                        : "border border-stone-100 text-gray-400 hover:border-studio-green hover:text-studio-green"
+                    }`}
+                  >
+                    {slot}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
           <select
             name="time"
             value={selectedTime}
@@ -2514,24 +2804,10 @@ export function AppointmentForm({
           </p>
         </div>
 
-        <div className="mt-5 pt-4 border-t border-stone-100">
-          <label className={labelClass}>
-            Observações internas do agendamento
-          </label>
-          <textarea
-            name="internalNotes"
-            rows={2}
-            value={internalNotes}
-            onChange={(event) => setInternalNotes(event.target.value)}
-            className={`${inputClass} resize-none`}
-            placeholder="Ex: Cliente prefere pressão leve..."
-          />
-          <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
-        </div>
-
       </section>
+      )}
 
-      {!isEditing && internalBookingFinanceUiEnabled && (
+      {!isEditing && isStep4Unlocked && (
         <section className={sectionCardClass}>
           <div className="flex items-center gap-2 mb-4">
             <div className={sectionNumberClass}>4</div>
@@ -2540,67 +2816,37 @@ export function AppointmentForm({
 
           <div className="space-y-4">
             <div className="bg-white border border-gray-100 rounded-3xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Itens</p>
-                  <p className="text-xs text-muted mt-1">
-                    Ajuste o valor do serviço, taxa de deslocamento e adicione itens extras.
-                  </p>
-                </div>
-              </div>
+              <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Itens</p>
 
               <div className="mt-3 space-y-2 text-sm">
-                <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                  <div>
-                    <label className={labelClass}>Serviço</label>
-                    <p className="text-xs font-bold text-studio-text truncate">
-                      {selectedService?.name || "Selecione um serviço"}
-                    </p>
-                  </div>
-                  <div className="relative w-36">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
-                      R$
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={servicePriceDraft}
-                      onChange={(event) => setServicePriceDraft(event.target.value)}
-                      placeholder={selectedService ? formatCurrencyInput(Number(selectedService?.price ?? 0)) : "0,00"}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
-                    />
-                  </div>
-                </div>
-
-                {isHomeVisit && (
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
-                    <div>
-                      <label className={labelClass}>Taxa de deslocamento</label>
-                      <p className="text-[11px] text-muted">
-                        Distância estimada: {displacementEstimate?.distanceKm?.toFixed(2) ?? "0.00"} km
-                      </p>
+                {financeDraftItems.some((item) => item.type === "service" || item.type === "fee") ? (
+                  financeDraftItems
+                    .filter((item) => item.type === "service" || item.type === "fee")
+                    .map((item, index) => (
+                    <div key={`${item.type}-${item.label}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 items-start">
+                      <div>
+                        <span className={item.type === "fee" ? "text-dom-strong font-semibold" : "text-studio-text"}>
+                          {item.label}
+                        </span>
+                        {item.type === "fee" && (
+                          <p className="mt-1 text-[11px] text-muted">
+                            Distância estimada: {displacementEstimate?.distanceKm?.toFixed(2) ?? "0.00"} km
+                          </p>
+                        )}
+                      </div>
+                      {item.type === "service" || item.type === "fee" ? (
+                        <span className="tabular-nums font-bold text-studio-text">
+                          R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
+                        </span>
+                      ) : (
+                        <span className="tabular-nums font-bold text-studio-text">
+                          R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
+                        </span>
+                      )}
                     </div>
-                    <div className="relative w-36">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">
-                        R$
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={manualDisplacementFee}
-                        onChange={(event) => setManualDisplacementFee(event.target.value)}
-                        placeholder={displacementEstimate?.fee.toFixed(2).replace(".", ",") ?? "0,00"}
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setManualDisplacementFee("0,00")}
-                      className="px-3 py-2.5 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/25"
-                    >
-                      Zerar
-                    </button>
-                  </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted">Selecione um serviço para montar o financeiro.</p>
                 )}
 
                 {financeExtraItems.length > 0 && (
@@ -2653,6 +2899,24 @@ export function AppointmentForm({
                     </div>
                   </div>
                 )}
+
+                <div className="h-px bg-gray-100 my-2" />
+                <div className="flex justify-between text-muted font-bold">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
+                </div>
+                {effectiveScheduleDiscount > 0 && (
+                  <div className="flex justify-between text-muted font-bold">
+                    <span>
+                      Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
+                    </span>
+                    <span className="tabular-nums">- R$ {formatCurrencyLabel(effectiveScheduleDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-studio-text font-black text-base pt-1">
+                  <span>Total</span>
+                  <span className="tabular-nums">R$ {formatCurrencyLabel(scheduleTotal)}</span>
+                </div>
               </div>
             </div>
 
@@ -2712,7 +2976,10 @@ export function AppointmentForm({
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setCollectionTimingDraft("at_attendance")}
+                  onClick={() => {
+                    setCollectionTimingDraft("at_attendance");
+                    setChargeFlowError(null);
+                  }}
                   className={`rounded-2xl border px-4 py-3 text-xs font-extrabold uppercase tracking-wide ${
                     collectionTimingDraft === "at_attendance"
                       ? "border-studio-green bg-studio-light text-studio-green"
@@ -2723,7 +2990,10 @@ export function AppointmentForm({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCollectionTimingDraft("charge_now")}
+                  onClick={() => {
+                    setCollectionTimingDraft("charge_now");
+                    setChargeFlowError(null);
+                  }}
                   className={`rounded-2xl border px-4 py-3 text-xs font-extrabold uppercase tracking-wide ${
                     collectionTimingDraft === "charge_now"
                       ? "border-studio-green bg-studio-light text-studio-green"
@@ -2741,52 +3011,74 @@ export function AppointmentForm({
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setChargeNowMethodDraft("pix_mp")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                        onClick={() => {
+                          setChargeNowMethodDraft("pix_mp");
+                          setChargeNowSignalValueConfirmed(false);
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 ${
                           chargeNowMethodDraft === "pix_mp"
                             ? "border-studio-green bg-studio-light text-studio-green"
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
+                        <Image
+                          src="/icons/pix-brazil-symbol-official.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="h-4 w-4"
+                        />
                         PIX
                       </button>
                       <button
                         type="button"
-                        onClick={() => setChargeNowMethodDraft("card")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                        onClick={() => {
+                          setChargeNowMethodDraft("card");
+                          setChargeNowSignalValueConfirmed(false);
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 ${
                           chargeNowMethodDraft === "card"
                             ? "border-studio-green bg-studio-light text-studio-green"
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
+                        <CreditCard className="h-4 w-4" />
                         Cartão
                       </button>
                       <button
                         type="button"
-                        onClick={() => setChargeNowMethodDraft("cash")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                        onClick={() => {
+                          setChargeNowMethodDraft("cash");
+                          setChargeNowSignalValueConfirmed(false);
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 ${
                           chargeNowMethodDraft === "cash"
                             ? "border-studio-green bg-studio-light text-studio-green"
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
+                        <Banknote className="h-4 w-4" />
                         Dinheiro
                       </button>
                       <button
                         type="button"
-                        onClick={() => setChargeNowMethodDraft("waiver")}
-                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                        onClick={() => {
+                          setChargeNowMethodDraft("waiver");
+                          setChargeNowSignalValueConfirmed(false);
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 ${
                           chargeNowMethodDraft === "waiver"
                             ? "border-sky-500 bg-sky-50 text-sky-700"
                             : "border-line text-muted hover:bg-paper"
                         }`}
                       >
+                        <Gift className="h-4 w-4" />
                         Cortesia
                       </button>
                     </div>
                   </div>
 
-                  {chargeNowMethodDraft === "waiver" ? (
+                  {chargeNowMethodDraft === "waiver" && (
                     <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
                       <p className="text-[10px] font-extrabold uppercase tracking-widest text-sky-700">
                         Cortesia interna
@@ -2795,150 +3087,99 @@ export function AppointmentForm({
                         O agendamento será criado com pagamento liberado (<strong>Cortesia</strong>) e não abrirá fluxo de cobrança.
                       </p>
                     </div>
-                  ) : (
-                    <>
-                      <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Valor a cobrar agora</p>
-                        <div className="mt-2 grid grid-cols-3 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setChargeNowAmountMode("full")}
-                            className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
-                              chargeNowAmountMode === "full"
-                                ? "border-studio-green bg-studio-light text-studio-green"
-                                : "border-line text-muted hover:bg-paper"
-                            }`}
-                          >
-                            Integral
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setChargeNowAmountMode("signal")}
-                            className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
-                              chargeNowAmountMode === "signal"
-                                ? "border-studio-green bg-studio-light text-studio-green"
-                                : "border-line text-muted hover:bg-paper"
-                            }`}
-                          >
-                            Sinal
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setChargeNowAmountMode("custom")}
-                            className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
-                              chargeNowAmountMode === "custom"
-                                ? "border-studio-green bg-studio-light text-studio-green"
-                                : "border-line text-muted hover:bg-paper"
-                            }`}
-                          >
-                            Personalizado
-                          </button>
-                        </div>
-                      </div>
-
-                      {chargeNowAmountMode === "signal" && (
-                        <div className="grid grid-cols-[1fr_auto] gap-3">
-                          <div className="rounded-2xl border border-line bg-paper px-4 py-3">
-                            <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                              Percentual do sinal (%)
-                            </label>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={chargeNowSignalPercent}
-                              onChange={(event) =>
-                                setChargeNowSignalPercent(Math.max(0, Number(event.target.value) || 0))
-                              }
-                              className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
-                            />
-                          </div>
-                          <div className="rounded-2xl border border-line bg-paper px-4 py-3 min-w-34">
-                            <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                              Valor do sinal
-                            </label>
-                            <p className="mt-1 text-lg font-black text-studio-text tabular-nums">
-                              R$ {formatCurrencyLabel(chargeNowSuggestedSignalAmount)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {chargeNowAmountMode === "custom" && (
-                        <div className="rounded-2xl border border-line bg-paper px-4 py-3">
-                          <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                            Valor personalizado
-                          </label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={chargeNowCustomAmount}
-                            onChange={(event) => setChargeNowCustomAmount(event.target.value)}
-                            className="mt-1 w-full bg-transparent outline-none text-lg font-black text-studio-text tabular-nums"
-                            placeholder="0,00"
-                          />
-                        </div>
-                      )}
-
-                      <div className="rounded-2xl border border-line bg-paper px-4 py-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                            Valor a cobrar agora
-                          </span>
-                          <span className="text-lg font-black text-studio-text tabular-nums">
-                            R$ {formatCurrencyLabel(chargeNowDraftAmount)}
-                          </span>
-                        </div>
-                        {chargeNowAmountError && (
-                          <p className="mt-2 text-[11px] font-semibold text-red-700">{chargeNowAmountError}</p>
-                        )}
-                        {!chargeNowAmountError && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && (
-                          <p className="mt-2 text-[11px] text-muted">
-                            Valor mínimo do PIX Mercado Pago: R$ 1,00.
-                          </p>
-                        )}
-                      </div>
-                    </>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="bg-paper border border-line rounded-3xl p-4">
-              <div className="space-y-2 text-sm">
-                {financeDraftItems.length > 0 ? (
-                  financeDraftItems.map((item, index) => (
-                    <div key={`${item.type}-${item.label}-${index}`} className="flex justify-between gap-3">
-                      <span className={item.type === "fee" ? "text-dom-strong font-semibold" : "text-studio-text"}>
-                        {item.label}
-                      </span>
-                      <span className="tabular-nums font-bold text-studio-text">
-                        R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted">Selecione um serviço para montar o financeiro.</p>
-                )}
-                <div className="h-px bg-gray-100 my-2" />
-                <div className="flex justify-between text-muted font-bold">
-                  <span>Subtotal</span>
-                  <span className="tabular-nums">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
+            {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== null && chargeNowMethodDraft !== "waiver" && (
+              <div className="bg-white border border-gray-100 rounded-3xl p-4">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Valor a cobrar agora</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChargeNowAmountMode("full");
+                      setHasChargeNowAmountModeChoice(true);
+                      setChargeNowSignalValueConfirmed(false);
+                    }}
+                    className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                      hasChargeNowAmountModeChoice && chargeNowAmountMode === "full"
+                        ? "border-studio-green bg-studio-light text-studio-green"
+                        : "border-line text-muted hover:bg-paper"
+                    }`}
+                  >
+                    Integral
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChargeNowAmountMode("signal");
+                      setHasChargeNowAmountModeChoice(true);
+                      setChargeNowSignalValueConfirmed(false);
+                      if (!chargeNowCustomAmount.trim() && chargeNowSuggestedSignalAmount > 0) {
+                        setChargeNowCustomAmount(formatCurrencyInput(chargeNowSuggestedSignalAmount));
+                      }
+                    }}
+                    className={`rounded-xl border px-3 py-2 text-[11px] font-extrabold uppercase tracking-wide ${
+                      hasChargeNowAmountModeChoice && chargeNowAmountMode === "signal"
+                        ? "border-studio-green bg-studio-light text-studio-green"
+                        : "border-line text-muted hover:bg-paper"
+                    }`}
+                  >
+                    Sinal ({Number.isInteger(effectiveSignalPercentageDraft) ? effectiveSignalPercentageDraft : Number(effectiveSignalPercentageDraft.toFixed(2))}%)
+                  </button>
                 </div>
-                {effectiveScheduleDiscount > 0 && (
-                  <div className="flex justify-between text-muted font-bold">
-                    <span>
-                      Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
-                    </span>
-                    <span className="tabular-nums">- R$ {formatCurrencyLabel(effectiveScheduleDiscount)}</span>
+
+                {hasChargeNowAmountModeChoice && chargeNowAmountMode === "signal" && (
+                  <div className="mt-3 rounded-2xl border border-line bg-paper px-4 py-3">
+                    <div className="grid grid-cols-[1fr_140px_auto] items-center gap-2">
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
+                        Valor do sinal
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={chargeNowCustomAmount}
+                        onChange={(event) => {
+                          setChargeNowCustomAmount(event.target.value);
+                          setChargeNowSignalValueConfirmed(false);
+                        }}
+                        className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm font-black text-studio-text tabular-nums outline-none focus:border-studio-green focus:ring-1 focus:ring-studio-green"
+                        placeholder={formatCurrencyInput(chargeNowSuggestedSignalAmount || 0)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!chargeNowAmountError) {
+                            setChargeNowSignalValueConfirmed(true);
+                          }
+                        }}
+                        className={`rounded-xl border px-3 py-2 text-[10px] font-extrabold uppercase tracking-wide ${
+                          chargeNowSignalValueConfirmed
+                            ? "border-studio-green bg-studio-light text-studio-green"
+                            : "border-line text-muted hover:bg-paper"
+                        }`}
+                      >
+                        {chargeNowSignalValueConfirmed ? "Confirmado" : "Confirmar valor"}
+                      </button>
+                    </div>
+                    {chargeNowAmountError && (
+                      <p className="mt-2 text-[11px] font-semibold text-red-700">{chargeNowAmountError}</p>
+                    )}
+                    {!chargeNowAmountError && chargeNowMethodDraft === "pix_mp" && chargeNowDraftAmount > 0 && (
+                      <p className="mt-2 text-[11px] text-muted">
+                        Valor mínimo do PIX Mercado Pago: R$ 1,00.
+                      </p>
+                    )}
                   </div>
                 )}
-                <div className="flex justify-between text-studio-text font-black text-base pt-1">
-                  <span>Total</span>
-                  <span className="tabular-nums">R$ {formatCurrencyLabel(scheduleTotal)}</span>
-                </div>
+
+                {hasChargeNowAmountModeChoice && chargeNowAmountMode === "full" && chargeNowAmountError && (
+                  <p className="mt-2 text-[11px] font-semibold text-red-700">{chargeNowAmountError}</p>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </section>
       )}
@@ -3516,7 +3757,7 @@ export function AppointmentForm({
                     onWaivePayment={async () => ({ ok: false })}
                     onSendReceipt={handleChargeSendReceipt}
                     receiptFlowMode="manual"
-                    initialMethod={chargeNowMethodDraft}
+                    initialMethod={chargeNowMethodDraft ?? "pix_mp"}
                     successResolveLabel="Continuar"
                     onReceiptPromptResolved={async () => {
                       await handleChargePaymentResolved();
@@ -3683,7 +3924,12 @@ export function AppointmentForm({
                         <button
                           type="button"
                           onClick={() => void handleBeginImmediateCharge()}
-                          disabled={creatingChargeBooking || Boolean(chargeNowAmountError)}
+                          disabled={
+                            creatingChargeBooking ||
+                            !isChargeNowMethodChosen ||
+                            !isChargeNowAmountConfirmed ||
+                            Boolean(chargeNowAmountError)
+                          }
                           className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
                         >
                           {creatingChargeBooking ? "Preparando cobrança..." : "Cobrar"}
@@ -3722,6 +3968,21 @@ export function AppointmentForm({
           portalTarget
         )}
 
+      {(isEditing || isStep4Unlocked) && (
+      <section className={sectionCardClass}>
+        <label className={labelClass}>Observações internas do agendamento</label>
+        <textarea
+          name="internalNotes"
+          rows={2}
+          value={internalNotes}
+          onChange={(event) => setInternalNotes(event.target.value)}
+          className={`${inputClass} resize-none`}
+          placeholder="Ex: Cliente prefere pressão leve..."
+        />
+        <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
+      </section>
+      )}
+
       {isEditing ? (
         <button
           type="submit"
@@ -3730,16 +3991,21 @@ export function AppointmentForm({
           <Check className="w-5 h-5" />
           Agendar
         </button>
-      ) : (
+      ) : isStep4Unlocked ? (
         <button
           type="button"
           onClick={handleOpenConfirmationPrompt}
-          className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
+          disabled={!canOpenConfirmation}
+          className={`w-full h-14 font-bold rounded-2xl text-sm uppercase tracking-wide transition-all flex items-center justify-center gap-2 mb-4 ${
+            canOpenConfirmation
+              ? "bg-studio-green text-white shadow-lg shadow-green-900/10 hover:bg-studio-green-dark"
+              : "bg-stone-200 text-stone-500 cursor-not-allowed"
+          }`}
         >
           <Check className="w-5 h-5" />
           Ir para confirmação
         </button>
-      )}
+      ) : null}
     </form>
   );
 }
