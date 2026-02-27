@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Copy, CreditCard, Gift, Loader2, QrCode, Trash2, Wallet } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
+import { PaymentMethodIcon } from "../../../../../components/ui/payment-method-icon";
 import {
   ATTENDANCE_PIX_RECEIVER_CITY,
   ATTENDANCE_PIX_RECEIVER_NAME,
@@ -442,8 +443,6 @@ export function AttendancePaymentModal({
     };
   }, [autoReceiptStatus, onAutoSendReceipt, open, receiptFlowMode, receiptPromptPaymentId]);
 
-  if (!open) return null;
-
   const handleCreatePix = async () => {
     if (effectiveChargeAmount <= 0) return;
     setBusy(true);
@@ -616,7 +615,7 @@ export function AttendancePaymentModal({
     }
   };
 
-  const handleApplyDiscount = async () => {
+  const handleApplyDiscount = useCallback(async () => {
     const normalizedValue = Number(discountValueInput ?? 0);
     const safeValue = Number.isFinite(normalizedValue) ? Math.max(normalizedValue, 0) : 0;
     const nextType: "value" | "pct" | null = safeValue > 0 ? discountTypeInput : null;
@@ -642,7 +641,46 @@ export function AttendancePaymentModal({
     } finally {
       setCheckoutSaving(false);
     }
-  };
+  }, [discountReasonInput, discountTypeInput, discountValueInput, onSetDiscount, paidTotal, subtotal]);
+
+  useEffect(() => {
+    if (!open || isSuccessState || checkoutSaving) return;
+
+    const normalizedValue = Number(discountValueInput ?? 0);
+    const safeValue = Number.isFinite(normalizedValue) ? Math.max(normalizedValue, 0) : 0;
+    const nextType: "value" | "pct" | null = safeValue > 0 ? discountTypeInput : null;
+    const nextReason = discountReasonInput.trim();
+    const currentType = appliedDiscountType ?? null;
+    const currentValue = Number.isFinite(Number(appliedDiscountValue))
+      ? Math.max(Number(appliedDiscountValue), 0)
+      : 0;
+    const currentReason = (appliedDiscountReason ?? "").trim();
+    const hasChange =
+      nextType !== currentType ||
+      Math.abs(safeValue - currentValue) > 0.009 ||
+      nextReason !== currentReason;
+
+    if (!hasChange) return;
+
+    const timeout = window.setTimeout(() => {
+      void handleApplyDiscount();
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    appliedDiscountReason,
+    appliedDiscountType,
+    appliedDiscountValue,
+    checkoutSaving,
+    discountReasonInput,
+    discountTypeInput,
+    discountValueInput,
+    handleApplyDiscount,
+    isSuccessState,
+    open,
+  ]);
+
+  if (!open) return null;
 
   const isEmbedded = variant === "embedded";
   const modalNode = (
@@ -779,7 +817,7 @@ export function AttendancePaymentModal({
             <>
           <section className="mt-5 rounded-2xl border border-line px-4 py-4 bg-white">
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <Wallet className="w-3.5 h-3.5" />
+              <PaymentMethodIcon method="card" className="h-3.5 w-3.5" />
               Composição da cobrança
             </div>
 
@@ -830,9 +868,9 @@ export function AttendancePaymentModal({
 
             <div className="mt-4 border-t border-line pt-4">
               <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Adicionar item</p>
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className="mt-2 grid grid-cols-[1fr_88px_40px] gap-2">
                 <input
-                  className="col-span-2 rounded-xl border border-line px-3 py-2 text-xs"
+                  className="rounded-xl border border-line px-3 py-2 text-xs"
                   placeholder="Novo item"
                   value={newItem.label}
                   disabled={checkoutSaving}
@@ -845,14 +883,16 @@ export function AttendancePaymentModal({
                   disabled={checkoutSaving}
                   onChange={(event) => setNewItem((current) => ({ ...current, amount: Number(event.target.value) }))}
                 />
+                <button
+                  className="inline-flex h-9 w-10 items-center justify-center rounded-xl border border-line text-studio-text hover:bg-paper disabled:opacity-60"
+                  onClick={handleAddItem}
+                  disabled={checkoutSaving}
+                  aria-label="Adicionar item"
+                  title="Adicionar item"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-text"
-                onClick={handleAddItem}
-                disabled={checkoutSaving}
-              >
-                {checkoutSaving ? "Salvando..." : "Adicionar item"}
-              </button>
             </div>
 
             <div className="mt-4 border-t border-line pt-4">
@@ -882,13 +922,6 @@ export function AttendancePaymentModal({
                 className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-xs"
                 placeholder="Motivo do desconto"
               />
-              <button
-                className="mt-2 w-full rounded-xl border border-studio-green bg-studio-light px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-                onClick={handleApplyDiscount}
-                disabled={checkoutSaving}
-              >
-                {checkoutSaving ? "Salvando..." : "Aplicar desconto"}
-              </button>
             </div>
 
             <div className="mt-4 border-t border-dashed border-line pt-3 space-y-2">
@@ -923,7 +956,7 @@ export function AttendancePaymentModal({
 
           <section className="mt-5">
             <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <Wallet className="w-3.5 h-3.5" />
+              <PaymentMethodIcon method="card" className="h-3.5 w-3.5" />
               Forma de pagamento
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -936,7 +969,7 @@ export function AttendancePaymentModal({
                 onClick={() => setMethod("cash")}
                 disabled={isWaived}
               >
-                <Wallet className="mx-auto mb-1 h-3.5 w-3.5" />
+                <PaymentMethodIcon method="cash" className="mx-auto mb-1 h-3.5 w-3.5" />
                 Dinheiro
               </button>
               <button
@@ -948,7 +981,7 @@ export function AttendancePaymentModal({
                 onClick={() => setMethod("pix_mp")}
                 disabled={isWaived}
               >
-                <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
+                <PaymentMethodIcon method="pix" className="mx-auto mb-1 h-3.5 w-3.5" />
                 PIX MP
               </button>
               <button
@@ -960,7 +993,7 @@ export function AttendancePaymentModal({
                 onClick={() => setMethod("pix_key")}
                 disabled={isWaived}
               >
-                <QrCode className="mx-auto mb-1 h-3.5 w-3.5" />
+                <PaymentMethodIcon method="pix_key" className="mx-auto mb-1 h-3.5 w-3.5" />
                 PIX Chave
               </button>
               <button
@@ -972,7 +1005,7 @@ export function AttendancePaymentModal({
                 onClick={() => setMethod("card")}
                 disabled={isWaived}
               >
-                <CreditCard className="mx-auto mb-1 h-3.5 w-3.5" />
+                <PaymentMethodIcon method="card" className="mx-auto mb-1 h-3.5 w-3.5" />
                 Cartão
               </button>
               {!hideWaiverOption && (
@@ -984,7 +1017,7 @@ export function AttendancePaymentModal({
                   }`}
                   onClick={() => setMethod("waiver")}
                 >
-                  <Gift className="mx-auto mb-1 h-3.5 w-3.5" />
+                  <PaymentMethodIcon method="waiver" className="mx-auto mb-1 h-3.5 w-3.5" />
                   Cortesia
                 </button>
               )}

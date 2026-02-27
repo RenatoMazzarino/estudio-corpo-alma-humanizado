@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, CreditCard, Plus, QrCode } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { AttendanceRow, CheckoutItem, CheckoutRow, PaymentRow } from "../../../../../lib/attendance/attendance-types";
+import { PaymentMethodIcon } from "../../../../../components/ui/payment-method-icon";
 import { StageStatusBadge } from "./stage-status";
 
 interface CheckoutStageProps {
@@ -84,6 +85,30 @@ export function CheckoutStage({
     setDiscountReason(checkout?.discount_reason ?? "");
   }, [checkout?.discount_type, checkout?.discount_value, checkout?.discount_reason]);
 
+  useEffect(() => {
+    if (isLocked) return;
+    const normalizedValue = Number.isFinite(Number(discountValue)) ? Math.max(Number(discountValue), 0) : 0;
+    const nextType: "value" | "pct" | null = normalizedValue > 0 ? discountType : null;
+    const nextReason = discountReason.trim();
+    const currentType = checkout?.discount_type ?? null;
+    const currentValue = Number.isFinite(Number(checkout?.discount_value ?? 0))
+      ? Math.max(Number(checkout?.discount_value ?? 0), 0)
+      : 0;
+    const currentReason = (checkout?.discount_reason ?? "").trim();
+    const hasChange =
+      nextType !== currentType ||
+      Math.abs(normalizedValue - currentValue) > 0.009 ||
+      nextReason !== currentReason;
+
+    if (!hasChange) return;
+
+    const timeout = window.setTimeout(() => {
+      onSetDiscount(nextType, normalizedValue > 0 ? normalizedValue : null, nextReason || undefined);
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [checkout?.discount_reason, checkout?.discount_type, checkout?.discount_value, discountReason, discountType, discountValue, isLocked, onSetDiscount]);
+
   return (
     <div className="space-y-5">
       <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
@@ -114,12 +139,12 @@ export function CheckoutStage({
 
         <div className="mt-4 bg-white border border-gray-100 rounded-3xl p-4">
           <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Adicionar item</p>
-          <div className="mt-3 grid grid-cols-4 gap-2">
+          <div className="mt-3 grid grid-cols-[86px_1fr_80px_40px] gap-2">
             <select
               value={newItem.type}
               onChange={(event) => setNewItem({ ...newItem, type: event.target.value as CheckoutItem["type"] })}
               disabled={isLocked}
-              className={`col-span-1 rounded-xl border border-line px-2 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+              className={`rounded-xl border border-line px-2 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             >
               <option value="service">Serviço</option>
               <option value="fee">Taxa</option>
@@ -131,7 +156,7 @@ export function CheckoutStage({
               onChange={(event) => setNewItem({ ...newItem, label: event.target.value })}
               placeholder="Descrição"
               disabled={isLocked}
-              className={`col-span-2 rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+              className={`rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             />
             <input
               type="number"
@@ -139,11 +164,8 @@ export function CheckoutStage({
               onChange={(event) => setNewItem({ ...newItem, amount: Number(event.target.value) })}
               placeholder="0"
               disabled={isLocked}
-              className={`col-span-1 rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
+              className={`rounded-xl border border-line px-3 py-2 text-xs ${isLocked ? "opacity-60 cursor-not-allowed" : ""}`}
             />
-          </div>
-
-          <div className="mt-3 flex gap-2">
             <button
               onClick={() => {
                 if (!newItem.label.trim()) return;
@@ -151,12 +173,17 @@ export function CheckoutStage({
                 setNewItem({ type: "addon", label: "", qty: 1, amount: 0 });
               }}
               disabled={isLocked}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${
-                isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-light text-studio-green"
+              className={`inline-flex h-9 w-10 items-center justify-center rounded-xl border border-line ${
+                isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "text-studio-text hover:bg-paper"
               }`}
+              aria-label="Adicionar item"
+              title="Adicionar item"
             >
-              <Plus className="w-3 h-3" /> Adicionar
+              <Plus className="w-4 h-4" />
             </button>
+          </div>
+
+          <div className="mt-3 flex gap-2">
             <button
               onClick={() => onSaveItems(draftItems)}
               disabled={isLocked}
@@ -228,25 +255,15 @@ export function CheckoutStage({
               disabled={isLocked}
             />
           </div>
-
-          <button
-            onClick={() => onSetDiscount(discountType, discountValue, discountReason)}
-            disabled={isLocked}
-            className={`mt-3 w-full h-11 rounded-2xl font-extrabold text-xs uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
-              isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
-            }`}
-          >
-            Aplicar desconto
-          </button>
         </div>
 
         <div className="mt-4 bg-white border border-gray-100 rounded-3xl p-4">
           <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Pagamento</p>
           <div className="mt-3 grid grid-cols-2 gap-3">
             {([
-              { method: "pix", label: "Pix", icon: <QrCode className="w-4 h-4" /> },
-              { method: "card", label: "Cartão", icon: <CreditCard className="w-4 h-4" /> },
-              { method: "cash", label: "Dinheiro", icon: <Banknote className="w-4 h-4" /> },
+              { method: "pix", label: "Pix", icon: <PaymentMethodIcon method="pix" className="h-4 w-4" /> },
+              { method: "card", label: "Cartão", icon: <PaymentMethodIcon method="card" className="h-4 w-4" /> },
+              { method: "cash", label: "Dinheiro", icon: <PaymentMethodIcon method="cash" className="h-4 w-4" /> },
               { method: "other", label: "Outro", icon: <Plus className="w-4 h-4" /> },
             ] as const).map((item) => (
               <button
