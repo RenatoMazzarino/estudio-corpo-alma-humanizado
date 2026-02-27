@@ -9,8 +9,6 @@ import {
   startOfMonth,
 } from "date-fns";
 import {
-  ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   Copy,
   MapPin,
@@ -71,7 +69,9 @@ import {
 import { StepTabs } from "./components/step-tabs";
 import { DatetimeStep } from "./components/datetime-step";
 import { BookingHeader } from "./components/booking-header";
+import { BookingFooter } from "./components/booking-footer";
 import { ServiceStep } from "./components/service-step";
+import { SuccessStep } from "./components/success-step";
 import { WelcomeStep } from "./components/welcome-step";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
@@ -2518,56 +2518,14 @@ export function BookingFlow({
         )}
 
         {step === "SUCCESS" && (
-          <section className="flex-1 flex flex-col justify-center items-center text-center px-6 pb-10 pt-3 animate-in zoom-in duration-500">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-studio-green mb-6 animate-bounce">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-            <h2 className="text-3xl font-serif text-studio-text mb-4">Agendado!</h2>
-            <p className="text-gray-500 text-sm max-w-70 leading-relaxed mb-8">
-              Tudo pronto. Te esperamos para o seu momento de cuidado.
-            </p>
-
-            <div className="bg-white w-full p-6 rounded-2xl border border-gray-100 text-left mb-8 shadow-soft">
-              <div className="flex justify-between py-2 border-b border-gray-50">
-                <span className="text-xs font-bold text-gray-400 uppercase">Data</span>
-                <span className="text-sm font-bold text-studio-text">
-                  {format(selectedDateObj, "dd/MM")} - {selectedTime}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-50">
-                <span className="text-xs font-bold text-gray-400 uppercase">Serviço</span>
-                <span className="text-sm font-bold text-studio-text text-right truncate w-32">
-                  {selectedService?.name}
-                </span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-xs font-bold text-gray-400 uppercase">Protocolo</span>
-                <span className="text-sm font-mono text-gray-500">{protocol || "AGD"}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsVoucherOpen(true)}
-              className="w-full h-14 rounded-2xl bg-white border border-stone-100 text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors mb-3"
-            >
-              Ver voucher
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="w-full h-14 rounded-2xl border border-stone-100 bg-white text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors mb-4"
-            >
-              Novo Agendamento
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-studio-green"
-            >
-              Voltar ao Início
-            </button>
-          </section>
+          <SuccessStep
+            date={selectedDateObj}
+            selectedTime={selectedTime}
+            serviceName={selectedService?.name ?? "Serviço"}
+            protocol={protocol}
+            onOpenVoucher={() => setIsVoucherOpen(true)}
+            onReset={handleReset}
+          />
         )}
       </main>
 
@@ -2700,30 +2658,14 @@ export function BookingFlow({
         </div>
       )}
 
-      {showFooter && (
-        <footer className="absolute bottom-0 left-0 right-0 bg-studio-bg border-t border-stone-100 z-20">
-          <div className={`flex gap-3 px-6 py-3 ${showNextButton ? "" : "justify-start"}`}>
-            <button
-              type="button"
-              onClick={handleBack}
-              className="w-10 h-10 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-studio-text transition-colors shadow-soft"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            {showNextButton && (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={isNextDisabled}
-                className="flex-1 h-10 bg-studio-green-dark text-white rounded-full font-bold uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 hover:bg-studio-green transition-colors disabled:opacity-40"
-              >
-                <span>{nextLabel}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </footer>
-      )}
+      <BookingFooter
+        visible={showFooter}
+        showNextButton={showNextButton}
+        isNextDisabled={isNextDisabled}
+        nextLabel={nextLabel}
+        onBack={handleBack}
+        onNext={handleNext}
+      />
 
       <Toast toast={toast} />
     </div>
