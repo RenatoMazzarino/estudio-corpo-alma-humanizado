@@ -611,6 +611,12 @@ export async function setCheckoutItems(payload: {
   if (mapped) return fail(mapped);
 
   await recalcCheckoutTotals(parsed.data.appointmentId);
+  try {
+    await updatePaymentStatus(parsed.data.appointmentId);
+  } catch (error) {
+    if (error instanceof AppError) return fail(error);
+    return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
+  }
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
   return ok({ appointmentId: parsed.data.appointmentId });
@@ -643,6 +649,12 @@ export async function setDiscount(payload: {
   if (mapped) return fail(mapped);
 
   await recalcCheckoutTotals(parsed.data.appointmentId);
+  try {
+    await updatePaymentStatus(parsed.data.appointmentId);
+  } catch (error) {
+    if (error instanceof AppError) return fail(error);
+    return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
+  }
 
   revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
   return ok({ appointmentId: parsed.data.appointmentId });
