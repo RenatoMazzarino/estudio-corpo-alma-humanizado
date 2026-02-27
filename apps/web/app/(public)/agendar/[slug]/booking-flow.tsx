@@ -70,7 +70,9 @@ import {
 } from "./booking-flow.helpers";
 import { StepTabs } from "./components/step-tabs";
 import { DatetimeStep } from "./components/datetime-step";
+import { BookingHeader } from "./components/booking-header";
 import { ServiceStep } from "./components/service-step";
+import { WelcomeStep } from "./components/welcome-step";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 
 declare global {
@@ -1525,73 +1527,14 @@ export function BookingFlow({
         onLoad={() => setMpReady(true)}
       />
 
-      <header className="flex items-center justify-between px-6 py-4 bg-studio-bg/95 backdrop-blur-sm z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-full bg-white shadow-soft border border-stone-100 flex items-center justify-center shrink-0">
-            <Image
-              src="/brand/logo.png"
-              alt="Ícone Estúdio Corpo & Alma Humanizado"
-              width={28}
-              height={28}
-              className="h-7 w-7 object-contain"
-              priority
-            />
-          </div>
-          <div className="leading-tight min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              Agendamento online
-            </p>
-            <p className="text-sm font-serif text-studio-text truncate">
-              Estúdio Corpo & Alma Humanizado
-            </p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cliente</p>
-          <p className="text-sm font-bold text-studio-text">{clientHeaderFirstName}</p>
-        </div>
-      </header>
+      <BookingHeader clientName={clientHeaderFirstName} />
 
       <main className="flex-1 relative overflow-hidden flex flex-col">
         {step === "WELCOME" && (
-          <section className="flex-1 flex flex-col justify-between px-6 pb-10 pt-3 overflow-y-auto no-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="pt-8 text-center">
-              <div className="mx-auto mb-8 flex items-center justify-center">
-                <Image
-                  src="/brand/logo.png"
-                  alt="Estúdio Corpo & Alma Humanizado"
-                  width={132}
-                  height={132}
-                  className="h-33 w-33 object-contain"
-                  priority
-                />
-              </div>
-              <h1 className="text-4xl font-serif font-medium text-studio-text mb-4 leading-tight">
-                Seu momento de<br />pausa começa aqui.
-              </h1>
-              <p className="text-gray-400 text-sm leading-relaxed max-w-62.5 mx-auto font-medium">
-                Agendamento simples, rápido e pensado no seu bem-estar.
-              </p>
-            </div>
-
-            <div className="space-y-4 pb-6">
-              <button
-                type="button"
-                onClick={() => setStep("IDENT")}
-                className="w-full h-16 bg-studio-green-dark text-white rounded-2xl font-bold uppercase tracking-widest text-sm shadow-xl flex items-center justify-center hover:bg-studio-green transition-colors"
-              >
-                Agendar Agora
-              </button>
-              <button
-                type="button"
-                onClick={handleTalkToFlora}
-                className="w-full py-4 text-studio-text font-bold text-sm hover:underline"
-              >
-                Falar com a Flora (Assistente)
-              </button>
-
-            </div>
-          </section>
+          <WelcomeStep
+            onStart={() => setStep("IDENT")}
+            onTalkToAssistant={handleTalkToFlora}
+          />
         )}
 
         {step === "IDENT" && (
