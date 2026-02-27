@@ -22,6 +22,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MonthCalendar } from "../../../components/agenda/month-calendar";
 import { PaymentMethodIcon } from "../../../components/ui/payment-method-icon";
+import { GoogleMapsAddressButton } from "./components/google-maps-address-button";
+import {
+  buildAddressQuery,
+  buildCreatedMessage,
+  buildDraftItemId,
+  formatClientAddress,
+  isValidEmailAddress,
+  normalizePhoneSearchDigits,
+  splitSeedName,
+} from "./appointment-form.helpers";
 import {
   createAppointment,
   createAppointmentForImmediateCharge,
@@ -42,8 +52,6 @@ import { getAvailableSlots, getDateBlockStatus, getMonthAvailableDays } from "./
 import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Toast, useToast } from "../../../components/ui/toast";
 import { fetchAddressByCep, formatCep, normalizeCep } from "../../../src/shared/address/cep";
-import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.types";
-import { applyAutoMessageTemplate } from "../../../src/shared/auto-messages.utils";
 import { formatCpf, normalizeCpfDigits } from "../../../src/shared/cpf";
 import { formatCurrencyInput, formatCurrencyLabel, parseDecimalInput } from "../../../src/shared/currency";
 import { formatMinutesSeconds, getRemainingSeconds } from "../../../src/shared/datetime";
@@ -54,277 +62,28 @@ import {
   normalizeReferenceLabel,
   resolveClientNames,
 } from "../../../src/modules/clients/name-profile";
-import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../lib/attendance/attendance-types";
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  duration_minutes: number;
-  accepts_home_visit?: boolean | null;
-  custom_buffer_minutes?: number | null;
-  description?: string | null;
-}
-
-interface AppointmentFormProps {
-  services: Service[];
-  clients: {
-    id: string;
-    name: string;
-    phone: string | null;
-    email?: string | null;
-    cpf?: string | null;
-    public_first_name?: string | null;
-    public_last_name?: string | null;
-    internal_reference?: string | null;
-  }[];
-  safeDate: string;
-  initialAppointment?: InitialAppointment | null;
-  returnTo?: string;
-  messageTemplates: AutoMessageTemplates;
-  signalPercentage: number;
-  pointEnabled: boolean;
-  pointTerminalName: string;
-  pointTerminalModel: string;
-  publicBaseUrl: string;
-  pixKeyValue: string;
-  pixKeyType: "cnpj" | "cpf" | "email" | "phone" | "evp" | null;
-}
-
-interface ClientAddress {
-  id: string;
-  label: string;
-  is_primary: boolean;
-  address_cep: string | null;
-  address_logradouro: string | null;
-  address_numero: string | null;
-  address_complemento: string | null;
-  address_bairro: string | null;
-  address_cidade: string | null;
-  address_estado: string | null;
-}
-
-interface AddressSearchResult {
-  id: string;
-  label: string;
-  placeId: string;
-}
-
-interface DisplacementEstimate {
-  distanceKm: number;
-  fee: number;
-  rule: "urban" | "road";
-}
-
-type AddressModalStep = "chooser" | "cep" | "search" | "form";
-type ClientSelectionMode = "idle" | "existing" | "new";
-type FinanceDraftItemType = "service" | "fee" | "addon" | "adjustment";
-type CollectionTimingDraft = "at_attendance" | "charge_now";
-type ChargeNowAmountMode = "full" | "signal";
-type ChargeNowMethodDraft = "cash" | "pix_mp" | "card" | "waiver";
-type BookingConfirmationStep = "review" | "creating_charge" | "charge_payment" | "charge_manual_prompt";
-
-interface FinanceDraftItem {
-  id: string;
-  type: FinanceDraftItemType;
-  label: string;
-  qty: number;
-  amount: number;
-}
-
-interface ChargeBookingState {
-  appointmentId: string;
-  date: string;
-  startTimeIso: string;
-  attendanceCode: string | null;
-  appointmentPaymentStatus: string | null;
-  checkout: CheckoutRow | null;
-  checkoutItems: CheckoutItem[];
-  payments: PaymentRow[];
-}
-
-type ChargePaymentStatus = "paid" | "pending" | "failed";
-
-type BookingPixPaymentData = {
-  id: string;
-  order_id: string;
-  qr_code: string | null;
-  qr_code_base64: string | null;
-  expires_at: string;
-  transaction_amount: number;
-};
-
-type BookingPointPaymentData = {
-  id: string;
-  order_id: string;
-  internal_status: ChargePaymentStatus;
-  card_mode: "debit" | "credit";
-  transaction_amount: number;
-};
-
-type ClientRecordLite = {
-  id: string;
-  name: string;
-  phone: string | null;
-  email?: string | null;
-  cpf?: string | null;
-  public_first_name?: string | null;
-  public_last_name?: string | null;
-  internal_reference?: string | null;
-};
-
-interface InitialAppointment {
-  id: string;
-  serviceId: string | null;
-  date: string;
-  time: string;
-  clientId: string | null;
-  clientName: string;
-  clientPhone: string | null;
-  isHomeVisit: boolean;
-  clientAddressId: string | null;
-  addressCep: string | null;
-  addressLogradouro: string | null;
-  addressNumero: string | null;
-  addressComplemento: string | null;
-  addressBairro: string | null;
-  addressCidade: string | null;
-  addressEstado: string | null;
-  internalNotes: string | null;
-  priceOverride: number | null;
-  displacementFee?: number | null;
-  displacementDistanceKm?: number | null;
-}
-
-function normalizePhoneSearchDigits(value?: string | null) {
-  return (value ?? "").replace(/\D/g, "").slice(0, 13);
-}
-
-function isValidEmailAddress(value: string) {
-  if (!value.trim()) return true;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-function splitSeedName(value: string) {
-  const cleaned = value.trim();
-  if (!cleaned) {
-    return { firstName: "", lastName: "", reference: "" };
-  }
-  const match = cleaned.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-  const base = (match?.[1] ?? cleaned).trim();
-  const reference = normalizeReferenceLabel(match?.[2] ?? "");
-  const [firstName, ...rest] = base.split(/\s+/).filter(Boolean);
-  return {
-    firstName: firstName ?? "",
-    lastName: rest.join(" "),
-    reference,
-  };
-}
+import type {
+  AddressModalStep,
+  AddressSearchResult,
+  AppointmentFormProps,
+  BookingConfirmationStep,
+  BookingPixPaymentData,
+  BookingPointPaymentData,
+  ChargePaymentStatus,
+  ChargeBookingState,
+  ChargeNowAmountMode,
+  ChargeNowMethodDraft,
+  ClientAddress,
+  ClientRecordLite,
+  ClientSelectionMode,
+  CollectionTimingDraft,
+  DisplacementEstimate,
+  FinanceDraftItem,
+  FinanceDraftItemType,
+} from "./appointment-form.types";
 
 const parseDecimalText = parseDecimalInput;
 const formatCountdown = formatMinutesSeconds;
-
-function buildDraftItemId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function buildAddressQuery(payload: {
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-}) {
-  const parts = [
-    payload.logradouro,
-    payload.numero,
-    payload.complemento,
-    payload.bairro,
-    payload.cidade,
-    payload.estado,
-    payload.cep,
-  ].filter((value) => value && value.trim().length > 0);
-  return parts.join(", ");
-}
-
-function formatClientAddress(address: ClientAddress) {
-  const parts = [
-    address.address_logradouro,
-    address.address_numero,
-    address.address_complemento,
-    address.address_bairro,
-    address.address_cidade,
-    address.address_estado,
-    address.address_cep,
-  ].filter((value) => value && value.trim().length > 0);
-  return parts.join(", ");
-}
-
-function buildCreatedMessage(params: {
-  clientName: string;
-  date: string;
-  time: string;
-  serviceName: string;
-  locationLine?: string;
-  template: string;
-}) {
-  const name = params.clientName.trim();
-  const greeting = name ? `Olá, ${name}!` : "Olá!";
-  const dateTime = params.date && params.time ? `${params.date}T${params.time}:00` : params.date;
-  const startDate = dateTime ? parseISO(dateTime) : new Date();
-  const dayOfWeek = format(startDate, "EEEE", { locale: ptBR });
-  const dayOfWeekLabel = dayOfWeek ? `${dayOfWeek[0]?.toUpperCase() ?? ""}${dayOfWeek.slice(1)}` : "";
-  const dateLabel = params.date
-    ? format(parseISO(params.date), "dd/MM", { locale: ptBR })
-    : format(startDate, "dd/MM", { locale: ptBR });
-  const timeLabel = params.time || format(startDate, "HH:mm", { locale: ptBR });
-  const dateLine = [dayOfWeekLabel, dateLabel].filter(Boolean).join(", ");
-  const serviceSegment = params.serviceName ? ` 💆‍♀️ Serviço: ${params.serviceName}` : "";
-
-  return applyAutoMessageTemplate(params.template, {
-    greeting,
-    date_line: dateLine,
-    time: timeLabel,
-    service_name: params.serviceName,
-    location_line: params.locationLine || "No estúdio",
-    service_segment: serviceSegment,
-  }).trim();
-}
-
-function buildGoogleMapsSearchHref(query: string | null | undefined) {
-  const normalized = (query ?? "").trim();
-  if (!normalized) return null;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(normalized)}`;
-}
-
-function GoogleMapsAddressButton({ query }: { query: string | null | undefined }) {
-  const href = buildGoogleMapsSearchHref(query);
-  if (!href) return null;
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="shrink-0 w-9 h-9 rounded-xl border border-dom/35 bg-white text-dom-strong hover:bg-dom/15 transition flex items-center justify-center"
-      aria-label="Abrir endereço no Google Maps"
-      title="Ver no Google Maps"
-    >
-      <Image
-        src="/icons/google-maps-icon-official.svg"
-        alt=""
-        width={18}
-        height={18}
-        className="h-4.5 w-4.5"
-      />
-    </a>
-  );
-}
 
 export function AppointmentForm({
   services,
