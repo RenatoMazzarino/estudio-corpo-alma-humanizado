@@ -1,22 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Eye,
-  Wallet,
-  MapPin,
-  MessageSquare,
   User,
 } from "lucide-react";
 import Image from "next/image";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
-import { PaymentMethodIcon } from "../ui/payment-method-icon";
 import { AppointmentDetailsActiveView } from "./appointment-details-active-view";
 import { AppointmentDetailsCancelDialog } from "./appointment-details-cancel-dialog";
+import { AppointmentDetailsCompletedView } from "./appointment-details-completed-view";
 import { AppointmentDetailsEvolutionModal } from "./appointment-details-evolution-modal";
+import { useAppointmentDetailsSheetController } from "./use-appointment-details-sheet-controller";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
@@ -58,8 +54,6 @@ interface AppointmentDetailsSheetProps {
   onNotify?: (feedback: UserFeedback) => void;
 }
 
-type PaymentMethod = "pix" | "card" | "cash" | "other";
-
 export function AppointmentDetailsSheet({
   open,
   loading = false,
@@ -83,77 +77,35 @@ export function AppointmentDetailsSheet({
   onStructureEvolution,
   onNotify,
 }: AppointmentDetailsSheetProps) {
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [notifyClientOnCancel, setNotifyClientOnCancel] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
-  const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
-  const [evolutionDraft, setEvolutionDraft] = useState("");
-  const [evolutionSaving, setEvolutionSaving] = useState(false);
-  const [evolutionStructuring, setEvolutionStructuring] = useState(false);
-  const sheetRef = useRef<HTMLDivElement | null>(null);
-  const dragStartRef = useRef<number | null>(null);
-  const dragOffsetRef = useRef(0);
-
-  useEffect(() => {
-    setPortalTarget(document.getElementById("app-frame"));
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      setCancelDialogOpen(false);
-      setNotifyClientOnCancel(false);
-      setDragOffset(0);
-      setEvolutionModalOpen(false);
-      setEvolutionSaving(false);
-      setEvolutionStructuring(false);
-      dragOffsetRef.current = 0;
-      return;
-    }
-    setCancelDialogOpen(false);
-    setNotifyClientOnCancel(false);
-    setDragOffset(0);
-    setPaymentMethod("pix");
-    setEvolutionModalOpen(false);
-    setEvolutionSaving(false);
-    setEvolutionStructuring(false);
-    setEvolutionDraft(details?.evolution?.[0]?.evolution_text?.trim() ?? "");
-    dragOffsetRef.current = 0;
-  }, [open, details?.appointment?.id, details?.evolution]);
-
-  const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    dragStartRef.current = event.clientY;
-    dragOffsetRef.current = 0;
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-
-  const handleDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragStartRef.current === null) return;
-    const delta = Math.max(0, event.clientY - dragStartRef.current);
-    dragOffsetRef.current = delta;
-    setDragOffset(delta);
-  };
-
-  const finishDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragStartRef.current === null) return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    const sheetHeight = sheetRef.current?.getBoundingClientRect().height ?? 0;
-    const threshold = Math.max(80, sheetHeight * 0.25);
-    const finalOffset = dragOffsetRef.current;
-    dragStartRef.current = null;
-    setIsDragging(false);
-    if (finalOffset > threshold) {
-      setDragOffset(0);
-      dragOffsetRef.current = 0;
-      onClose();
-      return;
-    }
-    setDragOffset(0);
-    dragOffsetRef.current = 0;
-  };
+  const {
+    portalTarget,
+    cancelDialogOpen,
+    notifyClientOnCancel,
+    dragOffset,
+    isDragging,
+    paymentMethod,
+    evolutionModalOpen,
+    evolutionDraft,
+    evolutionSaving,
+    evolutionStructuring,
+    sheetRef,
+    setCancelDialogOpen,
+    setNotifyClientOnCancel,
+    setPaymentMethod,
+    setEvolutionModalOpen,
+    setEvolutionDraft,
+    handleDragStart,
+    handleDragMove,
+    finishDrag,
+    handleStructureEvolution,
+    handleSaveEvolution,
+  } = useAppointmentDetailsSheetController({
+    open,
+    details,
+    onClose,
+    onSaveEvolution,
+    onStructureEvolution,
+  });
 
   if (!open || !portalTarget) return null;
 
@@ -380,26 +332,6 @@ export function AppointmentDetailsSheet({
         ? "ID cliente de apoio"
         : null;
 
-  const handleStructureEvolution = async () => {
-    if (!onStructureEvolution || !evolutionDraft.trim()) return;
-    setEvolutionStructuring(true);
-    const result = await onStructureEvolution(evolutionDraft);
-    if (result.ok && result.structuredText) {
-      setEvolutionDraft(result.structuredText);
-    }
-    setEvolutionStructuring(false);
-  };
-
-  const handleSaveEvolution = async () => {
-    if (!onSaveEvolution) return;
-    setEvolutionSaving(true);
-    const result = await onSaveEvolution(evolutionDraft);
-    setEvolutionSaving(false);
-    if (result.ok) {
-      setEvolutionModalOpen(false);
-    }
-  };
-
   return createPortal(
     <div className="absolute inset-0 z-50 flex items-end justify-center pointer-events-none">
       <button
@@ -474,224 +406,44 @@ export function AppointmentDetailsSheet({
 
           {!loading && details && (
             isCompleted ? (
-              <div className="mt-6 space-y-5">
-                <section>
-                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                    <MapPin className="w-3.5 h-3.5" />
-                    Logística
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                      <span className="text-xs font-bold text-studio-text block">{dateLabel}</span>
-                      <span className="text-[10px] font-bold text-muted uppercase">{timeLabel}</span>
-                    </div>
-                    <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                      <span className="text-xs font-bold text-studio-text block">{durationLabel}</span>
-                      <span className="text-[10px] font-bold text-muted uppercase">Duração</span>
-                    </div>
-                    <div className="bg-white rounded-2xl p-3 border border-line text-center">
-                      <span className="text-xs font-bold text-studio-text block">
-                        {isHomeVisit ? "Domicílio" : "Estúdio"}
-                      </span>
-                      <span className="text-[10px] font-bold text-muted uppercase">Local</span>
-                    </div>
-                  </div>
-                  {attendanceCode && (
-                    <div className="mt-3 rounded-2xl border border-line bg-paper px-3 py-2.5">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                          Código de atendimento
-                        </span>
-                        <code className="text-xs font-extrabold tracking-[0.08em] text-studio-text">
-                          {attendanceCode}
-                        </code>
-                      </div>
-                      {attendanceCodeHint && (
-                        <p className="mt-1 text-[10px] text-muted">{attendanceCodeHint}</p>
-                      )}
-                    </div>
-                  )}
-                  {isHomeVisit && hasAddress && mapsHref && (
-                    <a
-                      href={mapsHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-dom-strong"
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      Abrir localização
-                    </a>
-                  )}
-                </section>
-
-                <section>
-                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                    <Wallet className="w-3.5 h-3.5" />
-                    Pagamento
-                  </div>
-                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">Status</span>
-                      <span className={`font-extrabold ${paymentInfo.textClass}`}>{paymentStatusLabel}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">Valor pago</span>
-                      <span className="font-bold text-studio-text">{formatCurrency(paidAmount)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">Método</span>
-                      <span className="font-bold text-studio-text">{latestPaymentMethod}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">A receber</span>
-                      <span className="font-bold text-studio-text">{formatCurrency(remainingAmount)}</span>
-                    </div>
-
-                    <div className="pt-2 flex flex-wrap gap-2">
-                      <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-stone-100 text-muted">
-                        {hasReceiptSent ? "Recibo enviado" : "Recibo pendente"}
-                      </span>
-                      <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-stone-100 text-muted">
-                        {hasChargeSent ? "Cobrança enviada" : "Cobrança pendente"}
-                      </span>
-                    </div>
-
-                    {paymentStatus !== "paid" && paymentStatus !== "waived" && (
-                      <div className="border-t border-line pt-3">
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                          Incluir pagamento manual
-                        </p>
-                        <div className="mt-2 grid grid-cols-3 gap-2">
-                          {([
-                            { key: "pix", label: "Pix", icon: <PaymentMethodIcon method="pix" className="h-3.5 w-3.5" /> },
-                            { key: "card", label: "Cartão", icon: <PaymentMethodIcon method="card" className="h-3.5 w-3.5" /> },
-                            { key: "cash", label: "Dinheiro", icon: <PaymentMethodIcon method="cash" className="h-3.5 w-3.5" /> },
-                          ] as const).map((item) => (
-                            <button
-                              key={item.key}
-                              type="button"
-                              onClick={() => setPaymentMethod(item.key)}
-                              disabled={actionPending}
-                              className={`h-9 rounded-xl text-[10px] font-extrabold border transition ${
-                                paymentMethod === item.key
-                                  ? "border-studio-green bg-studio-light text-studio-green"
-                                  : "border-line text-muted hover:bg-paper"
-                              } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                            >
-                              <span className="flex items-center justify-center gap-1.5">
-                                {item.icon}
-                                {item.label}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={onSendPaymentCharge}
-                            disabled={actionPending}
-                            className="h-10 rounded-xl border border-studio-text/10 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
-                          >
-                            {hasChargeSent ? "Reenviar cobrança" : "Enviar cobrança"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onRecordPayment?.({
-                                type: "full",
-                                amount: remainingAmount,
-                                method: paymentMethod,
-                              })
-                            }
-                            disabled={actionPending || remainingAmount <= 0}
-                            className="h-10 rounded-xl border border-studio-green bg-studio-light text-[10px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-60"
-                          >
-                            Incluir pagamento
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {paymentStatus === "paid" && (
-                      <div className="border-t border-line pt-3">
-                        <button
-                          type="button"
-                          onClick={() => onSendPaymentReceipt(lastPaid?.id ?? null)}
-                          disabled={actionPending || !lastPaid?.id}
-                          className="w-full h-10 rounded-xl border border-studio-green bg-studio-light text-[10px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-60"
-                        >
-                          {!lastPaid?.id
-                            ? "Recibo indisponível"
-                            : hasReceiptSent
-                              ? "Reenviar recibo"
-                              : "Enviar recibo"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                <section>
-                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    Avaliação e feedback
-                  </div>
-                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">Pesquisa</span>
-                      <span className="font-bold text-studio-text">{hasSurveySent ? "Enviada" : "Pendente"}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">Resposta</span>
-                      <span className="font-bold text-studio-text">
-                        {details.post?.survey_score !== null && details.post?.survey_score !== undefined
-                          ? `Nota ${details.post?.survey_score}`
-                          : "Sem resposta"}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onSendSurvey}
-                      disabled={actionPending}
-                      className="w-full h-10 rounded-xl border border-studio-text/10 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
-                    >
-                      {hasSurveySent ? "Reenviar pesquisa" : "Enviar pesquisa"}
-                    </button>
-                  </div>
-                </section>
-
-                <section>
-                  <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                    <Eye className="w-3.5 h-3.5" />
-                    Follow-up e evolução
-                  </div>
-                  <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">Próximo contato</span>
-                      <span className="font-bold text-studio-text">{followUpDateLabel}</span>
-                    </div>
-                    <div className="text-xs text-muted">{followUpNoteLabel}</div>
-
-                    <div className="rounded-xl border border-line bg-paper p-3">
-                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted mb-1">
-                        Evolução da sessão
-                      </p>
-                      <p className="max-h-24 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-studio-text">
-                        {evolutionPreviewText}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setEvolutionModalOpen(true)}
-                      disabled={actionPending}
-                      className="mt-1 w-full h-10 rounded-xl bg-studio-green text-[10px] font-extrabold uppercase tracking-wide text-white disabled:opacity-60"
-                    >
-                      Editar evolução
-                    </button>
-                  </div>
-                </section>
-              </div>
+              <AppointmentDetailsCompletedView
+                actionPending={actionPending}
+                dateLabel={dateLabel}
+                timeLabel={timeLabel}
+                durationLabel={durationLabel}
+                isHomeVisit={isHomeVisit}
+                hasAddress={hasAddress}
+                mapsHref={mapsHref}
+                attendanceCode={attendanceCode}
+                attendanceCodeHint={attendanceCodeHint}
+                paymentInfo={{ textClass: paymentInfo.textClass }}
+                paymentStatusLabel={paymentStatusLabel}
+                paidAmountLabel={formatCurrency(paidAmount)}
+                latestPaymentMethod={latestPaymentMethod}
+                remainingAmountLabel={formatCurrency(remainingAmount)}
+                hasReceiptSent={hasReceiptSent}
+                hasChargeSent={hasChargeSent}
+                paymentStatus={paymentStatus}
+                paymentMethod={paymentMethod}
+                remainingAmount={remainingAmount}
+                followUpDateLabel={followUpDateLabel}
+                followUpNoteLabel={followUpNoteLabel}
+                evolutionPreviewText={evolutionPreviewText}
+                surveyScore={details.post?.survey_score ?? null}
+                hasSurveySent={hasSurveySent}
+                onSelectPaymentMethod={setPaymentMethod}
+                onSendPaymentCharge={onSendPaymentCharge}
+                onRecordPayment={() =>
+                  onRecordPayment?.({
+                    type: "full",
+                    amount: remainingAmount,
+                    method: paymentMethod,
+                  })
+                }
+                onSendPaymentReceipt={() => onSendPaymentReceipt(lastPaid?.id ?? null)}
+                onSendSurvey={onSendSurvey}
+                onOpenEvolutionModal={() => setEvolutionModalOpen(true)}
+              />
             ) : (
               <AppointmentDetailsActiveView
                 actionPending={actionPending}
