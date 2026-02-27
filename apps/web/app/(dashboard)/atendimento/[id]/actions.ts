@@ -22,10 +22,6 @@ import {
   savePostSchema,
   setCheckoutItemsSchema,
   setDiscountSchema,
-  timerPauseSchema,
-  timerResumeSchema,
-  timerStartSchema,
-  timerSyncSchema,
 } from "../../../../src/shared/validation/attendance";
 import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
 import { getAttendanceOverview, insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
@@ -36,6 +32,12 @@ import {
   recalculateCheckoutPaymentStatus,
 } from "../../../../src/modules/attendance/checkout-service";
 import { fallbackStructuredEvolution } from "../../../../src/modules/attendance/evolution-format";
+import {
+  pauseTimerOperation,
+  resumeTimerOperation,
+  startTimerOperation,
+  syncTimerOperation,
+} from "../../../../src/modules/attendance/timer-actions";
 import { insertTransaction } from "../../../../src/modules/finance/repository";
 import {
   createPixOrderForAppointment,
@@ -1021,125 +1023,19 @@ export async function confirmCheckout(payload: { appointmentId: string }): Promi
 export async function startTimer(payload: { appointmentId: string; plannedSeconds?: number | null }): Promise<ActionResult<{ appointmentId: string }>> {
 
   await requireDashboardAccessForServerAction();
-  const parsed = timerStartSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { data: attendance } = await supabase
-    .from("appointment_attendances")
-    .select("timer_status, timer_started_at")
-    .eq("appointment_id", parsed.data.appointmentId)
-    .maybeSingle();
-
-  if (attendance?.timer_status === "running") {
-    return ok({ appointmentId: parsed.data.appointmentId });
-  }
-
-  const startedAt = attendance?.timer_started_at ?? new Date().toISOString();
-  const { error } = await supabase.from("appointment_attendances").upsert(
-    {
-      appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
-      timer_status: "running",
-      timer_started_at: startedAt,
-      timer_paused_at: null,
-      planned_seconds: parsed.data.plannedSeconds ?? undefined,
-    },
-    { onConflict: "appointment_id" }
-  );
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
-    status: "in_progress",
-    started_at: startedAt,
-  });
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "timer_started",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return startTimerOperation(payload);
 }
 
 export async function pauseTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
 
   await requireDashboardAccessForServerAction();
-  const parsed = timerPauseSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("appointment_attendances")
-    .update({ timer_status: "paused", timer_paused_at: now })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "timer_paused",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return pauseTimerOperation(payload);
 }
 
 export async function resumeTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
 
   await requireDashboardAccessForServerAction();
-  const parsed = timerResumeSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { data: attendance } = await supabase
-    .from("appointment_attendances")
-    .select("timer_started_at, timer_paused_at, paused_total_seconds")
-    .eq("appointment_id", parsed.data.appointmentId)
-    .maybeSingle();
-
-  if (!attendance?.timer_paused_at) {
-    return ok({ appointmentId: parsed.data.appointmentId });
-  }
-
-  const pausedAt = new Date(attendance.timer_paused_at).getTime();
-  const now = Date.now();
-  const pausedSeconds = Math.floor((now - pausedAt) / 1000);
-  const nextPausedTotal = (attendance.paused_total_seconds ?? 0) + Math.max(0, pausedSeconds);
-
-  const { error } = await supabase
-    .from("appointment_attendances")
-    .update({
-      timer_status: "running",
-      timer_paused_at: null,
-      paused_total_seconds: nextPausedTotal,
-    })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "timer_resumed",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return resumeTimerOperation(payload);
 }
 
 export async function syncTimer(payload: {
@@ -1153,28 +1049,7 @@ export async function syncTimer(payload: {
 }): Promise<ActionResult<{ appointmentId: string }>> {
 
   await requireDashboardAccessForServerAction();
-  const parsed = timerSyncSchema.safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from("appointment_attendances")
-    .update({
-      timer_status: parsed.data.timerStatus,
-      timer_started_at: parsed.data.timerStartedAt,
-      timer_paused_at: parsed.data.timerPausedAt,
-      paused_total_seconds: parsed.data.pausedTotalSeconds,
-      planned_seconds: parsed.data.plannedSeconds ?? undefined,
-      actual_seconds: parsed.data.actualSeconds ?? undefined,
-    })
-    .eq("appointment_id", parsed.data.appointmentId);
-
-  const mapped = mapSupabaseError(error);
-  if (mapped) return fail(mapped);
-
-  return ok({ appointmentId: parsed.data.appointmentId });
+  return syncTimerOperation(payload);
 }
 
 export async function savePost(payload: {
