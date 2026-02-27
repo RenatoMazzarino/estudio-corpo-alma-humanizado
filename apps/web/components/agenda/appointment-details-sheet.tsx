@@ -8,18 +8,18 @@ import {
   Bell,
   CheckCircle2,
   Eye,
-  Sparkles,
   Wallet,
   MapPin,
   MessageSquare,
   StickyNote,
   ThumbsUp,
   User,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
 import { PaymentMethodIcon } from "../ui/payment-method-icon";
+import { AppointmentDetailsCancelDialog } from "./appointment-details-cancel-dialog";
+import { AppointmentDetailsEvolutionModal } from "./appointment-details-evolution-modal";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
 import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
@@ -1067,68 +1067,20 @@ export function AppointmentDetailsSheet({
           )}
         </div>
 
-        {isCompleted && evolutionModalOpen && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center px-4">
-            <button
-              type="button"
-              aria-label="Fechar edição de evolução"
-              onClick={() => setEvolutionModalOpen(false)}
-              className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-            />
-            <div className="relative z-10 w-full max-w-96 rounded-3xl border border-line bg-white shadow-float">
-              <div className="flex items-center justify-between border-b border-line px-4 py-3">
-                <div>
-                  <p className="text-sm font-bold text-studio-text">Evolução</p>
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                    Edite sem sair do pós-atendimento
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEvolutionModalOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-studio-text"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3 p-4">
-                <div className="flex items-center justify-end">
-                  <button
-                    type="button"
-                    onClick={() => void handleStructureEvolution()}
-                    disabled={!onStructureEvolution || !evolutionDraft.trim() || evolutionStructuring || evolutionSaving || actionPending}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-studio-green/30 bg-white text-studio-green disabled:opacity-50"
-                    aria-label="Organizar com Flora"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <textarea
-                  value={evolutionDraft}
-                  onChange={(event) => setEvolutionDraft(event.target.value)}
-                  className="min-h-44 w-full resize-y rounded-2xl border border-line bg-paper p-4 text-sm text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  placeholder="Descreva a evolução da sessão..."
-                />
-
-                <p className="text-[11px] font-semibold text-muted">
-                  {evolutionStructuring
-                    ? "Flora está organizando o texto..."
-                    : "Edite livremente e, se quiser, use a varinha para estruturar."}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => void handleSaveEvolution()}
-                  disabled={!onSaveEvolution || evolutionSaving || evolutionStructuring || actionPending}
-                  className="h-11 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
-                >
-                  {evolutionSaving ? "Salvando..." : "Salvar evolução"}
-                </button>
-              </div>
-            </div>
-          </div>
+        {isCompleted && (
+          <AppointmentDetailsEvolutionModal
+            open={evolutionModalOpen}
+            draft={evolutionDraft}
+            saving={evolutionSaving}
+            structuring={evolutionStructuring}
+            actionPending={actionPending}
+            canSave={Boolean(onSaveEvolution)}
+            canStructure={Boolean(onStructureEvolution)}
+            onClose={() => setEvolutionModalOpen(false)}
+            onChangeDraft={setEvolutionDraft}
+            onStructure={() => void handleStructureEvolution()}
+            onSave={() => void handleSaveEvolution()}
+          />
         )}
 
         {!isCompleted && (
@@ -1145,57 +1097,21 @@ export function AppointmentDetailsSheet({
         )}
       </div>
 
-      {cancelDialogOpen && (
-        <div className="absolute inset-0 z-60 flex items-center justify-center pointer-events-auto">
-          <button
-            type="button"
-            aria-label="Fechar confirmação"
-            onClick={() => setCancelDialogOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <div className="relative mx-6 w-full max-w-xs rounded-2xl bg-white p-5 shadow-float">
-            <h3 className="text-sm font-extrabold text-studio-text">Cancelar agendamento?</h3>
-            <p className="text-xs text-muted mt-2">
-              Se cancelar, este card vai sumir da agenda e o horário ficará livre novamente.
-            </p>
-            <label className="mt-4 flex items-start gap-3 rounded-xl border border-line bg-studio-light/40 px-3 py-3">
-              <input
-                type="checkbox"
-                checked={notifyClientOnCancel}
-                onChange={(event) => setNotifyClientOnCancel(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-line text-studio-green focus:ring-studio-green"
-              />
-              <span className="text-[11px] leading-4 text-studio-text">
-                Avisar cliente por WhatsApp (se a janela de conversa estiver aberta).
-              </span>
-            </label>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCancelDialogOpen(false);
-                  setNotifyClientOnCancel(false);
-                }}
-                className="flex-1 rounded-full border border-line px-3 py-2 text-[10px] font-extrabold text-studio-text"
-              >
-                Manter
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCancelDialogOpen(false);
-                  onCancelAppointment({ notifyClient: notifyClientOnCancel });
-                  setNotifyClientOnCancel(false);
-                }}
-                disabled={actionPending}
-                className="flex-1 rounded-full bg-red-600 px-3 py-2 text-[10px] font-extrabold text-white transition disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppointmentDetailsCancelDialog
+        open={cancelDialogOpen}
+        notifyClientOnCancel={notifyClientOnCancel}
+        actionPending={actionPending}
+        onClose={() => {
+          setCancelDialogOpen(false);
+          setNotifyClientOnCancel(false);
+        }}
+        onChangeNotifyClient={setNotifyClientOnCancel}
+        onConfirmCancel={() => {
+          setCancelDialogOpen(false);
+          onCancelAppointment({ notifyClient: notifyClientOnCancel });
+          setNotifyClientOnCancel(false);
+        }}
+      />
     </div>,
     portalTarget
   );
