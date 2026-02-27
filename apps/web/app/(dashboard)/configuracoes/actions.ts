@@ -158,6 +158,12 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   const buffer_before_minutes = Number(formData.get("buffer_before_minutes"));
   const buffer_after_minutes = Number(formData.get("buffer_after_minutes"));
   const signal_percentage = Number(formData.get("signal_percentage"));
+  const public_booking_cutoff_before_close_minutes = Number(
+    formData.get("public_booking_cutoff_before_close_minutes")
+  );
+  const public_booking_last_slot_before_close_minutes = Number(
+    formData.get("public_booking_last_slot_before_close_minutes")
+  );
   const public_base_url = (formData.get("public_base_url") as string | null)?.trim() ?? "";
   const mp_point_enabled = formData.get("mp_point_enabled") === "on";
   const mp_point_terminal_id = (formData.get("mp_point_terminal_id") as string | null)?.trim() ?? "";
@@ -186,6 +192,34 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
     return fail(new AppError("Percentual de sinal inválido", "VALIDATION_ERROR", 400));
   }
 
+  if (
+    Number.isNaN(public_booking_cutoff_before_close_minutes) ||
+    public_booking_cutoff_before_close_minutes < 0 ||
+    public_booking_cutoff_before_close_minutes > 720
+  ) {
+    return fail(
+      new AppError(
+        "Regra de bloqueio do agendamento online inválida (use 0 a 720 minutos).",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
+  if (
+    Number.isNaN(public_booking_last_slot_before_close_minutes) ||
+    public_booking_last_slot_before_close_minutes < 0 ||
+    public_booking_last_slot_before_close_minutes > 720
+  ) {
+    return fail(
+      new AppError(
+        "Regra do último horário online inválida (use 0 a 720 minutos).",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
+  }
+
   if (public_base_url && !/^https?:\/\//i.test(public_base_url)) {
     return fail(new AppError("URL pública inválida (use http/https)", "VALIDATION_ERROR", 400));
   }
@@ -208,6 +242,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
     default_studio_buffer: legacyTotal,
     default_home_buffer: legacyTotal,
     signal_percentage,
+    public_booking_cutoff_before_close_minutes,
+    public_booking_last_slot_before_close_minutes,
     public_base_url: public_base_url || null,
     mp_point_enabled,
     mp_point_terminal_id: mp_point_terminal_id || null,

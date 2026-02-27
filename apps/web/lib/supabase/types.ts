@@ -1409,6 +1409,8 @@ export type Database = {
           mp_point_terminal_model: string | null
           mp_point_terminal_name: string | null
           public_base_url: string | null
+          public_booking_cutoff_before_close_minutes: number | null
+          public_booking_last_slot_before_close_minutes: number | null
           signal_percentage: number | null
           spotify_access_token: string | null
           spotify_account_id: string | null
@@ -1437,6 +1439,8 @@ export type Database = {
           mp_point_terminal_model?: string | null
           mp_point_terminal_name?: string | null
           public_base_url?: string | null
+          public_booking_cutoff_before_close_minutes?: number | null
+          public_booking_last_slot_before_close_minutes?: number | null
           signal_percentage?: number | null
           spotify_access_token?: string | null
           spotify_account_id?: string | null
@@ -1465,6 +1469,8 @@ export type Database = {
           mp_point_terminal_model?: string | null
           mp_point_terminal_name?: string | null
           public_base_url?: string | null
+          public_booking_cutoff_before_close_minutes?: number | null
+          public_booking_last_slot_before_close_minutes?: number | null
           signal_percentage?: number | null
           spotify_access_token?: string | null
           spotify_account_id?: string | null

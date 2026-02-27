@@ -68,6 +68,12 @@ export default async function ConfiguracoesPage() {
           30
         }
         signalPercentage={settingsData?.signal_percentage ?? 30}
+        publicBookingCutoffBeforeCloseMinutes={
+          settingsData?.public_booking_cutoff_before_close_minutes ?? 60
+        }
+        publicBookingLastSlotBeforeCloseMinutes={
+          settingsData?.public_booking_last_slot_before_close_minutes ?? 30
+        }
         publicBaseUrl={settingsData?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
         pointEnabled={settingsData?.mp_point_enabled ?? false}
         pointTerminalId={settingsData?.mp_point_terminal_id ?? ""}

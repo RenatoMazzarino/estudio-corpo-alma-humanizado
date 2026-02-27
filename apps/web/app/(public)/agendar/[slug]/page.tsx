@@ -57,7 +57,6 @@ export default async function PublicBookingPage(props: PageProps) {
     description: service.description ?? "",
     custom_buffer_minutes: service.custom_buffer_minutes ?? 0,
   }));
-
   return (
     <div className="app-viewport flex justify-center items-stretch bg-neutral-900">
       <div id="app-frame" className="app-frame bg-studio-bg relative shadow-2xl overflow-hidden">
@@ -66,6 +65,12 @@ export default async function PublicBookingPage(props: PageProps) {
             tenant={tenant}
             services={services}
             signalPercentage={settings?.signal_percentage ?? 30}
+            publicBookingCutoffBeforeCloseMinutes={
+              settings?.public_booking_cutoff_before_close_minutes ?? 60
+            }
+            publicBookingLastSlotBeforeCloseMinutes={
+              settings?.public_booking_last_slot_before_close_minutes ?? 30
+            }
             whatsappNumber={whatsappNumber}
             mercadoPagoPublicKey={mercadoPagoPublicKey}
           />

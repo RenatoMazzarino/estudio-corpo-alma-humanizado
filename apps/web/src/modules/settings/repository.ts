@@ -14,7 +14,7 @@ export async function getSettings(tenantId: string) {
   return supabase
     .from("settings")
     .select(
-      "default_home_buffer, default_studio_buffer, buffer_before_minutes, buffer_after_minutes, signal_percentage, public_base_url, mp_point_enabled, mp_point_terminal_id, mp_point_terminal_name, mp_point_terminal_model, mp_point_terminal_external_id, attendance_checklist_enabled, attendance_checklist_items, spotify_enabled, spotify_playlist_url, spotify_connected_at, spotify_account_id, spotify_account_name, spotify_access_token, spotify_refresh_token, spotify_token_expires_at"
+      "default_home_buffer, default_studio_buffer, buffer_before_minutes, buffer_after_minutes, signal_percentage, public_base_url, public_booking_cutoff_before_close_minutes, public_booking_last_slot_before_close_minutes, mp_point_enabled, mp_point_terminal_id, mp_point_terminal_name, mp_point_terminal_model, mp_point_terminal_external_id, attendance_checklist_enabled, attendance_checklist_items, spotify_enabled, spotify_playlist_url, spotify_connected_at, spotify_account_id, spotify_account_name, spotify_access_token, spotify_refresh_token, spotify_token_expires_at"
     )
     .eq("tenant_id", tenantId)
     .single();

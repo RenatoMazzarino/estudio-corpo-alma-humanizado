@@ -74,6 +74,8 @@ interface BookingFlowProps {
   tenant: Tenant;
   services: Service[];
   signalPercentage?: number | null;
+  publicBookingCutoffBeforeCloseMinutes?: number | null;
+  publicBookingLastSlotBeforeCloseMinutes?: number | null;
   whatsappNumber?: string | null;
   mercadoPagoPublicKey?: string | null;
 }
@@ -160,10 +162,44 @@ function formatCpf(value: string) {
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
+function parseTimeToMinutes(time: string) {
+  const [hourRaw, minuteRaw] = time.split(":");
+  const hour = Number(hourRaw ?? "0");
+  const minute = Number(minuteRaw ?? "0");
+  return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
+}
+
+function getBrazilDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+function getBrazilMinutes(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
+}
+
 export function BookingFlow({
   tenant,
   services,
   signalPercentage,
+  publicBookingCutoffBeforeCloseMinutes,
+  publicBookingLastSlotBeforeCloseMinutes,
   whatsappNumber,
   mercadoPagoPublicKey,
 }: BookingFlowProps) {
@@ -304,6 +340,12 @@ export function BookingFlow({
   const normalizedSignalPercentage = Number.isFinite(Number(signalPercentage))
     ? Math.min(Math.max(Number(signalPercentage), 0), 100)
     : 30;
+  const onlineCutoffBeforeCloseMinutes = Number.isFinite(Number(publicBookingCutoffBeforeCloseMinutes))
+    ? Math.max(0, Number(publicBookingCutoffBeforeCloseMinutes))
+    : 60;
+  const onlineLastSlotBeforeCloseMinutes = Number.isFinite(Number(publicBookingLastSlotBeforeCloseMinutes))
+    ? Math.max(0, Number(publicBookingLastSlotBeforeCloseMinutes))
+    : 30;
   const signalAmount = Number((totalPrice * (normalizedSignalPercentage / 100)).toFixed(2));
   const payableSignalAmount = Number(
     Math.max(signalAmount, minimumMercadoPagoAmount).toFixed(2)
@@ -397,8 +439,33 @@ export function BookingFlow({
   const progressIndex = progressSteps.indexOf(step as (typeof progressSteps)[number]);
   const showFooter = step !== "WELCOME" && step !== "SUCCESS";
   const showNextButton = step !== "PAYMENT";
+  const filterOnlineBookingSlots = useCallback((dateIso: string, slots: string[]) => {
+    if (!dateIso || slots.length === 0) return slots;
+    const parsedSlotMinutes = slots
+      .map((slot) => parseTimeToMinutes(slot))
+      .filter((minutes) => Number.isFinite(minutes));
+    if (parsedSlotMinutes.length === 0) return [];
+    const closeMinutes = Math.max(...parsedSlotMinutes);
+    const lastAllowedSlotMinutes = closeMinutes - onlineLastSlotBeforeCloseMinutes;
+    if (!Number.isFinite(closeMinutes) || lastAllowedSlotMinutes < 0) return [];
 
-  const availableSlots = monthAvailability[date] ?? [];
+    const now = new Date();
+    const isTodayInBrazil = dateIso === getBrazilDateKey(now);
+    const cutoffMinutes = closeMinutes - onlineCutoffBeforeCloseMinutes;
+    if (isTodayInBrazil && getBrazilMinutes(now) > cutoffMinutes) return [];
+
+    return slots.filter((slot) => {
+      const slotMinutes = parseTimeToMinutes(slot);
+      return Number.isFinite(slotMinutes) && slotMinutes <= lastAllowedSlotMinutes;
+    });
+  }, [
+    onlineCutoffBeforeCloseMinutes,
+    onlineLastSlotBeforeCloseMinutes,
+  ]);
+  const availableSlots = useMemo(
+    () => filterOnlineBookingSlots(date, monthAvailability[date] ?? []),
+    [date, filterOnlineBookingSlots, monthAvailability]
+  );
 
   const calculateDisplacement = useCallback(async () => {
     if (!requiresAddress || !addressComplete) {
@@ -1402,7 +1469,7 @@ export function BookingFlow({
               date: iso,
               isHomeVisit,
             });
-            return { date: iso, slots };
+            return { date: iso, slots: filterOnlineBookingSlots(iso, slots) };
           } catch {
             return { date: iso, slots: [] as string[] };
           }
@@ -1423,7 +1490,7 @@ export function BookingFlow({
     return () => {
       active = false;
     };
-  }, [activeMonth, isHomeVisit, selectedService, step, tenant.id]);
+  }, [activeMonth, filterOnlineBookingSlots, isHomeVisit, selectedService, step, tenant.id]);
 
   useEffect(() => {
     if (!appointmentId) {

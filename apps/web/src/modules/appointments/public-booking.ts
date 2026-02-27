@@ -1,6 +1,6 @@
 "use server";
 
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+import { getDay, parseISO } from "date-fns";
 import { createClient } from "../../../lib/supabase/server";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
@@ -43,6 +43,9 @@ export interface SubmitPublicAppointmentInput {
 const toBrazilDateTime = (date: string, time: string) =>
   new Date(`${date}T${time}:00${BRAZIL_TZ_OFFSET}`);
 
+const DEFAULT_PUBLIC_BOOKING_CUTOFF_BEFORE_CLOSE_MINUTES = 60;
+const DEFAULT_PUBLIC_BOOKING_LAST_SLOT_BEFORE_CLOSE_MINUTES = 30;
+
 function splitPublicNameParts(fullName: string) {
   const cleaned = fullName.trim().replace(/\s+/g, " ");
   if (!cleaned) return { firstName: "", lastName: "" };
@@ -51,6 +54,38 @@ function splitPublicNameParts(fullName: string) {
     firstName: firstName ?? "",
     lastName: rest.join(" "),
   };
+}
+
+function parseTimeToMinutes(time: string) {
+  const [hourRaw, minuteRaw] = time.split(":");
+  const hour = Number(hourRaw ?? "0");
+  const minute = Number(minuteRaw ?? "0");
+  return (Number.isFinite(hour) ? hour : 0) * 60 + (Number.isFinite(minute) ? minute : 0);
+}
+
+function getBrazilDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+function getBrazilMinutes(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
 }
 
 export async function submitPublicAppointmentAction(
@@ -68,6 +103,84 @@ export async function submitPublicAppointmentAction(
   const publicLastName = (parsed.data.clientLastName ?? "").trim() || derivedParts.lastName;
   const publicFullName =
     composePublicClientFullName(publicFirstName, publicLastName) || normalizedClientName;
+
+  const { data: tenant } = await getTenantBySlug(parsed.data.tenantSlug);
+  if (!tenant) {
+    return fail(new AppError("Estúdio não encontrado para esse link.", "NOT_FOUND", 404));
+  }
+  const tenantId = tenant.id;
+  const serviceSupabase = createServiceClient();
+
+  const dayOfWeek = getDay(parseISO(`${parsed.data.date}T12:00:00${BRAZIL_TZ_OFFSET}`));
+  const [{ data: settings, error: settingsError }, { data: businessHour, error: businessHourError }] =
+    await Promise.all([
+      serviceSupabase
+        .from("settings")
+        .select(
+          "public_booking_cutoff_before_close_minutes, public_booking_last_slot_before_close_minutes"
+        )
+        .eq("tenant_id", tenantId)
+        .maybeSingle(),
+      serviceSupabase
+        .from("business_hours")
+        .select("open_time, close_time, is_closed")
+        .eq("tenant_id", tenantId)
+        .eq("day_of_week", dayOfWeek)
+        .maybeSingle(),
+    ]);
+
+  const mappedSettingsError = mapSupabaseError(settingsError);
+  if (mappedSettingsError) return fail(mappedSettingsError);
+  const mappedBusinessHourError = mapSupabaseError(businessHourError);
+  if (mappedBusinessHourError) return fail(mappedBusinessHourError);
+
+  if (!businessHour || businessHour.is_closed) {
+    return fail(
+      new AppError(
+        "Este dia não está disponível para agendamento online.",
+        "VALIDATION_ERROR",
+        422
+      )
+    );
+  }
+
+  const closeMinutes = parseTimeToMinutes(businessHour.close_time.slice(0, 5));
+  const appointmentMinutes = parseTimeToMinutes(parsed.data.time);
+  const cutoffBeforeCloseMinutes = Number.isFinite(
+    Number(settings?.public_booking_cutoff_before_close_minutes)
+  )
+    ? Math.max(0, Number(settings?.public_booking_cutoff_before_close_minutes))
+    : DEFAULT_PUBLIC_BOOKING_CUTOFF_BEFORE_CLOSE_MINUTES;
+  const lastSlotBeforeCloseMinutes = Number.isFinite(
+    Number(settings?.public_booking_last_slot_before_close_minutes)
+  )
+    ? Math.max(0, Number(settings?.public_booking_last_slot_before_close_minutes))
+    : DEFAULT_PUBLIC_BOOKING_LAST_SLOT_BEFORE_CLOSE_MINUTES;
+  const latestAllowedSlotMinutes = closeMinutes - lastSlotBeforeCloseMinutes;
+
+  if (appointmentMinutes > latestAllowedSlotMinutes) {
+    return fail(
+      new AppError(
+        `O último horário online deste dia é até ${Math.max(lastSlotBeforeCloseMinutes, 0)} min antes do fechamento.`,
+        "VALIDATION_ERROR",
+        422
+      )
+    );
+  }
+
+  if (parsed.data.date === getBrazilDateKey(new Date())) {
+    const nowMinutes = getBrazilMinutes(new Date());
+    const sameDayCutoffMinutes = closeMinutes - cutoffBeforeCloseMinutes;
+    if (nowMinutes > sameDayCutoffMinutes) {
+      return fail(
+        new AppError(
+          `Agendamentos online para hoje aceitam novas marcações até ${Math.max(cutoffBeforeCloseMinutes, 0)} min antes do fechamento.`,
+          "VALIDATION_ERROR",
+          422
+        )
+      );
+    }
+  }
 
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   let displacementFee = 0;
@@ -119,10 +232,6 @@ export async function submitPublicAppointmentAction(
   if (mappedError) return fail(mappedError);
 
   if (appointmentId) {
-    const { data: tenant } = await getTenantBySlug(parsed.data.tenantSlug);
-    const tenantId = tenant?.id ?? FIXED_TENANT_ID;
-    const serviceSupabase = createServiceClient();
-
     const { data: appointment } = await serviceSupabase
       .from("appointments")
       .select("client_id")
