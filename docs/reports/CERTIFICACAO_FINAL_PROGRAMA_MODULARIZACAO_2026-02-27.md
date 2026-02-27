@@ -20,14 +20,16 @@ Conclusao: repo está operacionalmente estável e com redução relevante de hot
 7. Extrações no `attendance-payment-modal` (composição e sucesso).
 8. Extração de seção diária do `mobile-agenda`.
 9. Extração da etapa financeira do `appointment-form`.
+10. Extração de ações de comunicação de atendimento.
+11. Extração de ações de ciclo de vida de agendamento.
 
 ## 3. Reducao de Hotspots (snapshot)
 
 1. `apps/web/app/(dashboard)/novo/appointment-form.tsx`: `3285` -> `2978`
-2. `apps/web/components/mobile-agenda.tsx`: `1778` -> `1493`
+2. `apps/web/components/mobile-agenda.tsx`: `1778` -> `1492`
 3. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`: `1185` -> `1006`
-4. `apps/web/src/modules/appointments/actions.ts`: `1133+` -> `1066`
-5. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1141+` -> `1217` (houve oscilações por features; parte já fatiada)
+4. `apps/web/src/modules/appointments/actions.ts`: `1133+` -> `947`
+5. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1141+` -> `1068`
 
 ## 4. Validacao Tecnica
 

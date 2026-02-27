@@ -27,15 +27,17 @@ Blocos ja executados na `main` (com gate completo em cada bloco):
   - `attendance-payment-success-panel.tsx`
 11. extração da seção de visão diária da agenda mobile para `mobile-agenda-day-section.tsx`;
 12. extração da etapa financeira do agendamento interno para `appointment-finance-step.tsx`.
+13. extração de ações de comunicação de atendimento para `src/modules/attendance/communication-actions.ts`;
+14. extração de ações de ciclo de vida de agendamento para `src/modules/appointments/lifecycle-operations.ts`.
 
 Snapshot atual de hotspots (linhas):
 
 1. `apps/web/app/(dashboard)/novo/appointment-form.tsx`: `2978`
-2. `apps/web/components/mobile-agenda.tsx`: `1493`
+2. `apps/web/components/mobile-agenda.tsx`: `1492`
 3. `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`: `1467`
-4. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1217`
-5. `apps/web/src/modules/appointments/actions.ts`: `1066`
-6. `apps/web/components/agenda/appointment-details-sheet.tsx`: `1118`
+4. `apps/web/components/agenda/appointment-details-sheet.tsx`: `1118`
+5. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1068`
+6. `apps/web/src/modules/appointments/actions.ts`: `947`
 7. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`: `1006`
 8. `apps/web/src/modules/notifications/whatsapp-automation.ts`: `920`
 9. `apps/web/src/modules/payments/mercadopago-orders.ts`: `920`
