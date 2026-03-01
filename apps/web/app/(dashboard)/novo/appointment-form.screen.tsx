@@ -14,12 +14,19 @@ import {
 import { parseISO } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { MonthCalendar } from "../../../components/agenda/month-calendar";
-import { AppointmentConfirmationSheet } from "./components/appointment-confirmation-sheet";
 import { AppointmentFinanceStep } from "./components/appointment-finance-step";
-import { ClientCreateModal } from "./components/client-create-modal";
+import { AppointmentWhenStep } from "./components/appointment-when-step";
 import { GoogleMapsAddressButton } from "./components/google-maps-address-button";
+import { AppointmentOverlays } from "./components/appointment-overlays";
+import {
+  appointmentFormInputClass as inputClass,
+  appointmentFormInputWithIconClass as inputWithIconClass,
+  appointmentFormLabelClass as labelClass,
+  appointmentFormSectionCardClass as sectionCardClass,
+  appointmentFormSectionHeaderTextClass as sectionHeaderTextClass,
+  appointmentFormSectionNumberClass as sectionNumberClass,
+  appointmentFormSelectClass as selectClass,
+} from "./appointment-form.styles";
 import {
   buildAddressQuery,
   buildCreatedMessage,
@@ -30,6 +37,7 @@ import {
   splitSeedName,
 } from "./appointment-form.helpers";
 import { useAppointmentFinance } from "./hooks/use-appointment-finance";
+import { useAppointmentChargePaymentFlow } from "./hooks/use-appointment-charge-payment-flow";
 import { useInternalScheduleAvailability } from "./hooks/use-internal-schedule-availability";
 import {
   createAppointment,
@@ -38,8 +46,6 @@ import {
   finalizeCreatedAppointmentNotifications,
   getBookingChargeContext,
   getClientAddresses,
-  pollBookingPixPaymentStatus,
-  pollBookingPointPaymentStatus,
   recordBookingChargePayment,
   recordManualCreatedMessage,
   saveClientAddress,
@@ -50,7 +56,7 @@ import {
 import { Toast, useToast } from "../../../components/ui/toast";
 import { fetchAddressByCep, formatCep, normalizeCep } from "../../../src/shared/address/cep";
 import { formatCpf, normalizeCpfDigits } from "../../../src/shared/cpf";
-import { formatCurrencyInput, formatCurrencyLabel, parseDecimalInput } from "../../../src/shared/currency";
+import { formatCurrencyInput, parseDecimalInput } from "../../../src/shared/currency";
 import { formatMinutesSeconds, getRemainingSeconds } from "../../../src/shared/datetime";
 import { feedbackById } from "../../../src/shared/feedback/user-feedback";
 import { formatBrazilPhone } from "../../../src/shared/phone";
@@ -66,7 +72,6 @@ import type {
   BookingConfirmationStep,
   BookingPixPaymentData,
   BookingPointPaymentData,
-  ChargePaymentStatus,
   ChargeBookingState,
   ChargeNowAmountMode,
   ChargeNowMethodDraft,
@@ -102,17 +107,6 @@ export function AppointmentForm({
   const clientCpfInputRef = useRef<HTMLInputElement | null>(null);
   const clientCreateFirstNameInputRef = useRef<HTMLInputElement | null>(null);
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
-  const sectionCardClass = "bg-white rounded-2xl shadow-sm p-5 border border-stone-100";
-  const sectionHeaderTextClass = "text-xs font-bold text-gray-400 uppercase tracking-widest";
-  const sectionNumberClass =
-    "w-5 h-5 rounded-full bg-studio-green/10 text-studio-green flex items-center justify-center text-[10px] font-bold";
-  const labelClass = "block text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1 ml-1";
-  const inputClass =
-    "w-full px-4 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium";
-  const inputWithIconClass =
-    "w-full pl-11 pr-4 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium";
-  const selectClass =
-    "w-full pl-4 pr-10 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium appearance-none transition-all";
   const initialTimeRef = useRef(initialAppointment?.time ?? "");
   const selectedTimeRef = useRef(initialAppointment?.time ?? "");
   const previousClientIdRef = useRef<string | null>(initialAppointment?.clientId ?? null);
@@ -1290,14 +1284,20 @@ export function AppointmentForm({
       if (chargeNowMethodDraft === "card") {
         setConfirmationSheetStep("charge_payment");
         setRunningChargeAction(true);
-        const result = await handleChargeCreatePointPayment(nextState.appointmentId, chargeNowDraftAmount, "credit", 1);
+        const result = await createBookingPointPayment({
+          appointmentId: nextState.appointmentId,
+          amount: chargeNowDraftAmount,
+          cardMode: "credit",
+          attempt: 1,
+        });
         if (!result.ok || !result.data) {
           setChargeFlowError("Não foi possível iniciar a cobrança no cartão.");
           return;
         }
         setChargePointAttempt(1);
-        setChargePointPayment(result.data);
-        if (result.data.internal_status === "paid") {
+        const nextPoint = result.data as BookingPointPaymentData;
+        setChargePointPayment(nextPoint);
+        if (nextPoint.internal_status === "paid") {
           await refreshChargeBookingState(nextState.appointmentId);
           setChargePointPayment(null);
           await ensureChargeNotificationsDispatched();
@@ -1341,226 +1341,41 @@ export function AppointmentForm({
     setConfirmationSheetStep("charge_manual_prompt");
   }, [ensureChargeNotificationsDispatched]);
 
-  const handleChargeCreatePixPayment = async (appointmentId: string, amount: number, attempt: number) => {
-    const result = await createBookingPixPayment({
-      appointmentId,
-      amount,
-      payerName: clientPublicFullNamePreview || clientName || "Cliente",
-      payerPhone: resolvedClientPhone || clientPhone,
-      payerEmail: clientEmail || selectedClientRecord?.email || null,
-      attempt,
-    });
-    if (!result.ok || !result.data) {
-      return { ok: false as const };
-    }
-    return { ok: true as const, data: result.data as BookingPixPaymentData };
-  };
-
-  const handleChargePollPixStatus = useCallback(async (appointmentId: string) => {
-    const result = await pollBookingPixPaymentStatus({ appointmentId });
-    if (!result.ok) {
-      return { ok: false as const, status: "pending" as ChargePaymentStatus };
-    }
-    return { ok: true as const, status: result.data.internal_status as ChargePaymentStatus };
-  }, []);
-
-  const handleChargeCreatePointPayment = async (
-    appointmentId: string,
-    amount: number,
-    cardMode: "debit" | "credit",
-    attempt: number
-  ) => {
-    const result = await createBookingPointPayment({
-      appointmentId,
-      amount,
-      cardMode,
-      attempt,
-    });
-    if (!result.ok || !result.data) {
-      return { ok: false as const };
-    }
-    return { ok: true as const, data: result.data as BookingPointPaymentData };
-  };
-
-  const handleChargePollPointStatus = useCallback(async (appointmentId: string, orderId: string) => {
-    const result = await pollBookingPointPaymentStatus({
-      appointmentId,
-      orderId,
-    });
-    if (!result.ok) {
-      return { ok: false as const, status: "pending" as ChargePaymentStatus, paymentId: null };
-    }
-    return {
-      ok: true as const,
-      status: result.data.internal_status as ChargePaymentStatus,
-      paymentId: result.data.id,
-    };
-  }, []);
-
-  const handleCreateChargePixNow = async (attempt: number) => {
-    if (!chargeBookingState) return;
-    setRunningChargeAction(true);
-    setChargeFlowError(null);
-    try {
-      const result = await handleChargeCreatePixPayment(chargeBookingState.appointmentId, chargeNowDraftAmount, attempt);
-      if (!result.ok) {
-        setChargeFlowError("Não foi possível gerar o PIX agora.");
-        return;
-      }
-      setChargePixAttempt(attempt);
-      setChargePixPayment(result.data);
-      setChargePixRemainingSeconds(getRemainingSeconds(result.data.expires_at));
-    } finally {
-      setRunningChargeAction(false);
-    }
-  };
-
-  const handleCopyChargePixCode = async () => {
-    if (!chargePixPayment?.qr_code) return;
-    try {
-      await navigator.clipboard.writeText(chargePixPayment.qr_code);
-      showToast({
-        title: "PIX",
-        message: "Código copiado.",
-        tone: "success",
-        durationMs: 1600,
-      });
-    } catch {
-      showToast({
-        title: "PIX",
-        message: "Não foi possível copiar o código agora.",
-        tone: "warning",
-        durationMs: 2200,
-      });
-    }
-  };
-
-  const handleSendChargePixViaWhatsapp = () => {
-    if (!chargePixPayment?.qr_code) {
-      showToast({
-        title: "PIX",
-        message: "Gere o QR Code antes de enviar a chave por WhatsApp.",
-        tone: "warning",
-        durationMs: 2200,
-      });
-      return;
-    }
-
-    const firstName =
-      clientSelectionMode === "existing"
-        ? selectedClientNames?.messagingFirstName || "cliente"
-        : clientFirstName.trim() || "cliente";
-    const pixAmountLabel = formatCurrencyLabel(chargeNowDraftAmount);
-    const message = `Olá, ${firstName}! Segue a chave PIX para confirmar seu agendamento.\n\nValor: R$ ${pixAmountLabel}\n\nCódigo PIX (copia e cola):\n${chargePixPayment.qr_code}\n\nAssim que pagar, me avise por aqui.`;
-    openWhatsappFromForm(message);
-  };
-
-  const handleVerifyChargePixNow = useCallback(async () => {
-    if (!chargeBookingState) return;
-    const result = await handleChargePollPixStatus(chargeBookingState.appointmentId);
-    if (!result.ok) return;
-    if (result.status === "failed") {
-      setChargeFlowError("O PIX não foi aprovado. Gere um novo QR Code para continuar.");
-      return;
-    }
-    if (result.status === "paid") {
-      await refreshChargeBookingState(chargeBookingState.appointmentId);
-      setChargePixPayment(null);
-      await handleChargePaymentResolved();
-    }
-  }, [chargeBookingState, handleChargePaymentResolved, handleChargePollPixStatus, refreshChargeBookingState]);
-
-  const handleStartChargeCard = async (cardMode: "debit" | "credit") => {
-    if (!chargeBookingState) return;
-    setRunningChargeAction(true);
-    setChargeFlowError(null);
-    try {
-      const nextAttempt = chargePointAttempt + 1;
-      const result = await handleChargeCreatePointPayment(
-        chargeBookingState.appointmentId,
-        chargeNowDraftAmount,
-        cardMode,
-        nextAttempt
-      );
-      if (!result.ok) {
-        setChargeFlowError("Não foi possível iniciar a cobrança no cartão.");
-        return;
-      }
-      setChargePointAttempt(nextAttempt);
-      setChargePointPayment(result.data);
-      if (result.data.internal_status === "paid") {
-        await refreshChargeBookingState(chargeBookingState.appointmentId);
-        setChargePointPayment(null);
-        await handleChargePaymentResolved();
-      }
-      if (result.data.internal_status === "failed") {
-        setChargeFlowError("A maquininha recusou a cobrança. Tente novamente.");
-      }
-    } finally {
-      setRunningChargeAction(false);
-    }
-  };
-
-  const handleVerifyChargeCardNow = useCallback(async () => {
-    if (!chargeBookingState || !chargePointPayment) return;
-    const result = await handleChargePollPointStatus(chargeBookingState.appointmentId, chargePointPayment.order_id);
-    if (!result.ok) return;
-    if (result.status === "failed") {
-      setChargeFlowError("Cobrança não concluída na maquininha. Tente novamente.");
-      return;
-    }
-    if (result.status === "paid") {
-      await refreshChargeBookingState(chargeBookingState.appointmentId);
-      setChargePointPayment(null);
-      await handleChargePaymentResolved();
-    }
-  }, [chargeBookingState, chargePointPayment, handleChargePaymentResolved, handleChargePollPointStatus, refreshChargeBookingState]);
-
-  useEffect(() => {
-    if (!chargePixPayment) {
-      setChargePixRemainingSeconds(0);
-      return;
-    }
-    setChargePixRemainingSeconds(getRemainingSeconds(chargePixPayment.expires_at));
-    const interval = window.setInterval(() => {
-      setChargePixRemainingSeconds(getRemainingSeconds(chargePixPayment.expires_at));
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [chargePixPayment]);
-
-  useEffect(() => {
-    if (confirmationSheetStep !== "charge_payment") return;
-    if (chargeNowMethodDraft !== "pix_mp") return;
-    if (!chargeBookingState || !chargePixPayment) return;
-
-    const interval = window.setInterval(() => {
-      void handleVerifyChargePixNow();
-    }, 4000);
-    return () => window.clearInterval(interval);
-  }, [
-    chargeBookingState,
-    chargeNowMethodDraft,
-    chargePixPayment,
-    confirmationSheetStep,
-    handleVerifyChargePixNow,
-  ]);
-
-  useEffect(() => {
-    if (confirmationSheetStep !== "charge_payment") return;
-    if (chargeNowMethodDraft !== "card") return;
-    if (!chargeBookingState || !chargePointPayment) return;
-
-    const interval = window.setInterval(() => {
-      void handleVerifyChargeCardNow();
-    }, 3500);
-    return () => window.clearInterval(interval);
-  }, [
-    chargeBookingState,
-    chargeNowMethodDraft,
-    chargePointPayment,
-    confirmationSheetStep,
+  const {
+    handleCreateChargePixNow,
+    handleCopyChargePixCode,
+    handleSendChargePixViaWhatsapp,
+    handleStartChargeCard,
     handleVerifyChargeCardNow,
-  ]);
+  } = useAppointmentChargePaymentFlow({
+    chargeBookingState,
+    chargeNowMethodDraft,
+    chargeNowDraftAmount,
+    confirmationSheetStep,
+    chargePixPayment,
+    chargePointPayment,
+    chargePointAttempt,
+    clientPublicFullNamePreview,
+    clientName,
+    resolvedClientPhone,
+    clientPhone,
+    clientEmail,
+    selectedClientEmail: selectedClientRecord?.email ?? null,
+    clientSelectionMode,
+    selectedClientMessagingFirstName: selectedClientNames?.messagingFirstName ?? "",
+    clientFirstName,
+    openWhatsappFromForm,
+    showToast,
+    refreshChargeBookingState,
+    handleChargePaymentResolved,
+    setRunningChargeAction,
+    setChargeFlowError,
+    setChargePixAttempt,
+    setChargePixPayment,
+    setChargePixRemainingSeconds,
+    setChargePointAttempt,
+    setChargePointPayment,
+  });
 
   const handleSwitchChargeToAttendance = async () => {
     if (!chargeBookingState) return;
@@ -2336,139 +2151,33 @@ export function AppointmentForm({
       </section>
       )}
 
-      {isStep3Unlocked && (
-      <section className={sectionCardClass}>
-        <div className="flex items-center gap-2 mb-4">
-          <div className={sectionNumberClass}>3</div>
-          <h2 className={sectionHeaderTextClass}>Quando?</h2>
-        </div>
-
-        <div className={`grid ${isEditing ? "grid-cols-2" : "grid-cols-1"} gap-4 mb-4`}>
-          {isEditing && (
-            <div>
-              <label className={labelClass}>Valor final</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
-                <input
-                  type="tel"
-                  value={finalPrice}
-                  readOnly
-                  placeholder="0,00"
-                  className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-semibold"
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className={labelClass}>Data</label>
-            <input type="hidden" name="date" value={selectedDate} />
-            <MonthCalendar
-              currentMonth={activeMonth}
-              selectedDate={selectedDateObj}
-              onSelectDay={handleSelectScheduleDay}
-              onChangeMonth={handleChangeScheduleMonth}
-              isDayDisabled={isScheduleDayDisabled}
-              className="rounded-2xl shadow-none border border-stone-100 p-3"
-              enableSwipe
-            />
-            {isLoadingMonthAvailability && (
-              <p className="text-[11px] text-muted mt-2 ml-1">Carregando disponibilidade do mês...</p>
-            )}
-            {blockStatus === "loading" && (
-              <p className="text-[11px] text-muted mt-2 ml-1">Verificando bloqueios...</p>
-            )}
-            {blockStatus === "idle" && hasShiftBlock && (
-              <div className="text-[11px] text-warn bg-warn/10 border border-warn/20 px-3 py-2 rounded-xl mt-2">
-                Você está de plantão esse dia, quer agendar mesmo assim?
-              </div>
-            )}
-            {blockStatus === "idle" && !hasShiftBlock && hasBlocks && (
-              <div className="text-[11px] text-warn bg-warn/10 border border-warn/20 px-3 py-2 rounded-xl mt-2">
-                Há bloqueios registrados para esta data. Verifique antes de confirmar o horário.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {isEditing ? (
-          <div className="mb-4">
-            <label className={labelClass}>Ajustar valor (opcional)</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-serif text-sm">R$</span>
-              <input
-                name="price_override"
-                type="text"
-                inputMode="decimal"
-                value={priceOverride}
-                onChange={(event) => setPriceOverride(event.target.value)}
-                placeholder={displayedPrice || "0,00"}
-                className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
-              />
-            </div>
-            <p className="text-[10px] text-muted mt-1 ml-1">Se deixar vazio, usamos o valor do serviço.</p>
-          </div>
-        ) : null}
-
-        <div>
-          <label className={labelClass}>Horário</label>
-          {!selectedDate ? (
-            <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-3 text-xs text-muted">
-              Selecione um dia no calendário para abrir os horários.
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-2">
-              {isLoadingSlots ? (
-                <div className="col-span-4 text-xs text-muted">Carregando horários...</div>
-              ) : availableSlots.length === 0 ? (
-                <div className="col-span-4 text-xs text-muted">Sem horários disponíveis para esta data.</div>
-              ) : (
-                availableSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setSelectedTime(slot)}
-                    className={`py-2 rounded-xl text-xs font-bold transition ${
-                      selectedTime === slot
-                        ? "bg-studio-green text-white shadow-sm transform scale-105"
-                        : "border border-stone-100 text-gray-400 hover:border-studio-green hover:text-studio-green"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-          <select
-            name="time"
-            value={selectedTime}
-            onChange={(event) => setSelectedTime(event.target.value)}
-            className="sr-only"
-            required
-            disabled={!selectedServiceId || !selectedDate || isLoadingSlots}
-          >
-            {!selectedServiceId || !selectedDate ? (
-              <option value="">Selecione data e serviço</option>
-            ) : isLoadingSlots ? (
-              <option value="">Carregando horários...</option>
-            ) : availableSlots.length === 0 ? (
-              <option value="">Sem horários disponíveis</option>
-            ) : (
-              availableSlots.map((slot) => (
-                <option key={slot} value={slot}>
-                  {slot}
-                </option>
-              ))
-            )}
-          </select>
-          <p className="text-[11px] text-muted mt-2 ml-1">
-            Horários já consideram o tempo de preparo antes/depois.
-          </p>
-        </div>
-
-      </section>
-      )}
+      <AppointmentWhenStep
+        visible={isStep3Unlocked}
+        isEditing={isEditing}
+        sectionCardClass={sectionCardClass}
+        sectionNumberClass={sectionNumberClass}
+        sectionHeaderTextClass={sectionHeaderTextClass}
+        labelClass={labelClass}
+        selectedDate={selectedDate}
+        selectedDateObj={selectedDateObj}
+        activeMonth={activeMonth}
+        onSelectScheduleDay={handleSelectScheduleDay}
+        onChangeScheduleMonth={handleChangeScheduleMonth}
+        isScheduleDayDisabled={isScheduleDayDisabled}
+        isLoadingMonthAvailability={isLoadingMonthAvailability}
+        blockStatus={blockStatus}
+        hasShiftBlock={hasShiftBlock}
+        hasBlocks={hasBlocks}
+        finalPrice={finalPrice}
+        priceOverride={priceOverride}
+        displayedPrice={displayedPrice}
+        onPriceOverrideChange={setPriceOverride}
+        selectedServiceId={selectedServiceId}
+        isLoadingSlots={isLoadingSlots}
+        availableSlots={availableSlots}
+        selectedTime={selectedTime}
+        onSelectTime={setSelectedTime}
+      />
 
       {!isEditing && isStep4Unlocked && (
         <AppointmentFinanceStep
@@ -2515,424 +2224,167 @@ export function AppointmentForm({
         />
       )}
 
-      <ClientCreateModal
-        portalTarget={portalTarget}
-        open={isClientCreateModalOpen}
-        saving={isClientCreateSaving}
-        error={clientCreateError}
-        labelClass={labelClass}
-        inputClass={inputClass}
-        inputWithIconClass={inputWithIconClass}
-        firstNameInputRef={clientCreateFirstNameInputRef}
-        phoneInputRef={clientPhoneInputRef}
-        cpfInputRef={clientCpfInputRef}
-        firstName={clientFirstName}
-        lastName={clientLastName}
-        reference={clientReference}
-        internalPreview={clientDraftInternalPreview}
-        publicPreview={clientDraftPublicPreview}
-        phone={clientPhone}
-        email={clientEmail}
-        cpf={clientCpf}
-        showInvalidEmailHint={clientEmail.trim().length > 0 && !isValidEmailAddress(clientEmail)}
-        onClose={() => setIsClientCreateModalOpen(false)}
-        onFirstNameChange={(value) => {
-          setClientFirstName(value);
-          setClientCreateError(null);
+      <AppointmentOverlays
+        clientCreateModalProps={{
+          portalTarget,
+          open: isClientCreateModalOpen,
+          saving: isClientCreateSaving,
+          error: clientCreateError,
+          labelClass,
+          inputClass,
+          inputWithIconClass,
+          firstNameInputRef: clientCreateFirstNameInputRef,
+          phoneInputRef: clientPhoneInputRef,
+          cpfInputRef: clientCpfInputRef,
+          firstName: clientFirstName,
+          lastName: clientLastName,
+          reference: clientReference,
+          internalPreview: clientDraftInternalPreview,
+          publicPreview: clientDraftPublicPreview,
+          phone: clientPhone,
+          email: clientEmail,
+          cpf: clientCpf,
+          showInvalidEmailHint: clientEmail.trim().length > 0 && !isValidEmailAddress(clientEmail),
+          onClose: () => setIsClientCreateModalOpen(false),
+          onFirstNameChange: (value) => {
+            setClientFirstName(value);
+            setClientCreateError(null);
+          },
+          onLastNameChange: (value) => {
+            setClientLastName(value);
+            setClientCreateError(null);
+          },
+          onReferenceChange: (value) => {
+            setClientReference(value);
+            setClientCreateError(null);
+          },
+          onPhoneChange: (value) => {
+            setClientPhone(formatBrazilPhone(value));
+            setClientCreateError(null);
+          },
+          onEmailChange: (value) => {
+            setClientEmail(value);
+            setClientCreateError(null);
+          },
+          onCpfChange: (value) => {
+            setClientCpf(formatCpf(value));
+            setClientCreateError(null);
+          },
+          onSave: () => void handleSaveClientDraftFromModal(),
         }}
-        onLastNameChange={(value) => {
-          setClientLastName(value);
-          setClientCreateError(null);
+        addressCreateModalProps={{
+          portalTarget,
+          open: isAddressModalOpen,
+          step: addressModalStep,
+          resolvedClientId,
+          labelClass,
+          inputClass,
+          inputWithIconClass,
+          addressSaveError,
+          addressLabel,
+          onAddressLabelChange: setAddressLabel,
+          clientAddressesCount: clientAddresses.length,
+          addressIsPrimaryDraft,
+          onAddressIsPrimaryDraftChange: setAddressIsPrimaryDraft,
+          cep,
+          onCepChange: (value) => setCep(formatCep(value)),
+          logradouro,
+          onLogradouroChange: setLogradouro,
+          numero,
+          onNumeroChange: setNumero,
+          complemento,
+          onComplementoChange: setComplemento,
+          bairro,
+          onBairroChange: setBairro,
+          cidade,
+          onCidadeChange: setCidade,
+          estado,
+          onEstadoChange: (value) => setEstado(value.toUpperCase()),
+          addressSavePending,
+          cepDraft,
+          cepDraftStatus,
+          onCepDraftChange: (value) => {
+            setCepDraft(formatCep(value));
+            setCepDraftStatus("idle");
+          },
+          onCepDraftLookup: handleCepDraftLookup,
+          onApplyAddressDraftFields: applyAddressDraftFields,
+          addressSearchQuery,
+          onAddressSearchQueryChange: setAddressSearchQuery,
+          addressSearchResults,
+          addressSearchLoading,
+          addressSearchError,
+          onSelectAddressSearchResult: handleAddressSearchResultSelect,
+          onClose: closeAddressCreateModal,
+          onBackToChooser: () => {
+            setAddressModalStep("chooser");
+            setAddressSaveError(null);
+          },
+          onOpenCepStep: () => {
+            setAddressModalStep("cep");
+            setCepDraft("");
+            setCepDraftStatus("idle");
+            setAddressSaveError(null);
+          },
+          onOpenSearchStep: () => {
+            setAddressModalStep("search");
+            setAddressSearchQuery("");
+            setAddressSearchResults([]);
+            setAddressSearchLoading(false);
+            setAddressSearchError(null);
+            setAddressSaveError(null);
+          },
+          onOpenFormStep: () => setAddressModalStep("form"),
+          onSave: handleAddressModalSave,
         }}
-        onReferenceChange={(value) => {
-          setClientReference(value);
-          setClientCreateError(null);
+        confirmationSheetProps={{
+          portalTarget,
+          open: isSendPromptOpen,
+          step: confirmationSheetStep,
+          chargeFlowError,
+          chargeBookingState,
+          chargeNowMethodDraft,
+          chargeNowDraftAmount,
+          chargePixPayment,
+          chargePixAttempt,
+          runningChargeAction,
+          chargePixRemainingSeconds,
+          pointEnabled,
+          pointTerminalName,
+          pointTerminalModel,
+          chargePointPayment,
+          finishingChargeFlow,
+          clientDisplayPreviewLabel,
+          selectedServiceName: selectedService?.name ?? null,
+          selectedDate,
+          selectedTime,
+          isHomeVisit,
+          addressLabel,
+          financeDraftItems,
+          scheduleSubtotal,
+          effectiveScheduleDiscount,
+          scheduleDiscountType,
+          effectiveScheduleDiscountInputValue,
+          collectionTimingDraft,
+          scheduleTotal,
+          isChargeNowMethodChosen,
+          isChargeNowAmountConfirmed,
+          chargeNowAmountError,
+          creatingChargeBooking,
+          isCourtesyDraft,
+          formatCountdown,
+          onClose: handleConfirmationSheetClose,
+          onCreateChargePixNow: (attempt) => handleCreateChargePixNow(attempt),
+          onCopyChargePixCode: handleCopyChargePixCode,
+          onSendChargePixViaWhatsapp: handleSendChargePixViaWhatsapp,
+          onStartChargeCard: (mode) => handleStartChargeCard(mode),
+          onVerifyChargeCardNow: handleVerifyChargeCardNow,
+          onSwitchChargeToAttendance: handleSwitchChargeToAttendance,
+          onClearChargeFlowError: () => setChargeFlowError(null),
+          onResolveDeferredManualPrompt: handleResolveDeferredManualPrompt,
+          onBeginImmediateCharge: handleBeginImmediateCharge,
+          onSchedule: handleSchedule,
         }}
-        onPhoneChange={(value) => {
-          setClientPhone(formatBrazilPhone(value));
-          setClientCreateError(null);
-        }}
-        onEmailChange={(value) => {
-          setClientEmail(value);
-          setClientCreateError(null);
-        }}
-        onCpfChange={(value) => {
-          setClientCpf(formatCpf(value));
-          setClientCreateError(null);
-        }}
-        onSave={() => void handleSaveClientDraftFromModal()}
-      />
-
-      {portalTarget &&
-        isAddressModalOpen &&
-        createPortal(
-          <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
-            <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Endereço</p>
-                  <h3 className="text-lg font-serif text-studio-text">
-                    {addressModalStep === "chooser"
-                      ? "Cadastrar endereço"
-                      : addressModalStep === "cep"
-                        ? "Buscar por CEP"
-                        : addressModalStep === "search"
-                          ? "Buscar por endereço"
-                          : "Confirmar endereço"}
-                  </h3>
-                  <p className="text-xs text-muted mt-1">
-                    {addressModalStep === "chooser"
-                      ? "Escolha como deseja localizar o endereço."
-                      : addressModalStep === "form"
-                        ? resolvedClientId
-                          ? "Revise os dados e salve o endereço para este cliente."
-                          : "Revise os dados. O endereço será salvo junto com o agendamento."
-                        : "Preencha e confirme para continuar."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeAddressCreateModal}
-                  className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {addressModalStep !== "chooser" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddressModalStep("chooser");
-                    setAddressSaveError(null);
-                  }}
-                  className="mb-4 text-[11px] font-extrabold uppercase tracking-wide text-dom-strong"
-                >
-                  Voltar
-                </button>
-              )}
-
-              {addressModalStep === "chooser" && (
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddressModalStep("cep");
-                      setCepDraft("");
-                      setCepDraftStatus("idle");
-                      setAddressSaveError(null);
-                    }}
-                    className="w-full rounded-2xl border border-dom/45 bg-white px-4 py-3 text-left hover:border-dom/55 hover:bg-dom/10 transition"
-                  >
-                    <span className="text-[10px] font-extrabold uppercase text-dom-strong tracking-wide">
-                      Buscar por CEP
-                    </span>
-                    <span className="block text-xs text-dom-strong/80 mt-1">
-                      Digite o CEP e revise os dados antes de salvar.
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddressModalStep("search");
-                      setAddressSearchQuery("");
-                      setAddressSearchResults([]);
-                      setAddressSearchLoading(false);
-                      setAddressSearchError(null);
-                      setAddressSaveError(null);
-                    }}
-                    className="w-full rounded-2xl border border-dom/45 bg-white px-4 py-3 text-left hover:border-dom/55 hover:bg-dom/10 transition"
-                  >
-                    <span className="text-[10px] font-extrabold uppercase text-dom-strong tracking-wide">
-                      Buscar por endereço
-                    </span>
-                    <span className="block text-xs text-dom-strong/80 mt-1">
-                      Digite rua/bairro e escolha o endereço correto.
-                    </span>
-                  </button>
-                </div>
-              )}
-
-              {addressModalStep === "cep" && (
-                <div>
-                  <div className="mb-4">
-                    <label className={labelClass}>CEP</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={cepDraft}
-                      onChange={(event) => {
-                        setCepDraft(formatCep(event.target.value));
-                        setCepDraftStatus("idle");
-                      }}
-                      className={inputClass}
-                    />
-                    {cepDraftStatus === "error" && (
-                      <p className="text-[11px] text-red-500 mt-2 ml-1">
-                        CEP inválido. Verifique e tente novamente.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const found = await handleCepDraftLookup();
-                        if (!found) return;
-                        applyAddressDraftFields({
-                          cep: found.cep,
-                          logradouro: found.logradouro,
-                          bairro: found.bairro,
-                          cidade: found.cidade,
-                          estado: found.estado,
-                        });
-                        setAddressModalStep("form");
-                      }}
-                      disabled={cepDraftStatus === "loading"}
-                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-                    >
-                      {cepDraftStatus === "loading" ? "Buscando..." : "Buscar CEP"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {addressModalStep === "search" && (
-                <div>
-                  <div className="mb-3">
-                    <label className={labelClass}>Endereço</label>
-                    <div className="relative">
-                      <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={addressSearchQuery}
-                        onChange={(event) => setAddressSearchQuery(event.target.value)}
-                        className={inputWithIconClass}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted mt-2 ml-1">Ex: Rua das Acácias, 120, Moema</p>
-                    {addressSearchError && (
-                      <p className="text-[11px] text-red-500 mt-2 ml-1">{addressSearchError}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {addressSearchLoading && <p className="text-[11px] text-muted">Buscando endereços...</p>}
-                    {!addressSearchLoading && addressSearchQuery.trim().length < 3 && (
-                      <p className="text-[11px] text-muted">Digite pelo menos 3 caracteres para iniciar.</p>
-                    )}
-                    {!addressSearchLoading &&
-                      addressSearchQuery.trim().length >= 3 &&
-                      addressSearchResults.length === 0 && (
-                        <p className="text-[11px] text-muted">Nenhum endereço encontrado.</p>
-                      )}
-                    {addressSearchResults.map((result) => (
-                      <button
-                        key={result.id}
-                        type="button"
-                        onClick={async () => {
-                          const ok = await handleAddressSearchResultSelect(result);
-                          if (ok) setAddressModalStep("form");
-                        }}
-                        className="w-full text-left px-4 py-3 rounded-2xl border border-stone-100 hover:border-stone-200 hover:bg-stone-50 transition"
-                      >
-                        <p className="text-sm font-semibold text-studio-text">{result.label}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {addressModalStep === "form" && (
-                <div className="space-y-3">
-                  {addressSaveError && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                      {addressSaveError}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className={labelClass}>Identificação</label>
-                    <input
-                      type="text"
-                      value={addressLabel}
-                      onChange={(event) => setAddressLabel(event.target.value)}
-                      className={inputClass}
-                      placeholder="Principal"
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={clientAddresses.length === 0 ? true : addressIsPrimaryDraft}
-                        onChange={(event) => setAddressIsPrimaryDraft(event.target.checked)}
-                        disabled={clientAddresses.length === 0}
-                        className="h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
-                      />
-                      <div>
-                        <p className="text-[11px] font-extrabold uppercase tracking-wide text-studio-text">
-                          Definir como endereço principal
-                        </p>
-                        <p className="text-[10px] text-muted">
-                          {clientAddresses.length === 0
-                            ? "Primeiro endereço do cliente será principal automaticamente."
-                            : "O endereço principal será selecionado por padrão nos próximos agendamentos."}
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>CEP</label>
-                    <input
-                      type="text"
-                      value={cep}
-                      onChange={(e) => {
-                        setCep(formatCep(e.target.value));
-                      }}
-                      inputMode="numeric"
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Rua / Avenida</label>
-                    <input
-                      type="text"
-                      value={logradouro}
-                      onChange={(e) => setLogradouro(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className={labelClass}>Número</label>
-                      <input
-                        type="text"
-                        value={numero}
-                        onChange={(e) => setNumero(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className={labelClass}>Complemento</label>
-                      <input
-                        type="text"
-                        value={complemento}
-                        onChange={(e) => setComplemento(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className={labelClass}>Bairro</label>
-                      <input
-                        type="text"
-                        value={bairro}
-                        onChange={(e) => setBairro(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Cidade</label>
-                      <input
-                        type="text"
-                        value={cidade}
-                        onChange={(e) => setCidade(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Estado (UF)</label>
-                    <input
-                      type="text"
-                      value={estado}
-                      onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                      maxLength={2}
-                      className={`${inputClass} uppercase`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setAddressModalStep("chooser")}
-                      disabled={addressSavePending}
-                      className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
-                    >
-                      Buscar novamente
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddressModalSave}
-                      disabled={addressSavePending}
-                      className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-                    >
-                      {addressSavePending ? "Salvando..." : "Salvar endereço"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>,
-          portalTarget
-        )}
-
-      <AppointmentConfirmationSheet
-        portalTarget={portalTarget}
-        open={isSendPromptOpen}
-        step={confirmationSheetStep}
-        chargeFlowError={chargeFlowError}
-        chargeBookingState={chargeBookingState}
-        chargeNowMethodDraft={chargeNowMethodDraft}
-        chargeNowDraftAmount={chargeNowDraftAmount}
-        chargePixPayment={chargePixPayment}
-        chargePixAttempt={chargePixAttempt}
-        runningChargeAction={runningChargeAction}
-        chargePixRemainingSeconds={chargePixRemainingSeconds}
-        pointEnabled={pointEnabled}
-        pointTerminalName={pointTerminalName}
-        pointTerminalModel={pointTerminalModel}
-        chargePointPayment={chargePointPayment}
-        finishingChargeFlow={finishingChargeFlow}
-        clientDisplayPreviewLabel={clientDisplayPreviewLabel}
-        selectedServiceName={selectedService?.name ?? null}
-        selectedDate={selectedDate}
-        selectedTime={selectedTime}
-        isHomeVisit={isHomeVisit}
-        addressLabel={addressLabel}
-        financeDraftItems={financeDraftItems}
-        scheduleSubtotal={scheduleSubtotal}
-        effectiveScheduleDiscount={effectiveScheduleDiscount}
-        scheduleDiscountType={scheduleDiscountType}
-        effectiveScheduleDiscountInputValue={effectiveScheduleDiscountInputValue}
-        collectionTimingDraft={collectionTimingDraft}
-        scheduleTotal={scheduleTotal}
-        isChargeNowMethodChosen={isChargeNowMethodChosen}
-        isChargeNowAmountConfirmed={isChargeNowAmountConfirmed}
-        chargeNowAmountError={chargeNowAmountError}
-        creatingChargeBooking={creatingChargeBooking}
-        isCourtesyDraft={isCourtesyDraft}
-        formatCountdown={formatCountdown}
-        onClose={handleConfirmationSheetClose}
-        onCreateChargePixNow={(attempt) => handleCreateChargePixNow(attempt)}
-        onCopyChargePixCode={handleCopyChargePixCode}
-        onSendChargePixViaWhatsapp={handleSendChargePixViaWhatsapp}
-        onStartChargeCard={(mode) => handleStartChargeCard(mode)}
-        onVerifyChargeCardNow={handleVerifyChargeCardNow}
-        onSwitchChargeToAttendance={handleSwitchChargeToAttendance}
-        onClearChargeFlowError={() => setChargeFlowError(null)}
-        onResolveDeferredManualPrompt={handleResolveDeferredManualPrompt}
-        onBeginImmediateCharge={handleBeginImmediateCharge}
-        onSchedule={handleSchedule}
       />
 
       {(isEditing || isStep4Unlocked) && (
