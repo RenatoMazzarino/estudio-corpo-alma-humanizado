@@ -8,17 +8,16 @@ import {
   startOfMonth,
 } from "date-fns";
 import {
-  createCardPayment,
   createPixPayment,
-  getCardPaymentStatus,
-  getPixPaymentStatus,
-  lookupClientIdentity,
   submitPublicAppointment,
 } from "./application/public-booking-service";
 import { usePublicBookingAvailability } from "./hooks/use-public-booking-availability";
+import { usePublicBookingIdentity } from "./hooks/use-public-booking-identity";
 import { usePublicBookingLocation } from "./hooks/use-public-booking-location";
 import { usePublicBookingNavigation } from "./hooks/use-public-booking-navigation";
+import { usePublicBookingPaymentEffects } from "./hooks/use-public-booking-payment-effects";
 import { usePublicBookingPaymentUi } from "./hooks/use-public-booking-payment-ui";
+import { usePublicBookingVoucherActions } from "./hooks/use-public-booking-voucher-actions";
 import type {
   BookingFlowProps,
   CardFormInstance,
@@ -29,15 +28,8 @@ import type {
   Step,
 } from "./booking-flow.types";
 import { Toast, useToast } from "../../../../components/ui/toast";
-import { formatCpf } from "../../../../src/shared/cpf";
-import { formatBrazilPhone } from "../../../../src/shared/phone";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import { VoucherOverlay } from "./components/voucher-overlay";
-import {
-  downloadVoucherBlob,
-  renderVoucherImageBlob,
-  shareVoucherBlob,
-} from "./voucher-export";
 import {
   cardProcessingStages,
   stepLabels,
@@ -125,9 +117,7 @@ export function BookingFlow({
   const cardFailureStatusRef = useRef<string | null>(null);
   const mpInitToastShownRef = useRef(false);
   const voucherRef = useRef<HTMLDivElement | null>(null);
-  const identityCpfLookupKeyRef = useRef<string | null>(null);
   const [isVoucherOpen, setIsVoucherOpen] = useState(false);
-  const [voucherBusy, setVoucherBusy] = useState(false);
   const [identityCpfAttempts, setIdentityCpfAttempts] = useState(0);
   const [identityWelcomeCountdown, setIdentityWelcomeCountdown] = useState<number | null>(null);
   const [identitySecuritySessionId, setIdentitySecuritySessionId] = useState("");
@@ -321,318 +311,58 @@ export function BookingFlow({
     cardProcessingStageIndex,
   });
 
-  useEffect(() => {
-    if (identitySecuritySessionId) return;
-    try {
-      const storageKey = `public-booking-lookup-session:${tenant.id}`;
-      const existing = window.sessionStorage.getItem(storageKey);
-      if (existing) {
-        setIdentitySecuritySessionId(existing);
-        return;
-      }
-      const nextId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      window.sessionStorage.setItem(storageKey, nextId);
-      setIdentitySecuritySessionId(nextId);
-    } catch {
-      setIdentitySecuritySessionId(`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
-    }
-  }, [identitySecuritySessionId, tenant.id]);
-
-  useEffect(() => {
-    identityCpfLookupKeyRef.current = null;
-    setIdentityWelcomeCountdown(null);
-    setIdentityCaptchaPrompt(null);
-    setIdentityCaptchaToken(null);
-    setIdentityCaptchaAnswer("");
-    setIdentityGuardNotice(null);
-    setIsVerifyingClientCpf(false);
-
-    if (!isPhoneValid) {
-      setClientLookupStatus("idle");
-      setSuggestedClient(null);
-      setClientName("");
-      setClientFirstName("");
-      setClientLastName("");
-      setClientEmail("");
-      setClientCpf("");
-      setAcceptPrivacyPolicy(false);
-      setAcceptTermsOfService(false);
-      setAcceptCommunicationConsent(false);
-      setIdentityCpfAttempts(0);
-      return;
-    }
-
-    const lookupPhone = formattedPhoneDigits;
-    const timer = window.setTimeout(async () => {
-      setClientLookupStatus("loading");
-      setSuggestedClient(null);
-      const result = await lookupClientIdentity({
-        tenantId: tenant.id,
-        phone: lookupPhone,
-      });
-
-      if (lookupPhone !== formattedPhoneDigits) {
-        return;
-      }
-
-      if (!result.ok) {
-        setSuggestedClient(null);
-        setClientLookupStatus("not_found");
-        setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
-        setClientEmail("");
-        setAcceptPrivacyPolicy(false);
-        setAcceptTermsOfService(false);
-        setAcceptCommunicationConsent(false);
-        setIdentityCpfAttempts(0);
-        return;
-      }
-
-      if (result.data.client) {
-        setSuggestedClient({
-          id: result.data.client.id,
-          name: result.data.client.name ?? null,
-          email: result.data.client.email ?? null,
-          cpf: result.data.client.cpf ?? null,
-          public_first_name: result.data.client.public_first_name ?? null,
-          public_last_name: result.data.client.public_last_name ?? null,
-          internal_reference: result.data.client.internal_reference ?? null,
-          address_cep: result.data.client.address_cep ?? null,
-          address_logradouro: result.data.client.address_logradouro ?? null,
-          address_numero: result.data.client.address_numero ?? null,
-          address_complemento: result.data.client.address_complemento ?? null,
-          address_bairro: result.data.client.address_bairro ?? null,
-          address_cidade: result.data.client.address_cidade ?? null,
-          address_estado: result.data.client.address_estado ?? null,
-        });
-        setClientLookupStatus("found");
-        setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
-        if (result.data.client.phone) {
-          setClientPhone(formatBrazilPhone(result.data.client.phone));
-        }
-        setClientEmail("");
-        setClientCpf("");
-        setAcceptPrivacyPolicy(false);
-        setAcceptTermsOfService(false);
-        setAcceptCommunicationConsent(false);
-        setIdentityCpfAttempts(0);
-      } else {
-        setSuggestedClient(null);
-        setClientLookupStatus("not_found");
-        setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
-        setClientEmail("");
-        setClientCpf("");
-        setAcceptPrivacyPolicy(false);
-        setAcceptTermsOfService(false);
-        setAcceptCommunicationConsent(false);
-        setIdentityCpfAttempts(0);
-      }
-    }, 400);
-
-    return () => window.clearTimeout(timer);
-  }, [formattedPhoneDigits, isPhoneValid, tenant.id]);
-
-  const handleVerifyExistingClientCpf = useCallback(async () => {
-    if (!suggestedClient || !(clientLookupStatus === "found" || clientLookupStatus === "declined")) return;
-    if (!isCpfValid || !isPhoneValid || isVerifyingClientCpf) return;
-
-    setIsVerifyingClientCpf(true);
-    setIdentityGuardNotice(null);
-    const result = await lookupClientIdentity({
-      tenantId: tenant.id,
-      phone: formattedPhoneDigits,
-      cpf: normalizedCpfDigits,
-      securitySessionId: identitySecuritySessionId,
-      captchaToken: identityCaptchaToken ?? undefined,
-      captchaAnswer: identityCaptchaAnswer || undefined,
-    });
-    setIsVerifyingClientCpf(false);
-
-    if (!result.ok) {
-      setClientLookupStatus("declined");
-      setIdentityGuardNotice("Não foi possível validar seus dados agora. Tente novamente.");
-      return;
-    }
-
-    const guard = result.data.guard;
-    if (guard?.status === "captcha_required") {
-      setIdentityCaptchaPrompt(guard.captcha?.prompt ?? "Confirme a verificação.");
-      setIdentityCaptchaToken(guard.captcha?.token ?? null);
-      setIdentityCaptchaAnswer("");
-      setIdentityGuardNotice("Antes de continuar, confirme a verificação de segurança.");
-      return;
-    }
-
-    if (guard?.status === "cooldown" || guard?.status === "blocked") {
-      const message =
-        guard.status === "blocked"
-          ? "Detectamos muitas tentativas. Reiniciamos a tela e bloqueamos novas tentativas neste aparelho por 24h."
-          : "Muitas tentativas. Reiniciamos a tela por segurança. Tente novamente em alguns minutos.";
-      setIdentityGuardNotice(message);
-      showToast(feedbackById("validation_invalid_data", { message, durationMs: 3200 }));
-      window.setTimeout(() => {
-        setStep("WELCOME");
-        setSelectedService(null);
-        setIsHomeVisit(false);
-        const today = new Date();
-        resetAvailability(today);
-        setClientName("");
-        setClientFirstName("");
-        setClientLastName("");
-        setClientEmail("");
-        setClientPhone("");
-        setClientCpf("");
-        setAcceptPrivacyPolicy(false);
-        setAcceptTermsOfService(false);
-        setAcceptCommunicationConsent(false);
-        setSuggestedClient(null);
-        setClientLookupStatus("idle");
-        setIdentityCpfAttempts(0);
-        setIdentityWelcomeCountdown(null);
-        setIdentityCaptchaPrompt(null);
-        setIdentityCaptchaToken(null);
-        setIdentityCaptchaAnswer("");
-        setIdentityGuardNotice(null);
-        window.setTimeout(() => phoneInputRef.current?.focus(), 0);
-      }, 300);
-      return;
-    }
-
-    if (!result.data.client || result.data.client.id !== suggestedClient.id) {
-      setClientLookupStatus("declined");
-      setIdentityWelcomeCountdown(null);
-      setIdentityCaptchaAnswer("");
-      setIdentityCaptchaToken(null);
-      setIdentityCaptchaPrompt(null);
-      setIdentityCpfAttempts(Math.min(guard?.attemptsInCycle ?? identityCpfAttempts + 1, 3));
-      setIdentityGuardNotice("Não encontramos cliente com este WhatsApp e CPF. Confira e tente novamente.");
-      return;
-    }
-
-    const names = resolveClientNames({
-      name: result.data.client.name ?? null,
-      publicFirstName: result.data.client.public_first_name ?? null,
-      publicLastName: result.data.client.public_last_name ?? null,
-      internalReference: result.data.client.internal_reference ?? null,
-    });
-    setSuggestedClient((current) =>
-      current && current.id === result.data.client?.id
-        ? {
-            ...current,
-            email: result.data.client.email ?? current.email ?? null,
-            cpf: result.data.client.cpf ?? current.cpf ?? null,
-            public_first_name: result.data.client.public_first_name ?? current.public_first_name ?? null,
-            public_last_name: result.data.client.public_last_name ?? current.public_last_name ?? null,
-            internal_reference: result.data.client.internal_reference ?? current.internal_reference ?? null,
-          }
-        : current
-    );
-    setClientFirstName(names.publicFirstName);
-    setClientLastName(names.publicLastName);
-    setClientName(names.publicFullName || result.data.client.name || "Cliente");
-    setClientEmail(result.data.client.email ?? "");
-    setClientCpf(formatCpf(result.data.client.cpf ?? normalizedCpfDigits));
-    setClientLookupStatus("confirmed");
-    setIdentityCpfAttempts(0);
-    setIdentityGuardNotice(null);
-    setIdentityCaptchaPrompt(null);
-    setIdentityCaptchaToken(null);
-    setIdentityCaptchaAnswer("");
-  }, [
-    clientLookupStatus,
+  const {
+    handleVerifyExistingClientCpf,
+    handleSwitchAccount,
+    handleIdentityPhoneChange,
+    handleIdentityCpfChange,
+    handleIdentityCaptchaAnswerChange,
+    handleNewClientFirstNameChange,
+    handleNewClientLastNameChange,
+    resetIdentityState,
+  } = usePublicBookingIdentity({
+    tenantId: tenant.id,
+    step,
     formattedPhoneDigits,
-    identityCaptchaAnswer,
-    identityCaptchaToken,
+    isPhoneValid,
+    normalizedCpfDigits,
+    isCpfValid,
+    clientLookupStatus,
+    suggestedClient,
     identityCpfAttempts,
     identitySecuritySessionId,
-    isCpfValid,
-    isPhoneValid,
+    identityCaptchaToken,
+    identityCaptchaAnswer,
     isVerifyingClientCpf,
-    normalizedCpfDigits,
-    resetAvailability,
+    clientFirstName,
+    clientLastName,
     showToast,
-    suggestedClient,
-    tenant.id,
-  ]);
-
-  useEffect(() => {
-    if (step !== "IDENT" || clientLookupStatus !== "confirmed" || !suggestedClient) {
-      setIdentityWelcomeCountdown(null);
-      return;
-    }
-    setIdentityWelcomeCountdown(4);
-    const interval = window.setInterval(() => {
-      setIdentityWelcomeCountdown((value) => {
-        if (value === null) return value;
-        if (value <= 1) {
-          window.clearInterval(interval);
-          setStep("SERVICE");
-          return 0;
-        }
-        return value - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [clientLookupStatus, step, suggestedClient]);
-
-  const handleSwitchAccount = () => {
-    setClientPhone("");
-    setClientCpf("");
-    setClientName("");
-    setClientFirstName("");
-    setClientLastName("");
-    setClientEmail("");
-    setAcceptPrivacyPolicy(false);
-    setAcceptTermsOfService(false);
-    setAcceptCommunicationConsent(false);
-    setSuggestedClient(null);
-    setClientLookupStatus("idle");
-    setIdentityCpfAttempts(0);
-    setIdentityWelcomeCountdown(null);
-    setIdentityCaptchaPrompt(null);
-    setIdentityCaptchaToken(null);
-    setIdentityCaptchaAnswer("");
-    setIdentityGuardNotice(null);
-    setIsVerifyingClientCpf(false);
-    identityCpfLookupKeyRef.current = null;
-    resetLocationState();
-    window.setTimeout(() => phoneInputRef.current?.focus(), 0);
-  };
-
-  const handleIdentityPhoneChange = (value: string) => {
-    setClientPhone(formatBrazilPhone(value));
-  };
-
-  const handleIdentityCpfChange = (value: string) => {
-    identityCpfLookupKeyRef.current = null;
-    setClientCpf(formatCpf(value));
-    setIdentityGuardNotice(null);
-    if (clientLookupStatus === "declined") {
-      setClientLookupStatus("found");
-    }
-  };
-
-  const handleIdentityCaptchaAnswerChange = (value: string) => {
-    setIdentityCaptchaAnswer(value.replace(/\D/g, "").slice(0, 2));
-  };
-
-  const handleNewClientFirstNameChange = (value: string) => {
-    setClientFirstName(value);
-    setClientName([value.trim(), clientLastName.trim()].filter(Boolean).join(" "));
-  };
-
-  const handleNewClientLastNameChange = (value: string) => {
-    setClientLastName(value);
-    setClientName([clientFirstName.trim(), value.trim()].filter(Boolean).join(" "));
-  };
+    setStep,
+    setSelectedService,
+    setIsHomeVisit,
+    resetAvailability,
+    resetLocationState,
+    phoneInputRef,
+    setClientLookupStatus,
+    setSuggestedClient,
+    setClientName,
+    setClientFirstName,
+    setClientLastName,
+    setClientEmail,
+    setClientPhone,
+    setClientCpf,
+    setAcceptPrivacyPolicy,
+    setAcceptTermsOfService,
+    setAcceptCommunicationConsent,
+    setIdentityCpfAttempts,
+    setIdentityWelcomeCountdown,
+    setIdentitySecuritySessionId,
+    setIdentityCaptchaPrompt,
+    setIdentityCaptchaToken,
+    setIdentityCaptchaAnswer,
+    setIdentityGuardNotice,
+    setIsVerifyingClientCpf,
+  });
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -866,262 +596,34 @@ export function BookingFlow({
     };
   }, [paymentMethod, pixPayment, step]);
 
-  useEffect(() => {
-    if (step !== "PAYMENT" || paymentMethod !== "pix" || !appointmentId || !pixPayment) {
-      return;
-    }
-
-    let active = true;
-    const poll = async () => {
-      const result = await getPixPaymentStatus({
-        appointmentId,
-        tenantId: tenant.id,
-      });
-      if (!active || !result.ok) return;
-
-      if (result.data.internal_status === "paid") {
-        setPixError(null);
-        pixFailureStatusRef.current = null;
-        setStep("SUCCESS");
-        return;
-      }
-      if (result.data.internal_status === "failed") {
-        setPixStatus("error");
-        setPixError("O Pix não foi aprovado. Volte e gere um novo pagamento.");
-        if (pixFailureStatusRef.current !== "failed") {
-          pixFailureStatusRef.current = "failed";
-          showToast(feedbackById("payment_pix_failed", { kind: "banner", durationMs: 3200 }));
-        }
-      }
-    };
-
-    void poll();
-    const interval = window.setInterval(() => {
-      void poll();
-    }, 4000);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [appointmentId, paymentMethod, pixPayment, showToast, step, tenant.id]);
-
-  useEffect(() => {
-    if (
-      step !== "PAYMENT" ||
-      paymentMethod !== "card" ||
-      !appointmentId ||
-      !cardAwaitingConfirmation
-    ) {
-      return;
-    }
-
-    let active = true;
-    const poll = async () => {
-      const result = await getCardPaymentStatus({
-        appointmentId,
-        tenantId: tenant.id,
-      });
-      if (!active || !result.ok) return;
-
-      if (result.data.internal_status === "paid") {
-        setCardAwaitingConfirmation(false);
-        setCardError(null);
-        cardFailureStatusRef.current = null;
-        setStep("SUCCESS");
-        return;
-      }
-      if (result.data.internal_status === "failed") {
-        setCardAwaitingConfirmation(false);
-        setCardStatus("error");
-        setCardError("Pagamento recusado. Tente novamente com outro cartão.");
-        if (cardFailureStatusRef.current !== "failed") {
-          cardFailureStatusRef.current = "failed";
-          showToast(feedbackById("payment_card_declined", { kind: "banner", durationMs: 3200 }));
-        }
-      }
-    };
-
-    void poll();
-    const interval = window.setInterval(() => {
-      void poll();
-    }, 5000);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [appointmentId, cardAwaitingConfirmation, paymentMethod, showToast, step, tenant.id]);
-
-  useEffect(() => {
-    if (step !== "PAYMENT" || paymentMethod !== "card") {
-      try {
-        cardFormRef.current?.unmount?.();
-      } catch {
-        // ignore SDK teardown errors
-      }
-      cardFormRef.current = null;
-      return;
-    }
-    const publicKey = mercadoPagoPublicKey ?? null;
-    if (!publicKey) {
-      setCardError("Chave pública do Mercado Pago ausente.");
-      if (!mpInitToastShownRef.current) {
-        mpInitToastShownRef.current = true;
-        showToast(feedbackById("payment_service_unavailable", { kind: "banner", durationMs: 3200 }));
-      }
-      return;
-    }
-    mpInitToastShownRef.current = false;
-    if (!mpReady) return;
-    if (!window.MercadoPago) {
-      setCardError("Não foi possível carregar o formulário de cartão.");
-      if (!mpInitToastShownRef.current) {
-        mpInitToastShownRef.current = true;
-        showToast(feedbackById("payment_service_unavailable", { kind: "banner", durationMs: 3200 }));
-      }
-      return;
-    }
-    try {
-      cardFormRef.current?.unmount?.();
-    } catch {
-      // ignore SDK teardown errors
-    }
-    cardFormRef.current = null;
-    const mp = new window.MercadoPago(publicKey, { locale: "pt-BR" });
-    cardFormRef.current = mp.cardForm({
-      amount: payableSignalAmount.toFixed(2),
-      iframe: true,
-      form: {
-        id: "mp-card-form",
-        cardNumber: { id: "mp-card-number", placeholder: "Número do cartão" },
-        expirationDate: { id: "mp-card-expiration", placeholder: "MM/AA" },
-        securityCode: { id: "mp-card-security", placeholder: "CVC" },
-        cardholderName: { id: "mp-cardholder-name", placeholder: "Nome no cartão" },
-        issuer: { id: "mp-card-issuer", placeholder: "Banco emissor" },
-        installments: { id: "mp-card-installments", placeholder: "Parcelas" },
-        identificationType: { id: "mp-card-identification-type", placeholder: "Tipo" },
-        identificationNumber: { id: "mp-card-identification-number", placeholder: "CPF" },
-        cardholderEmail: { id: "mp-card-email", placeholder: "Email" },
-      },
-      callbacks: {
-        onFormMounted: (error) => {
-          if (error) {
-            setCardError("Não foi possível carregar o formulário de cartão.");
-            showToast(feedbackById("payment_service_unavailable"));
-          }
-        },
-        onSubmit: async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (cardSubmitInFlightRef.current) {
-            return;
-          }
-          if (!selectedService) return;
-          cardSubmitInFlightRef.current = true;
-          const data = cardFormRef.current?.getCardFormData();
-          if (!data?.token || !data.paymentMethodId) {
-            const feedback = feedbackById("validation_required_fields");
-            setCardError(feedback.message);
-            showToast(feedback);
-            setCardAwaitingConfirmation(false);
-            cardSubmitInFlightRef.current = false;
-            return;
-          }
-          setCardStatus("loading");
-          setCardError(null);
-          const ensuredId = appointmentId ?? (await ensureAppointment());
-          if (!ensuredId) {
-            setCardStatus("error");
-            const feedback = feedbackById("booking_create_failed");
-            setCardError(feedback.message);
-            showToast(feedback);
-            setCardAwaitingConfirmation(false);
-            cardSubmitInFlightRef.current = false;
-            return;
-          }
-          let result;
-          try {
-            result = await createCardPayment({
-              appointmentId: ensuredId,
-              tenantId: tenant.id,
-              amount: payableSignalAmount,
-              token: data.token,
-              paymentMethodId: data.paymentMethodId,
-              installments: Number(data.installments) || 1,
-              payerEmail: data.cardholderEmail || normalizedClientEmail,
-              payerName: resolvedClientFullName,
-              payerPhone: clientPhone,
-              identificationType: data.identificationType,
-              identificationNumber: data.identificationNumber,
-            });
-          } catch (error) {
-            console.error("[booking-flow] card payment submit failed", error);
-            setCardStatus("error");
-            const feedback = feedbackFromError(error, "payment_card");
-            setCardError(feedback.message);
-            showToast(feedback);
-            setCardAwaitingConfirmation(false);
-            cardSubmitInFlightRef.current = false;
-            return;
-          }
-
-          if (!result.ok) {
-            setCardStatus("error");
-            const feedback = feedbackFromError(result.error, "payment_card");
-            setCardError(feedback.message);
-            showToast(feedback);
-            setCardAwaitingConfirmation(false);
-            cardSubmitInFlightRef.current = false;
-            return;
-          }
-          if (result.data.internal_status === "paid") {
-            setCardStatus("idle");
-            setCardAwaitingConfirmation(false);
-            showToast(feedbackById("payment_recorded", { durationMs: 1800 }));
-            setStep("SUCCESS");
-          } else if (result.data.internal_status === "failed") {
-            setCardStatus("error");
-            setCardAwaitingConfirmation(false);
-            setCardError("Pagamento recusado. Tente novamente com outro cartão.");
-            showToast(feedbackById("payment_card_declined", { kind: "banner", durationMs: 3200 }));
-          } else {
-            setCardStatus("idle");
-            setCardAwaitingConfirmation(true);
-            setCardError(
-              "Pagamento em processamento. Você receberá a confirmação assim que for aprovado."
-            );
-            showToast(feedbackById("payment_pending"));
-          }
-          cardSubmitInFlightRef.current = false;
-        },
-      },
-    });
-
-    return () => {
-      try {
-        cardFormRef.current?.unmount?.();
-      } catch {
-        // ignore SDK teardown errors
-      }
-      cardFormRef.current = null;
-      cardSubmitInFlightRef.current = false;
-    };
-  }, [
+  usePublicBookingPaymentEffects({
+    step,
+    paymentMethod,
     appointmentId,
-    clientPhone,
-    mercadoPagoPublicKey,
+    tenantId: tenant.id,
+    pixPayment: pixPayment ? { id: pixPayment.id } : null,
+    cardAwaitingConfirmation,
+    showToast,
+    setStep,
+    setPixStatus,
+    setPixError,
+    setCardAwaitingConfirmation,
+    setCardStatus,
+    setCardError,
+    pixFailureStatusRef,
+    cardFailureStatusRef,
+    cardFormRef,
+    cardSubmitInFlightRef,
+    mpInitToastShownRef,
+    mercadoPagoPublicKey: mercadoPagoPublicKey ?? null,
+    mpReady,
+    payableSignalAmount,
+    selectedService,
     ensureAppointment,
     normalizedClientEmail,
-    mpReady,
-    paymentMethod,
-    selectedService,
-    payableSignalAmount,
     resolvedClientFullName,
-    showToast,
-    step,
-    tenant.id,
-  ]);
+    clientPhone,
+  });
 
   useEffect(() => {
     if (!appointmentId) {
@@ -1151,66 +653,16 @@ export function BookingFlow({
     setPaymentMethod(method);
   };
 
-  const buildVoucherBlob = useCallback(async () => {
-    if (!voucherRef.current) return null;
-    setVoucherBusy(true);
-    try {
-      return await renderVoucherImageBlob(voucherRef.current);
-    } catch (error) {
-      console.error("Falha ao gerar imagem do voucher", error);
-      return null;
-    } finally {
-      setVoucherBusy(false);
-    }
-  }, []);
-
-  const handleDownloadVoucher = useCallback(async () => {
-    const blob = await buildVoucherBlob();
-    if (!blob) {
-      showToast(feedbackById("voucher_generation_failed"));
-      return;
-    }
-    downloadVoucherBlob(blob, `voucher-${protocol || "agendamento"}.png`, window.navigator.userAgent);
-  }, [buildVoucherBlob, protocol, showToast]);
-
-  const handleShareVoucher = useCallback(async () => {
-    const blob = await buildVoucherBlob();
-    if (!blob) return;
-    await shareVoucherBlob(
-      blob,
-      `voucher-${protocol || "agendamento"}.png`,
-      "Segue o voucher do seu agendamento. Baixe a imagem e envie pelo WhatsApp."
-    );
-  }, [buildVoucherBlob, protocol]);
+  const { voucherBusy, handleDownloadVoucher, handleShareVoucher } = usePublicBookingVoucherActions({
+    protocol,
+    showToast,
+    voucherRef,
+  });
 
   const handleReset = () => {
-    setStep("WELCOME");
-    setSelectedService(null);
-    setIsHomeVisit(false);
-    const today = new Date();
-    resetAvailability(today);
-    setClientName("");
-    setClientFirstName("");
-    setClientLastName("");
-    setClientEmail("");
-    setClientPhone("");
-    setClientCpf("");
-    setAcceptPrivacyPolicy(false);
-    setAcceptTermsOfService(false);
-    setAcceptCommunicationConsent(false);
-    resetLocationState();
+    resetIdentityState({ clearPhone: true, resetFlow: true, clearSuggestedClient: true });
     setAppointmentId(null);
     setProtocol("");
-    setSuggestedClient(null);
-    setClientLookupStatus("idle");
-    setIdentityCpfAttempts(0);
-    setIdentityWelcomeCountdown(null);
-    setIdentityCaptchaPrompt(null);
-    setIdentityCaptchaToken(null);
-    setIdentityCaptchaAnswer("");
-    setIdentityGuardNotice(null);
-    setIsVerifyingClientCpf(false);
-    identityCpfLookupKeyRef.current = null;
     setPixPayment(null);
     setPixStatus("idle");
     setPixError(null);
@@ -1220,7 +672,6 @@ export function BookingFlow({
     setCardStatus("idle");
     setCardError(null);
     setIsVoucherOpen(false);
-    setVoucherBusy(false);
   };
 
   const {
