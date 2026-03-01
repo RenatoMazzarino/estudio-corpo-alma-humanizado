@@ -1,26 +1,22 @@
 "use client";
 
-import { type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarClock, CalendarDays, ChevronDown, Clock3, MapPin, Mic, NotebookPen, Pause, Pencil, Play, RotateCw, SkipBack, SkipForward, Sparkles, Square, SquareCheckBig, Wallet } from "lucide-react";
 import type {
   ChecklistItem,
   ClientHistoryEntry,
 } from "../../../../../lib/attendance/attendance-types";
-type SpotifyPlayerAction = "play" | "pause" | "next" | "previous";
-type HistoryFilter = "all" | "past" | "scheduled";
-type SpotifyPlayerSnapshot = {
-  connected: boolean;
-  enabled: boolean;
-  hasActiveDevice: boolean;
-  isPlaying: boolean;
-  trackName: string | null;
-  artistName: string | null;
-  trackUrl: string | null;
-  playlistUrl: string | null;
-  deviceName: string | null;
-  message: string | null;
-};
+import {
+  formatHistoryDate,
+  formatHistoryTime,
+  getHistoryHeadlineTag,
+  getHistoryLocationLabel,
+  getPaymentStatusMeta,
+  HistoryFilter,
+  SpotifyBrandIcon,
+} from "./session-stage.helpers";
+import { useSessionStageMedia } from "./use-session-stage-media";
 
 interface SessionStageProps {
   checklistEnabled: boolean;
@@ -35,118 +31,6 @@ interface SessionStageProps {
   onSaveEvolution: () => Promise<boolean>;
 }
 
-const DEFAULT_SPOTIFY_PLAYLIST_URL =
-  process.env.NEXT_PUBLIC_ATTENDANCE_SPOTIFY_PLAYLIST_URL ??
-  process.env.NEXT_PUBLIC_SPOTIFY_PLAYLIST_URL ??
-  "https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO";
-const BRAZIL_TIMEZONE = "America/Sao_Paulo";
-
-function SpotifyBrandIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="10" fill="#1DB954" />
-      <path d="M6.5 9.8c3.9-1.1 7.8-.8 10.9.9" stroke="#0F1F16" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M7.3 12.4c3.1-.8 6-.5 8.5.8" stroke="#0F1F16" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8.2 14.8c2.3-.6 4.4-.3 6.2.7" stroke="#0F1F16" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function formatHistoryDate(startTime: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: BRAZIL_TIMEZONE,
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-  }).format(new Date(startTime));
-}
-
-function formatHistoryTime(startTime: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: BRAZIL_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(startTime));
-}
-
-function getHistoryLocationLabel(isHomeVisit: boolean | null) {
-  if (isHomeVisit) return "Atendimento em domicílio";
-  return "Atendimento no estúdio";
-}
-
-function getHistoryHeadlineTag(history: ClientHistoryEntry) {
-  if (history.timeline === "future") {
-    return { label: "Agendado", badgeClass: "bg-sky-50 text-sky-700 border-sky-200" };
-  }
-  if (history.appointment_status === "no_show") {
-    return { label: "No-show", badgeClass: "bg-rose-50 text-rose-700 border-rose-200" };
-  }
-  return { label: "Concluído", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-}
-
-function getPaymentStatusMeta(status: string | null) {
-  switch (status) {
-    case "pending":
-      return { label: "Pendente", badgeClass: "bg-amber-50 text-amber-700 border-amber-200", dotClass: "bg-amber-500" };
-    case "partial":
-      return { label: "Parcial", badgeClass: "bg-orange-50 text-orange-700 border-orange-200", dotClass: "bg-orange-500" };
-    case "paid":
-      return { label: "Pago", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200", dotClass: "bg-emerald-500" };
-    case "waived":
-      return { label: "Liberado", badgeClass: "bg-sky-50 text-sky-700 border-sky-200", dotClass: "bg-sky-500" };
-    case "refunded":
-      return { label: "Estornado", badgeClass: "bg-slate-100 text-slate-700 border-slate-300", dotClass: "bg-slate-500" };
-    default:
-      return { label: "Sem status", badgeClass: "bg-stone-100 text-stone-700 border-stone-300", dotClass: "bg-stone-500" };
-  }
-}
-
-function extractSpotifyPlaylistId(rawUrl: string) {
-  const trimmed = rawUrl.trim();
-  if (!trimmed) return null;
-
-  if (trimmed.startsWith("spotify:playlist:")) {
-    const id = trimmed.split(":")[2];
-    return id?.trim() || null;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    const match = parsed.pathname.match(/\/playlist\/([A-Za-z0-9]+)/);
-    return match?.[1] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function pickRecordingMimeType() {
-  if (typeof MediaRecorder === "undefined") return "";
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/ogg;codecs=opus",
-    "audio/mp4",
-  ];
-  return candidates.find((mime) => MediaRecorder.isTypeSupported(mime)) ?? "";
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const raw = typeof reader.result === "string" ? reader.result : "";
-      const base64 = raw.includes(",") ? raw.split(",")[1] : raw;
-      if (!base64) {
-        reject(new Error("Falha ao processar áudio."));
-        return;
-      }
-      resolve(base64);
-    };
-    reader.onerror = () => reject(new Error("Falha ao processar áudio."));
-    reader.readAsDataURL(blob);
-  });
-}
-
 export function SessionStage({
   checklistEnabled,
   checklist,
@@ -159,15 +43,42 @@ export function SessionStage({
   onStructureWithFlora,
   onSaveEvolution,
 }: SessionStageProps) {
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const {
+    isRecording,
+    isTranscribing,
+    isStructuring,
+    isEditing,
+    setIsEditing,
+    recordingError,
+    spotifyState,
+    spotifyLoading,
+    spotifyActionBusy,
+    spotifyPlaylistConfigured,
+    spotifyConnected,
+    spotifyHasDevice,
+    spotifyCanSkip,
+    spotifyCanTogglePlayback,
+    spotifyToggleAction,
+    spotifyToggleLabel,
+    spotifyHeaderSummary,
+    noteLocked,
+    evolutionHeaderSummary,
+    stopAudioRecording,
+    handleOpenSpotify,
+    handleSpotifyAction,
+    refreshSpotifyState,
+    handleStructureWithFlora,
+    handleSaveEvolution,
+    startAudioRecording,
+  } = useSessionStageMedia({
+    hasSavedEvolution,
+    evolutionText,
+    onChangeEvolutionText,
+    onTranscribeAudio,
+    onStructureWithFlora,
+    onSaveEvolution,
+  });
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isStructuring, setIsStructuring] = useState(false);
-  const [isEditing, setIsEditing] = useState(!hasSavedEvolution);
-  const [recordingError, setRecordingError] = useState<string | null>(null);
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<ClientHistoryEntry | null>(null);
@@ -175,143 +86,16 @@ export function SessionStage({
   const [isSpotifyOpen, setIsSpotifyOpen] = useState(false);
   const [isEvolutionOpen, setIsEvolutionOpen] = useState(false);
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
-  const [spotifyState, setSpotifyState] = useState<SpotifyPlayerSnapshot | null>(null);
-  const [spotifyLoading, setSpotifyLoading] = useState(false);
-  const [spotifyActionBusy, setSpotifyActionBusy] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const spotifyFetchInFlightRef = useRef(false);
-  const spotifyPlaylistUrl = useMemo(() => DEFAULT_SPOTIFY_PLAYLIST_URL.trim(), []);
-  const spotifyPlaylistConfigured = useMemo(() => Boolean(extractSpotifyPlaylistId(spotifyPlaylistUrl)), [spotifyPlaylistUrl]);
-
-  const redirectToLogin = useCallback((loginUrl?: string | null) => {
-    if (typeof window === "undefined") return;
-    const fallbackNext = `${window.location.pathname}${window.location.search}`;
-    const fallbackLogin = `/auth/login?reason=forbidden&next=${encodeURIComponent(fallbackNext)}`;
-    window.location.assign(loginUrl?.trim() || fallbackLogin);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      try {
-        mediaRecorderRef.current?.stop();
-      } catch {
-        // noop
-      }
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    };
-  }, []);
 
   useEffect(() => {
     setPortalTarget(document.getElementById("app-frame"));
   }, []);
 
-  const fetchSpotifyState = useCallback(async (silent = false) => {
-    if (spotifyFetchInFlightRef.current) return;
-    spotifyFetchInFlightRef.current = true;
-    if (!silent) setSpotifyLoading(true);
-    try {
-      const response = await fetch("/api/integrations/spotify/player/state", {
-        method: "GET",
-        cache: "no-store",
-      });
-      const payload = (await response.json()) as {
-        ok?: boolean;
-        loginRequired?: boolean;
-        loginUrl?: string | null;
-        connected?: boolean;
-        enabled?: boolean;
-        hasActiveDevice?: boolean;
-        isPlaying?: boolean;
-        trackName?: string | null;
-        artistName?: string | null;
-        trackUrl?: string | null;
-        playlistUrl?: string | null;
-        deviceName?: string | null;
-        message?: string | null;
-      };
-      if (response.status === 401 || payload.loginRequired) {
-        redirectToLogin(payload.loginUrl);
-        return;
-      }
-      setSpotifyState({
-        connected: Boolean(payload.connected),
-        enabled: Boolean(payload.enabled),
-        hasActiveDevice: Boolean(payload.hasActiveDevice),
-        isPlaying: Boolean(payload.isPlaying),
-        trackName: payload.trackName ?? null,
-        artistName: payload.artistName ?? null,
-        trackUrl: payload.trackUrl ?? null,
-        playlistUrl: payload.playlistUrl ?? null,
-        deviceName: payload.deviceName ?? null,
-        message: payload.message ?? null,
-      });
-    } catch {
-      setSpotifyState({
-        connected: false,
-        enabled: false,
-        hasActiveDevice: false,
-        isPlaying: false,
-        trackName: null,
-        artistName: null,
-        trackUrl: null,
-        playlistUrl: null,
-        deviceName: null,
-        message: "Falha ao carregar estado do Spotify.",
-      });
-    } finally {
-      spotifyFetchInFlightRef.current = false;
-      if (!silent) setSpotifyLoading(false);
-    }
-  }, [redirectToLogin]);
-
-  useEffect(() => {
-    void fetchSpotifyState();
-
-    const handleFocusOrVisible = () => {
-      if (document.visibilityState === "visible") {
-        void fetchSpotifyState(true);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleFocusOrVisible);
-    window.addEventListener("focus", handleFocusOrVisible);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleFocusOrVisible);
-      window.removeEventListener("focus", handleFocusOrVisible);
-    };
-  }, [fetchSpotifyState]);
-
-  useEffect(() => {
-    setIsEditing(!hasSavedEvolution);
-  }, [hasSavedEvolution]);
-
   const completedChecklistCount = useMemo(
     () => checklist.filter((item) => Boolean(item.completed_at)).length,
     [checklist]
   );
-  const spotifyConnected = Boolean(spotifyState?.connected && spotifyState?.enabled);
-  const spotifyHasDevice = Boolean(spotifyState?.hasActiveDevice);
-  const spotifyCanSkip = spotifyConnected && spotifyHasDevice && !spotifyActionBusy;
-  const spotifyCanTogglePlayback = spotifyConnected && !spotifyActionBusy;
-  const spotifyToggleAction: SpotifyPlayerAction = spotifyState?.isPlaying ? "pause" : "play";
-  const spotifyToggleLabel = spotifyState?.isPlaying ? "Pausar" : "Play";
-  const spotifyHeaderSummary = spotifyLoading
-    ? "Sincronizando Spotify..."
-    : spotifyConnected
-      ? spotifyState?.isPlaying
-        ? "Tocando agora"
-        : "Conectado"
-      : "Desconectado";
-  const noteLocked = hasSavedEvolution && !isEditing;
-  const evolutionHeaderSummary = isTranscribing
-    ? "Transcrevendo áudio..."
-    : isRecording
-      ? "Gravando..."
-      : noteLocked
-        ? "Evolução salva"
-        : "Sem salvar";
   const allHistory = useMemo(
     () =>
       [...clientHistory]
@@ -377,202 +161,6 @@ export function SessionStage({
     }
   };
 
-  const stopAudioRecording = () => {
-    try {
-      mediaRecorderRef.current?.stop();
-    } catch {
-      setIsRecording(false);
-    }
-  };
-
-  const handleOpenSpotify = () => {
-    const targetUrl =
-      spotifyState?.trackUrl?.trim() ||
-      spotifyState?.playlistUrl?.trim() ||
-      spotifyPlaylistUrl;
-    if (!targetUrl) return;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
-  };
-
-  const handleSpotifyAction = async (action: SpotifyPlayerAction) => {
-    setSpotifyActionBusy(true);
-    try {
-      const response = await fetch("/api/integrations/spotify/player/control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      const payload = (await response.json()) as {
-        ok?: boolean;
-        loginRequired?: boolean;
-        loginUrl?: string | null;
-        message?: string | null;
-        connected?: boolean;
-        enabled?: boolean;
-        hasActiveDevice?: boolean;
-        isPlaying?: boolean;
-        trackName?: string | null;
-        artistName?: string | null;
-        trackUrl?: string | null;
-        playlistUrl?: string | null;
-        deviceName?: string | null;
-      };
-
-      if (response.status === 401 || payload.loginRequired) {
-        redirectToLogin(payload.loginUrl);
-        return;
-      }
-
-      if (payload.ok) {
-        setSpotifyState({
-          connected: Boolean(payload.connected),
-          enabled: Boolean(payload.enabled),
-          hasActiveDevice: Boolean(payload.hasActiveDevice),
-          isPlaying: Boolean(payload.isPlaying),
-          trackName: payload.trackName ?? null,
-          artistName: payload.artistName ?? null,
-          trackUrl: payload.trackUrl ?? null,
-          playlistUrl: payload.playlistUrl ?? null,
-          deviceName: payload.deviceName ?? null,
-          message: payload.message ?? null,
-        });
-      } else {
-        setSpotifyState((current) =>
-          current
-            ? { ...current, message: payload.message ?? "Não foi possível executar comando no Spotify." }
-            : {
-                connected: false,
-                enabled: false,
-                hasActiveDevice: false,
-                isPlaying: false,
-                trackName: null,
-                artistName: null,
-                trackUrl: null,
-                playlistUrl: null,
-                deviceName: null,
-                message: payload.message ?? "Não foi possível executar comando no Spotify.",
-              }
-        );
-      }
-    } catch {
-      setSpotifyState((current) =>
-        current
-          ? { ...current, message: "Falha ao enviar comando para o Spotify." }
-          : {
-              connected: false,
-              enabled: false,
-              hasActiveDevice: false,
-              isPlaying: false,
-              trackName: null,
-              artistName: null,
-              trackUrl: null,
-              playlistUrl: null,
-              deviceName: null,
-              message: "Falha ao enviar comando para o Spotify.",
-            }
-      );
-    } finally {
-      setSpotifyActionBusy(false);
-      window.setTimeout(() => {
-        void fetchSpotifyState(true);
-      }, 1200);
-    }
-  };
-
-  const handleStructureWithFlora = async () => {
-    if (!evolutionText.trim() || noteLocked) return;
-    setIsStructuring(true);
-    try {
-      await onStructureWithFlora(evolutionText);
-    } finally {
-      setIsStructuring(false);
-    }
-  };
-
-  const handleSaveEvolution = async () => {
-    if (isRecording || isTranscribing || isStructuring) return;
-    const saved = await onSaveEvolution();
-    if (saved) {
-      setIsEditing(false);
-      setRecordingError(null);
-    }
-  };
-
-  const startAudioRecording = async () => {
-    if (noteLocked) return;
-    setRecordingError(null);
-
-    if (
-      typeof window === "undefined" ||
-      !navigator.mediaDevices ||
-      typeof navigator.mediaDevices.getUserMedia !== "function" ||
-      typeof MediaRecorder === "undefined"
-    ) {
-      setRecordingError("Seu navegador não suporta gravação de áudio nesta tela.");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-      audioChunksRef.current = [];
-
-      const mimeType = pickRecordingMimeType();
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onerror = () => {
-        setRecordingError("Não foi possível gravar o áudio. Tente novamente.");
-      };
-
-      recorder.onstop = async () => {
-        setIsRecording(false);
-
-        const streamTracks = mediaStreamRef.current?.getTracks() ?? [];
-        streamTracks.forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-
-        const finalMimeType = recorder.mimeType || mimeType || "audio/webm";
-        const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
-        audioChunksRef.current = [];
-
-        if (audioBlob.size < 1024) {
-          setRecordingError("Áudio muito curto. Grave novamente.");
-          return;
-        }
-
-        setIsTranscribing(true);
-        try {
-          const audioBase64 = await blobToBase64(audioBlob);
-          const transcript = (await onTranscribeAudio({ audioBase64, mimeType: finalMimeType }))?.trim() ?? "";
-          if (!transcript) {
-            setRecordingError("Não foi possível transcrever este áudio.");
-            return;
-          }
-
-          const currentText = evolutionText.trim();
-          const nextText = currentText ? `${currentText}\n\n${transcript}` : transcript;
-          onChangeEvolutionText(nextText);
-        } catch {
-          setRecordingError("Falha ao transcrever o áudio.");
-        } finally {
-          setIsTranscribing(false);
-        }
-      };
-
-      recorder.start(250);
-      setIsRecording(true);
-    } catch {
-      setRecordingError("Não foi possível acessar o microfone.");
-    }
-  };
-
   return (
     <div className="space-y-5">
       <div className="rounded-3xl border border-white bg-white p-4 shadow-soft">
@@ -602,7 +190,7 @@ export function SessionStage({
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => void fetchSpotifyState(true)}
+              onClick={() => void refreshSpotifyState()}
               disabled={spotifyLoading || spotifyActionBusy}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-studio-text disabled:opacity-50"
               aria-label="Atualizar estado do player"
