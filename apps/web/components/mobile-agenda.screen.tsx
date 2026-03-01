@@ -35,7 +35,9 @@ import { IconButton } from "./ui/buttons";
 import { Toast, useToast } from "./ui/toast";
 import { AgendaSearchModal, type SearchResults } from "./agenda/agenda-search-modal";
 import { AppointmentDetailsSheet } from "./agenda/appointment-details-sheet";
+import { useMobileAgendaDetailsActions } from "./agenda/use-mobile-agenda-details-actions";
 import { MobileAgendaDaySection } from "./agenda/mobile-agenda-day-section";
+import { useMobileAgendaDetails } from "./agenda/use-mobile-agenda-details";
 import {
   parseAgendaDate,
 } from "./agenda/mobile-agenda.helpers";
@@ -46,19 +48,7 @@ import {
   normalizeReferenceToken,
 } from "./agenda/appointment-reference";
 import { cancelAppointment } from "../app/actions";
-import {
-  confirmPre,
-  getAttendance,
-  recordPayment,
-  saveEvolution,
-  sendMessage,
-  sendReminder24h,
-  structureEvolutionFromAudio,
-} from "../app/(dashboard)/atendimento/[id]/actions";
 import { DEFAULT_PUBLIC_BASE_URL } from "../src/shared/config";
-import type { AttendanceOverview, MessageType } from "../lib/attendance/attendance-types";
-import { applyAutoMessageTemplate } from "../src/shared/auto-messages.utils";
-import { buildAppointmentReceiptPath } from "../src/shared/public-links";
 import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 import {
   getTimeRangeMinutes,
@@ -107,11 +97,6 @@ export function MobileAgenda({
   const [searchMode, setSearchMode] = useState<"quick" | "full">("quick");
   const [searchResults, setSearchResults] = useState<SearchResults>({ appointments: [], clients: [] });
   const [isSearching, setIsSearching] = useState(false);
-  const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsAppointmentId, setDetailsAppointmentId] = useState<string | null>(null);
-  const [detailsData, setDetailsData] = useState<AttendanceOverview | null>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsActionPending, setDetailsActionPending] = useState(false);
   const [actionSheet, setActionSheet] = useState<{
     id: string;
@@ -139,11 +124,25 @@ export function MobileAgenda({
   const pendingViewRef = useRef<AgendaView | null>(null);
   const selectedDateRef = useRef<Date>(selectedDate);
   const scrollIdleTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    loadingAppointmentId,
+    detailsOpen,
+    detailsData,
+    detailsLoading,
+    openDetailsForAppointment,
+    refreshAttendanceDetails,
+    closeDetails,
+  } = useMobileAgendaDetails({
+    appointments,
+    searchParams,
+    router,
+    selectedDateRef,
+    setSelectedDate,
+    setCurrentMonth,
+    showToast,
+  });
   const [now, setNow] = useState<Date | null>(null);
   const createdToastShown = useRef(false);
-  const autoOpenedAppointmentRef = useRef<string | null>(null);
-  const pendingAutoOpenAppointmentRef = useRef<string | null>(null);
-  const pendingAutoOpenDelayMsRef = useRef<number>(0);
   const timeColumnWidth = 44;
   const timeColumnGap = 6;
   const timelineLeftOffset = timeColumnWidth + timeColumnGap;
@@ -357,101 +356,6 @@ export function MobileAgenda({
     router.replace(`/?${params.toString()}`, { scroll: false });
   }, [searchParams, router, showToast]);
 
-  const fetchAttendanceDetails = useCallback(
-    async (appointmentId: string) => {
-      setDetailsLoading(true);
-      let timeoutId: number | null = null;
-      try {
-        const data = await Promise.race([
-          getAttendance(appointmentId),
-          new Promise<null>((_, reject) => {
-            timeoutId = window.setTimeout(() => reject(new Error("details_timeout")), 10000);
-          }),
-        ]);
-        setDetailsData(data ?? null);
-      } catch {
-        showToast(
-          feedbackById("agenda_details_load_failed", {
-            message: "Não foi possível carregar os detalhes agora. Tente abrir novamente.",
-          })
-        );
-        setDetailsData(null);
-      } finally {
-        if (timeoutId) {
-          window.clearTimeout(timeoutId);
-        }
-        setDetailsLoading(false);
-        setLoadingAppointmentId(null);
-      }
-    },
-    [showToast]
-  );
-
-  const openDetailsForAppointment = useCallback((appointmentId: string) => {
-    setLoadingAppointmentId(appointmentId);
-    setDetailsAppointmentId(appointmentId);
-    setDetailsOpen(true);
-  }, []);
-
-  useEffect(() => {
-    if (!detailsOpen || !detailsAppointmentId) {
-      setDetailsData(null);
-      setDetailsLoading(false);
-      setLoadingAppointmentId(null);
-      return;
-    }
-    fetchAttendanceDetails(detailsAppointmentId);
-  }, [detailsOpen, detailsAppointmentId, fetchAttendanceDetails]);
-
-  useEffect(() => {
-    const appointmentToOpen = searchParams.get("openAppointment");
-    if (!appointmentToOpen) {
-      autoOpenedAppointmentRef.current = null;
-      return;
-    }
-    if (autoOpenedAppointmentRef.current === appointmentToOpen) {
-      return;
-    }
-
-    const targetAppointment = appointments.find((item) => item.id === appointmentToOpen);
-    if (!targetAppointment) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("openAppointment");
-      params.delete("fromAttendance");
-      router.replace(`/?${params.toString()}`, { scroll: false });
-      return;
-    }
-
-    const targetDate = parseAgendaDate(targetAppointment.start_time);
-    if (isValid(targetDate) && !isSameDay(targetDate, selectedDateRef.current)) {
-      setSelectedDate(targetDate);
-      setCurrentMonth(startOfMonth(targetDate));
-    }
-
-    autoOpenedAppointmentRef.current = appointmentToOpen;
-    pendingAutoOpenAppointmentRef.current = appointmentToOpen;
-    pendingAutoOpenDelayMsRef.current = searchParams.get("fromAttendance") === "1" ? 80 : 0;
-
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("openAppointment");
-    params.delete("fromAttendance");
-    router.replace(`/?${params.toString()}`, { scroll: false });
-  }, [appointments, openDetailsForAppointment, router, searchParams]);
-
-  useEffect(() => {
-    if (searchParams.get("openAppointment")) return;
-    const pendingAppointmentId = pendingAutoOpenAppointmentRef.current;
-    if (!pendingAppointmentId) return;
-
-    pendingAutoOpenAppointmentRef.current = null;
-    const delayMs = pendingAutoOpenDelayMsRef.current;
-    pendingAutoOpenDelayMsRef.current = 0;
-
-    window.setTimeout(() => {
-      openDetailsForAppointment(pendingAppointmentId);
-    }, delayMs);
-  }, [openDetailsForAppointment, searchParams]);
-
   const getDayData = (day: Date) => {
     const key = format(day, "yyyy-MM-dd");
     const dayAppointments = (appointmentsByDay.get(key) ?? []).slice().sort((a, b) =>
@@ -599,23 +503,6 @@ export function MobileAgenda({
     return eachDayOfInterval({ start, end });
   }, [selectedDate]);
 
-  const toWhatsappLink = useCallback((phone?: string | null) => {
-    if (!phone) return null;
-    const digits = phone.replace(/\D/g, "");
-    if (!digits) return null;
-    const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-    return `https://wa.me/${withCountry}`;
-  }, []);
-
-  const resolvePublicBaseUrl = () => {
-    const raw = publicBaseUrl.trim();
-    if (!raw) {
-      if (typeof window === "undefined") return "";
-      return window.location.origin.replace(/\/$/, "");
-    }
-    return /^https?:\/\//i.test(raw) ? raw.replace(/\/$/, "") : `https://${raw.replace(/\/$/, "")}`;
-  };
-
   const detailsAttendanceCode = useMemo(() => {
     const appointment = detailsData?.appointment;
     if (!appointment) return null;
@@ -659,395 +546,29 @@ export function MobileAgenda({
     return `${serviceCode}-${clientCode}-${dateToken}-${sequence}`;
   }, [appointments, detailsData?.appointment]);
 
-  const buildMessage = (
-    type: MessageType,
-    appointment: AttendanceOverview["appointment"],
-    options?: { paymentId?: string | null; chargeAmount?: number | null }
-  ) => {
-    const name = appointment.clients?.name?.trim() ?? "";
-    const greeting = name ? `Olá, ${name}!` : "Olá!";
-    const startDate = new Date(appointment.start_time);
-    const dayOfWeek = format(startDate, "EEEE", { locale: ptBR });
-    const dayOfWeekLabel = dayOfWeek ? `${dayOfWeek[0]?.toUpperCase() ?? ""}${dayOfWeek.slice(1)}` : "";
-    const dateLabel = format(startDate, "dd/MM", { locale: ptBR });
-    const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
-    const serviceName = (appointment.service_name ?? "").trim() || "Seu atendimento";
-    const dateLine = [dayOfWeekLabel, dateLabel].filter(Boolean).join(", ");
-    const serviceSegment = serviceName ? ` 💆‍♀️ Serviço: ${serviceName}` : "";
-    const clientAddress =
-      appointment.clients?.endereco_completo?.trim() ||
-      [
-        appointment.address_logradouro,
-        appointment.address_numero,
-        appointment.address_bairro,
-        appointment.address_cidade,
-        appointment.address_estado,
-      ]
-        .map((value) => (typeof value === "string" ? value.trim() : ""))
-        .filter(Boolean)
-        .join(", ");
-    const locationLine = appointment.is_home_visit
-      ? clientAddress
-        ? `No endereço informado: ${clientAddress}`
-        : "Atendimento domiciliar (endereço a confirmar)"
-      : "No estúdio";
-    const confirmationReplyOptions = "1 - Confirmar\n2 - Reagendar\n3 - Falar com a Jana";
-
-    if (type === "created_confirmation") {
-      return applyAutoMessageTemplate(messageTemplates.created_confirmation, {
-        greeting,
-        date_line: dateLine,
-        time: timeLabel,
-        service_name: serviceName,
-        location_line: locationLine,
-        service_segment: serviceSegment,
-      }).trim();
-    }
-    if (type === "reminder_24h") {
-      const serviceLine = serviceName ? `para o seu ${serviceName} às ${timeLabel}.` : `para o seu horário às ${timeLabel}.`;
-      return applyAutoMessageTemplate(messageTemplates.reminder_24h, {
-        greeting,
-        service_line: serviceLine,
-        service_name: serviceName,
-        time: timeLabel,
-        date_line: dateLine,
-        location_line: locationLine,
-        confirmation_reply_options: confirmationReplyOptions,
-      }).trim();
-    }
-
-    if (type === "payment_charge") {
-      const base = resolvePublicBaseUrl();
-      const paymentLink = base ? `${base}/pagamento` : "";
-      const chargeAmount =
-        typeof options?.chargeAmount === "number" && Number.isFinite(options.chargeAmount)
-          ? options.chargeAmount
-          : null;
-      const chargeLabel =
-        chargeAmount !== null
-          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(chargeAmount)
-          : "";
-      const paymentLinkBlock = paymentLink
-        ? `💰 Valor pendente: ${chargeLabel || "conforme combinado"}\nLink:\n${paymentLink}\n\n`
-        : "";
-
-      return applyAutoMessageTemplate(messageTemplates.payment_charge, {
-        greeting,
-        service_name: serviceName,
-        payment_link_block: paymentLinkBlock,
-      }).trim();
-    }
-
-    if (type === "payment_receipt") {
-      const base = resolvePublicBaseUrl();
-      const receiptPath = buildAppointmentReceiptPath({
-        appointmentId: appointment.id,
-        attendanceCode: appointment.attendance_code ?? null,
-      });
-      const receiptLink = base && receiptPath ? `${base}${receiptPath}` : "";
-      const receiptBlock = receiptLink
-        ? `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`
-        : "";
-      return applyAutoMessageTemplate(messageTemplates.payment_receipt, {
-        greeting,
-        service_name: serviceName,
-        receipt_link_block: receiptBlock,
-      }).trim();
-    }
-
-    if (name) {
-      return `Obrigada pelo atendimento, ${name}! Pode avaliar nossa experiência de 0 a 10?`;
-    }
-    return "Obrigada pelo atendimento! Pode avaliar nossa experiência de 0 a 10?";
-  };
-
-  const openWhatsapp = useCallback(
-    (phone: string | null | undefined, message: string) => {
-      const link = toWhatsappLink(phone);
-      if (!link) return false;
-      const url = `${link}?text=${encodeURIComponent(message)}`;
-      window.open(url, "_blank");
-      return true;
-    },
-    [toWhatsappLink]
-  );
-
-  const handleSendMessage = async (type: MessageType) => {
-    if (!detailsData) return;
-    const phone = detailsData.appointment.clients?.phone ?? null;
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-    setDetailsActionPending(true);
-    const message = buildMessage(type, detailsData.appointment);
-    openWhatsapp(phone, message);
-    const result = await sendMessage({
-      appointmentId: detailsData.appointment.id,
-      type,
-      channel: "whatsapp",
-      payload: { message },
-    });
-    if (!result?.ok) {
-      showToast(feedbackFromError(result?.error, "whatsapp"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(feedbackById("message_recorded"));
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleSendPaymentCharge = async () => {
-    if (!detailsData) return;
-    const phone = detailsData.appointment.clients?.phone ?? null;
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-
-    const totalAmount = Number(detailsData.checkout?.total ?? detailsData.appointment.price ?? 0);
-    const paidAmount = (detailsData.payments ?? [])
-      .filter((payment) => payment.status === "paid")
-      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
-    const remainingAmount = Math.max(totalAmount - paidAmount, 0);
-
-    setDetailsActionPending(true);
-    const message = buildMessage("payment_charge", detailsData.appointment, {
-      chargeAmount: remainingAmount,
-    });
-    openWhatsapp(phone, message);
-
-    const result = await sendMessage({
-      appointmentId: detailsData.appointment.id,
-      type: "payment_charge",
-      channel: "whatsapp",
-      payload: { message, remaining_amount: remainingAmount },
-    });
-
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "whatsapp"));
-      setDetailsActionPending(false);
-      return;
-    }
-
-    showToast(feedbackById("message_recorded"));
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleSendPaymentReceipt = async (paymentId: string | null) => {
-    if (!detailsData || !paymentId) return;
-    const phone = detailsData.appointment.clients?.phone ?? null;
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-
-    setDetailsActionPending(true);
-    const base = resolvePublicBaseUrl();
-    const receiptPath = buildAppointmentReceiptPath({
-      appointmentId: detailsData.appointment.id,
-      attendanceCode: detailsData.appointment.attendance_code ?? null,
-    });
-    const receiptLink = base && receiptPath ? `${base}${receiptPath}` : "";
-    const message = buildMessage("payment_receipt", detailsData.appointment, { paymentId });
-    openWhatsapp(phone, message);
-
-    const result = await sendMessage({
-      appointmentId: detailsData.appointment.id,
-      type: "payment_receipt",
-      channel: "whatsapp",
-      payload: { message, payment_id: paymentId, receipt_link: receiptLink || null },
-    });
-
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "whatsapp"));
-      setDetailsActionPending(false);
-      return;
-    }
-
-    showToast(feedbackById("message_recorded"));
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleSendReminder = async () => {
-    if (!detailsData) return;
-    const phone = detailsData.appointment.clients?.phone ?? null;
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-    setDetailsActionPending(true);
-    const message = buildMessage("reminder_24h", detailsData.appointment);
-    openWhatsapp(phone, message);
-    const result = await sendReminder24h({ appointmentId: detailsData.appointment.id, message });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "whatsapp"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(feedbackById("reminder_recorded"));
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleSendSurvey = async () => {
-    if (!detailsData) return;
-    const phone = detailsData.appointment.clients?.phone ?? null;
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-
-    setDetailsActionPending(true);
-    const message = buildMessage("post_survey", detailsData.appointment);
-    openWhatsapp(phone, message);
-
-    const result = await sendMessage({
-      appointmentId: detailsData.appointment.id,
-      type: "post_survey",
-      channel: "whatsapp",
-      payload: { message },
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "whatsapp"));
-      setDetailsActionPending(false);
-      return;
-    }
-
-    showToast(feedbackById("message_recorded"));
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleConfirmClient = async () => {
-    if (!detailsData) return;
-    setDetailsActionPending(true);
-    const result = await confirmPre({ appointmentId: detailsData.appointment.id, channel: "manual" });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(feedbackById("client_confirmed"));
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleCancelAppointment = async (options?: { notifyClient?: boolean }) => {
-    if (!detailsData) return;
-    setDetailsActionPending(true);
-    const result = await cancelAppointment(detailsData.appointment.id, options);
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(feedbackById("appointment_cancelled"));
-    setDetailsOpen(false);
-    setDetailsAppointmentId(null);
-    setDetailsData(null);
-    setLoadingAppointmentId(null);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleRecordPayment = async (payload: {
-    type: "signal" | "full";
-    amount: number;
-    method: "pix" | "card" | "cash" | "other";
-  }) => {
-    if (!detailsData) return;
-    if (!payload.amount || payload.amount <= 0) {
-      showToast(feedbackById("payment_invalid_amount"));
-      return;
-    }
-    setDetailsActionPending(true);
-    const result = await recordPayment({
-      appointmentId: detailsData.appointment.id,
-      method: payload.method,
-      amount: payload.amount,
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(
-      feedbackById("generic_saved", {
-        tone: "success",
-        message: payload.type === "signal" ? "Sinal registrado." : "Pagamento integral registrado.",
-      })
-    );
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  };
-
-  const handleSaveEvolutionFromDetails = async (text: string) => {
-    if (!detailsData) return { ok: false as const };
-    setDetailsActionPending(true);
-    const result = await saveEvolution({
-      appointmentId: detailsData.appointment.id,
-      payload: {
-        text,
-      },
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      setDetailsActionPending(false);
-      return { ok: false as const };
-    }
-
-    showToast(
-      feedbackById("generic_saved", {
-        tone: "success",
-        message: "Evolução salva.",
-      })
-    );
-    await fetchAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-    return { ok: true as const };
-  };
-
-  const handleStructureEvolutionFromDetails = async (text: string) => {
-    if (!detailsData) return { ok: false as const, structuredText: null };
-    setDetailsActionPending(true);
-    const result = await structureEvolutionFromAudio({
-      appointmentId: detailsData.appointment.id,
-      transcript: text,
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      setDetailsActionPending(false);
-      return { ok: false as const, structuredText: null };
-    }
-
-    showToast(
-      feedbackById("generic_saved", {
-        tone: "success",
-        message: "Flora organizou a evolução.",
-      })
-    );
-    setDetailsActionPending(false);
-    return { ok: true as const, structuredText: result.data.structuredText };
-  };
-
-  const handleOpenAttendance = () => {
-    if (!detailsData) return;
-    const returnTo = `/?view=${view}&date=${format(selectedDate, "yyyy-MM-dd")}`;
-    setDetailsOpen(false);
-    router.push(`/atendimento/${detailsData.appointment.id}?return=${encodeURIComponent(returnTo)}`);
-  };
+  const {
+    handleSendMessage,
+    handleSendPaymentCharge,
+    handleSendPaymentReceipt,
+    handleSendReminder,
+    handleSendSurvey,
+    handleConfirmClient,
+    handleCancelAppointment,
+    handleRecordPayment,
+    handleSaveEvolutionFromDetails,
+    handleStructureEvolutionFromDetails,
+    handleOpenAttendance,
+  } = useMobileAgendaDetailsActions({
+    detailsData,
+    publicBaseUrl,
+    view,
+    selectedDate,
+    router,
+    closeDetails,
+    showToast,
+    refreshAttendanceDetails,
+    setDetailsActionPending,
+  });
 
   return (
     <>
@@ -1432,11 +953,7 @@ export function MobileAgenda({
         publicBaseUrl={publicBaseUrl}
         messageTemplates={messageTemplates}
         onClose={() => {
-          setDetailsOpen(false);
-          setDetailsAppointmentId(null);
-          setDetailsData(null);
-          setDetailsLoading(false);
-          setLoadingAppointmentId(null);
+          closeDetails();
           setDetailsActionPending(false);
         }}
         onStartSession={handleOpenAttendance}
