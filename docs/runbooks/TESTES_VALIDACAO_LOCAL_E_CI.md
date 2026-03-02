@@ -1,0 +1,67 @@
+# Runbook - Testes e Validacao (Local + CI)
+
+Status: ativo  
+Versao: 2026-03-01
+
+## 1) Objetivo
+
+Padronizar como validar o sistema antes de merge/deploy.
+
+## 2) Sequencia obrigatoria (local)
+
+No terminal do VSCode, na raiz do repo:
+
+```powershell
+pnpm install
+pnpm --filter web lint
+pnpm --filter web lint:architecture
+pnpm --filter web check-types
+pnpm --filter web test:unit
+pnpm --filter web build
+pnpm --filter web test:smoke
+```
+
+Observacao:
+- `test:smoke` usa Playwright.
+- se o navegador nao estiver instalado localmente, rode:
+
+```powershell
+pnpm --filter web exec playwright install chromium
+```
+
+## 3) Como rodar no VSCode (passo a passo simples)
+
+1. Abrir o projeto no VSCode.
+2. Abrir terminal integrado (`Terminal > New Terminal`).
+3. Executar os comandos da secao 2 na ordem.
+4. So considerar pronto se todos terminarem sem erro.
+
+## 4) Como validar no GitHub Web
+
+1. Abrir o repositorio no GitHub.
+2. Ir na aba `Actions`.
+3. Abrir o workflow `ci`.
+4. Confirmar status verde dos jobs:
+   - lint
+   - lint architecture
+   - typecheck
+   - unit tests
+   - build
+   - smoke tests
+5. Se falhar:
+   - abrir job com erro
+   - ler etapa exata que falhou
+   - corrigir no codigo
+   - novo commit e aguardar nova execucao
+
+## 5) Gate de PR
+
+Toda PR deve estar com workflow `ci` verde para merge.
+
+## 6) Regra operacional
+
+Nunca publicar alteracao de fluxo critico sem:
+
+1. validacao local completa
+2. CI verde
+3. smoke funcional do fluxo afetado

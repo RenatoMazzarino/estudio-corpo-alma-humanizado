@@ -25,8 +25,14 @@ jobs:
         run: pnpm --filter web lint:architecture
       - name: Typecheck
         run: pnpm check-types
+      - name: Unit Tests
+        run: pnpm --filter web test:unit
       - name: Build
         run: pnpm build
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Smoke Tests
+        run: pnpm --filter web test:smoke
 
   sonar:
     name: SonarCloud
