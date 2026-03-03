@@ -5,22 +5,13 @@ import { ChevronLeft, Pause, Play } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import type { AttendanceOverview, CheckoutItem } from "../../../../lib/attendance/attendance-types";
+import type { AttendanceOverview } from "../../../../lib/attendance/attendance-types";
 import {
-  createAttendancePixPayment,
-  createAttendancePointPayment,
   finishAttendance,
-  getAttendancePixPaymentStatus,
-  getAttendancePointPaymentStatus,
-  recordPayment,
   saveEvolution,
   structureEvolutionFromAudio,
   transcribeEvolutionFromAudio,
-  sendMessage,
-  setCheckoutItems,
-  setDiscount,
   toggleChecklistItem,
-  waiveCheckoutPayment,
 } from "./actions";
 import { SessionStage } from "./components/session-stage";
 import { AttendancePaymentModal } from "./components/attendance-payment-modal";
@@ -28,12 +19,19 @@ import { useTimer } from "../../../../components/timer/use-timer";
 import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-domain";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
-import { applyAutoMessageTemplate } from "../../../../src/shared/auto-messages.utils";
 import type { AutoMessageTemplates } from "../../../../src/shared/auto-messages.types";
-import { buildAppointmentReceiptPath } from "../../../../src/shared/public-links";
 import { ModuleHeader } from "../../../../components/ui/module-header";
 import { ModulePage } from "../../../../components/ui/module-page";
 import { SlideConfirmButton } from "./components/slide-confirm-button";
+import { useAttendanceCheckoutActions } from "./hooks/use-attendance-checkout-actions";
+import { useSupabaseRealtimeRefresh } from "../../../../src/shared/realtime/use-supabase-realtime-refresh";
+import {
+  formatAppointmentContext,
+  formatDateToUrlParam,
+  formatSignedCountdown,
+  getHeaderPaymentStatusMeta,
+  getInitials,
+} from "./attendance-page.helpers";
 
 interface AttendancePageProps {
   data: AttendanceOverview;
@@ -45,86 +43,6 @@ interface AttendancePageProps {
   pixKeyValue: string;
   pixKeyType: "cnpj" | "cpf" | "email" | "phone" | "evp" | null;
   messageTemplates: AutoMessageTemplates;
-}
-
-function formatTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const prefix = hours > 0 ? `${hours.toString().padStart(2, "0")}:` : "";
-  return `${prefix}${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-}
-
-function formatSignedCountdown(totalSeconds: number) {
-  const isNegative = totalSeconds < 0;
-  const absolute = Math.abs(totalSeconds);
-  const base = formatTime(absolute);
-  return isNegative ? `-${base}` : base;
-}
-
-function getHeaderPaymentStatusMeta(status: string | null | undefined) {
-  switch (status) {
-    case "paid":
-      return { label: "Pago", className: "border-emerald-200 bg-emerald-50 text-emerald-700" };
-    case "partial":
-      return { label: "Parcial", className: "border-amber-200 bg-amber-50 text-amber-700" };
-    case "waived":
-      return { label: "Liberado", className: "border-sky-200 bg-sky-50 text-sky-700" };
-    case "refunded":
-      return { label: "Estornado", className: "border-slate-300 bg-slate-100 text-slate-700" };
-    default:
-      return { label: "Pendente", className: "border-orange-200 bg-orange-50 text-orange-700" };
-  }
-}
-
-function formatAppointmentContext(startTime: string, serviceName: string) {
-  const date = new Date(startTime);
-  if (Number.isNaN(date.getTime())) return serviceName;
-
-  const dateLabel = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-  }).format(date);
-  const timeLabel = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-
-  return `${dateLabel} • ${timeLabel} • ${serviceName}`;
-}
-
-function getInitials(name: string) {
-  const parts = name.split(" ").filter(Boolean);
-  if (parts.length === 0) return "CA";
-  const first = parts[0] ?? "";
-  const last = parts[parts.length - 1] ?? "";
-  if (parts.length === 1) return first.slice(0, 2).toUpperCase();
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
-}
-
-function resolvePublicBaseUrl(rawBaseUrl: string) {
-  const trimmed = rawBaseUrl.trim();
-  if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/\/$/, "");
-  return `https://${trimmed.replace(/\/$/, "")}`;
-}
-
-function normalizePhoneForWhatsapp(phone: string | null | undefined) {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  return digits.startsWith("55") ? digits : `55${digits}`;
-}
-
-function formatDateToUrlParam(dateValue: string) {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 export function AttendancePage({
@@ -306,221 +224,26 @@ export function AttendancePage({
     );
   };
 
-  const handleSaveItems = async (
-    items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>
-  ) => {
-    const result = await setCheckoutItems({ appointmentId: appointment.id, items });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      return false;
-    }
-    showToast(feedbackById("generic_saved", { tone: "success", message: "Itens atualizados." }));
-    router.refresh();
-    return true;
-  };
-
-  const handleSetDiscount = async (type: "value" | "pct" | null, value: number | null, reason?: string) => {
-    const result = await setDiscount({
-      appointmentId: appointment.id,
-      type,
-      value,
-      reason: reason ?? null,
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      return false;
-    }
-    showToast(feedbackById("generic_saved", { tone: "success", message: "Desconto aplicado." }));
-    router.refresh();
-    return true;
-  };
-
-  const handleRegisterCashPayment = async (amount: number) => {
-    const result = await recordPayment({
-      appointmentId: appointment.id,
-      method: "cash",
-      amount,
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      return { ok: false, paymentId: null };
-    }
-    showToast(feedbackById("payment_recorded"));
-    router.refresh();
-    return { ok: true, paymentId: result.data.paymentId };
-  };
-
-  const handleRegisterPixKeyPayment = async (amount: number) => {
-    const result = await recordPayment({
-      appointmentId: appointment.id,
-      method: "pix",
-      amount,
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      return { ok: false, paymentId: null };
-    }
-    showToast(feedbackById("payment_recorded"));
-    router.refresh();
-    return { ok: true, paymentId: result.data.paymentId };
-  };
-
-  const handleCreatePixPayment = async (amount: number, attempt: number) => {
-    const payerPhone = appointment.clients?.phone ?? "";
-    const digits = payerPhone.replace(/\D/g, "");
-    if (!digits || digits.length < 10) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return { ok: false as const };
-    }
-    const result = await createAttendancePixPayment({
-      appointmentId: appointment.id,
-      amount,
-      payerName: clientName,
-      payerPhone,
-      payerEmail: null,
-      attempt,
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "payment_pix"));
-      return { ok: false as const };
-    }
-    showToast(feedbackById("payment_pix_generated"));
-    router.refresh();
-    return { ok: true as const, data: result.data };
-  };
-
-  const handlePollPixStatus = async () => {
-    const result = await getAttendancePixPaymentStatus({ appointmentId: appointment.id });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "payment_pix"));
-      return { ok: false as const, status: "pending" as const };
-    }
-
-    const status = result.data.internal_status;
-    if (status === "paid") {
-      showToast(feedbackById("payment_recorded"));
-      router.refresh();
-    } else if (status === "failed") {
-      showToast(feedbackById("payment_pix_failed"));
-      router.refresh();
-    }
-
-    return { ok: true as const, status };
-  };
-
-  const handleCreatePointPayment = async (amount: number, cardMode: "debit" | "credit", attempt: number) => {
-    const result = await createAttendancePointPayment({
-      appointmentId: appointment.id,
-      amount,
-      cardMode,
-      attempt,
-    });
-
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "payment_card"));
-      return { ok: false as const };
-    }
-
-    if (result.data.internal_status === "paid") {
-      showToast(feedbackById("payment_recorded"));
-      router.refresh();
-    } else {
-      showToast(
-        feedbackById("payment_pending", {
-          message: "Cobrança enviada para a maquininha. Aguarde a confirmação.",
-          durationMs: 2200,
-        })
-      );
-    }
-
-    return { ok: true as const, data: result.data };
-  };
-
-  const handlePollPointStatus = async (orderId: string) => {
-    const result = await getAttendancePointPaymentStatus({
-      appointmentId: appointment.id,
-      orderId,
-    });
-
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "payment_card"));
-      return { ok: false as const, status: "pending" as const, paymentId: null };
-    }
-
-    const status = result.data.internal_status;
-    if (status === "paid") {
-      showToast(feedbackById("payment_recorded"));
-      router.refresh();
-    } else if (status === "failed") {
-      showToast(feedbackById("payment_card_declined"));
-      router.refresh();
-    }
-
-    return { ok: true as const, status, paymentId: result.data.id };
-  };
-
-  const handleSendReceipt = async (paymentId: string) => {
-    const phone = normalizePhoneForWhatsapp(contactPhone);
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-
-    const baseUrl = resolvePublicBaseUrl(publicBaseUrl);
-    const receiptPath = buildAppointmentReceiptPath({
-      appointmentId: appointment.id,
-      attendanceCode: appointment.attendance_code ?? null,
-    });
-    const receiptLink = baseUrl
-      ? `${baseUrl}${receiptPath}`
-      : `${window.location.origin}${receiptPath}`;
-    const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
-    const message = applyAutoMessageTemplate(messageTemplates.payment_receipt, {
-      greeting,
-      service_name: appointment.service_name ?? "atendimento",
-      receipt_link_block: `🧾 Acesse seu recibo digital aqui:\n${receiptLink}\n\n`,
-    }).trim();
-
-    // Não bloquear a navegação da tela no retorno do WhatsApp.
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
-
-    void sendMessage({
-      appointmentId: appointment.id,
-      type: "payment_receipt",
-      channel: "whatsapp",
-      payload: {
-        message,
-        payment_id: paymentId,
-        receipt_link: receiptLink,
-      },
-    }).then((result) => {
-      if (!result.ok) {
-        showToast(feedbackFromError(result.error, "whatsapp"));
-        return;
-      }
-      showToast(feedbackById("message_recorded"));
-    });
-  };
-
-  const handleWaiveCheckoutPayment = async () => {
-    const result = await waiveCheckoutPayment({
-      appointmentId: appointment.id,
-      reason: "Cortesia",
-    });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      return { ok: false as const };
-    }
-
-    showToast(
-      feedbackById("generic_saved", {
-        tone: "success",
-        message: "Pagamento liberado como cortesia.",
-      })
-    );
-    router.refresh();
-    return { ok: true as const };
-  };
+  const {
+    handleSaveItems,
+    handleSetDiscount,
+    handleRegisterCashPayment,
+    handleRegisterPixKeyPayment,
+    handleCreatePixPayment,
+    handlePollPixStatus,
+    handleCreatePointPayment,
+    handlePollPointStatus,
+    handleSendReceipt,
+    handleWaiveCheckoutPayment,
+  } = useAttendanceCheckoutActions({
+    appointment,
+    clientName,
+    contactPhone,
+    publicBaseUrl,
+    messageTemplates,
+    showToast,
+    refreshPage: () => router.refresh(),
+  });
 
   const handleFinish = async () => {
     const result = await finishAttendance({ appointmentId: appointment.id });
@@ -583,6 +306,23 @@ export function AttendancePage({
       router.back();
     }
   };
+
+  const realtimeTables = useMemo(
+    () => [
+      { table: "appointments", filter: `id=eq.${appointment.id}` },
+      { table: "appointment_checkout", filter: `appointment_id=eq.${appointment.id}` },
+      { table: "appointment_checkout_items", filter: `appointment_id=eq.${appointment.id}` },
+      { table: "appointment_payments", filter: `appointment_id=eq.${appointment.id}` },
+      { table: "notification_jobs", filter: `appointment_id=eq.${appointment.id}` },
+    ],
+    [appointment.id]
+  );
+
+  useSupabaseRealtimeRefresh({
+    channelName: `attendance-${appointment.id}`,
+    tables: realtimeTables,
+    onRefresh: () => router.refresh(),
+  });
 
   return (
     <div className="-mx-4 h-full overflow-hidden">

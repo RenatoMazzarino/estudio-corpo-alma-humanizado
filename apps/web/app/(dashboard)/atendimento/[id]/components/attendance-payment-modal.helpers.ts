@@ -1,3 +1,5 @@
+import { formatCurrencyBRL } from "../../../../../src/shared/currency";
+
 export const stageMessages = [
   "Arrumando a maca...",
   "Esquentando as toalhas...",
@@ -6,7 +8,7 @@ export const stageMessages = [
 ];
 
 export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  return formatCurrencyBRL(value);
 }
 
 export function getRemainingSeconds(expiresAt: string) {

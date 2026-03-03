@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../../../lib/tenant-context";
 import { createServiceClient } from "../../../../../lib/supabase/service";
 import type { Json } from "../../../../../lib/supabase/types";
 import { AppError } from "../../../../../src/shared/errors/AppError";
@@ -30,7 +29,7 @@ function roundCurrency(value: number) {
 export async function setCheckoutItemsImpl(payload: {
   appointmentId: string;
   items: Array<{ type: "service" | "fee" | "addon" | "adjustment"; label: string; qty?: number; amount: number; metadata?: Record<string, unknown> }>;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = setCheckoutItemsSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -47,7 +46,7 @@ export async function setCheckoutItemsImpl(payload: {
 
   const items = parsed.data.items.map((item, index) => ({
     appointment_id: parsed.data.appointmentId,
-    tenant_id: FIXED_TENANT_ID,
+    tenant_id: tenantId,
     type: item.type,
     label: item.label,
     qty: item.qty ?? 1,
@@ -62,7 +61,7 @@ export async function setCheckoutItemsImpl(payload: {
 
   await recalcCheckoutTotals(parsed.data.appointmentId);
   try {
-    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
+    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, tenantId);
   } catch (error) {
     if (error instanceof AppError) return fail(error);
     return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
@@ -77,7 +76,7 @@ export async function setDiscountImpl(payload: {
   type: "value" | "pct" | null;
   value: number | null;
   reason?: string | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = setDiscountSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -98,7 +97,7 @@ export async function setDiscountImpl(payload: {
 
   await recalcCheckoutTotals(parsed.data.appointmentId);
   try {
-    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
+    await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, tenantId);
   } catch (error) {
     if (error instanceof AppError) return fail(error);
     return fail(new AppError("Não foi possível recalcular o status financeiro.", "UNKNOWN", 500, error));
@@ -113,14 +112,14 @@ export async function recordPaymentImpl(payload: {
   method: "pix" | "card" | "cash" | "other";
   amount: number;
   transactionId?: string | null;
-}): Promise<ActionResult<{ paymentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ paymentId: string }>> {
   const parsed = recordPaymentSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
   const supabase = createServiceClient();
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, tenantId);
   if (chargeSnapshot.paymentStatus === "waived") {
     return fail(
       new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
@@ -146,7 +145,7 @@ export async function recordPaymentImpl(payload: {
   if (!transactionId) {
     const description = `Pagamento Atendimento #${parsed.data.appointmentId.slice(0, 8)}`;
     const { data: transactionData, error: transactionError } = await insertTransaction({
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       appointment_id: parsed.data.appointmentId,
       type: "income",
       category: "Serviço",
@@ -164,7 +163,7 @@ export async function recordPaymentImpl(payload: {
     .from("appointment_payments")
     .insert({
       appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       method: parsed.data.method,
       amount: requestedAmount,
       status: "paid",
@@ -177,10 +176,10 @@ export async function recordPaymentImpl(payload: {
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
+  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, tenantId);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "payment_recorded",
     payload: { method: parsed.data.method, amount: requestedAmount },
@@ -193,7 +192,7 @@ export async function recordPaymentImpl(payload: {
 export async function waiveCheckoutPaymentImpl(payload: {
   appointmentId: string;
   reason?: string | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = appointmentIdSchema
     .extend({
       reason: z.string().max(240).optional().nullable(),
@@ -209,7 +208,7 @@ export async function waiveCheckoutPaymentImpl(payload: {
     .from("appointments")
     .select("id, payment_status")
     .eq("id", parsed.data.appointmentId)
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("tenant_id", tenantId)
     .maybeSingle();
 
   const mappedReadError = mapSupabaseError(appointmentReadError);
@@ -236,14 +235,14 @@ export async function waiveCheckoutPaymentImpl(payload: {
   const mappedCheckoutError = mapSupabaseError(checkoutError);
   if (mappedCheckoutError) return fail(mappedCheckoutError);
 
-  const { error: appointmentUpdateError } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+  const { error: appointmentUpdateError } = await updateAppointment(tenantId, parsed.data.appointmentId, {
     payment_status: "waived",
   });
   const mappedAppointmentError = mapSupabaseError(appointmentUpdateError);
   if (mappedAppointmentError) return fail(mappedAppointmentError);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "payment_waived",
     payload: {
@@ -258,7 +257,10 @@ export async function waiveCheckoutPaymentImpl(payload: {
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function confirmCheckoutImpl(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+export async function confirmCheckoutImpl(
+  payload: { appointmentId: string },
+  tenantId: string
+): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = appointmentIdSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -267,7 +269,7 @@ export async function confirmCheckoutImpl(payload: { appointmentId: string }): P
   const supabase = createServiceClient();
   const { paid, total, paymentStatus } = await recalculateCheckoutPaymentStatus(
     parsed.data.appointmentId,
-    FIXED_TENANT_ID
+    tenantId
   );
   if (paymentStatus !== "waived" && paid < total) {
     return fail(new AppError("Pagamento insuficiente", "VALIDATION_ERROR", 400));
@@ -282,7 +284,7 @@ export async function confirmCheckoutImpl(payload: { appointmentId: string }): P
   if (mapped) return fail(mapped);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "checkout_confirmed",
   });

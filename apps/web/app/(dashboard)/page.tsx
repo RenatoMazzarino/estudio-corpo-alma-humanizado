@@ -1,10 +1,10 @@
 import { MobileAgenda } from "../../components/mobile-agenda";
-import { FIXED_TENANT_ID } from "../../lib/tenant-context";
 import { startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { unstable_noStore as noStore } from "next/cache";
 import { getSettings } from "../../src/modules/settings/repository";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import { getAutoMessageTemplates } from "../../src/shared/auto-messages";
+import { requireDashboardAccessForPage } from "../../src/modules/auth/dashboard-access";
 import {
   listAppointmentsInRange,
   listAvailabilityBlocksInRange,
@@ -65,6 +65,7 @@ export default async function Home({
   searchParams?: Promise<{ created?: string; q?: string }>;
 }) {
   noStore();
+  const { tenantId } = await requireDashboardAccessForPage("/");
   const resolvedSearchParams = await searchParams;
   const today = new Date();
   
@@ -77,9 +78,9 @@ export default async function Home({
   // 1. Buscar Agendamentos
   const [{ data: appointmentsData }, { data: settingsData }] = await Promise.all([
     query
-      ? searchAppointments(FIXED_TENANT_ID, query, queryStartDate, queryEndDate)
-      : listAppointmentsInRange(FIXED_TENANT_ID, queryStartDate, queryEndDate),
-    getSettings(FIXED_TENANT_ID),
+      ? searchAppointments(tenantId, query, queryStartDate, queryEndDate)
+      : listAppointmentsInRange(tenantId, queryStartDate, queryEndDate),
+    getSettings(tenantId),
   ]);
 
   const rawAppointments = (appointmentsData ?? []) as unknown as RawAppointment[];
@@ -131,7 +132,7 @@ export default async function Home({
 
   // 2. Buscar Bloqueios
   const { data: blocksData } = await listAvailabilityBlocksInRange(
-    FIXED_TENANT_ID,
+    tenantId,
     queryStartDate,
     queryEndDate
   );

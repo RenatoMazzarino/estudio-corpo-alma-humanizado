@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../../../lib/tenant-context";
 import { createServiceClient } from "../../../../../lib/supabase/service";
 import { AppError } from "../../../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../../../src/shared/errors/mapSupabaseError";
@@ -22,13 +21,16 @@ import { recalculateCheckoutPaymentStatus } from "../../../../../src/modules/att
 import { fallbackStructuredEvolution } from "../../../../../src/modules/attendance/evolution-format";
 import { runFloraAudioTranscription, runFloraText } from "../../../../../src/shared/ai/flora";
 
-export async function saveInternalNotesImpl(payload: { appointmentId: string; internalNotes?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
+export async function saveInternalNotesForTenant(
+  payload: { appointmentId: string; internalNotes?: string | null },
+  tenantId: string
+): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = internalNotesSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const { error } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+  const { error } = await updateAppointment(tenantId, parsed.data.appointmentId, {
     internal_notes: parsed.data.internalNotes ?? null,
   });
 
@@ -36,7 +38,7 @@ export async function saveInternalNotesImpl(payload: { appointmentId: string; in
   if (mapped) return fail(mapped);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "internal_notes_updated",
   });
@@ -45,7 +47,10 @@ export async function saveInternalNotesImpl(payload: { appointmentId: string; in
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function toggleChecklistItemImpl(payload: { appointmentId: string; itemId: string; completed: boolean }): Promise<ActionResult<{ itemId: string }>> {
+export async function toggleChecklistItemForTenant(
+  payload: { appointmentId: string; itemId: string; completed: boolean },
+  tenantId: string
+): Promise<ActionResult<{ itemId: string }>> {
   const parsed = checklistToggleSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -56,6 +61,7 @@ export async function toggleChecklistItemImpl(payload: { appointmentId: string; 
     .from("appointment_checklist_items")
     .update({ completed_at: completedAt })
     .eq("appointment_id", parsed.data.appointmentId)
+    .eq("tenant_id", tenantId)
     .eq("id", parsed.data.itemId);
 
   const mapped = mapSupabaseError(error);
@@ -65,10 +71,10 @@ export async function toggleChecklistItemImpl(payload: { appointmentId: string; 
   return ok({ itemId: parsed.data.itemId });
 }
 
-export async function upsertChecklistImpl(payload: {
+export async function upsertChecklistForTenant(payload: {
   appointmentId: string;
   items: Array<{ id?: string; label: string; sortOrder: number; completed?: boolean }>;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = checklistUpsertSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -78,7 +84,7 @@ export async function upsertChecklistImpl(payload: {
   const inserts = parsed.data.items.map((item) => ({
     id: item.id,
     appointment_id: parsed.data.appointmentId,
-    tenant_id: FIXED_TENANT_ID,
+    tenant_id: tenantId,
     label: item.label,
     sort_order: item.sortOrder,
     completed_at: item.completed ? new Date().toISOString() : null,
@@ -92,12 +98,12 @@ export async function upsertChecklistImpl(payload: {
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function saveEvolutionImpl(payload: {
+export async function saveEvolutionForTenant(payload: {
   appointmentId: string;
   payload: {
     text?: string | null;
   };
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = saveEvolutionSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -129,7 +135,7 @@ export async function saveEvolutionImpl(payload: {
   } else {
     const insertPayload = {
       appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       evolution_text: evolutionText,
     };
 
@@ -156,7 +162,7 @@ export async function saveEvolutionImpl(payload: {
   }
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "evolution_saved",
     payload: { has_text: Boolean(evolutionText) },
@@ -166,10 +172,10 @@ export async function saveEvolutionImpl(payload: {
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function structureEvolutionFromAudioImpl(payload: {
+export async function structureEvolutionFromAudioForTenant(payload: {
   appointmentId: string;
   transcript: string;
-}): Promise<ActionResult<{ transcript: string; structuredText: string }>> {
+}, tenantId: string): Promise<ActionResult<{ transcript: string; structuredText: string }>> {
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -206,7 +212,7 @@ export async function structureEvolutionFromAudioImpl(payload: {
   const structuredText = floraResponse?.trim() || fallbackStructuredEvolution(transcript);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "evolution_audio_structured",
     payload: { transcript_length: transcript.length, used_ai: Boolean(floraResponse) },
@@ -215,11 +221,11 @@ export async function structureEvolutionFromAudioImpl(payload: {
   return ok({ transcript, structuredText });
 }
 
-export async function transcribeEvolutionFromAudioImpl(payload: {
+export async function transcribeEvolutionFromAudioForTenant(payload: {
   appointmentId: string;
   audioBase64: string;
   mimeType?: string | null;
-}): Promise<ActionResult<{ transcript: string }>> {
+}, tenantId: string): Promise<ActionResult<{ transcript: string }>> {
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -251,7 +257,7 @@ export async function transcribeEvolutionFromAudioImpl(payload: {
   }
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "evolution_audio_transcribed",
     payload: { transcript_length: transcript.length, mime_type: mimeType },
@@ -260,7 +266,7 @@ export async function transcribeEvolutionFromAudioImpl(payload: {
   return ok({ transcript });
 }
 
-export async function savePostImpl(payload: {
+export async function savePostForTenant(payload: {
   appointmentId: string;
   postNotes?: string | null;
   followUpDueAt?: string | null;
@@ -268,7 +274,7 @@ export async function savePostImpl(payload: {
   surveyStatus?: "not_sent" | "sent" | "answered";
   surveyScore?: number | null;
   kpiTotalSeconds?: number | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = savePostSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -286,7 +292,8 @@ export async function savePostImpl(payload: {
       kpi_total_seconds: parsed.data.kpiTotalSeconds ?? undefined,
       updated_at: new Date().toISOString(),
     })
-    .eq("appointment_id", parsed.data.appointmentId);
+    .eq("appointment_id", parsed.data.appointmentId)
+    .eq("tenant_id", tenantId);
 
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
@@ -295,7 +302,10 @@ export async function savePostImpl(payload: {
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function finishAttendanceImpl(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
+export async function finishAttendanceForTenant(
+  payload: { appointmentId: string },
+  tenantId: string
+): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = finishAttendanceSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -335,7 +345,7 @@ export async function finishAttendanceImpl(payload: { appointmentId: string }): 
   if (mappedPostError) return fail(mappedPostError);
 
   const { error: appointmentError } = await updateAppointmentReturning(
-    FIXED_TENANT_ID,
+    tenantId,
     parsed.data.appointmentId,
     {
       status: "completed",
@@ -348,10 +358,10 @@ export async function finishAttendanceImpl(payload: { appointmentId: string }): 
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) return fail(mappedAppointmentError);
 
-  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, FIXED_TENANT_ID);
+  await recalculateCheckoutPaymentStatus(parsed.data.appointmentId, tenantId);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "attendance_finished",
   });

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../../../lib/tenant-context";
 import { AppError } from "../../../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../../../src/shared/errors/result";
@@ -25,7 +24,7 @@ export async function createAttendancePixPaymentImpl(payload: {
   payerPhone: string;
   payerEmail?: string | null;
   attempt?: number;
-}): Promise<ActionResult<{
+}, tenantId: string): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -52,7 +51,7 @@ export async function createAttendancePixPaymentImpl(payload: {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, tenantId);
   if (chargeSnapshot.paymentStatus === "waived") {
     return fail(
       new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
@@ -65,7 +64,7 @@ export async function createAttendancePixPaymentImpl(payload: {
 
   const result = await createPixOrderForAppointment({
     appointmentId: parsed.data.appointmentId,
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     amount: chargeAmount,
     payerName: parsed.data.payerName,
     payerPhone: parsed.data.payerPhone,
@@ -75,7 +74,7 @@ export async function createAttendancePixPaymentImpl(payload: {
   if (!result.ok) return result;
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "payment_pix_created",
     payload: {
@@ -92,7 +91,7 @@ export async function createAttendancePixPaymentImpl(payload: {
 
 export async function getAttendancePixPaymentStatusImpl(payload: {
   appointmentId: string;
-}): Promise<ActionResult<{ internal_status: "paid" | "pending" | "failed" }>> {
+}, tenantId: string): Promise<ActionResult<{ internal_status: "paid" | "pending" | "failed" }>> {
   const parsed = appointmentIdSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -100,7 +99,7 @@ export async function getAttendancePixPaymentStatusImpl(payload: {
 
   return getAppointmentPaymentStatusByMethod({
     appointmentId: parsed.data.appointmentId,
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     method: "pix",
   });
 }
@@ -111,7 +110,7 @@ export async function createAttendancePointPaymentImpl(payload: {
   cardMode: PointCardMode;
   terminalId?: string | null;
   attempt?: number;
-}): Promise<ActionResult<{
+}, tenantId: string): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -137,7 +136,7 @@ export async function createAttendancePointPaymentImpl(payload: {
 
   let terminalId = parsed.data.terminalId?.trim() ?? "";
   if (!terminalId) {
-    const { data: settings, error } = await getSettings(FIXED_TENANT_ID);
+    const { data: settings, error } = await getSettings(tenantId);
     const mapped = mapSupabaseError(error);
     if (mapped) return fail(mapped);
     terminalId = settings?.mp_point_terminal_id?.trim() ?? "";
@@ -153,7 +152,7 @@ export async function createAttendancePointPaymentImpl(payload: {
     );
   }
 
-  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, FIXED_TENANT_ID);
+  const chargeSnapshot = await getCheckoutChargeSnapshot(parsed.data.appointmentId, tenantId);
   if (chargeSnapshot.paymentStatus === "waived") {
     return fail(
       new AppError("Este atendimento está liberado como cortesia. Remova a liberação antes de cobrar.", "VALIDATION_ERROR", 400)
@@ -166,7 +165,7 @@ export async function createAttendancePointPaymentImpl(payload: {
 
   const result = await createPointOrderForAppointment({
     appointmentId: parsed.data.appointmentId,
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     amount: chargeAmount,
     terminalId,
     cardMode: parsed.data.cardMode,
@@ -175,7 +174,7 @@ export async function createAttendancePointPaymentImpl(payload: {
   if (!result.ok) return result;
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "payment_point_charge_started",
     payload: {
@@ -195,7 +194,7 @@ export async function createAttendancePointPaymentImpl(payload: {
 export async function getAttendancePointPaymentStatusImpl(payload: {
   appointmentId: string;
   orderId: string;
-}): Promise<ActionResult<{
+}, tenantId: string): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -219,7 +218,7 @@ export async function getAttendancePointPaymentStatusImpl(payload: {
 
   const result = await getPointOrderStatus({
     orderId: parsed.data.orderId,
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     expectedAppointmentId: parsed.data.appointmentId,
   });
   if (!result.ok) return result;
@@ -241,7 +240,7 @@ export async function getAttendancePointPaymentStatusImpl(payload: {
   }
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: resolvedAppointmentId,
     eventType: "payment_point_charge_status",
     payload: {

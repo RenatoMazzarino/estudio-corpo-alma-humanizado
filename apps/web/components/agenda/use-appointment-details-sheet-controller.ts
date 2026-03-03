@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";

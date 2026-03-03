@@ -21,14 +21,14 @@ import {
   sendSurveyImpl,
 } from "./actions/communication";
 import {
-  finishAttendanceImpl,
-  saveEvolutionImpl,
-  saveInternalNotesImpl,
-  savePostImpl,
-  structureEvolutionFromAudioImpl,
-  toggleChecklistItemImpl,
-  transcribeEvolutionFromAudioImpl,
-  upsertChecklistImpl,
+  finishAttendanceForTenant,
+  saveEvolutionForTenant,
+  saveInternalNotesForTenant,
+  savePostForTenant,
+  structureEvolutionFromAudioForTenant,
+  toggleChecklistItemForTenant,
+  transcribeEvolutionFromAudioForTenant,
+  upsertChecklistForTenant,
 } from "./actions/checklist-evolution";
 import {
   confirmCheckoutImpl,
@@ -45,23 +45,23 @@ import {
 } from "./actions/payment-provider";
 
 export async function getAttendance(appointmentId: string) {
-  await requireDashboardAccessForServerAction();
-  return getAttendanceImpl(appointmentId);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return getAttendanceImpl(appointmentId, tenantId);
 }
 
 export async function confirmPre(payload: { appointmentId: string; channel?: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return confirmPreImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return confirmPreImpl(payload, tenantId);
 }
 
 export async function cancelPreConfirmation(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return cancelPreConfirmationImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return cancelPreConfirmationImpl(payload, tenantId);
 }
 
 export async function sendReminder24h(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return sendReminder24hImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return sendReminder24hImpl(payload, tenantId);
 }
 
 export async function sendMessage(payload: {
@@ -70,8 +70,8 @@ export async function sendMessage(payload: {
   channel?: string | null;
   payload?: Json | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return sendMessageImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return sendMessageImpl(payload, tenantId);
 }
 
 export async function recordMessageStatus(payload: {
@@ -79,26 +79,26 @@ export async function recordMessageStatus(payload: {
   messageId: string;
   status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
 }): Promise<ActionResult<{ messageId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return recordMessageStatusImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return recordMessageStatusImpl(payload, tenantId);
 }
 
 export async function saveInternalNotes(payload: { appointmentId: string; internalNotes?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return saveInternalNotesImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return saveInternalNotesForTenant(payload, tenantId);
 }
 
 export async function toggleChecklistItem(payload: { appointmentId: string; itemId: string; completed: boolean }): Promise<ActionResult<{ itemId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return toggleChecklistItemImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return toggleChecklistItemForTenant(payload, tenantId);
 }
 
 export async function upsertChecklist(payload: {
   appointmentId: string;
   items: Array<{ id?: string; label: string; sortOrder: number; completed?: boolean }>;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return upsertChecklistImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return upsertChecklistForTenant(payload, tenantId);
 }
 
 export async function saveEvolution(payload: {
@@ -107,16 +107,16 @@ export async function saveEvolution(payload: {
     text?: string | null;
   };
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return saveEvolutionImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return saveEvolutionForTenant(payload, tenantId);
 }
 
 export async function structureEvolutionFromAudio(payload: {
   appointmentId: string;
   transcript: string;
 }): Promise<ActionResult<{ transcript: string; structuredText: string }>> {
-  await requireDashboardAccessForServerAction();
-  return structureEvolutionFromAudioImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return structureEvolutionFromAudioForTenant(payload, tenantId);
 }
 
 export async function transcribeEvolutionFromAudio(payload: {
@@ -124,16 +124,16 @@ export async function transcribeEvolutionFromAudio(payload: {
   audioBase64: string;
   mimeType?: string | null;
 }): Promise<ActionResult<{ transcript: string }>> {
-  await requireDashboardAccessForServerAction();
-  return transcribeEvolutionFromAudioImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return transcribeEvolutionFromAudioForTenant(payload, tenantId);
 }
 
 export async function setCheckoutItems(payload: {
   appointmentId: string;
   items: Array<{ type: "service" | "fee" | "addon" | "adjustment"; label: string; qty?: number; amount: number; metadata?: Record<string, unknown> }>;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return setCheckoutItemsImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return setCheckoutItemsImpl(payload, tenantId);
 }
 
 export async function setDiscount(payload: {
@@ -142,8 +142,8 @@ export async function setDiscount(payload: {
   value: number | null;
   reason?: string | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return setDiscountImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return setDiscountImpl(payload, tenantId);
 }
 
 export async function recordPayment(payload: {
@@ -152,16 +152,16 @@ export async function recordPayment(payload: {
   amount: number;
   transactionId?: string | null;
 }): Promise<ActionResult<{ paymentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return recordPaymentImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return recordPaymentImpl(payload, tenantId);
 }
 
 export async function waiveCheckoutPayment(payload: {
   appointmentId: string;
   reason?: string | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return waiveCheckoutPaymentImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return waiveCheckoutPaymentImpl(payload, tenantId);
 }
 
 export async function createAttendancePixPayment(payload: {
@@ -183,15 +183,15 @@ export async function createAttendancePixPayment(payload: {
   created_at: string;
   expires_at: string;
 }>> {
-  await requireDashboardAccessForServerAction();
-  return createAttendancePixPaymentImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return createAttendancePixPaymentImpl(payload, tenantId);
 }
 
 export async function getAttendancePixPaymentStatus(payload: {
   appointmentId: string;
 }): Promise<ActionResult<{ internal_status: "paid" | "pending" | "failed" }>> {
-  await requireDashboardAccessForServerAction();
-  return getAttendancePixPaymentStatusImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return getAttendancePixPaymentStatusImpl(payload, tenantId);
 }
 
 export async function createAttendancePointPayment(payload: {
@@ -210,8 +210,8 @@ export async function createAttendancePointPayment(payload: {
   point_terminal_id: string;
   card_mode: PointCardMode;
 }>> {
-  await requireDashboardAccessForServerAction();
-  return createAttendancePointPaymentImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return createAttendancePointPaymentImpl(payload, tenantId);
 }
 
 export async function getAttendancePointPaymentStatus(payload: {
@@ -228,28 +228,28 @@ export async function getAttendancePointPaymentStatus(payload: {
   card_mode: PointCardMode | null;
   appointment_id: string | null;
 }>> {
-  await requireDashboardAccessForServerAction();
-  return getAttendancePointPaymentStatusImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return getAttendancePointPaymentStatusImpl(payload, tenantId);
 }
 
 export async function confirmCheckout(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return confirmCheckoutImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return confirmCheckoutImpl(payload, tenantId);
 }
 
 export async function startTimer(payload: { appointmentId: string; plannedSeconds?: number | null }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return startTimerOperation(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return startTimerOperation(payload, tenantId);
 }
 
 export async function pauseTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return pauseTimerOperation(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return pauseTimerOperation(payload, tenantId);
 }
 
 export async function resumeTimer(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return resumeTimerOperation(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return resumeTimerOperation(payload, tenantId);
 }
 
 export async function syncTimer(payload: {
@@ -261,8 +261,8 @@ export async function syncTimer(payload: {
   plannedSeconds: number | null;
   actualSeconds?: number | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return syncTimerOperation(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return syncTimerOperation(payload, tenantId);
 }
 
 export async function savePost(payload: {
@@ -274,21 +274,21 @@ export async function savePost(payload: {
   surveyScore?: number | null;
   kpiTotalSeconds?: number | null;
 }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return savePostImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return savePostForTenant(payload, tenantId);
 }
 
 export async function finishAttendance(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return finishAttendanceImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return finishAttendanceForTenant(payload, tenantId);
 }
 
 export async function sendSurvey(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return sendSurveyImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return sendSurveyImpl(payload, tenantId);
 }
 
 export async function recordSurveyAnswer(payload: { appointmentId: string; score: number }): Promise<ActionResult<{ appointmentId: string }>> {
-  await requireDashboardAccessForServerAction();
-  return recordSurveyAnswerImpl(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return recordSurveyAnswerImpl(payload, tenantId);
 }

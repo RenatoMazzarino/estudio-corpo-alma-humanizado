@@ -19,7 +19,6 @@ export type SpotifyPlayerSnapshot = {
 
 export const DEFAULT_SPOTIFY_PLAYLIST_URL =
   process.env.NEXT_PUBLIC_ATTENDANCE_SPOTIFY_PLAYLIST_URL ??
-  process.env.NEXT_PUBLIC_SPOTIFY_PLAYLIST_URL ??
   "https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO";
 
 const BRAZIL_TIMEZONE = "America/Sao_Paulo";

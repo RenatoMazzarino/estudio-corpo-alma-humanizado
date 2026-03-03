@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { AttendancePage } from "./attendance-page";
 import { getAttendanceOverview } from "../../../../lib/attendance/attendance-repository";
 import { getSettings, listPixPaymentKeys } from "../../../../src/modules/settings/repository";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../../../src/shared/config";
 import { getAutoMessageTemplates } from "../../../../src/shared/auto-messages";
+import { requireDashboardAccessForPage } from "../../../../src/modules/auth/dashboard-access";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -13,11 +13,12 @@ interface PageProps {
 const PIX_KEY_TYPES = ["cnpj", "cpf", "email", "phone", "evp"] as const;
 
 export default async function AtendimentoPage(props: PageProps) {
+  const { tenantId } = await requireDashboardAccessForPage("/atendimento");
   const params = await props.params;
   const [attendance, settingsResult, pixKeysResult] = await Promise.all([
-    getAttendanceOverview(FIXED_TENANT_ID, params.id),
-    getSettings(FIXED_TENANT_ID),
-    listPixPaymentKeys(FIXED_TENANT_ID),
+    getAttendanceOverview(tenantId, params.id),
+    getSettings(tenantId),
+    listPixPaymentKeys(tenantId),
   ]);
 
   if (!attendance) {
