@@ -1,4 +1,3 @@
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { NotesSection } from "./notes-section";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -14,6 +13,7 @@ import {
 import { listAppointmentsForClient } from "../../../../src/modules/appointments/repository";
 import { ClientProfile } from "./client-profile";
 import { SurfaceCard } from "../../../../components/ui/surface-card";
+import { requireDashboardAccessForPage } from "../../../../src/modules/auth/dashboard-access";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -30,23 +30,24 @@ interface AppointmentHistoryItem {
 }
 
 export default async function ClientProfilePage(props: PageProps) {
+  const { tenantId } = await requireDashboardAccessForPage("/clientes");
   const params = await props.params;
 
   // 1. Busca dados do Cliente
-  const { data: client } = await getClientById(FIXED_TENANT_ID, params.id);
+  const { data: client } = await getClientById(tenantId, params.id);
 
   if (!client) {
     return <div>Cliente não encontrado.</div>;
   }
 
   // 2. Busca histórico de agendamentos
-  const { data: historyData } = await listAppointmentsForClient(FIXED_TENANT_ID, params.id);
+  const { data: historyData } = await listAppointmentsForClient(tenantId, params.id);
   const [{ data: addresses }, { data: phones }, { data: emails }, { data: healthItems }] =
     await Promise.all([
-      listClientAddresses(FIXED_TENANT_ID, params.id),
-      listClientPhones(FIXED_TENANT_ID, params.id),
-      listClientEmails(FIXED_TENANT_ID, params.id),
-      listClientHealthItems(FIXED_TENANT_ID, params.id),
+      listClientAddresses(tenantId, params.id),
+      listClientPhones(tenantId, params.id),
+      listClientEmails(tenantId, params.id),
+      listClientHealthItems(tenantId, params.id),
     ]);
   const history = (historyData as AppointmentHistoryItem[] | null) ?? [];
   const resolvedPhones =

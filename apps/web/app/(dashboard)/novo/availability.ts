@@ -7,7 +7,6 @@ import { requireDashboardAccessForServerAction } from "../../../src/modules/auth
 import { BRAZIL_TZ_OFFSET } from "../../../src/shared/timezone";
 
 interface GetSlotsParams {
-  tenantId: string;
   serviceId: string;
   date: string;
   isHomeVisit?: boolean;
@@ -15,13 +14,11 @@ interface GetSlotsParams {
 }
 
 export async function getAvailableSlots(params: GetSlotsParams): Promise<string[]> {
-
-  await requireDashboardAccessForServerAction();
-  return getAvailableSlotsImpl(params);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return getAvailableSlotsImpl({ ...params, tenantId });
 }
 
 interface GetMonthAvailabilityParams {
-  tenantId: string;
   serviceId: string;
   month: string; // YYYY-MM
   isHomeVisit?: boolean;
@@ -29,7 +26,7 @@ interface GetMonthAvailabilityParams {
 }
 
 export async function getMonthAvailableDays(params: GetMonthAvailabilityParams): Promise<Record<string, boolean>> {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
 
   const base = parseISO(`${params.month}-01T00:00:00${BRAZIL_TZ_OFFSET}`);
   const start = startOfMonth(base);
@@ -43,7 +40,7 @@ export async function getMonthAvailableDays(params: GetMonthAvailabilityParams):
       if (isBefore(day, today)) return { date: iso, available: false };
       try {
         const slots = await getAvailableSlotsImpl({
-          tenantId: params.tenantId,
+          tenantId,
           serviceId: params.serviceId,
           date: iso,
           isHomeVisit: params.isHomeVisit,
@@ -63,19 +60,17 @@ export async function getMonthAvailableDays(params: GetMonthAvailabilityParams):
 }
 
 interface GetBlockStatusParams {
-  tenantId: string;
   date: string;
 }
 
 export async function getDateBlockStatus(
   params: GetBlockStatusParams
 ): Promise<{ hasBlocks: boolean; hasShift: boolean }> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const start = new Date(`${params.date}T00:00:00${BRAZIL_TZ_OFFSET}`).toISOString();
   const end = new Date(`${params.date}T23:59:59.999${BRAZIL_TZ_OFFSET}`).toISOString();
 
-  const { data } = await listAvailabilityBlocksInRange(params.tenantId, start, end);
+  const { data } = await listAvailabilityBlocksInRange(tenantId, start, end);
   const blocks = data ?? [];
   const blockTypes = blocks
     .map((block) => block.block_type ?? block.reason)

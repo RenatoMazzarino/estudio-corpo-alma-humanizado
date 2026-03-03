@@ -4,7 +4,6 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { AppHeader } from "../../../components/ui/app-header";
 
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppointmentForm } from "./appointment-form";
 import { listServices } from "../../../src/modules/services/repository";
 import { listClients } from "../../../src/modules/clients/repository";
@@ -13,6 +12,7 @@ import { getSettings, listPixPaymentKeys } from "../../../src/modules/settings/r
 import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
 import { getAutoMessageTemplates } from "../../../src/shared/auto-messages";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../../src/shared/config";
+import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
 // Definindo tipos
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -51,16 +51,17 @@ function formatTimeInBrazil(date: Date) {
 }
 
 export default async function NewAppointment(props: PageProps) {
+  const { tenantId } = await requireDashboardAccessForPage("/novo");
   const params = await props.searchParams;
   const appointmentId = typeof params.appointmentId === "string" ? params.appointmentId : null;
 
   // Buscar serviços ativos do Tenant
   const [{ data: services }, { data: clients }, appointmentResult, settingsResult, pixKeysResult] = await Promise.all([
-    listServices(FIXED_TENANT_ID),
-    listClients(FIXED_TENANT_ID),
-    appointmentId ? getAppointmentById(FIXED_TENANT_ID, appointmentId) : Promise.resolve({ data: null, error: null }),
-    getSettings(FIXED_TENANT_ID),
-    listPixPaymentKeys(FIXED_TENANT_ID),
+    listServices(tenantId),
+    listClients(tenantId),
+    appointmentId ? getAppointmentById(tenantId, appointmentId) : Promise.resolve({ data: null, error: null }),
+    getSettings(tenantId),
+    listPixPaymentKeys(tenantId),
   ]);
 
   const appointment = appointmentResult?.data ?? null;

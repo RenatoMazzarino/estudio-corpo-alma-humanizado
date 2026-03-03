@@ -14,7 +14,6 @@ import {
   composeInternalClientName,
   normalizeReferenceLabel,
 } from "../../../src/modules/clients/name-profile";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
 import { normalizeCpfDigits } from "../../../src/shared/cpf";
 import { normalizePhoneDigits } from "../../../src/shared/phone";
@@ -31,9 +30,8 @@ import {
 } from "../atendimento/[id]/actions";
 
 export async function createAppointment(formData: FormData): Promise<void> {
-
-  await requireDashboardAccessForServerAction();
-  await createAppointmentImpl(formData);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  await createAppointmentImpl(formData, tenantId);
 }
 
 function getInitials(name: string) {
@@ -69,7 +67,7 @@ export async function createClientFromAppointmentDraft(input: {
     }
   | { ok: false; error: string }
 > {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
 
   const parsed = z
     .object({
@@ -103,7 +101,7 @@ export async function createClientFromAppointmentDraft(input: {
   }
 
   if (cpfDigits.length === 11) {
-    const { data: cpfClient, error: cpfError } = await findClientByCpf(FIXED_TENANT_ID, cpfDigits);
+    const { data: cpfClient, error: cpfError } = await findClientByCpf(tenantId, cpfDigits);
     if (cpfError) {
       return { ok: false, error: "Não foi possível validar o CPF agora. Tente novamente." };
     }
@@ -121,7 +119,7 @@ export async function createClientFromAppointmentDraft(input: {
   const initials = getInitials(internalName);
 
   const { data: createdClient, error: createError } = await createClient({
-    tenant_id: FIXED_TENANT_ID,
+    tenant_id: tenantId,
     name: internalName,
     phone: normalizedPhone,
     email: normalizedEmail,
@@ -172,7 +170,7 @@ export async function createAppointmentForImmediateCharge(formData: FormData): P
     attendance: Awaited<ReturnType<typeof getAttendance>>;
   };
 }> {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
 
   const payload = cloneFormData(formData);
   payload.set("response_mode", "json");
@@ -181,7 +179,7 @@ export async function createAppointmentForImmediateCharge(formData: FormData): P
   payload.set("send_created_message", "");
 
   try {
-    const result = await createAppointmentImpl(payload);
+    const result = await createAppointmentImpl(payload, tenantId);
     if (!result || typeof result !== "object" || !("appointmentId" in result)) {
       return { ok: false, error: "Não foi possível criar o agendamento para cobrança imediata." };
     }
@@ -209,9 +207,8 @@ export async function createAppointmentForImmediateCharge(formData: FormData): P
 }
 
 export async function updateAppointment(formData: FormData): Promise<void> {
-
-  await requireDashboardAccessForServerAction();
-  return updateAppointmentImpl(formData);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return updateAppointmentImpl(formData, tenantId);
 }
 
 export async function getBookingChargeContext(appointmentId: string) {
@@ -310,12 +307,12 @@ export async function finalizeCreatedAppointmentNotifications(input: {
   appointmentId: string;
   startTimeIso: string;
 }) {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   return triggerCreatedNotificationsForAppointment({
     appointmentId: input.appointmentId,
     startTimeIso: input.startTimeIso,
     source: "admin_create_after_payment",
-  });
+  }, tenantId);
 }
 
 export async function recordManualCreatedMessage(input: {
@@ -351,14 +348,13 @@ export async function recordManualPaymentReceiptMessage(input: {
 }
 
 export async function getClientAddresses(clientId: string): Promise<{ data: unknown[]; error?: string | null }> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const parsed = z.object({ clientId: z.string().uuid() }).safeParse({ clientId });
   if (!parsed.success) {
     return { data: [], error: "Cliente inválido" };
   }
 
-  const { data, error } = await listClientAddresses(FIXED_TENANT_ID, parsed.data.clientId);
+  const { data, error } = await listClientAddresses(tenantId, parsed.data.clientId);
   return { data: (data as unknown[] | null) ?? [], error: error?.message ?? null };
 }
 
@@ -374,7 +370,7 @@ export async function saveClientAddress(input: {
   addressCidade?: string | null;
   addressEstado?: string | null;
 }): Promise<{ data: { id: string } | null; error?: string | null }> {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
 
   const parsed = z
     .object({
@@ -410,7 +406,7 @@ export async function saveClientAddress(input: {
   const { data: existingRows, error: existingError } = await supabase
     .from("client_addresses")
     .select("id, is_primary")
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("tenant_id", tenantId)
     .eq("client_id", parsed.data.clientId);
 
   if (existingError) {
@@ -424,7 +420,7 @@ export async function saveClientAddress(input: {
     const { error: clearPrimaryError } = await supabase
       .from("client_addresses")
       .update({ is_primary: false })
-      .eq("tenant_id", FIXED_TENANT_ID)
+      .eq("tenant_id", tenantId)
       .eq("client_id", parsed.data.clientId);
 
     if (clearPrimaryError) {
@@ -435,7 +431,7 @@ export async function saveClientAddress(input: {
   const { data: inserted, error: insertError } = await supabase
     .from("client_addresses")
     .insert({
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       client_id: parsed.data.clientId,
       label: parsed.data.label,
       is_primary: shouldBePrimary,

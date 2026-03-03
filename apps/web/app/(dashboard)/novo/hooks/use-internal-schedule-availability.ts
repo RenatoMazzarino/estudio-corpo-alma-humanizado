@@ -1,6 +1,5 @@
 import { format, isBefore, isSameMonth, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { useEffect, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { getAvailableSlots, getDateBlockStatus, getMonthAvailableDays } from "../availability";
 
 type UseInternalScheduleAvailabilityParams = {
@@ -66,7 +65,6 @@ export function useInternalScheduleAvailability(params: UseInternalScheduleAvail
       setIsLoadingMonthAvailability(true);
       try {
         const map = await getMonthAvailableDays({
-          tenantId: FIXED_TENANT_ID,
           serviceId: selectedServiceId,
           month: format(activeMonth, "yyyy-MM"),
           isHomeVisit,
@@ -115,7 +113,6 @@ export function useInternalScheduleAvailability(params: UseInternalScheduleAvail
       setIsLoadingSlots(true);
       try {
         const slots = await getAvailableSlots({
-          tenantId: FIXED_TENANT_ID,
           serviceId: selectedServiceId,
           date: selectedDate,
           isHomeVisit,
@@ -167,7 +164,7 @@ export function useInternalScheduleAvailability(params: UseInternalScheduleAvail
       }
       setBlockStatus("loading");
       try {
-        const result = await getDateBlockStatus({ tenantId: FIXED_TENANT_ID, date: selectedDate });
+        const result = await getDateBlockStatus({ date: selectedDate });
         setHasBlocks(result.hasBlocks);
         setHasShiftBlock(result.hasShift);
       } catch {

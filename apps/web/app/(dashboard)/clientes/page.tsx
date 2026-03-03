@@ -1,8 +1,8 @@
 import { subDays, isAfter } from "date-fns";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { listClients } from "../../../src/modules/clients/repository";
 import { listAppointmentsForClients } from "../../../src/modules/appointments/repository";
 import { ClientsView } from "./clients-view";
+import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
 interface ClientListItem {
   id: string;
@@ -19,12 +19,13 @@ export default async function ClientesPage({
 }: {
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
+  const { tenantId } = await requireDashboardAccessForPage("/clientes");
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q || "";
   const filter = resolvedSearchParams?.filter || "all";
 
   const { data } = await listClients(
-    FIXED_TENANT_ID,
+    tenantId,
     query,
     filter === "vip" ? "vip" : filter === "alert" ? "alert" : undefined
   );
@@ -36,7 +37,7 @@ export default async function ClientesPage({
   }
 
   const clientIds = clients.map((client) => client.id);
-  const { data: appointmentsData } = await listAppointmentsForClients(FIXED_TENANT_ID, clientIds);
+  const { data: appointmentsData } = await listAppointmentsForClients(tenantId, clientIds);
   const lastVisitMap = new Map<string, string>();
 
   (appointmentsData ?? []).forEach((appointment) => {
