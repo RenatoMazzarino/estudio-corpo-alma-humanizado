@@ -630,43 +630,38 @@ Para cada permissao sensivel (principalmente as de WhatsApp/Business), preparar:
 ### 10.2 Variaveis WhatsApp (familias)
 
 #### A) Nucleo da automacao
-- `WHATSAPP_AUTOMATION_QUEUE_ENABLED`
-- `WHATSAPP_AUTOMATION_MODE`
+- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
+- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `WHATSAPP_AUTOMATION_BATCH_LIMIT`
 - `WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE`
 - `WHATSAPP_AUTOMATION_MAX_RETRIES`
 - `WHATSAPP_AUTOMATION_RETRY_BASE_DELAY_SECONDS`
-- `WHATSAPP_AUTOMATION_ALLOWED_TENANT_IDS`
 
-#### B) Poller local (somente localhost)
-- `WHATSAPP_AUTOMATION_LOCAL_POLLER_ENABLED`
-- `WHATSAPP_AUTOMATION_LOCAL_POLLER_INTERVAL_SECONDS`
-
-Observacao: estas variaveis nao devem ser usadas como base da operacao em Vercel/PROD.
-
-#### C) Meta Cloud API (envio)
+#### B) Meta Cloud API (envio)
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
 - `WHATSAPP_AUTOMATION_META_API_VERSION`
 
-#### D) Templates aprovados
-- `WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME`
-- `WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE`
-- `WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME`
-- `WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE`
+#### C) Templates aprovados (canônico por tenant no banco)
+- `settings.whatsapp_template_created_name`
+- `settings.whatsapp_template_created_language`
+- `settings.whatsapp_template_reminder_name`
+- `settings.whatsapp_template_reminder_language`
+- `settings.whatsapp_automation_enabled`
 
-#### E) Endereco do estudio (variavel de template)
-- `WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE`
+#### D) Endereco do estudio (fallback)
+- `settings.whatsapp_studio_location_line`
+- fallback de runtime: `DISPLACEMENT_ORIGIN_ADDRESS`
 
-#### F) Webhook Meta
+#### E) Webhook Meta
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
 - opcional de catalogo/interno: `WHATSAPP_AUTOMATION_META_APP_ID`
 
-#### G) Cron / scheduler
+#### F) Cron / scheduler
 - `CRON_SECRET` (rota cron no app)
 - `WHATSAPP_CRON_DEV_SECRET` / `WHATSAPP_CRON_PROD_SECRET` (GitHub Secrets)
 - `WHATSAPP_CRON_ENABLE_PROD` (GitHub Actions variable para ativar job de PROD)

@@ -221,7 +221,7 @@ Automacoes de inicio de conversa / agendadas:
 - `appointment_created`
 - `appointment_reminder` (24h)
 
-No fluxo atual, esses envios sao feitos como template da Meta (Cloud API), com nome/idioma configurados por env.
+No fluxo atual, esses envios sao feitos como template da Meta (Cloud API), com nome/idioma resolvidos por tenant em `settings` (banco), com fallback interno canônico.
 
 ### Quando usa mensagem livre (session / janela 24h)
 
@@ -289,8 +289,9 @@ Ao alterar regra de agendamento/pagamento/mensagem, revisar:
 - `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`
 - `apps/web/lib/attendance/attendance-repository.ts`
 - `apps/web/components/agenda/appointment-details-sheet.tsx`
-- `apps/web/components/mobile-agenda.tsx`
+- `apps/web/components/mobile-agenda.screen.tsx`
 - `apps/web/src/modules/appointments/actions.ts`
 - `apps/web/src/modules/appointments/public-booking.ts`
-- `apps/web/src/modules/notifications/whatsapp-automation.ts`
+- `apps/web/src/modules/notifications/whatsapp-automation-runtime.ts`
+- `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
 - `apps/web/content/auto-messages.md`

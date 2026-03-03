@@ -117,6 +117,9 @@ pnpm build
 pnpm dev
 pnpm lint
 pnpm check-types
+pnpm --filter web lint:architecture
+pnpm --filter web test:unit
+pnpm --filter web test:smoke
 pnpm build
 ```
 
@@ -420,8 +423,10 @@ Variaveis criticas na Vercel:
 - `APP_TIMEZONE=America/Sao_Paulo`
 
 Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
-- `WHATSAPP_AUTOMATION_MODE`
+- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
+- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
 - `WHATSAPP_AUTOMATION_PROVIDER`
+- `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
@@ -429,3 +434,6 @@ Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
 - `CRON_SECRET`
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
+
+Observacao:
+- templates e idiomas da automacao WhatsApp agora ficam no banco (`settings` por tenant), nao em env.

@@ -179,7 +179,8 @@ Em conflito com o código, o código vence.
 ### Arquivos-chave
 
 - `apps/web/src/modules/notifications/automation-config.ts`
-- `apps/web/src/modules/notifications/whatsapp-automation.ts`
+- `apps/web/src/modules/notifications/whatsapp-automation-runtime.ts`
+- `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
 - `apps/web/src/modules/notifications/repository.ts`
 - `apps/web/app/api/whatsapp/meta/webhook/route.ts`
 - `apps/web/app/api/cron/whatsapp-reminders/route.ts`
@@ -190,23 +191,14 @@ Em conflito com o código, o código vence.
 
 #### Core / fila / processador
 
-- `WHATSAPP_AUTOMATION_MODE` (`disabled` | `dry_run` | `enabled`)
+- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
+- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
 - `WHATSAPP_AUTOMATION_PROVIDER` (`none` | `meta_cloud`)
-- `WHATSAPP_AUTOMATION_QUEUE_ENABLED`
 - `WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `WHATSAPP_AUTOMATION_BATCH_LIMIT`
 - `WHATSAPP_AUTOMATION_MAX_RETRIES`
 - `WHATSAPP_AUTOMATION_RETRY_BASE_DELAY_SECONDS`
-- `WHATSAPP_AUTOMATION_ALLOWED_TENANT_IDS`
-
-#### Poller local (localhost)
-
-- `WHATSAPP_AUTOMATION_LOCAL_POLLER_ENABLED`
-- `WHATSAPP_AUTOMATION_LOCAL_POLLER_INTERVAL_SECONDS`
-
-Observação:
-- Poller local não é base da operação em Vercel/produção.
 
 #### Meta Cloud API (envio)
 
@@ -215,21 +207,24 @@ Observação:
 - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
 - `WHATSAPP_AUTOMATION_META_API_VERSION`
 
-#### Templates
+#### Templates (canônico no banco)
 
-- `WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME`
-- `WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE`
-- `WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME`
-- `WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE`
+Os nomes/idiomas de template agora são resolvidos por tenant na tabela `settings`:
+- `whatsapp_template_created_name`
+- `whatsapp_template_created_language`
+- `whatsapp_template_reminder_name`
+- `whatsapp_template_reminder_language`
+- `whatsapp_automation_enabled`
+- `whatsapp_studio_location_line`
 
 #### Webhook / assinatura
 
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
 
-#### Template/localização
+#### Localização (fallback de operação)
 
-- `WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE` (fallback para `DISPLACEMENT_ORIGIN_ADDRESS`)
+- `DISPLACEMENT_ORIGIN_ADDRESS` (fallback de linha de estúdio quando setting não estiver preenchida)
 
 ---
 
@@ -239,7 +234,7 @@ Observação:
 
 - Integração no dashboard (configurações / atendimento) para conectar conta Spotify
 - Consulta de estado do player e controle (`play`, `pause`, `next`, `previous`)
-- Persistência de tokens/estado nas settings do tenant fixo atual
+- Persistência de tokens/estado nas settings do tenant da sessão atual
 
 ### Rotas internas
 
@@ -262,7 +257,6 @@ Observação:
 ### Variáveis opcionais (playlist padrão)
 
 - `NEXT_PUBLIC_ATTENDANCE_SPOTIFY_PLAYLIST_URL`
-- `NEXT_PUBLIC_SPOTIFY_PLAYLIST_URL`
 
 ### Arquivos-chave
 

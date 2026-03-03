@@ -15,7 +15,10 @@
 corepack enable
 pnpm install
 pnpm lint
+pnpm --filter web lint:architecture
 pnpm check-types
+pnpm --filter web test:unit
+pnpm --filter web test:smoke
 pnpm build
 ```
 
@@ -53,6 +56,9 @@ pnpm install
 pnpm dev
 pnpm lint
 pnpm check-types
+pnpm --filter web lint:architecture
+pnpm --filter web test:unit
+pnpm --filter web test:smoke
 pnpm build
 ```
 

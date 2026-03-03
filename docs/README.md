@@ -1,5 +1,7 @@
 # Docs Index
 
+Atualizado em: 2026-03-03
+
 Este diretório foi organizado em duas camadas:
 
 ## 1) Documentação ativa (uso atual do produto/repo)
@@ -17,6 +19,9 @@ Este diretório foi organizado em duas camadas:
 - `docs/sql/README.md`: orientação para snapshots SQL de auditoria.
 - `docs/engineering/MODULARIZATION_CONVENTIONS.md`: convenções técnicas de modularização e fronteiras de camada.
 - `docs/engineering/PR_CHECKLIST_REFACTOR.md`: checklist obrigatório para blocos de refatoração/hardening.
+- `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-03-02.md`: certificação final consolidada do programa.
+- `docs/reports/FALLBACK_INVENTARIO_2026-03-02.md`: inventário canônico de fallbacks (mantidos/removidos).
+- `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md`: execução da bateria de validação e atualização documental.
 
 ## 2) Legado da branch Agenda V1 UI (histórico fechado)
 

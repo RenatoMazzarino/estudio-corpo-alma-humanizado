@@ -5,6 +5,13 @@ Versao: 2026-02-27
 Escopo: repositorio completo (nao apenas commits recentes)  
 Consolidacao: este documento unifica o backlog de modularizacao + a auditoria de producao de `docs/reports/AUDITORIA_MAIN_PROD_2026-02-27.md`.
 
+Nota de leitura (2026-03-03):
+1. Este backlog preserva snapshots históricos de execução.
+2. Para estado técnico atual (hotspots, validação e fechamento), priorize:
+   - `docs/plans/PLANO_E2E_ENTERPRISE_REPO_COMPLETO_2026-03-01.md`
+   - `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-03-02.md`
+   - `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md`
+
 ## 0) Atualizacao de Execucao (2026-02-27)
 
 Blocos ja executados na `main` (com gate completo em cada bloco):

@@ -1,7 +1,7 @@
-# Matriz de Documentação Canônica (v1)
+# Matriz de Documentação Canônica (v2)
 
-Data de referência: 2026-02-25  
-Escopo desta v1: `docs/**/*.md` + `README.md` + `MANUAL_RAPIDO.md` + `apps/web/README.md`
+Data de referência: 2026-03-03  
+Escopo desta v2: `docs/**/*.md` + `README.md` + `MANUAL_RAPIDO.md` + `apps/web/README.md`
 
 ## Objetivo
 
@@ -55,6 +55,7 @@ Reduzir ambiguidade de onboarding e manutenção documental, classificando:
 | arquivo | categoria | tema | fonte de verdade? | status | observação | ação recomendada |
 |---|---|---|---|---|---|---|
 | `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md` | `canônico` | Estratégia/readiness Meta/WhatsApp/coexistência/Tech Provider | `parcial` | `atual` | Documento canônico de roadmap/readiness; não substitui código/env | Manter como referência estratégica única e atualizar por fase |
+| `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md` | `canônico` | Evidência de validação técnica e atualização documental | `parcial` | `atual` | Registro objetivo da bateria de testes executada e docs alinhadas | Atualizar a cada rodada de validação ampla |
 | `docs/reports/ERROR_CATALOG_AGENDA_PAYMENTS_2026-02-13.md` | `histórico` | Catálogo de feedbacks UI (agenda/pagamentos) | `parcial` | `parcialmente desatualizado` | Útil para contexto de UX/IDs; datado | Manter como referência; consolidar se catálogo evoluir |
 | `docs/plans/PLANO_IMPLANTACAO_ATENDIMENTO_V1_UNIFICADO.md` | `histórico` | Plano de implantação Atendimento V1 unificado | `não` | `desatualizado` | Plano de execução já absorvido em grande parte pelo código/commits | Manter arquivado; usar apenas para rastreabilidade |
 
@@ -141,12 +142,13 @@ Reduzir ambiguidade de onboarding e manutenção documental, classificando:
 | `docs/legacy/agenda-v1-ui/reports/PR_DRAFT_AGENDA_V1_UI.md` | `histórico` | Rascunho de PR da branch `agenda-v1-ui` | `não` | `desatualizado` | PR draft histórico | Manter arquivado |
 | `docs/legacy/agenda-v1-ui/reports/REPORT_ATENDIMENTO_UIV4_EXECUTION.md` | `histórico` | Relatório de execução da UI V4 de atendimento | `não` | `desatualizado` | Reflete fase de implementação anterior | Manter arquivado |
 
-## 6) Observações de Governança (v1)
+## 6) Observações de Governança (v2)
 
 1. Em conflito entre documentação e comportamento implementado, `código + migrations + env real` vencem.
 2. O arquivo `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md` é canônico para **estratégia/readiness** de WhatsApp, mas não para inferir comportamento runtime sem validar o código.
 3. `apps/web/README.md` foi saneado e agora descreve escopo/auth/scripts do app; manter enxuto para não competir com o `README.md` raiz.
 4. O bloco `docs/legacy/agenda-v1-ui/*` deve permanecer acessível, com uso explícito de contexto histórico (e banners de status documental já aplicados).
+5. Relatórios de certificação e inventário de fallback (`docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-03-02.md` e `docs/reports/FALLBACK_INVENTARIO_2026-03-02.md`) passam a compor a trilha canônica de fechamento técnico.
 
 ## 7) Próximas Ações Recomendadas
 

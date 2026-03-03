@@ -34,6 +34,16 @@ Escopo: rotas do App Router em `apps/web/app/api/**/route.ts`
 - `GET /api/integrations/spotify/player/state`
 - `POST /api/integrations/spotify/player/control`
 
+## Borda assíncrona (Supabase Edge Functions)
+
+Além das rotas `app/api`, o repo mantém funções de borda em `supabase/functions/*` para cenários assíncronos:
+
+- `mercadopago-webhook-proxy`
+- `whatsapp-meta-webhook`
+- `whatsapp-automation-processor`
+
+Essas funções não substituem as rotas `app/api` por padrão; são fronteira complementar para operação e evolução de arquitetura.
+
 Observação:
 - As rotas de Spotify também validam origem/interação same-origin em cenários interativos.
 
@@ -54,8 +64,13 @@ Observação:
 
 - `CRON_SECRET`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
+- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
+- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET` (opcional, mas recomendado; se ausente a assinatura do webhook Meta não é exigida)
+
+Observação:
+- nomes/idiomas de templates da Meta são configurados por tenant no banco (`settings`), não por env.
 
 ### Spotify
 

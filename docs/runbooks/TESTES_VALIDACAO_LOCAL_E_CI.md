@@ -17,8 +17,11 @@ pnpm --filter web lint
 pnpm --filter web lint:architecture
 pnpm --filter web check-types
 pnpm --filter web test:unit
-pnpm --filter web build
 pnpm --filter web test:smoke
+pnpm --filter web build
+pnpm lint
+pnpm check-types
+pnpm build
 ```
 
 Observacao:
@@ -53,6 +56,12 @@ pnpm --filter web exec playwright install chromium
    - ler etapa exata que falhou
    - corrigir no codigo
    - novo commit e aguardar nova execucao
+
+## 4.1) Cobertura atual da suíte (transparência)
+
+1. `test:unit` cobre regras/helpers críticos (pagamento, automação, agenda, formatadores).
+2. `test:smoke` cobre a rota pública legal marcada com `@smoke`.
+3. Fluxos E2E completos com autenticação e integrações externas (MP/Meta/Spotify) ainda dependem de validação manual guiada por ambiente.
 
 ## 5) Gate de PR
 

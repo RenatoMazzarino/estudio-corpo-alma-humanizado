@@ -67,15 +67,18 @@ Observação:
 
 ### WhatsApp / Meta (automação)
 
-- `WHATSAPP_AUTOMATION_MODE`
+- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
+- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
-- `WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME`
-- `WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME`
+- `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `CRON_SECRET`
+
+Configuração de template e idioma:
+- canônica no banco (`settings` por tenant), não em env.
 
 ### GitHub Actions (scheduler dos lembretes)
 
@@ -263,8 +266,7 @@ Verificar:
 - Não remover o fluxo manual de WhatsApp ao ativar automação.
 - Não ligar scheduler PROD sem checar fila/backlog e destinatário/allowlist.
 - Em incidente, priorizar:
-  1. pausar automação (`WHATSAPP_AUTOMATION_MODE`)
+  1. pausar automação (`WHATSAPP_AUTOMATION_GLOBAL_ENABLED=false` ou `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`)
   2. corrigir env/webhook
   3. validar em DEV
   4. religar rollout controlado
-

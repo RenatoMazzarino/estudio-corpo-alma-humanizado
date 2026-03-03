@@ -1,11 +1,37 @@
 # Plano E2E Enterprise - Repo Completo
 
-Status: ativo  
+Status: concluido 100% (execucao E2E final fechada em 2026-03-02)  
 Versao: 2026-03-01  
 Escopo: repositorio completo (apps, modulos, docs e operacao)  
 Base: consolidacao de backlog + auditoria + certificacao ja existentes
 
 Atualizacao de auditoria aplicada neste arquivo: 2026-03-01
+
+Fechamento de execucao aplicado: 2026-03-02
+
+Nota de leitura:
+1. Este arquivo mistura estado final e trilha histórica de execução.
+2. Seções de "Registro de Execução" preservam contexto temporal e podem citar caminhos/flags já removidos no estado atual.
+3. Para estado operacional vigente, priorize as seções de status executivo e snapshots atualizados deste próprio plano + relatórios de certificação/validação mais recentes.
+
+## 0) Fechamento do Programa (2026-03-02)
+
+1. Programa E2E encerrado com hardening ativo e modularizacao aplicada nos fluxos criticos.
+2. Validacao tecnica final executada com sucesso:
+   - `pnpm --filter web lint`
+   - `pnpm --filter web lint:architecture`
+   - `pnpm --filter web test:unit`
+   - `pnpm --filter web test:smoke`
+   - `pnpm --filter web check-types`
+   - `pnpm --filter web build`
+3. Estrutura final e status de certificacao consolidados em:
+   - `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-03-02.md`
+4. O repositorio segue com melhoria continua como rotina, mas sem pendencia bloqueante para operacao.
+5. Fechamento final adicional aplicado no mesmo dia:
+   - removidos fallbacks legados de tenant fixo (`DEFAULT_TENANT_ID`/`FIXED_TENANT_ID`) do codigo de runtime;
+   - automacao WhatsApp movida para configuracao canônica por tenant no banco (templates/idioma/local e flag de habilitacao);
+   - removido fallback cruzado de segredos na seguranca de lookup publico (captcha agora usa segredo dedicado);
+   - migrations de realtime e configuracao canônica de WhatsApp aplicadas em local e remoto.
 
 ## 1) Objetivo em linguagem simples
 
@@ -30,48 +56,46 @@ Ao final do programa:
 
 ## 3) Fotografia real do repo hoje (hotspots atuais)
 
+Atualizado em 2026-03-03 apos consolidacao final dos recortes de modularizacao.
+
 Maiores arquivos de codigo versionado no `apps/web`:
 
-1. `apps/web/app/(dashboard)/novo/appointment-form.screen.tsx` - 2332 linhas
-2. `apps/web/lib/supabase/types.ts` - 1775 linhas (gerado por tipagem do banco)
-3. `apps/web/components/mobile-agenda.screen.tsx` - 958 linhas
-4. `apps/web/components/availability-manager.tsx` - 864 linhas
-5. `apps/web/app/(dashboard)/clientes/novo/page.tsx` - 806 linhas
-6. `apps/web/src/modules/clients/actions.ts` - 750 linhas
-7. `apps/web/app/(dashboard)/configuracoes/settings-form.tsx` - 687 linhas
-8. `apps/web/app/(dashboard)/mensagens/page.tsx` - 610 linhas
-9. `apps/web/components/agenda/appointment-details-sheet.tsx` - 537 linhas
-10. `apps/web/src/modules/integrations/spotify/server.ts` - 540 linhas
+1. `apps/web/lib/supabase/types.ts` - 1785 linhas (gerado por tipagem do banco)
+2. `apps/web/app/(dashboard)/novo/appointment-form.composition.tsx` - 990 linhas
+3. `apps/web/app/(dashboard)/novo/hooks/use-appointment-confirmation-flow.ts` - 643 linhas
+4. `apps/web/app/(public)/agendar/[slug]/hooks/use-public-booking-flow-controller-deps.ts` - 529 linhas
+5. `apps/web/app/(dashboard)/atendimento/[id]/components/use-attendance-payment-modal-controller.ts` - 515 linhas
+6. `apps/web/app/(public)/agendar/[slug]/hooks/use-public-booking-identity.ts` - 512 linhas
+7. `apps/web/app/(dashboard)/novo/components/appointment-confirmation-sheet.tsx` - 510 linhas
+8. `apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx` - 496 linhas
+9. `apps/web/components/agenda/appointment-details-active-view.tsx` - 466 linhas
+10. `apps/web/app/(public)/agendar/[slug]/public-actions/clients.ts` - 464 linhas
 
 Observacao importante:
-- `apps/web/lib/supabase/types.ts` e arquivo gerado automaticamente. Nao entra como alvo principal de modularizacao manual.
+1. `apps/web/lib/supabase/types.ts` continua fora do alvo de modularizacao manual por ser arquivo gerado.
+2. Os hotspots acima estao abaixo do patamar inicial do programa e seguem sem bloqueio tecnico de operacao.
 
 ## 3.1) Achados de convergencia confirmados (auditoria adicional)
 
-1. Normalizacao/validacao ainda duplicada em pontos criticos:
-   - `apps/web/src/modules/appointments/actions.helpers.ts`
-   - `apps/web/app/(public)/agendar/[slug]/booking-flow.helpers.ts`
-   - `apps/web/app/(public)/agendar/[slug]/public-actions/clients.ts`
-   - `apps/web/app/(dashboard)/clientes/novo/page.tsx`
-2. Formatacao de valores monetarios ainda repetida em mais de uma tela:
-   - `apps/web/components/agenda/appointment-details-sheet.tsx`
-   - `apps/web/app/comprovante/[id]/page.tsx`
-   - `apps/web/app/comprovante/pagamento/[paymentId]/page.tsx`
-   - `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.helpers.ts`
-3. Disponibilidade esta em 3 camadas separadas (nucleo + wrapper interno + wrapper publico):
-   - `apps/web/src/modules/appointments/availability.ts`
-   - `apps/web/app/(dashboard)/novo/availability.ts`
-   - `apps/web/app/(public)/agendar/[slug]/availability.ts`
-4. Mercado Pago esta parcialmente centralizado:
-   - facade central em `apps/web/src/modules/payments/mercadopago-orders.ts`
-   - webhook ainda concentra logica propria em `apps/web/app/api/mercadopago/webhook/route.ts`
-5. Ainda existem pontos de acesso direto ao banco em tela/rota que deveriam delegar para modulo:
-   - exemplo: `apps/web/app/(dashboard)/mensagens/page.tsx`
-6. Supabase:
-   - RPC no banco: sim, ja usado (ex.: criacao de agendamento publico/interno)
-   - Realtime no app: nao encontrado uso ativo
-   - Edge Functions no repo/app: nao encontrado uso ativo
-7. CI atual ainda nao executa `test:unit` e `test:smoke` como gate obrigatorio.
+1. Webhook Mercado Pago foi desacoplado em modulos dedicados:
+   - `apps/web/app/api/mercadopago/webhook/route.ts`
+   - `apps/web/app/api/mercadopago/webhook/mercadopago-webhook.helpers.ts`
+   - `apps/web/app/api/mercadopago/webhook/mercadopago-webhook.provider.ts`
+2. Controlador do agendamento online foi fatiado por responsabilidade:
+   - estado: `use-public-booking-flow-state.ts`
+   - dependencias/orquestracao: `use-public-booking-flow-controller-deps.ts`
+   - montagem final de retorno: `use-public-booking-flow-controller-result.ts`
+3. Controlador da agenda mobile foi dividido em blocos de comportamento:
+   - `use-mobile-agenda-search-effect.ts`
+   - `use-mobile-agenda-day-navigation.ts`
+   - `use-mobile-agenda-derived-data.ts`
+4. Realtime esta ativo em fluxos operacionais (agenda/atendimento) com refresh direcionado.
+5. Edge Functions estao versionadas no repo e publicadas para fluxos assincronos criticos.
+6. Persistem pontos de concentracao media (nao bloqueantes) em:
+   - `appointment-form.composition.tsx`
+   - `use-appointment-confirmation-flow.ts`
+   - `use-public-booking-flow-controller-deps.ts`
+7. CI segue com gate tecnico ativo para `lint`, `check-types`, `build`, `test:unit` e `test:smoke`.
 
 ## 3.2) Diagnostico de variaveis de ambiente (env)
 
@@ -317,12 +341,12 @@ Objetivo:
 - modularizar o maior hotspot do repo sem mudar visual.
 
 Entregas:
-1. Quebra de `appointment-form.screen.tsx` por etapas/sections.
+1. Quebra de `appointment-form.composition.tsx` por etapas/sections.
 2. Separacao de controle de estado, regra e UI.
 3. Reuso do fluxo financeiro em caminho unico de backend.
 
 Arquivos foco:
-1. `apps/web/app/(dashboard)/novo/appointment-form.screen.tsx`
+1. `apps/web/app/(dashboard)/novo/appointment-form.composition.tsx`
 2. `apps/web/app/(dashboard)/novo/appointment-actions.ts`
 3. `apps/web/app/(dashboard)/novo/components/*`
 4. `apps/web/app/(dashboard)/novo/hooks/*`
@@ -542,7 +566,7 @@ Uso atual no codigo (confirmado):
    - `apps/web/src/modules/appointments/actions/create-internal-booking.ts`
 2. colunas legadas em `clients` ainda sao amplamente usadas em busca e composicao de tela:
    - `apps/web/src/modules/appointments/repository.ts`
-   - `apps/web/app/(dashboard)/novo/appointment-form.screen.tsx`
+   - `apps/web/app/(dashboard)/novo/appointment-form.composition.tsx`
    - `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
 3. conclusao tecnica:
    - nao pode remover legado em um unico passo; precisa migracao por fases com troca progressiva de leitura.
@@ -667,13 +691,11 @@ Cobertura minima por dominio (incremental):
 
 ## 12.3) Decisoes ja tomadas, mas ainda sem execucao concluida
 
-1. Tenant dinamico completo (codigo + banco local/remoto + vinculo de usuarios da Jana).
-2. Migracao de templates/language/flags de automacao de env para banco.
-3. Realtime em todos os fluxos de status operacionais definidos.
-4. Edge Functions para webhook/fila/cron no primeiro ciclo.
-5. Consolidacao de nascimento em `birth_date` com migracao e limpeza de legado.
-6. Consolidacao de contato/endereco em tabelas canonicas com retirada de duplicidade no `clients`.
-7. Limpeza final de env local/vercel com matriz canonica unica.
+Atualizacao 2026-03-03:
+
+1. Nao ha decisao de negocio pendente sem execucao tecnica.
+2. Itens deste bloco foram executados no ciclo 2026-03-02/2026-03-03 e validados por `lint`, `lint:architecture`, `check-types`, `test:unit`, `test:smoke` e `build`.
+3. O que permanece aberto daqui em diante e melhoria continua de granularidade (otimizacao incremental), nao pendencia bloqueante do programa.
 
 ## 12.4) Regras enterprise para variaveis (novas)
 
@@ -696,7 +718,7 @@ Cobertura minima por dominio (incremental):
 
 1. `docs/plans/BACKLOG_REFACTOR_MODULARIZACAO_REPO.md`
 2. `docs/reports/AUDITORIA_MAIN_PROD_2026-02-27.md`
-3. `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-02-27.md`
+3. `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-03-02.md`
 4. `docs/runbooks/PROGRAMA_MODULARIZACAO_OPERACAO.md`
 5. `docs/runbooks/TESTES_VALIDACAO_LOCAL_E_CI.md`
 
@@ -714,3 +736,89 @@ Regra operacional deste programa:
    - lista curta do que exigiu intervencao sua (se houver).
    - status final de lint/build/testes.
    - checklist de deploy/publicacao.
+
+## 15) Registro de Execucao (2026-03-02)
+
+### 15.1 Banco local + remoto
+
+1. Migration aplicada em local e remoto:
+   - `supabase/migrations/20260302015802_enterprise_tenant_dynamic_clients_canonicalization.sql`
+2. Entregas desta migration:
+   - adiciona colunas de configuracao operacional por tenant em `settings` (timezone, flags e templates de automacao);
+   - faz backfill de `clients.birth_date` a partir de `clients.data_nascimento`;
+   - migra dados legados para tabelas canonicas `client_phones`, `client_emails`, `client_addresses`;
+   - remove defaults hardcoded de `tenant_id`;
+   - ajusta policy com hardcode de tenant para condicao por role apropriada.
+
+### 15.2 Tenant dinamico (execucao parcial avancada)
+
+1. `apps/web/lib/tenant-context.ts` passou a suportar fallback de tenant por env:
+   - `DEFAULT_TENANT_ID`
+   - `NEXT_PUBLIC_DEFAULT_TENANT_ID`
+2. Páginas principais do dashboard passaram a usar tenant da sessao autenticada.
+3. Acoes principais de dashboard (clientes/servicos/configuracoes/bloqueios/novo) passaram a usar `tenantId` da sessao.
+4. Fluxo de atendimento teve propagacao de `tenantId` nos modulos de:
+   - comunicacao;
+   - checkout financeiro;
+   - pagamento;
+   - timer;
+   - checklist/evolucao.
+5. Operacoes de ciclo de agendamento/admin tambem foram preparadas para receber tenant por parametro.
+
+### 15.3 Canonicalizacao de clientes
+
+1. Validacao e persistencia migradas para `birth_date`.
+2. Fallback de leitura de `data_nascimento` mantido nas actions para transicao sem quebra.
+
+### 15.4 Tooling
+
+1. `turbo.json` atualizado para declarar:
+   - `DEFAULT_TENANT_ID`
+   - `NEXT_PUBLIC_DEFAULT_TENANT_ID`
+
+### 15.5 Validacao da execucao
+
+1. `pnpm --filter web lint` ✅
+2. `pnpm --filter web lint:architecture` ✅
+3. `pnpm --filter web test:unit` ✅
+4. `pnpm --filter web test:smoke` ✅
+5. `pnpm --filter web check-types` ✅
+6. `pnpm --filter web build` ✅
+
+### 15.6 Fechamentos complementares (2026-03-02)
+
+1. Realtime ativado em fluxos operacionais:
+   - agenda (`apps/web/components/mobile-agenda.screen.tsx`)
+   - atendimento (`apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx`)
+2. Criação de borda Edge para integrações assíncronas:
+   - `supabase/functions/whatsapp-automation-processor/index.ts`
+   - `supabase/functions/whatsapp-meta-webhook/index.ts`
+   - `supabase/functions/mercadopago-webhook-proxy/index.ts`
+   - `supabase/functions/README.md`
+3. Templates e idioma da automação WhatsApp com resolução por tenant via `settings`:
+   - novo módulo `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
+   - consumo aplicado em `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
+4. Convergência de configuração de ambiente:
+   - `apps/web/src/shared/env/server-env.ts`
+   - `apps/web/src/shared/env/public-env.ts`
+   - uso consolidado em `apps/web/lib/supabase/client.ts`, `apps/web/lib/supabase/server.ts`, `apps/web/lib/supabase/service.ts`
+
+### 15.7 Fechamento estrutural final (2026-03-02)
+
+1. Tenant fallback legado removido do runtime:
+   - `apps/web/lib/tenant-context.ts` removido.
+   - `apps/web/src/modules/auth/dashboard-access.ts` sem bootstrap por tenant fixo.
+2. Migração total de templates/idioma/local da automação WhatsApp para banco:
+   - `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
+   - `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
+   - `apps/web/app/voucher/[id]/page.tsx`
+   - `apps/web/app/(dashboard)/mensagens/message-jobs.ts`
+3. Limpeza de fallback cruzado de segredo no lookup público:
+   - `apps/web/app/(public)/agendar/[slug]/public-actions/client-lookup-security.ts`
+4. Migrations aplicadas local + remoto para convergência final:
+   - `supabase/migrations/20260302102000_enable_realtime_operational_tables.sql`
+   - `supabase/migrations/20260302113500_whatsapp_settings_db_canonical.sql`
+5. Edge Functions publicadas no remoto:
+   - `whatsapp-automation-processor`
+   - `whatsapp-meta-webhook`
+   - `mercadopago-webhook-proxy`

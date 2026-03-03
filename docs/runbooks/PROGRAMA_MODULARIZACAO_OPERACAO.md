@@ -20,7 +20,8 @@ Executar sempre nesta ordem:
 2. `pnpm --filter web lint:architecture`
 3. `pnpm --filter web check-types`
 4. `pnpm --filter web test:unit`
-5. `pnpm --filter web build`
+5. `pnpm --filter web test:smoke`
+6. `pnpm --filter web build`
 
 ## 3. Checklist de Publicacao
 
@@ -45,7 +46,9 @@ Executar sempre nesta ordem:
 
 ## 5. Pendencias Estruturais Abertas (nao bloqueantes)
 
-1. `src/modules/notifications/whatsapp-automation.ts` ainda grande.
-2. `src/modules/payments/mercadopago-orders.ts` ainda grande.
-3. `app/(public)/agendar/[slug]/booking-flow.tsx` ainda com fatiamento parcial.
-4. `app/(dashboard)/atendimento/[id]/actions.ts` e `src/modules/appointments/actions.ts` já reduziram, mas ainda acima do alvo ideal.
+Atualizado em 2026-03-03:
+
+1. `app/(dashboard)/novo/appointment-form.composition.tsx` ainda é o maior hotspot ativo de composição de tela.
+2. `app/(dashboard)/novo/hooks/use-appointment-confirmation-flow.ts` segue concentrando muitas decisões de fluxo de cobrança.
+3. `app/(public)/agendar/[slug]/hooks/use-public-booking-flow-controller-deps.ts` ainda é o principal ponto de orquestração no agendamento público.
+4. `app/(dashboard)/atendimento/[id]/components/use-attendance-payment-modal-controller.ts` ainda comporta redução adicional de efeitos/estado.
