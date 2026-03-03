@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppError } from "../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../src/shared/errors/result";
@@ -113,16 +112,15 @@ function normalizePixKeyValue(type: PixPaymentKeyType, rawValue: string) {
   return normalized;
 }
 
-async function fetchPixKeysForTenant() {
-  const { data, error } = await listPixPaymentKeys(FIXED_TENANT_ID);
+async function fetchPixKeysForTenant(tenantId: string) {
+  const { data, error } = await listPixPaymentKeys(tenantId);
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
   return ok(data ?? []);
 }
 
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const payload = [];
 
   for (let day = 0; day <= 6; day++) {
@@ -135,7 +133,7 @@ export async function saveBusinessHours(formData: FormData): Promise<ActionResul
     }
 
     payload.push({
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       day_of_week: day,
       open_time: open,
       close_time: close,
@@ -147,14 +145,13 @@ export async function saveBusinessHours(formData: FormData): Promise<ActionResul
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  await deleteInvalidBusinessHours(FIXED_TENANT_ID);
+  await deleteInvalidBusinessHours(tenantId);
 
   return ok({ ok: true });
 }
 
 export async function saveSettings(formData: FormData): Promise<ActionResult<{ ok: true }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const buffer_before_minutes = Number(formData.get("buffer_before_minutes"));
   const buffer_after_minutes = Number(formData.get("buffer_after_minutes"));
   const signal_percentage = Number(formData.get("signal_percentage"));
@@ -236,7 +233,7 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
   }
 
   const legacyTotal = buffer_before_minutes + buffer_after_minutes;
-  const { error } = await updateSettings(FIXED_TENANT_ID, {
+  const { error } = await updateSettings(tenantId, {
     buffer_before_minutes,
     buffer_after_minutes,
     default_studio_buffer: legacyTotal,
@@ -266,9 +263,8 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
 }
 
 export async function disconnectSpotify(): Promise<ActionResult<{ ok: true }>> {
-
-  await requireDashboardAccessForServerAction();
-  const result = await disconnectSpotifyIntegration();
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  const result = await disconnectSpotifyIntegration(tenantId);
   if (!result.ok) return fail(result.error);
 
   revalidatePath("/configuracoes");
@@ -291,8 +287,7 @@ export async function configurePointTerminal(payload: {
   terminalName?: string | null;
   terminalModel?: string | null;
 }): Promise<ActionResult<{ ok: true }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const terminalId = payload.terminalId?.trim();
   const externalId = payload.externalId?.trim();
   if (!terminalId || !externalId) {
@@ -302,7 +297,7 @@ export async function configurePointTerminal(payload: {
   const configureResult = await configurePointDeviceToPdv({ terminalId, externalId });
   if (!configureResult.ok) return fail(configureResult.error);
 
-  const { error } = await updateSettings(FIXED_TENANT_ID, {
+  const { error } = await updateSettings(tenantId, {
     mp_point_enabled: true,
     mp_point_terminal_id: terminalId,
     mp_point_terminal_external_id: externalId,
@@ -333,7 +328,7 @@ export async function addPixKey(payload: {
     }>;
   }>
 > {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   if (!PIX_KEY_TYPES.includes(payload.keyType)) {
     return fail(new AppError("Tipo de chave Pix inválido.", "VALIDATION_ERROR", 400));
   }
@@ -346,7 +341,7 @@ export async function addPixKey(payload: {
     return fail(new AppError("Não foi possível validar a chave Pix.", "VALIDATION_ERROR", 400));
   }
 
-  const currentKeysResult = await fetchPixKeysForTenant();
+  const currentKeysResult = await fetchPixKeysForTenant(tenantId);
   if (!currentKeysResult.ok) return currentKeysResult;
   const currentKeys = currentKeysResult.data;
 
@@ -355,7 +350,7 @@ export async function addPixKey(payload: {
 
   const label = payload.label?.trim() || `${getPixTypeLabel(payload.keyType)} principal`;
   const insertResult = await insertPixPaymentKey({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     keyType: payload.keyType,
     keyValue: normalizedValue,
     label,
@@ -367,12 +362,12 @@ export async function addPixKey(payload: {
   if (mappedInsert) return fail(mappedInsert);
 
   if (shouldActivate && insertResult.data?.id) {
-    const activation = await activatePixPaymentKeyAtomically(FIXED_TENANT_ID, insertResult.data.id);
+    const activation = await activatePixPaymentKeyAtomically(tenantId, insertResult.data.id);
     const mappedActivation = mapSupabaseError(activation.error);
     if (mappedActivation) return fail(mappedActivation);
   }
 
-  const nextKeysResult = await fetchPixKeysForTenant();
+  const nextKeysResult = await fetchPixKeysForTenant(tenantId);
   if (!nextKeysResult.ok) return nextKeysResult;
 
   revalidatePath("/configuracoes");
@@ -396,17 +391,17 @@ export async function activatePixKey(payload: {
     }>;
   }>
 > {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const keyId = payload.keyId?.trim();
   if (!keyId) {
     return fail(new AppError("Selecione uma chave Pix válida.", "VALIDATION_ERROR", 400));
   }
 
-  const activation = await activatePixPaymentKeyAtomically(FIXED_TENANT_ID, keyId);
+  const activation = await activatePixPaymentKeyAtomically(tenantId, keyId);
   const mappedActivate = mapSupabaseError(activation.error);
   if (mappedActivate) return fail(mappedActivate);
 
-  const nextKeysResult = await fetchPixKeysForTenant();
+  const nextKeysResult = await fetchPixKeysForTenant(tenantId);
   if (!nextKeysResult.ok) return nextKeysResult;
 
   revalidatePath("/configuracoes");
@@ -430,14 +425,14 @@ export async function removePixKey(payload: {
     }>;
   }>
 > {
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const keyId = payload.keyId?.trim();
   if (!keyId) {
     return fail(new AppError("Chave Pix inválida para remoção.", "VALIDATION_ERROR", 400));
   }
 
   const { data: deleteRows, error: deleteError } = await deletePixPaymentKeyAndRebalanceAtomically(
-    FIXED_TENANT_ID,
+    tenantId,
     keyId
   );
   const mappedDelete = mapSupabaseError(deleteError);
@@ -447,7 +442,7 @@ export async function removePixKey(payload: {
     return fail(new AppError("Chave Pix não encontrada para remoção.", "NOT_FOUND", 404));
   }
 
-  const nextKeysResult = await fetchPixKeysForTenant();
+  const nextKeysResult = await fetchPixKeysForTenant(tenantId);
   if (!nextKeysResult.ok) return nextKeysResult;
 
   revalidatePath("/configuracoes");

@@ -1,14 +1,15 @@
 "use server";
 
 import { createAppointmentImpl as createAppointmentImplOperation } from "./create-internal-booking";
-import { updateInternalAppointmentImpl as updateInternalAppointmentImplOperation } from "./update-internal-booking";
+import { updateInternalAppointmentForTenant as updateInternalAppointmentForTenantOperation } from "./update-internal-booking";
 
 export async function createAppointmentImpl(
-  formData: FormData
+  formData: FormData,
+  tenantId: string
 ): Promise<void | { appointmentId: string; date: string; startTimeIso: string }> {
-  return createAppointmentImplOperation(formData);
+  return createAppointmentImplOperation(formData, tenantId);
 }
 
-export async function updateInternalAppointmentImpl(formData: FormData): Promise<void> {
-  return updateInternalAppointmentImplOperation(formData);
+export async function updateInternalAppointmentImpl(formData: FormData, tenantId: string): Promise<void> {
+  return updateInternalAppointmentForTenantOperation(formData, tenantId);
 }

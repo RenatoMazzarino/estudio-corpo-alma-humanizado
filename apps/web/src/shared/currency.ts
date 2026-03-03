@@ -27,3 +27,7 @@ export function formatCurrencyLabel(value: number) {
     maximumFractionDigits: 2,
   });
 }
+
+export function formatCurrencyBRL(value: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}

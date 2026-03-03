@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient as createServerClient } from "../../../lib/supabase/server";
 import { createServiceClient } from "../../../lib/supabase/service";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
+
 
 export type DashboardAccessRole = "owner" | "admin" | "staff" | "viewer";
 
@@ -75,51 +75,41 @@ function sanitizeInternalPath(raw: string | null | undefined, fallback = "/") {
   return value;
 }
 
-function getAllowedBootstrapEmailsFromEnv() {
-  const raw = process.env.DASHBOARD_ALLOWED_GOOGLE_EMAILS ?? "";
-  return new Set(
-    raw
-      .split(",")
-      .map((email) => normalizeEmail(email))
-      .filter((email): email is string => Boolean(email))
-  );
-}
-
-async function findDashboardAccessByEmail(email: string) {
-  const supabase = getDashboardAccessTableClient();
+async function listDashboardAccessByEmail(email: string) {
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("dashboard_access_users")
-    .select("id, tenant_id, email, role, is_active, auth_user_id")
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .select("id, tenant_id, email, role, is_active, auth_user_id, updated_at")
     .eq("email", email)
-    .maybeSingle();
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .limit(25);
 
-  return { data: (data ?? null) as DashboardAccessRow | null, error };
+  return {
+    data: (data ?? []) as Array<DashboardAccessRow & { updated_at?: string | null }>,
+    error: error as { message?: string } | null,
+  };
 }
 
-async function createDashboardAccessBootstrap(email: string) {
-  const allowed = getAllowedBootstrapEmailsFromEnv();
-  if (!allowed.has(email)) {
-    return { data: null as DashboardAccessRow | null, error: null };
-  }
+function resolveMembershipCandidate(
+  rows: Array<DashboardAccessRow & { updated_at?: string | null }>,
+  userId: string
+) {
+  const linkedToUser = rows.find((row) => row.auth_user_id === userId);
+  if (linkedToUser) return linkedToUser;
 
-  const role: DashboardAccessRole = email.includes("janaina") ? "owner" : "admin";
-  const supabase = getDashboardAccessTableClient();
-  const { data, error } = await supabase
-    .from("dashboard_access_users")
-    .upsert(
-      {
-        tenant_id: FIXED_TENANT_ID,
-        email,
-        role,
-        is_active: true,
-      },
-      { onConflict: "tenant_id,email" }
-    )
-    .select("id, tenant_id, email, role, is_active, auth_user_id")
-    .single();
+  const anyUnlinked = rows.find((row) => !row.auth_user_id);
+  if (anyUnlinked) return anyUnlinked;
 
-  return { data: (data ?? null) as DashboardAccessRow | null, error };
+  return rows[0] ?? null;
+}
+
+async function ensureDashboardAccessRow(email: string, userId: string) {
+  const listResult = await listDashboardAccessByEmail(email);
+  if (listResult.error) return { data: null as DashboardAccessRow | null, error: listResult.error };
+
+  const chosen = resolveMembershipCandidate(listResult.data, userId);
+  return { data: (chosen ?? null) as DashboardAccessRow | null, error: null };
 }
 
 async function linkAuthUserToDashboardAccess(row: DashboardAccessRow, user: User) {
@@ -157,10 +147,7 @@ export async function authorizeDashboardSupabaseUser(user: User): Promise<Dashbo
     return { ok: false, reason: "missing_email" };
   }
 
-  let lookup = await findDashboardAccessByEmail(email);
-  if (!lookup.data && !lookup.error) {
-    lookup = await createDashboardAccessBootstrap(email);
-  }
+  const lookup = await ensureDashboardAccessRow(email, user.id);
 
   if (lookup.error) {
     return { ok: false, reason: "system_error" };
@@ -234,6 +221,14 @@ export function getDashboardAuthRedirectPath(params?: {
 
 export function sanitizeDashboardNextPath(raw: string | null | undefined, fallback = "/") {
   return sanitizeInternalPath(raw, fallback);
+}
+
+export async function requireDashboardAccessForPage(next: string = "/") {
+  const access = await getDashboardAccessForCurrentUser();
+  if (!access.ok) {
+    redirect(getDashboardAuthRedirectPath({ next, reason: "forbidden" }));
+  }
+  return access.data;
 }
 
 export async function requireDashboardAccessForServerAction(next: string = "/") {

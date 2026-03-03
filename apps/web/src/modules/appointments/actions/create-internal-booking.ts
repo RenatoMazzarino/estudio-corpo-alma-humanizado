@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
 import { computeTotals } from "../../../../lib/attendance/attendance-domain";
 import { createServiceClient } from "../../../../lib/supabase/service";
@@ -31,7 +30,8 @@ import {
 } from "../repository";
 
 export async function createAppointmentImpl(
-  formData: FormData
+  formData: FormData,
+  tenantId: string
 ): Promise<void | { appointmentId: string; date: string; startTimeIso: string }> {
   const responseMode = ((formData.get("response_mode") as string | null) || "").trim() === "json" ? "json" : "redirect";
   const deferLifecycleNotifications = formData.get("defer_lifecycle_notifications") === "1";
@@ -120,7 +120,7 @@ export async function createAppointmentImpl(
   let resolvedClientId = parsed.data.clientId ?? null;
   if (!resolvedClientId && parsed.data.clientName && parsed.data.clientPhone) {
     const { data: existingClient } = await findClientByNamePhone(
-      FIXED_TENANT_ID,
+      tenantId,
       parsed.data.clientName,
       parsed.data.clientPhone
     );
@@ -137,7 +137,7 @@ export async function createAppointmentImpl(
       : undefined;
 
   if (clientCpf) {
-    const { data: cpfClient, error: cpfClientLookupError } = await findClientByCpf(FIXED_TENANT_ID, clientCpf);
+    const { data: cpfClient, error: cpfClientLookupError } = await findClientByCpf(tenantId, clientCpf);
     const mappedCpfLookupError = mapSupabaseError(cpfClientLookupError);
     if (mappedCpfLookupError) throw mappedCpfLookupError;
 
@@ -221,7 +221,7 @@ export async function createAppointmentImpl(
   const { data: appointmentId, error: appointmentError } = (await supabase.rpc(
     "create_internal_appointment",
     {
-      p_tenant_id: FIXED_TENANT_ID,
+      p_tenant_id: tenantId,
       service_id: parsed.data.serviceId,
       p_start_time: startDateTime.toISOString(),
       client_name: parsed.data.clientName,
@@ -248,7 +248,6 @@ export async function createAppointmentImpl(
   if (mappedAppointmentError) throw mappedAppointmentError;
 
   if (appointmentId) {
-    const tenantId = FIXED_TENANT_ID;
     let appointmentClientId: string | null = null;
     let appointmentServiceName: string | null = null;
     let appointmentStoredPrice = 0;

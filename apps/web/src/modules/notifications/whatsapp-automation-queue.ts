@@ -1,9 +1,8 @@
 import type { Json } from "../../../lib/supabase/types";
 import {
   WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE,
-  WHATSAPP_AUTOMATION_MODE,
-  WHATSAPP_AUTOMATION_QUEUE_ENABLED,
-  isWhatsAppAutomationTenantAllowed,
+  isWhatsAppAutomationDispatchEnabled,
+  isWhatsAppAutomationLiveSendEnabled,
 } from "./automation-config";
 import {
   asJsonObject,
@@ -17,6 +16,7 @@ import {
   insertNotificationJob,
 } from "./repository";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
+import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
 import type {
   QueueSource,
   ScheduleCanceledParams,
@@ -28,12 +28,15 @@ export async function enqueueNotificationJobWithAutomationGuard(
   payload: NotificationJobInsert & { source: QueueSource },
   options?: { processJobs?: (params: { jobId: string; type?: NotificationJobRow["type"]; limit: number }) => Promise<ProcessSummary> }
 ) {
-  if (!WHATSAPP_AUTOMATION_QUEUE_ENABLED) {
+  if (!isWhatsAppAutomationDispatchEnabled()) {
     return { skipped: true as const };
   }
-  if (!isWhatsAppAutomationTenantAllowed(payload.tenant_id)) {
-    return { skipped: true as const, reason: "tenant_not_allowed" as const };
+
+  const tenantSettings = await getTenantWhatsAppSettings(payload.tenant_id);
+  if (!tenantSettings.automationEnabledInSettings) {
+    return { skipped: true as const, reason: "tenant_automation_disabled" as const };
   }
+
   const { source, ...jobInsert } = payload;
 
   const { data: existingPendingDuplicate, error: duplicateError } = await findPendingNotificationJobDuplicate({
@@ -57,7 +60,7 @@ export async function enqueueNotificationJobWithAutomationGuard(
       ...existingAutomation,
       queued_at: new Date().toISOString(),
       source,
-      mode_at_queue_time: WHATSAPP_AUTOMATION_MODE,
+      mode_at_queue_time: isWhatsAppAutomationLiveSendEnabled() ? "enabled" : "dry_run",
       queue_enabled: true,
     },
   } as Json;
@@ -83,7 +86,7 @@ export async function enqueueNotificationJobWithAutomationGuard(
 
   if (
     WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE &&
-    WHATSAPP_AUTOMATION_MODE !== "disabled" &&
+    isWhatsAppAutomationDispatchEnabled() &&
     insertedJob?.id &&
     options?.processJobs
   ) {
@@ -155,10 +158,12 @@ export async function scheduleAppointmentCanceledNotification(
   if (!params.notifyClient) {
     return;
   }
-  if (!WHATSAPP_AUTOMATION_QUEUE_ENABLED) {
+  if (!isWhatsAppAutomationDispatchEnabled()) {
     return;
   }
-  if (!isWhatsAppAutomationTenantAllowed(params.tenantId)) {
+
+  const tenantSettings = await getTenantWhatsAppSettings(params.tenantId);
+  if (!tenantSettings.automationEnabledInSettings) {
     await logAppointmentAutomationMessage({
       tenantId: params.tenantId,
       appointmentId: params.appointmentId,
@@ -166,8 +171,8 @@ export async function scheduleAppointmentCanceledNotification(
       status: "skipped_auto",
       payload: {
         automation: {
-          skipped_reason: "tenant_not_allowed",
-          skipped_reason_label: "Este cliente ainda não está liberado para automação.",
+          skipped_reason: "tenant_automation_disabled",
+          skipped_reason_label: "Automação WhatsApp está desativada para este tenant.",
           customer_service_window_checked_at: new Date().toISOString(),
         },
       } as Json,

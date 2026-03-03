@@ -1,6 +1,5 @@
 "use server";
 
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
@@ -10,8 +9,7 @@ import { revalidatePath } from "next/cache";
 import { requireDashboardAccessForServerAction } from "../auth/dashboard-access";
 
 export async function upsertService(formData: FormData): Promise<ActionResult<{ id?: string }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const rawId = formData.get("id") as string | null;
   const id = rawId && rawId.trim().length > 0 ? rawId : null;
   const name = formData.get("name") as string | null;
@@ -48,11 +46,11 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
     buffer_before_minutes: parsed.data.buffer_before_minutes ?? null,
     buffer_after_minutes: parsed.data.buffer_after_minutes ?? null,
     custom_buffer_minutes: parsed.data.custom_buffer_minutes ?? 0,
-    tenant_id: FIXED_TENANT_ID,
+    tenant_id: tenantId,
   };
 
   const serviceId = parsed.data.id ?? undefined;
-  const { error } = await upsertServiceRepo(FIXED_TENANT_ID, payload, serviceId);
+  const { error } = await upsertServiceRepo(tenantId, payload, serviceId);
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 
@@ -61,9 +59,8 @@ export async function upsertService(formData: FormData): Promise<ActionResult<{ 
 }
 
 export async function deleteService(id: string): Promise<ActionResult<{ id: string }>> {
-
-  await requireDashboardAccessForServerAction();
-  const { error } = await deleteServiceRepo(FIXED_TENANT_ID, id);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { error } = await deleteServiceRepo(tenantId, id);
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, message: "Ação Spotify inválida." }, { status: 400 });
     }
 
-    const result = await sendSpotifyPlayerAction(action);
+    const result = await sendSpotifyPlayerAction(auth.access.data.tenantId, action);
     if (!result.ok) {
       return NextResponse.json(
         {

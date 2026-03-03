@@ -1,4 +1,3 @@
-"use client";
 
 import { useTimerContext } from "./timer-provider";
 

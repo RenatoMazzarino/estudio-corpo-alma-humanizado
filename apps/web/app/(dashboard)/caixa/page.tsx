@@ -11,10 +11,11 @@ import {
 import Link from "next/link";
 import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { listCompletedAppointmentsInRange } from "../../../src/modules/appointments/repository";
 import { listTransactionsInRange } from "../../../src/modules/finance/repository";
 import { FloatingActionMenu } from "../../../components/ui/floating-action-menu";
+import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
+import { formatCurrencyBRL } from "../../../src/shared/currency";
 
 // Interface dos dados
 interface Appointment {
@@ -45,6 +46,7 @@ interface Transaction {
 }
 
 export default async function CaixaPage({ searchParams }: PageProps) {
+  const { tenantId } = await requireDashboardAccessForPage("/caixa");
   const resolvedSearchParams = await searchParams;
   const today = new Date();
   let selectedDate = today;
@@ -64,7 +66,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
 
   // Busca transações do dia (ledger)
   const { data: transactionsData } = await listTransactionsInRange(
-    FIXED_TENANT_ID,
+    tenantId,
     startOfDay.toISOString(),
     endOfDay.toISOString()
   );
@@ -78,7 +80,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
 
   // Busca agendamentos finalizados para reconciliação
   const { data } = await listCompletedAppointmentsInRange(
-    FIXED_TENANT_ID,
+    tenantId,
     startOfDay.toISOString(),
     endOfDay.toISOString()
   );
@@ -136,7 +138,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
             <span className="text-xs font-bold uppercase tracking-wider">Faturamento do Dia</span>
           </div>
           <h2 className="text-4xl font-bold tracking-tight text-white">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFaturado)}
+            {formatCurrencyBRL(totalFaturado)}
           </h2>
           <p className="text-gray-400 text-xs mt-2 flex items-center gap-1">
             <TrendingUp size={12} className="text-green-400" />
@@ -153,9 +155,9 @@ export default async function CaixaPage({ searchParams }: PageProps) {
           </div>
           <p className="text-xs">
             Total de atendimentos concluídos:{" "}
-            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(appointmentTotal)}.
+            {formatCurrencyBRL(appointmentTotal)}.
             Total do ledger:{" "}
-            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalFaturado)}.
+            {formatCurrencyBRL(totalFaturado)}.
           </p>
           {missingTransactions.length > 0 && (
             <p className="text-xs mt-2">
@@ -195,7 +197,7 @@ export default async function CaixaPage({ searchParams }: PageProps) {
                 <div className="text-right">
                   {value ? (
                     <span className="font-bold text-gray-800">
-                      {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)}
+                      {formatCurrencyBRL(value)}
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-md flex items-center gap-1">

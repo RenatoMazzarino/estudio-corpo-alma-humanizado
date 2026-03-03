@@ -8,7 +8,6 @@ import {
   finishAdminAppointmentImpl,
   finishAppointmentImpl,
   startAppointmentImpl,
-  type FinishAppointmentParams,
 } from "./actions/lifecycle-admin";
 import {
   createAppointmentImpl,
@@ -17,40 +16,43 @@ import {
 import {
   submitPublicAppointmentImpl,
   triggerCreatedNotificationsForAppointmentImpl,
-  type SubmitPublicAppointmentInput,
 } from "./actions/public-notifications";
+import type { FinishAppointmentParams } from "./admin-operations";
+import type { SubmitPublicAppointmentInput } from "./public-booking";
 
-export async function startAppointment(id: string): Promise<ActionResult<{ id: string }>> {
-  return startAppointmentImpl(id);
+export async function startAppointment(id: string, tenantId: string): Promise<ActionResult<{ id: string }>> {
+  return startAppointmentImpl(id, tenantId);
 }
 
-export async function finishAppointment(id: string): Promise<ActionResult<{ id: string }>> {
-  return finishAppointmentImpl(id);
+export async function finishAppointment(id: string, tenantId: string): Promise<ActionResult<{ id: string }>> {
+  return finishAppointmentImpl(id, tenantId);
 }
 
 export async function cancelAppointment(
   id: string,
+  tenantId: string,
   options?: { notifyClient?: boolean }
 ): Promise<ActionResult<{ id: string }>> {
-  return cancelAppointmentImpl(id, options);
+  return cancelAppointmentImpl(id, tenantId, options);
 }
 
 export async function createAppointment(
-  formData: FormData
+  formData: FormData,
+  tenantId: string
 ): Promise<void | { appointmentId: string; date: string; startTimeIso: string }> {
-  return createAppointmentImpl(formData);
+  return createAppointmentImpl(formData, tenantId);
 }
 
 export async function triggerCreatedNotificationsForAppointment(payload: {
   appointmentId: string;
   startTimeIso: string;
   source?: string | null;
-}): Promise<ActionResult<{ appointmentId: string; scheduled: boolean }>> {
-  return triggerCreatedNotificationsForAppointmentImpl(payload);
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string; scheduled: boolean }>> {
+  return triggerCreatedNotificationsForAppointmentImpl(payload, tenantId);
 }
 
-export async function updateInternalAppointment(formData: FormData): Promise<void> {
-  return updateInternalAppointmentImpl(formData);
+export async function updateInternalAppointment(formData: FormData, tenantId: string): Promise<void> {
+  return updateInternalAppointmentImpl(formData, tenantId);
 }
 
 export async function submitPublicAppointment(
@@ -60,24 +62,21 @@ export async function submitPublicAppointment(
 }
 
 export async function finishAdminAppointment(
-  payload: FinishAppointmentParams
+  payload: FinishAppointmentParams,
+  tenantId: string
 ): Promise<ActionResult<{ appointmentId: string }>> {
-  return finishAdminAppointmentImpl(payload);
+  return finishAdminAppointmentImpl(payload, tenantId);
 }
 
 export async function createShiftBlocks(
   type: "even" | "odd",
   monthStr: string,
+  tenantId: string,
   force?: boolean
 ): Promise<ActionResult<{ count: number; requiresConfirm?: boolean; conflicts?: { blocks: number; appointments: number } }>> {
-  return createShiftBlocksImpl(type, monthStr, force);
+  return createShiftBlocksImpl(type, monthStr, tenantId, force);
 }
 
-export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{ month: string }>> {
-  return clearMonthBlocksImpl(monthStr);
+export async function clearMonthBlocks(monthStr: string, tenantId: string): Promise<ActionResult<{ month: string }>> {
+  return clearMonthBlocksImpl(monthStr, tenantId);
 }
-
-export type {
-  FinishAppointmentParams,
-  SubmitPublicAppointmentInput,
-};

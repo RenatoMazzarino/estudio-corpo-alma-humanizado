@@ -9,51 +9,44 @@ import {
 import { fail, ok, type ActionResult } from "../src/shared/errors/result";
 import { z } from "zod";
 import { getAppointmentById } from "../src/modules/appointments/repository";
-import { FIXED_TENANT_ID } from "../lib/tenant-context";
 import { AppError } from "../src/shared/errors/AppError";
 import { mapSupabaseError } from "../src/shared/errors/mapSupabaseError";
 import { requireDashboardAccessForServerAction } from "../src/modules/auth/dashboard-access";
 
 export async function upsertService(formData: FormData) {
-
   await requireDashboardAccessForServerAction();
   return upsertServiceImpl(formData);
 }
 
 export async function deleteService(id: string): Promise<ActionResult<{ id: string }>> {
-
   await requireDashboardAccessForServerAction();
   return deleteServiceImpl(id);
 }
 
 export async function startAppointment(id: string) {
-
-  await requireDashboardAccessForServerAction();
-  return startAppointmentImpl(id);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return startAppointmentImpl(id, tenantId);
 }
 
 export async function finishAppointment(id: string) {
-
-  await requireDashboardAccessForServerAction();
-  return finishAppointmentImpl(id);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return finishAppointmentImpl(id, tenantId);
 }
 
 export async function cancelAppointment(id: string, options?: { notifyClient?: boolean }) {
-
-  await requireDashboardAccessForServerAction();
-  return cancelAppointmentImpl(id, options);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return cancelAppointmentImpl(id, tenantId, options);
 }
 
 export async function appointmentExists(
   id: string
 ): Promise<ActionResult<{ exists: boolean }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const parsed = z.object({ id: z.string().uuid() }).safeParse({ id });
   if (!parsed.success) {
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
   }
-  const { data, error } = await getAppointmentById(FIXED_TENANT_ID, parsed.data.id);
+  const { data, error } = await getAppointmentById(tenantId, parsed.data.id);
   const mappedError = mapSupabaseError(error);
   if (mappedError) {
     return fail(mappedError);

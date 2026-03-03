@@ -3,12 +3,6 @@ import type { Json } from "../../../lib/supabase/types";
 import { buildAppointmentVoucherPath } from "../../shared/public-links";
 import { resolveClientNames } from "../clients/name-profile";
 import {
-  WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
-  WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
-  WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
-  WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
-} from "./automation-config";
-import {
   asJsonObject,
   formatAppointmentDateForTemplate,
   onlyDigits,
@@ -22,6 +16,7 @@ import {
   sendMetaCloudTextMessage,
 } from "./whatsapp-meta-client";
 import type { NotificationJobRow } from "./repository";
+import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
 
 export interface DeliveryResult {
   providerMessageId: string | null;
@@ -51,7 +46,10 @@ export interface CustomerServiceWindowCheckResult {
   customerWaId: string | null;
 }
 
-async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<AppointmentTemplateContext> {
+async function loadAppointmentTemplateContext(
+  job: NotificationJobRow,
+  options?: { studioLocationLine?: string | null }
+): Promise<AppointmentTemplateContext> {
   if (!job.appointment_id) {
     throw new Error("Job sem appointment_id para montar template de agendamento.");
   }
@@ -95,7 +93,7 @@ async function loadAppointmentTemplateContext(job: NotificationJobRow): Promise<
     serviceName,
     dateLabel,
     timeLabel,
-    locationLine: resolveLocationLineFromAppointmentRecord(record),
+    locationLine: resolveLocationLineFromAppointmentRecord(record, options?.studioLocationLine),
   };
 }
 
@@ -103,21 +101,28 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
   job: NotificationJobRow
 ): Promise<DeliveryResult> {
   assertMetaCloudConfigBase();
-  if (!WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME) {
-    throw new Error("WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME não configurado.");
+
+  const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
+  const templateName = tenantSettings.createdTemplateName;
+  const templateLanguage = tenantSettings.createdTemplateLanguage;
+
+  if (!templateName) {
+    throw new Error("Template de aviso de agendamento não configurado nas settings do tenant.");
   }
 
   const to = getMetaCloudTestRecipient();
-  const context = await loadAppointmentTemplateContext(job);
+  const context = await loadAppointmentTemplateContext(job, {
+    studioLocationLine: tenantSettings.studioLocationLine,
+  });
 
   const requestBody = {
     messaging_product: "whatsapp",
     to,
     type: "template",
     template: {
-      name: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
+      name: templateName,
       language: {
-        code: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
+        code: templateLanguage,
       },
       components: [
         {
@@ -141,10 +146,10 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
     deliveredAt: new Date().toISOString(),
     deliveryMode: "meta_cloud_template_created_appointment",
     messagePreview:
-      `Meta template created (${WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME}) -> ${to} ` +
+      `Meta template created (${templateName}) -> ${to} ` +
       `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}`,
-    templateName: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_NAME,
-    templateLanguage: WHATSAPP_AUTOMATION_META_CREATED_TEMPLATE_LANGUAGE,
+    templateName,
+    templateLanguage,
     recipient: to,
     providerName: "meta_cloud",
     providerResponse: payload,
@@ -155,21 +160,28 @@ export async function sendMetaCloudReminderAppointmentTemplate(
   job: NotificationJobRow
 ): Promise<DeliveryResult> {
   assertMetaCloudConfigBase();
-  if (!WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME) {
-    throw new Error("WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME não configurado.");
+
+  const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
+  const templateName = tenantSettings.reminderTemplateName;
+  const templateLanguage = tenantSettings.reminderTemplateLanguage;
+
+  if (!templateName) {
+    throw new Error("Template de lembrete não configurado nas settings do tenant.");
   }
 
   const to = getMetaCloudTestRecipient();
-  const context = await loadAppointmentTemplateContext(job);
+  const context = await loadAppointmentTemplateContext(job, {
+    studioLocationLine: tenantSettings.studioLocationLine,
+  });
 
   const requestBody = {
     messaging_product: "whatsapp",
     to,
     type: "template",
     template: {
-      name: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
+      name: templateName,
       language: {
-        code: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
+        code: templateLanguage,
       },
       components: [
         {
@@ -193,10 +205,10 @@ export async function sendMetaCloudReminderAppointmentTemplate(
     deliveredAt: new Date().toISOString(),
     deliveryMode: "meta_cloud_template_appointment_reminder",
     messagePreview:
-      `Meta template reminder (${WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME}) -> ${to} ` +
+      `Meta template reminder (${templateName}) -> ${to} ` +
       `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}`,
-    templateName: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_NAME,
-    templateLanguage: WHATSAPP_AUTOMATION_META_REMINDER_TEMPLATE_LANGUAGE,
+    templateName,
+    templateLanguage,
     recipient: to,
     providerName: "meta_cloud",
     providerResponse: payload,
@@ -287,7 +299,10 @@ export async function sendMetaCloudCanceledAppointmentSessionMessage(
     throw new Error("Janela de conversa de 24h não está aberta para este agendamento.");
   }
 
-  const context = await loadAppointmentTemplateContext(job);
+  const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
+  const context = await loadAppointmentTemplateContext(job, {
+    studioLocationLine: tenantSettings.studioLocationLine,
+  });
   const messageText = buildCanceledAppointmentSessionMessage(context);
   const outbound = await sendMetaCloudTextMessage({ to: customerWaId, text: messageText });
 

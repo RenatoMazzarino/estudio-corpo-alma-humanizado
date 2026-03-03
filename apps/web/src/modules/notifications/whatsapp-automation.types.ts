@@ -39,9 +39,3 @@ export interface ProcessSummary {
     reason?: string;
   }>;
 }
-
-export type LocalPollerState = {
-  started: boolean;
-  running: boolean;
-  timer: NodeJS.Timeout | null;
-};

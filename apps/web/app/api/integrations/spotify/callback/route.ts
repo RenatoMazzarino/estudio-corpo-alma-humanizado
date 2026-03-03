@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
   }
 
   const result = await connectSpotifyFromAuthorizationCode({
+    tenantId: auth.access.data.tenantId,
     code,
     redirectUri: resolveSpotifyRedirectUri(resolveRequestOrigin(request)),
   });

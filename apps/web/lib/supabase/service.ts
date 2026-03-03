@@ -1,13 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { AppError } from "../../src/shared/errors/AppError";
+import { getServerEnv } from "../../src/shared/env/server-env";
 import type { Database } from "./types";
 
 function createClientWithKey(key: string) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  if (!supabaseUrl) {
-    throw new Error("Supabase env ausente: configure NEXT_PUBLIC_SUPABASE_URL");
-  }
+  const { NEXT_PUBLIC_SUPABASE_URL: supabaseUrl } = getServerEnv();
 
   return createClient<Database>(supabaseUrl, key, {
     auth: {
@@ -18,7 +15,7 @@ function createClientWithKey(key: string) {
 }
 
 export function createServiceClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey } = getServerEnv();
   if (!serviceRoleKey) {
     throw new AppError(
       "SUPABASE_SERVICE_ROLE_KEY ausente: defina a chave service role em apps/web/.env.local para operações admin.",
@@ -31,10 +28,7 @@ export function createServiceClient() {
 }
 
 export function createPublicClient() {
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!anonKey) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY ausente: defina a chave anon em apps/web/.env.local.");
-  }
+  const { NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey } = getServerEnv();
 
   return createClientWithKey(anonKey);
 }

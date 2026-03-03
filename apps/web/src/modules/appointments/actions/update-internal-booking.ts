@@ -4,7 +4,6 @@ import { addMinutes, parseISO } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import { AppError } from "../../../shared/errors/AppError";
 import { mapSupabaseError } from "../../../shared/errors/mapSupabaseError";
@@ -28,7 +27,10 @@ import {
 } from "../repository";
 
 
-export async function updateInternalAppointmentImpl(formData: FormData): Promise<void> {
+export async function updateInternalAppointmentForTenant(
+  formData: FormData,
+  tenantId: string
+): Promise<void> {
   const appointmentId = (formData.get("appointmentId") as string | null) || null;
   const clientId = (formData.get("clientId") as string | null) || null;
   const clientName = formData.get("clientName") as string | null;
@@ -87,7 +89,6 @@ export async function updateInternalAppointmentImpl(formData: FormData): Promise
     throw new AppError("Dados incompletos", "VALIDATION_ERROR", 400, parsed.error);
   }
 
-  const tenantId = FIXED_TENANT_ID;
   const startDateTime = toBrazilDateTime(parsed.data.date, parsed.data.time);
   const supabase = createServiceClient();
 

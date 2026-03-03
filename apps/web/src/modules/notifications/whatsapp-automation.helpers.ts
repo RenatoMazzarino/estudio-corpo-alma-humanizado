@@ -1,7 +1,6 @@
 import type { Json } from "../../../lib/supabase/types";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../shared/config";
 import { BRAZIL_TIME_ZONE } from "../../shared/timezone";
-import { WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE } from "./automation-config";
 import type { NotificationJobRow } from "./repository";
 
 export type WhatsAppNotificationJobType =
@@ -175,7 +174,10 @@ export function formatAppointmentDateForTemplate(startTimeIso: string) {
   };
 }
 
-export function resolveLocationLineFromAppointmentRecord(record: Record<string, unknown>) {
+export function resolveLocationLineFromAppointmentRecord(
+  record: Record<string, unknown>,
+  studioLocationLine?: string | null
+) {
   const isHomeVisit = Boolean(record.is_home_visit);
   const clients = asJsonObject(record.clients as Json | undefined);
   const clientAddress =
@@ -196,8 +198,9 @@ export function resolveLocationLineFromAppointmentRecord(record: Record<string, 
       ? `No endereço informado: ${clientAddress}`
       : "Atendimento domiciliar (endereço a confirmar)";
   }
-  return WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE
-    ? `No estúdio: ${WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE}`
+  const resolvedStudioLine = studioLocationLine?.trim() ?? "";
+  return resolvedStudioLine
+    ? `No estúdio: ${resolvedStudioLine}`
     : "No estúdio";
 }
 

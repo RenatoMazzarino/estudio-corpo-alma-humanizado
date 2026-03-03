@@ -15,7 +15,6 @@ interface FinishAppointmentParams {
 export async function finishAppointment(
   payload: FinishAppointmentParams
 ): Promise<ActionResult<{ appointmentId: string }>> {
-
-  await requireDashboardAccessForServerAction();
-  return finishAdminAppointment(payload);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return finishAdminAppointment(payload, tenantId);
 }

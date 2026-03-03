@@ -1,7 +1,6 @@
 import { endOfDay, format, getDaysInMonth, parseISO, setDate, startOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
@@ -26,7 +25,8 @@ export interface FinishAppointmentParams {
 }
 
 export async function finishAdminAppointmentOperation(
-  payload: FinishAppointmentParams
+  payload: FinishAppointmentParams,
+  tenantId: string
 ): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = finishAdminAppointmentSchema.safeParse(payload);
   if (!parsed.success) {
@@ -39,7 +39,7 @@ export async function finishAdminAppointmentOperation(
     started_at: string | null;
     actual_duration_minutes: number | null;
   }>(
-    FIXED_TENANT_ID,
+    tenantId,
     parsed.data.appointmentId,
     {
       status: "completed",
@@ -59,7 +59,7 @@ export async function finishAdminAppointmentOperation(
   const { client_id, service_name } = updatedAppointment;
 
   if (client_id && parsed.data.notes?.trim()) {
-    const { data: clientData, error: clientFetchError } = await getClientById(FIXED_TENANT_ID, client_id);
+    const { data: clientData, error: clientFetchError } = await getClientById(tenantId, client_id);
     const mappedClientFetchError = mapSupabaseError(clientFetchError);
     if (mappedClientFetchError) return fail(mappedClientFetchError);
 
@@ -67,7 +67,7 @@ export async function finishAdminAppointmentOperation(
     const dateStr = format(new Date(), "dd/MM/yyyy");
     const newEntry = `\n[${dateStr} - ${service_name ?? "Atendimento"}]: ${parsed.data.notes}`;
 
-    const { error: notesError } = await updateClient(FIXED_TENANT_ID, client_id, {
+    const { error: notesError } = await updateClient(tenantId, client_id, {
       observacoes_gerais: currentNotes + newEntry,
     });
 
@@ -76,7 +76,7 @@ export async function finishAdminAppointmentOperation(
   }
 
   const { data: existingTransaction, error: existingError } = await getTransactionByAppointmentId(
-    FIXED_TENANT_ID,
+    tenantId,
     parsed.data.appointmentId
   );
   const mappedExistingError = mapSupabaseError(existingError);
@@ -84,7 +84,7 @@ export async function finishAdminAppointmentOperation(
 
   if (!existingTransaction) {
     const { error: transactionError } = await insertTransaction({
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       appointment_id: parsed.data.appointmentId,
       type: "income",
       category: "Serviço",
@@ -120,6 +120,7 @@ export async function finishAdminAppointmentOperation(
 export async function createShiftBlocksOperation(
   type: "even" | "odd",
   monthStr: string,
+  tenantId: string,
   force?: boolean
 ): Promise<ActionResult<{ count: number; requiresConfirm?: boolean; conflicts?: { blocks: number; appointments: number } }>> {
   const parsed = z
@@ -140,10 +141,10 @@ export async function createShiftBlocksOperation(
   const monthStart = startOfDay(setDate(baseDate, 1)).toISOString();
   const monthEnd = endOfDay(setDate(baseDate, totalDays)).toISOString();
 
-  const { data: existingBlocks } = await listAvailabilityBlocksInRange(FIXED_TENANT_ID, monthStart, monthEnd);
+  const { data: existingBlocks } = await listAvailabilityBlocksInRange(tenantId, monthStart, monthEnd);
   const shiftBlocks = (existingBlocks ?? []).filter((block) => (block as { block_type?: string | null }).block_type === "shift");
 
-  const { data: existingAppointments } = await listAppointmentsInRange(FIXED_TENANT_ID, monthStart, monthEnd);
+  const { data: existingAppointments } = await listAppointmentsInRange(tenantId, monthStart, monthEnd);
   const appointmentDays = new Set(
     (existingAppointments ?? []).map((appt) => format(new Date(appt.start_time), "yyyy-MM-dd"))
   );
@@ -161,7 +162,7 @@ export async function createShiftBlocksOperation(
       selectedDays.push(dayKey);
       if (!shiftBlocks.some((block) => format(new Date(block.start_time), "yyyy-MM-dd") === dayKey)) {
         blocksToInsert.push({
-          tenant_id: FIXED_TENANT_ID,
+          tenant_id: tenantId,
           title: "Plantão",
           start_time: start.toISOString(),
           end_time: end.toISOString(),
@@ -183,7 +184,7 @@ export async function createShiftBlocksOperation(
   }
 
   if (selectedDays.length > 0) {
-    const { error: clearError } = await deleteAvailabilityBlocksInRange(FIXED_TENANT_ID, monthStart, monthEnd, "shift");
+    const { error: clearError } = await deleteAvailabilityBlocksInRange(tenantId, monthStart, monthEnd, "shift");
     const mappedClearError = mapSupabaseError(clearError);
     if (mappedClearError) return fail(mappedClearError);
   }
@@ -203,7 +204,10 @@ export async function createShiftBlocksOperation(
   return ok({ count: blocksToInsert.length });
 }
 
-export async function clearMonthBlocksOperation(monthStr: string): Promise<ActionResult<{ month: string }>> {
+export async function clearMonthBlocksOperation(
+  monthStr: string,
+  tenantId: string
+): Promise<ActionResult<{ month: string }>> {
   const parsed = z.object({ monthStr: z.string().regex(/^\d{4}-\d{2}$/) }).safeParse({ monthStr });
   if (!parsed.success) {
     return fail(new AppError("Parâmetros inválidos para limpeza de escala", "VALIDATION_ERROR", 400, parsed.error));
@@ -214,7 +218,7 @@ export async function clearMonthBlocksOperation(monthStr: string): Promise<Actio
   const lastDay = getDaysInMonth(baseDate);
   const endOfMonth = endOfDay(setDate(baseDate, lastDay)).toISOString();
 
-  const { error } = await deleteAvailabilityBlocksInRange(FIXED_TENANT_ID, startOfMonth, endOfMonth, "shift");
+  const { error } = await deleteAvailabilityBlocksInRange(tenantId, startOfMonth, endOfMonth, "shift");
   const mappedError = mapSupabaseError(error);
   if (mappedError) return fail(mappedError);
 

@@ -1,4 +1,3 @@
-"use client";
 
 import { useTimer } from "../../../components/timer/use-timer";
 

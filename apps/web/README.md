@@ -22,7 +22,10 @@ Aplicação principal do projeto (dashboard interno + fluxos públicos + APIs do
 ```bash
 pnpm --filter web dev
 pnpm --filter web lint
+pnpm --filter web lint:architecture
 pnpm --filter web check-types
+pnpm --filter web test:unit
+pnpm --filter web test:smoke
 pnpm --filter web build
 ```
 

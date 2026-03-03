@@ -4,7 +4,6 @@ import { insertTransaction, getTransactionByAppointmentId } from "../finance/rep
 import {
   scheduleAppointmentCanceledNotification,
 } from "../notifications/whatsapp-automation";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { AppError } from "../../shared/errors/AppError";
@@ -16,14 +15,17 @@ import {
 } from "../../shared/validation/appointments";
 import { updateAppointment, updateAppointmentReturning } from "./repository";
 
-export async function startAppointmentOperation(id: string): Promise<ActionResult<{ id: string }>> {
+export async function startAppointmentOperation(
+  id: string,
+  tenantId: string
+): Promise<ActionResult<{ id: string }>> {
   const parsed = startAppointmentSchema.safeParse({ id });
   if (!parsed.success) {
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
   }
 
   const startedAt = new Date().toISOString();
-  const { error } = await updateAppointment(FIXED_TENANT_ID, id, {
+  const { error } = await updateAppointment(tenantId, id, {
     status: "in_progress",
     started_at: startedAt,
   });
@@ -42,7 +44,7 @@ export async function startAppointmentOperation(id: string): Promise<ActionResul
   await supabase.from("appointment_attendances").upsert(
     {
       appointment_id: id,
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       timer_status: "running",
       timer_started_at: timerStartedAt,
       timer_paused_at: null,
@@ -54,7 +56,10 @@ export async function startAppointmentOperation(id: string): Promise<ActionResul
   return ok({ id });
 }
 
-export async function finishAppointmentOperation(id: string): Promise<ActionResult<{ id: string }>> {
+export async function finishAppointmentOperation(
+  id: string,
+  tenantId: string
+): Promise<ActionResult<{ id: string }>> {
   const parsed = finishAppointmentSchema.safeParse({ id });
   if (!parsed.success) {
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
@@ -64,7 +69,7 @@ export async function finishAppointmentOperation(id: string): Promise<ActionResu
     price: number | null;
     service_name: string | null;
     actual_duration_minutes: number | null;
-  }>(FIXED_TENANT_ID, id, {
+  }>(tenantId, id, {
     status: "completed",
     finished_at: new Date().toISOString(),
   }, "price, service_name, actual_duration_minutes");
@@ -75,7 +80,7 @@ export async function finishAppointmentOperation(id: string): Promise<ActionResu
   }
 
   const { data: existingTransaction, error: existingError } = await getTransactionByAppointmentId(
-    FIXED_TENANT_ID,
+    tenantId,
     id
   );
   const mappedExistingError = mapSupabaseError(existingError);
@@ -83,7 +88,7 @@ export async function finishAppointmentOperation(id: string): Promise<ActionResu
 
   if (!existingTransaction) {
     const { error: transactionError } = await insertTransaction({
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       appointment_id: id,
       type: "income",
       category: "Serviço",
@@ -114,6 +119,7 @@ export async function finishAppointmentOperation(id: string): Promise<ActionResu
 
 export async function cancelAppointmentOperation(
   id: string,
+  tenantId: string,
   options?: { notifyClient?: boolean }
 ): Promise<ActionResult<{ id: string }>> {
   const parsed = cancelAppointmentSchema.safeParse({ id });
@@ -121,7 +127,7 @@ export async function cancelAppointmentOperation(
     return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400, parsed.error));
   }
 
-  const { error } = await updateAppointment(FIXED_TENANT_ID, id, {
+  const { error } = await updateAppointment(tenantId, id, {
     status: "canceled_by_studio",
   });
 
@@ -138,7 +144,7 @@ export async function cancelAppointmentOperation(
     .eq("appointment_id", id);
 
   await scheduleAppointmentCanceledNotification({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: id,
     source: "admin_cancel",
     notifyClient: options?.notifyClient === true,

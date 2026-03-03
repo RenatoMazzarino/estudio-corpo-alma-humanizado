@@ -1,19 +1,20 @@
 import { ChevronLeft, Settings } from "lucide-react";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { getSettings, listBusinessHours, listPixPaymentKeys } from "../../../src/modules/settings/repository";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../../src/shared/config";
 import { SettingsForm } from "./settings-form";
+import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
 const PIX_KEY_TYPES = ["cnpj", "cpf", "email", "phone", "evp"] as const;
 
 export default async function ConfiguracoesPage() {
   noStore();
+  const { tenantId } = await requireDashboardAccessForPage("/configuracoes");
   const [{ data: businessHoursData }, { data: settingsData }, { data: pixKeysData }] = await Promise.all([
-    listBusinessHours(FIXED_TENANT_ID),
-    getSettings(FIXED_TENANT_ID),
-    listPixPaymentKeys(FIXED_TENANT_ID),
+    listBusinessHours(tenantId),
+    getSettings(tenantId),
+    listPixPaymentKeys(tenantId),
   ]);
 
   const normalized = new Map<number, { open_time: string; close_time: string; is_closed: boolean | null }>();

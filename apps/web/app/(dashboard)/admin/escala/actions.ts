@@ -9,13 +9,11 @@ export async function createShiftBlocks(
   monthStr: string,
   force?: boolean
 ): Promise<ActionResult<{ count: number; requiresConfirm?: boolean; conflicts?: { blocks: number; appointments: number } }>> {
-
-  await requireDashboardAccessForServerAction();
-  return createShiftBlocksImpl(type, monthStr, force);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return createShiftBlocksImpl(type, monthStr, tenantId, force);
 }
 
 export async function clearMonthBlocks(monthStr: string): Promise<ActionResult<{ month: string }>> {
-
-  await requireDashboardAccessForServerAction();
-  return clearMonthBlocksImpl(monthStr);
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return clearMonthBlocksImpl(monthStr, tenantId);
 }

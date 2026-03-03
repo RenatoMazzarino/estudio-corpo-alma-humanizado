@@ -1,5 +1,4 @@
 export type {
-  LocalPollerState,
   ProcessJobsParams,
   ProcessSummary,
   QueueSource,
@@ -19,13 +18,8 @@ export {
 
 export {
   getWhatsAppAutomationRuntimeConfig,
-  startLocalWhatsAppAutomationPollerIfNeeded,
 } from "./whatsapp-automation-runtime";
 
 export {
   processMetaCloudWebhookEvents,
 } from "./whatsapp-automation-webhook";
-
-import { startLocalWhatsAppAutomationPollerIfNeeded } from "./whatsapp-automation-runtime";
-
-startLocalWhatsAppAutomationPollerIfNeeded();

@@ -3,7 +3,6 @@
 import { addMinutes, endOfMonth, parseISO, startOfMonth } from "date-fns";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { BRAZIL_TZ_OFFSET } from "../../../src/shared/timezone";
 import { AppError } from "../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../src/shared/errors/mapSupabaseError";
@@ -31,8 +30,7 @@ const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
 const isValidDate = (value: Date) => !Number.isNaN(value.getTime());
 
 export async function getMonthOverview(monthStr: string) {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const parsedMonth = monthSchema.safeParse(monthStr);
   const safeMonth = parsedMonth.success ? parsedMonth.data : new Date().toISOString().slice(0, 7);
   const base = parseISO(`${safeMonth}-01T00:00:00${BRAZIL_TZ_OFFSET}`);
@@ -40,8 +38,8 @@ export async function getMonthOverview(monthStr: string) {
   const end = endOfMonth(base).toISOString();
 
   const [{ data: blocks }, { data: appointments }] = await Promise.all([
-    listAvailabilityBlocksInRange(FIXED_TENANT_ID, start, end),
-    listAppointmentsInRange(FIXED_TENANT_ID, start, end),
+    listAvailabilityBlocksInRange(tenantId, start, end),
+    listAppointmentsInRange(tenantId, start, end),
   ]);
 
   return {
@@ -53,8 +51,7 @@ export async function getMonthOverview(monthStr: string) {
 export async function createAvailabilityBlock(
   payload: z.infer<typeof blockSchema>
 ): Promise<ActionResult<{ id?: string; requiresConfirm?: boolean; conflicts?: { appointments: number } }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   const parsed = blockSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Parâmetros inválidos para bloqueio", "VALIDATION_ERROR", 400, parsed.error));
@@ -79,8 +76,8 @@ export async function createAvailabilityBlock(
   }
 
   const [{ data: blocks }, { data: appointments }] = await Promise.all([
-    listAvailabilityBlocksInRange(FIXED_TENANT_ID, dayStart.toISOString(), dayEnd.toISOString()),
-    listAppointmentsInRange(FIXED_TENANT_ID, dayStart.toISOString(), dayEnd.toISOString()),
+    listAvailabilityBlocksInRange(tenantId, dayStart.toISOString(), dayEnd.toISOString()),
+    listAppointmentsInRange(tenantId, dayStart.toISOString(), dayEnd.toISOString()),
   ]);
 
   const overlappingBlock = (blocks ?? []).some((block) => {
@@ -111,7 +108,7 @@ export async function createAvailabilityBlock(
 
   const { error } = await insertAvailabilityBlocks([
     {
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       title,
       start_time: blockStart.toISOString(),
       end_time: blockEnd.toISOString(),
@@ -130,10 +127,9 @@ export async function createAvailabilityBlock(
 }
 
 export async function deleteAvailabilityBlock(id: string): Promise<ActionResult<{ id: string }>> {
-
-  await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireDashboardAccessForServerAction();
   if (!id) return fail(new AppError("ID inválido", "VALIDATION_ERROR", 400));
-  const { error } = await deleteAvailabilityBlockById(FIXED_TENANT_ID, id);
+  const { error } = await deleteAvailabilityBlockById(tenantId, id);
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
   revalidatePath("/");

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const result = await getSpotifyPlayerState();
+  const result = await getSpotifyPlayerState(auth.access.data.tenantId);
   if (!result.ok) {
     return NextResponse.json(
       {

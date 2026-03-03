@@ -1,15 +1,16 @@
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { Service } from "../../../types/service";
 import { CatalogoView } from "./catalogo-view";
 import { listServices } from "../../../src/modules/services/repository";
 import { getSettings } from "../../../src/modules/settings/repository";
+import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
 export const dynamic = 'force-dynamic';
 
 export default async function CatalogoPage() {
+  const { tenantId } = await requireDashboardAccessForPage("/catalogo");
   const [{ data }, { data: settings }] = await Promise.all([
-    listServices(FIXED_TENANT_ID),
-    getSettings(FIXED_TENANT_ID),
+    listServices(tenantId),
+    getSettings(tenantId),
   ]);
 
   const services = (data as Service[]) || [];

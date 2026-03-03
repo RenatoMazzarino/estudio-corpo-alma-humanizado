@@ -1,5 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { insertAttendanceEvent } from "../../../lib/attendance/attendance-repository";
 import { updateAppointment } from "../appointments/repository";
@@ -16,7 +15,7 @@ import {
 export async function startTimerOperation(payload: {
   appointmentId: string;
   plannedSeconds?: number | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = timerStartSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -37,7 +36,7 @@ export async function startTimerOperation(payload: {
   const { error } = await supabase.from("appointment_attendances").upsert(
     {
       appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       timer_status: "running",
       timer_started_at: startedAt,
       timer_paused_at: null,
@@ -49,13 +48,13 @@ export async function startTimerOperation(payload: {
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+  await updateAppointment(tenantId, parsed.data.appointmentId, {
     status: "in_progress",
     started_at: startedAt,
   });
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "timer_started",
   });
@@ -66,7 +65,7 @@ export async function startTimerOperation(payload: {
 
 export async function pauseTimerOperation(payload: {
   appointmentId: string;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = timerPauseSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -83,7 +82,7 @@ export async function pauseTimerOperation(payload: {
   if (mapped) return fail(mapped);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "timer_paused",
   });
@@ -94,7 +93,7 @@ export async function pauseTimerOperation(payload: {
 
 export async function resumeTimerOperation(payload: {
   appointmentId: string;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = timerResumeSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -129,7 +128,7 @@ export async function resumeTimerOperation(payload: {
   if (mapped) return fail(mapped);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "timer_resumed",
   });
@@ -146,7 +145,7 @@ export async function syncTimerOperation(payload: {
   pausedTotalSeconds: number;
   plannedSeconds: number | null;
   actualSeconds?: number | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = timerSyncSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -163,7 +162,8 @@ export async function syncTimerOperation(payload: {
       planned_seconds: parsed.data.plannedSeconds ?? undefined,
       actual_seconds: parsed.data.actualSeconds ?? undefined,
     })
-    .eq("appointment_id", parsed.data.appointmentId);
+    .eq("appointment_id", parsed.data.appointmentId)
+    .eq("tenant_id", tenantId);
 
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);

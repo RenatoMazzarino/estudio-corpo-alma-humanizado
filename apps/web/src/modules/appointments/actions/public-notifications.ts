@@ -1,7 +1,6 @@
 "use server";
 
 import { z } from "zod";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import { AppError } from "../../../shared/errors/AppError";
 import { mapSupabaseError } from "../../../shared/errors/mapSupabaseError";
@@ -16,7 +15,7 @@ export async function triggerCreatedNotificationsForAppointmentImpl(payload: {
   appointmentId: string;
   startTimeIso: string;
   source?: string | null;
-}): Promise<ActionResult<{ appointmentId: string; scheduled: boolean }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string; scheduled: boolean }>> {
   const parsed = z
     .object({
       appointmentId: z.string().uuid(),
@@ -32,7 +31,7 @@ export async function triggerCreatedNotificationsForAppointmentImpl(payload: {
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .select("id, client_id, clients ( phone )")
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("tenant_id", tenantId)
     .eq("id", parsed.data.appointmentId)
     .maybeSingle();
 
@@ -54,7 +53,7 @@ export async function triggerCreatedNotificationsForAppointmentImpl(payload: {
   if (!hasPhone) {
     await supabase.from("appointment_messages").insert({
       appointment_id: parsed.data.appointmentId,
-      tenant_id: FIXED_TENANT_ID,
+      tenant_id: tenantId,
       type: "created_confirmation",
       status: "failed",
       payload: {
@@ -70,7 +69,7 @@ export async function triggerCreatedNotificationsForAppointmentImpl(payload: {
   }
 
   await scheduleAppointmentLifecycleNotifications({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     startTimeIso: parsed.data.startTimeIso,
     source: "admin_create",
@@ -84,5 +83,3 @@ export async function submitPublicAppointmentImpl(
 ): Promise<ActionResult<{ appointmentId: string | null }>> {
   return submitPublicAppointmentAction(data);
 }
-
-export type { SubmitPublicAppointmentInput };

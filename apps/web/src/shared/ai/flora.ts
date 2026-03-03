@@ -1,4 +1,4 @@
-const DEFAULT_FLORA_MODEL = process.env.FLORA_MODEL ?? process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const DEFAULT_FLORA_MODEL = process.env.FLORA_MODEL ?? "gemini-2.5-flash";
 
 function extractGeminiText(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
@@ -33,7 +33,7 @@ export async function runFloraText(params: {
   temperature?: number;
   maxOutputTokens?: number;
 }): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim() ?? process.env.GOOGLE_API_KEY?.trim();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return null;
 
   const model = DEFAULT_FLORA_MODEL.trim();
@@ -74,7 +74,7 @@ export async function runFloraAudioTranscription(params: {
   audioBase64: string;
   mimeType: string;
 }): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim() ?? process.env.GOOGLE_API_KEY?.trim();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return null;
 
   const cleanedBase64 = params.audioBase64.trim();

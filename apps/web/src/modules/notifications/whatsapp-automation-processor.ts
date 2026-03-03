@@ -1,11 +1,11 @@
 import {
   WHATSAPP_AUTOMATION_BATCH_LIMIT,
   WHATSAPP_AUTOMATION_MAX_RETRIES,
-  WHATSAPP_AUTOMATION_MODE,
   WHATSAPP_AUTOMATION_PROVIDER,
   WHATSAPP_AUTOMATION_RETRY_BASE_DELAY_SECONDS,
-  WHATSAPP_AUTOMATION_QUEUE_ENABLED,
-  isWhatsAppAutomationTenantAllowed,
+  isWhatsAppAutomationDispatchEnabled,
+  isWhatsAppAutomationLiveSendEnabled,
+  WHATSAPP_AUTOMATION_MODE,
 } from "./automation-config";
 import {
   asJsonObject,
@@ -30,10 +30,11 @@ import {
   type NotificationJobRow,
 } from "./repository";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
+import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
 import type { ProcessJobsParams, ProcessSummary } from "./whatsapp-automation.types";
 
 async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<DeliveryResult> {
-  if (WHATSAPP_AUTOMATION_MODE === "dry_run") {
+  if (!isWhatsAppAutomationLiveSendEnabled()) {
     return {
       providerMessageId: null,
       deliveredAt: new Date().toISOString(),
@@ -64,9 +65,9 @@ async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<Del
 
 export async function processPendingWhatsAppNotificationJobs(params?: ProcessJobsParams) {
   const summary: ProcessSummary = {
-    enabled: WHATSAPP_AUTOMATION_MODE !== "disabled",
+    enabled: isWhatsAppAutomationDispatchEnabled(),
     mode: WHATSAPP_AUTOMATION_MODE,
-    queuedEnabled: WHATSAPP_AUTOMATION_QUEUE_ENABLED,
+    queuedEnabled: true,
     totalScanned: 0,
     sent: 0,
     failed: 0,
@@ -74,7 +75,7 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
     results: [],
   };
 
-  if (WHATSAPP_AUTOMATION_MODE === "disabled") {
+  if (!isWhatsAppAutomationDispatchEnabled()) {
     return summary;
   }
 
@@ -106,14 +107,15 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
       continue;
     }
 
-    if (!isWhatsAppAutomationTenantAllowed(job.tenant_id)) {
+    const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
+    if (!tenantSettings.automationEnabledInSettings) {
       summary.skipped += 1;
       summary.results.push({
         jobId: job.id,
         appointmentId: job.appointment_id,
         type: job.type,
         status: "skipped",
-        reason: "Tenant não autorizado para automação WhatsApp.",
+        reason: "Automação WhatsApp está desativada para este tenant.",
       });
       continue;
     }
@@ -182,7 +184,7 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
           : 0;
       const nextRetryCount = previousRetryCount + 1;
       const canRetry =
-        WHATSAPP_AUTOMATION_MODE === "enabled" &&
+        isWhatsAppAutomationLiveSendEnabled() &&
         isRetryableDeliveryError(message) &&
         nextRetryCount <= WHATSAPP_AUTOMATION_MAX_RETRIES;
 

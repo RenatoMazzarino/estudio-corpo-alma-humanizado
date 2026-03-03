@@ -1,7 +1,5 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { insertAttendanceEvent } from "../../../lib/attendance/attendance-repository";
 import { createServiceClient } from "../../../lib/supabase/service";
 import type { Json } from "../../../lib/supabase/types";
@@ -22,11 +20,12 @@ export async function insertMessageLogOperation(params: {
   status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
   payload?: Json | null;
   sentAt?: string | null;
+  tenantId: string;
 }) {
   const supabase = createServiceClient();
   return supabase.from("appointment_messages").insert({
     appointment_id: params.appointmentId,
-    tenant_id: FIXED_TENANT_ID,
+    tenant_id: params.tenantId,
     type: params.type,
     status: params.status,
     payload: params.payload ?? null,
@@ -37,7 +36,7 @@ export async function insertMessageLogOperation(params: {
 export async function confirmPreOperation(payload: {
   appointmentId: string;
   channel?: string;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = confirmPreSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -55,14 +54,14 @@ export async function confirmPreOperation(payload: {
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  const { error: appointmentError } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+  const { error: appointmentError } = await updateAppointment(tenantId, parsed.data.appointmentId, {
     status: "confirmed",
   });
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) return fail(mappedAppointmentError);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "pre_confirmed",
     payload: { channel: parsed.data.channel ?? "manual" },
@@ -74,7 +73,7 @@ export async function confirmPreOperation(payload: {
 
 export async function cancelPreConfirmationOperation(payload: {
   appointmentId: string;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = appointmentIdSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -91,14 +90,14 @@ export async function cancelPreConfirmationOperation(payload: {
   const mapped = mapSupabaseError(error);
   if (mapped) return fail(mapped);
 
-  const { error: appointmentError } = await updateAppointment(FIXED_TENANT_ID, parsed.data.appointmentId, {
+  const { error: appointmentError } = await updateAppointment(tenantId, parsed.data.appointmentId, {
     status: "pending",
   });
   const mappedAppointmentError = mapSupabaseError(appointmentError);
   if (mappedAppointmentError) return fail(mappedAppointmentError);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "pre_confirmation_canceled",
   });
@@ -111,7 +110,7 @@ export async function cancelPreConfirmationOperation(payload: {
 export async function sendReminder24hOperation(payload: {
   appointmentId: string;
   message?: string | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -123,10 +122,11 @@ export async function sendReminder24hOperation(payload: {
     status: "sent_manual",
     sentAt: new Date().toISOString(),
     payload: parsed.data.message ? { message: parsed.data.message } : null,
+    tenantId,
   });
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "reminder_24h_sent",
   });
@@ -140,7 +140,7 @@ export async function sendMessageOperation(payload: {
   type: "created_confirmation" | "reminder_24h" | "post_survey" | "payment_charge" | "payment_receipt";
   channel?: string | null;
   payload?: Json | null;
-}): Promise<ActionResult<{ appointmentId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
   const parsed = sendMessageSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -155,10 +155,11 @@ export async function sendMessageOperation(payload: {
     status: "sent_manual",
     sentAt: new Date().toISOString(),
     payload: messagePayload,
+    tenantId,
   });
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "message_sent",
     payload: { type: parsed.data.type, channel: parsed.data.channel ?? "manual" },
@@ -172,7 +173,7 @@ export async function recordMessageStatusOperation(payload: {
   appointmentId: string;
   messageId: string;
   status: "drafted" | "sent_manual" | "sent_auto" | "delivered" | "failed";
-}): Promise<ActionResult<{ messageId: string }>> {
+}, tenantId: string): Promise<ActionResult<{ messageId: string }>> {
   const parsed = recordMessageStatusSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -196,7 +197,7 @@ export async function recordMessageStatusOperation(payload: {
   if (mapped) return fail(mapped);
 
   await insertAttendanceEvent({
-    tenantId: FIXED_TENANT_ID,
+    tenantId,
     appointmentId: parsed.data.appointmentId,
     eventType: "message_status_updated",
     payload: { status: parsed.data.status, messageId: parsed.data.messageId },
