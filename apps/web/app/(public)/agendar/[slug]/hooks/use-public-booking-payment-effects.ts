@@ -193,7 +193,8 @@ export function usePublicBookingPaymentEffects({
     }
     mpInitToastShownRef.current = false;
     if (!mpReady) return;
-    if (!(window as Window & { MercadoPago?: MercadoPagoConstructor }).MercadoPago) {
+    const mpConstructor = (window as Window & { MercadoPago?: MercadoPagoConstructor }).MercadoPago;
+    if (!mpConstructor) {
       setCardError("Não foi possível carregar o formulário de cartão.");
       if (!mpInitToastShownRef.current) {
         mpInitToastShownRef.current = true;
@@ -207,9 +208,7 @@ export function usePublicBookingPaymentEffects({
       // ignore SDK teardown errors
     }
     cardFormRef.current = null;
-    const mp = new (window as Window & { MercadoPago: MercadoPagoConstructor }).MercadoPago(publicKey, {
-      locale: "pt-BR",
-    });
+    const mp = new mpConstructor(publicKey, { locale: "pt-BR" });
     cardFormRef.current = mp.cardForm({
       amount: payableSignalAmount.toFixed(2),
       iframe: true,

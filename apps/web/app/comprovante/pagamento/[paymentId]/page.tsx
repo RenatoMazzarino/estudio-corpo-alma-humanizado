@@ -1,18 +1,14 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../../lib/supabase/service";
-import { FIXED_TENANT_ID } from "../../../../lib/tenant-context";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
+import { formatCurrencyBRL } from "../../../../src/shared/currency";
 import ReceiptView from "../../[id]/receipt-view";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ paymentId: string }>;
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
 function normalizeClient<T extends { clients: unknown }>(appointment: T) {
@@ -58,7 +54,6 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
     .from("appointment_payments")
     .select(paymentSelect)
     .eq("id", params.paymentId)
-    .eq("tenant_id", FIXED_TENANT_ID)
     .maybeSingle();
 
   const payment =
@@ -68,13 +63,13 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
         .from("appointment_payments")
         .select(paymentSelect)
         .eq("provider_ref", params.paymentId)
-        .eq("tenant_id", FIXED_TENANT_ID)
         .maybeSingle()
     ).data;
 
-  if (!payment || payment.status !== "paid") {
+  if (!payment || payment.status !== "paid" || !payment.tenant_id) {
     return <ReceiptNotFound />;
   }
+  const tenantId = payment.tenant_id;
 
   const { data: appointmentData } = await supabase
     .from("appointments")
@@ -82,7 +77,7 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
       "id, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )"
     )
     .eq("id", payment.appointment_id)
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("tenant_id", tenantId)
     .maybeSingle();
 
   if (!appointmentData) {
@@ -121,13 +116,13 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
       .from("appointment_checkout")
       .select("total")
       .eq("appointment_id", appointment.id)
-      .eq("tenant_id", FIXED_TENANT_ID)
+      .eq("tenant_id", tenantId)
       .maybeSingle(),
     supabase
       .from("appointment_payments")
       .select("amount, status")
       .eq("appointment_id", appointment.id)
-      .eq("tenant_id", FIXED_TENANT_ID),
+      .eq("tenant_id", tenantId),
   ]);
 
   const totalAmount = Number(checkoutData?.total ?? appointment.price ?? 0);
@@ -166,10 +161,10 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
         paymentMethodLabel: paymentMethodLabel(payment.method, payment.card_mode),
         locationLabel,
         locationDetail,
-        totalLabel: formatCurrency(totalAmount),
-        signalLabel: formatCurrency(Number(payment.amount ?? 0)),
-        paidLabel: formatCurrency(Number(payment.amount ?? 0)),
-        remainingLabel: formatCurrency(remainingAmount),
+        totalLabel: formatCurrencyBRL(totalAmount),
+        signalLabel: formatCurrencyBRL(Number(payment.amount ?? 0)),
+        paidLabel: formatCurrencyBRL(Number(payment.amount ?? 0)),
+        remainingLabel: formatCurrencyBRL(remainingAmount),
         transactionId: payment.transaction_id ?? payment.id,
         generatedAtLabel,
       }}

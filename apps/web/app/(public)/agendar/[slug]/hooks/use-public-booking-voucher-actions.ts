@@ -1,4 +1,3 @@
-"use client";
 
 import { useCallback, useState, type RefObject } from "react";
 import { downloadVoucherBlob, renderVoucherImageBlob, shareVoucherBlob } from "../voucher-export";

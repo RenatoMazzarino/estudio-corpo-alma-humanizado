@@ -1,8 +1,8 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../lib/supabase/service";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { resolveClientNames } from "../../../src/modules/clients/name-profile";
+import { formatCurrencyBRL } from "../../../src/shared/currency";
 import ReceiptView from "./receipt-view";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +12,6 @@ interface PageProps {
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-}
 
 function normalizeClient<T extends { clients: unknown }>(appointment: T) {
   const clients = appointment.clients;
@@ -46,7 +42,7 @@ export default async function ComprovantePage(props: PageProps) {
   const supabase = createServiceClient();
   const publicId = params.id.trim();
   const appointmentSelect =
-    "id, attendance_code, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
+    "id, tenant_id, attendance_code, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
 
   let appointmentData: ReceiptAppointmentRecord | null = null;
 
@@ -55,7 +51,6 @@ export default async function ComprovantePage(props: PageProps) {
       .from("appointments")
       .select(appointmentSelect)
       .eq("id", publicId)
-      .eq("tenant_id", FIXED_TENANT_ID)
       .maybeSingle();
     appointmentData = (data as ReceiptAppointmentRecord | null) ?? null;
   }
@@ -65,7 +60,6 @@ export default async function ComprovantePage(props: PageProps) {
       .from("appointments")
       .select(appointmentSelect)
       .eq("attendance_code", publicId)
-      .eq("tenant_id", FIXED_TENANT_ID)
       .maybeSingle();
     appointmentData = (data as ReceiptAppointmentRecord | null) ?? null;
   }
@@ -76,6 +70,7 @@ export default async function ComprovantePage(props: PageProps) {
 
   const appointment = normalizeClient(appointmentData) as {
     id: string;
+    tenant_id: string;
     attendance_code?: string | null;
     service_name: string;
     start_time: string;
@@ -94,6 +89,7 @@ export default async function ComprovantePage(props: PageProps) {
       internal_reference?: string | null;
     } | null;
   };
+  const tenantId = appointment.tenant_id;
 
   const clientNames = resolveClientNames({
     name: appointment.clients?.name ?? null,
@@ -106,14 +102,14 @@ export default async function ComprovantePage(props: PageProps) {
     .from("appointment_checkout")
     .select("total")
     .eq("appointment_id", appointment.id)
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("tenant_id", tenantId)
     .maybeSingle();
 
   const { data: paymentsData } = await supabase
     .from("appointment_payments")
     .select("id, amount, status, paid_at, created_at, transaction_id")
     .eq("appointment_id", appointment.id)
-    .eq("tenant_id", FIXED_TENANT_ID)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: true });
 
   const appointmentStatus = appointment.payment_status ?? "pending";
@@ -139,8 +135,8 @@ export default async function ComprovantePage(props: PageProps) {
   const startDate = new Date(appointment.start_time);
   const dateLabel = format(startDate, "dd/MM/yyyy", { locale: ptBR });
   const timeLabel = format(startDate, "HH:mm", { locale: ptBR });
-  const signalLabel = formatCurrency(paidAmount);
-  const paidLabel = formatCurrency(derivedStatus === "paid" ? totalAmount || paidAmount : paidAmount);
+  const signalLabel = formatCurrencyBRL(paidAmount);
+  const paidLabel = formatCurrencyBRL(derivedStatus === "paid" ? totalAmount || paidAmount : paidAmount);
   const remainingAmount = Math.max(totalAmount - paidAmount, 0);
   const addressLine = [
     appointment.address_logradouro,
@@ -168,10 +164,10 @@ export default async function ComprovantePage(props: PageProps) {
           paymentStatus: derivedStatus,
           locationLabel,
           locationDetail,
-          totalLabel: formatCurrency(totalAmount),
+          totalLabel: formatCurrencyBRL(totalAmount),
           signalLabel,
           paidLabel,
-          remainingLabel: formatCurrency(remainingAmount),
+          remainingLabel: formatCurrencyBRL(remainingAmount),
           transactionId,
           generatedAtLabel,
         }}

@@ -1,9 +1,7 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../lib/supabase/service";
-import { FIXED_TENANT_ID } from "../../../lib/tenant-context";
 import { resolveClientNames } from "../../../src/modules/clients/name-profile";
-import { WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE } from "../../../src/modules/notifications/automation-config";
 import VoucherPageView from "./voucher-page-view";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +41,7 @@ export default async function VoucherPage(props: PageProps) {
   const supabase = createServiceClient();
   const publicId = params.id.trim();
   const appointmentSelect =
-    "id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
+    "id, tenant_id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
 
   let appointmentData: VoucherAppointmentRecord | null = null;
 
@@ -52,7 +50,6 @@ export default async function VoucherPage(props: PageProps) {
       .from("appointments")
       .select(appointmentSelect)
       .eq("id", publicId)
-      .eq("tenant_id", FIXED_TENANT_ID)
       .maybeSingle();
     appointmentData = (data as VoucherAppointmentRecord | null) ?? null;
   }
@@ -62,7 +59,6 @@ export default async function VoucherPage(props: PageProps) {
       .from("appointments")
       .select(appointmentSelect)
       .eq("attendance_code", publicId)
-      .eq("tenant_id", FIXED_TENANT_ID)
       .maybeSingle();
     appointmentData = (data as VoucherAppointmentRecord | null) ?? null;
   }
@@ -73,6 +69,7 @@ export default async function VoucherPage(props: PageProps) {
 
   const appointment = normalizeClient(appointmentData) as {
     id: string;
+    tenant_id: string;
     attendance_code?: string | null;
     service_name: string | null;
     start_time: string;
@@ -90,6 +87,19 @@ export default async function VoucherPage(props: PageProps) {
       internal_reference?: string | null;
     } | null;
   };
+
+  const { data: settingsDataRaw } = await supabase
+    .from("settings")
+    .select("*")
+    .eq("tenant_id", appointment.tenant_id)
+    .maybeSingle();
+
+  const settingsData = (settingsDataRaw ?? null) as Record<string, unknown> | null;
+
+  const studioLocationLine =
+    typeof settingsData?.whatsapp_studio_location_line === "string"
+      ? settingsData.whatsapp_studio_location_line.trim()
+      : "";
 
   const startDate = new Date(appointment.start_time);
   if (Number.isNaN(startDate.getTime())) {
@@ -114,7 +124,7 @@ export default async function VoucherPage(props: PageProps) {
 
   const locationLine = appointment.is_home_visit
     ? `No endereço informado: ${locationAddress || "Endereço informado no agendamento"}`
-    : `No estúdio: ${WHATSAPP_AUTOMATION_STUDIO_LOCATION_LINE || "Estúdio Corpo & Alma Humanizado"}`;
+    : `No estúdio: ${studioLocationLine || "Estúdio Corpo & Alma Humanizado"}`;
 
   const clientNames = resolveClientNames({
     name: appointment.clients?.name ?? null,
