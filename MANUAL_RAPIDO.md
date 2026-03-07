@@ -143,6 +143,12 @@ Referencia completa: `docs/CODEX_SKILLS_READINESS.md`
 Skill versionada no repo (padrao OpenAI):
 - `.agents/skills/estudio-repo-context`
 
+Arquivos de agente no repo:
+- `AGENTS.md`
+- `.codex/config.toml`
+- `apps/web/AGENTS.override.md`
+- `supabase/functions/AGENTS.override.md`
+
 Links oficiais OpenAI:
 - `https://developers.openai.com/codex`
 - `https://developers.openai.com/codex/skills`

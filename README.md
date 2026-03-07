@@ -92,6 +92,12 @@ powershell -ExecutionPolicy Bypass -File scripts/codex/check-skills-readiness.ps
 Skill de repositorio (repo-first):
 - `.agents/skills/estudio-repo-context`
 
+Arquivos de agente no repositorio:
+- `AGENTS.md` (instrucoes globais)
+- `.codex/config.toml` (config de projeto do Codex)
+- `apps/web/AGENTS.override.md` (regras locais do app web)
+- `supabase/functions/AGENTS.override.md` (regras locais das edge functions)
+
 Referencias oficiais OpenAI:
 - `https://developers.openai.com/codex`
 - `https://developers.openai.com/codex/skills`

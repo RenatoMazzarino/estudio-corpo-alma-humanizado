@@ -17,6 +17,9 @@ Resumo aplicado neste repo:
 1. Skills de repositorio ficam em `.agents/skills`
 2. Cada skill possui `SKILL.md` com `name` e `description`
 3. `agents/openai.yaml` e opcional, mas recomendado para metadados de UI/policy/dependencias
+4. Instrucoes globais do agente em `AGENTS.md`
+5. Config de projeto do Codex em `.codex/config.toml`
+6. Overrides locais em `AGENTS.override.md` por area critica
 
 ## Escopo atual (habilidades instaladas/esperadas)
 
@@ -41,6 +44,15 @@ Atualmente:
 1. `estudio-repo-context`
 2. Caminho: `.agents/skills/estudio-repo-context`
 3. Validacao: `quick_validate.py` da skill `skill-creator` (status atual: OK)
+
+## Estrutura de agente no repo (status)
+
+Atualmente:
+
+1. `AGENTS.md` na raiz: presente
+2. `.codex/config.toml` no repo: presente
+3. `apps/web/AGENTS.override.md`: presente
+4. `supabase/functions/AGENTS.override.md`: presente
 
 ## Nao instalado (exemplos relevantes)
 

@@ -1,0 +1,10 @@
+# Project-scoped Codex configuration for this repository.
+# Keep personal credentials and machine-level MCP auth in ~/.codex/config.toml.
+
+[features]
+# Needed by workflows that rely on Playwright Interactive in Codex.
+js_repl = true
+
+[[skills.config]]
+path = ".agents/skills/estudio-repo-context/SKILL.md"
+enabled = true
