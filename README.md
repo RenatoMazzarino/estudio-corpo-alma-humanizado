@@ -80,3 +80,51 @@ Integrações ativas no produto:
 - Índice de docs: `docs/README.md`
 - Matriz canônica de documentação: `docs/DOCUMENTATION_CANONICAL_MATRIX.md`
 - Arquivo legado da fase Agenda V1 UI: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
+- Prontidão de skills Codex: `docs/CODEX_SKILLS_READINESS.md`
+
+## Codex Skills (check rápido)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/codex/check-skills-readiness.ps1
+.\scripts\codex\load-gh-token.ps1
+```
+
+Skill de repositorio (repo-first):
+- `.agents/skills/estudio-repo-context`
+
+Referencias oficiais OpenAI:
+- `https://developers.openai.com/codex`
+- `https://developers.openai.com/codex/skills`
+- `https://developers.openai.com/codex/config-basic`
+- `https://developers.openai.com/codex/config-reference`
+
+## Vercel (3 ambientes)
+
+Fluxo recomendado:
+
+1. Development (local) via `vercel dev` com env Development.
+2. Preview (branch) com env Preview e `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`.
+3. Production (`main`) com env Production e `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=false`.
+
+Comandos:
+
+```powershell
+pnpm vercel:env:audit
+pnpm vercel:dev
+pnpm vercel:deploy:preview
+pnpm vercel:deploy:prod
+```
+
+Templates versionados de env:
+
+- `vercel/env-import/vercel-development-required.env.example`
+- `vercel/env-import/vercel-preview-required.env.example`
+- `vercel/env-import/vercel-production-required.env.example`
+
+## VS Code Test Explorer
+
+Se o painel de testes mostrar apenas Playwright, falta a extensão do Vitest.
+
+1. Instale a extensão `vitest.explorer`.
+2. Recarregue o VS Code.
+3. Rode `pnpm --filter web test:unit` para confirmar discovery dos testes unitários.

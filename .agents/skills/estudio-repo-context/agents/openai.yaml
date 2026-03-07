@@ -1,0 +1,4 @@
+interface:
+  display_name: "Estudio Repo Context"
+  short_description: "Canonical repo context and Codex workflow"
+  default_prompt: "Use $estudio-repo-context to align with this repository standards before implementing changes."

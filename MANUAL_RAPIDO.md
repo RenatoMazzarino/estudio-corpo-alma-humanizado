@@ -123,6 +123,69 @@ pnpm --filter web test:smoke
 pnpm build
 ```
 
+## Codex Skills (habilidades da IA)
+
+Checklist automatico de prontidao:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/codex/check-skills-readiness.ps1
+```
+
+Carregar autenticacao GitHub na sessao atual (sem gravar token no repo):
+
+```powershell
+.\scripts\codex\load-gh-token.ps1
+gh auth status
+```
+
+Referencia completa: `docs/CODEX_SKILLS_READINESS.md`
+
+Skill versionada no repo (padrao OpenAI):
+- `.agents/skills/estudio-repo-context`
+
+Links oficiais OpenAI:
+- `https://developers.openai.com/codex`
+- `https://developers.openai.com/codex/skills`
+- `https://developers.openai.com/codex/config-basic`
+- `https://developers.openai.com/codex/config-reference`
+
+## Vercel em 3 ambientes (novo fluxo)
+
+Objetivo:
+
+1. Development: uso local com `vercel dev` (sem dominio custom).
+2. Preview: branches para homologacao real.
+3. Production: branch `main`.
+
+Comandos:
+
+```powershell
+pnpm vercel:env:audit
+pnpm vercel:dev
+pnpm vercel:deploy:preview
+pnpm vercel:deploy:prod
+```
+
+Arquivos modelo:
+
+1. `vercel/env-import/vercel-development-required.env.example`
+2. `vercel/env-import/vercel-preview-required.env.example`
+3. `vercel/env-import/vercel-production-required.env.example`
+
+Regra recomendada para WhatsApp:
+
+1. Development: `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`
+2. Preview: `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`
+3. Production: `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=false`
+
+## VS Code - painel de testes mostrando so Playwright
+
+Se aparecer apenas 1 teste de smoke:
+
+1. Instale a extensao `vitest.explorer`.
+2. Recarregue a janela do VS Code.
+3. Rode `pnpm --filter web test:unit` para validar os testes unitarios.
+
 ## Conferir instalacao do Next e do Turbo
 
 O Next esta dentro de `apps/web`, entao use:

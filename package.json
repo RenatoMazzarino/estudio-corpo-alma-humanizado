@@ -7,14 +7,20 @@
     "lint": "pnpm exec turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "pnpm exec turbo run check-types",
-    "supabase:types": "supabase gen types typescript --local --schema public > apps/web/lib/supabase/types.ts"
+    "supabase:types": "supabase gen types typescript --local --schema public > apps/web/lib/supabase/types.ts",
+    "codex:skills:check": "powershell -ExecutionPolicy Bypass -File scripts/codex/check-skills-readiness.ps1",
+    "vercel:env:audit": "powershell -ExecutionPolicy Bypass -File scripts/codex/vercel-env-audit.ps1",
+    "vercel:dev": "pnpm exec vercel dev",
+    "vercel:deploy:preview": "pnpm exec vercel deploy",
+    "vercel:deploy:prod": "pnpm exec vercel deploy --prod"
   },
   "devDependencies": {
     "eslint-plugin-turbo": "^2.7.1",
     "prettier": "^3.7.4",
     "supabase": "^2.75.0",
     "turbo": "2.8.3",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vercel": "^50.28.0"
   },
   "packageManager": "pnpm@10.29.1+sha512.48dae233635a645768a3028d19545cacc1688639eeb1f3734e42d6d6b971afbf22aa1ac9af52a173d9c3a20c15857cfa400f19994d79a2f626fcc73fccda9bbc",
   "engines": {
