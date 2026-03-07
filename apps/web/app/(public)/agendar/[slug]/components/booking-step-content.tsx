@@ -107,7 +107,7 @@ interface BookingStepContentProps {
   paymentMethod: PaymentMethod;
   isMercadoPagoMinimumInvalid: boolean;
   protocol: string;
-  onSelectPayment: (method: PaymentMethod) => void;
+  onSelectPayment: (method: Exclude<PaymentMethod, null>) => void;
   payableSignalAmount: number;
   pixPayment: {
     id: string;
@@ -124,9 +124,11 @@ interface BookingStepContentProps {
   pixProgressPct: number;
   pixQrExpired: boolean;
   cardStatus: "idle" | "loading" | "error";
+  checkoutStatusMessage?: string | null;
   normalizedClientEmail: string;
   appointmentId: string | null;
   onCopyPix: () => void;
+  onRegeneratePix: () => void;
   onReset: () => void;
   onOpenVoucher: () => void;
 }
@@ -225,9 +227,11 @@ export function BookingStepContent({
   pixProgressPct,
   pixQrExpired,
   cardStatus,
+  checkoutStatusMessage,
   normalizedClientEmail,
   appointmentId,
   onCopyPix,
+  onRegeneratePix,
   onReset,
   onOpenVoucher,
 }: BookingStepContentProps) {
@@ -375,6 +379,8 @@ export function BookingStepContent({
           normalizedClientEmail={normalizedClientEmail}
           appointmentId={appointmentId}
           onCopyPix={onCopyPix}
+          onRegeneratePix={onRegeneratePix}
+          statusMessage={checkoutStatusMessage}
         />
       )}
 

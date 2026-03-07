@@ -2,6 +2,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { resolveClientNames } from "../../../src/modules/clients/name-profile";
+import {
+  buildMetaVoucherSampleData,
+  isMetaTemplateSampleCode,
+} from "../../../src/shared/meta-template-demo";
 import VoucherPageView from "./voucher-page-view";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +42,24 @@ function VoucherNotFound() {
 
 export default async function VoucherPage(props: PageProps) {
   const params = await props.params;
-  const supabase = createServiceClient();
   const publicId = params.id.trim();
+
+  if (isMetaTemplateSampleCode(publicId)) {
+    const sample = buildMetaVoucherSampleData();
+    return (
+      <VoucherPageView
+        clientName={sample.clientName}
+        dateTimeLabel={sample.dateTimeLabel}
+        dayLabel={sample.dayLabel}
+        timeLabel={sample.timeLabel}
+        serviceName={sample.serviceName}
+        locationLabel={sample.locationLabel}
+        bookingId={sample.bookingId}
+      />
+    );
+  }
+
+  const supabase = createServiceClient();
   const appointmentSelect =
     "id, tenant_id, attendance_code, service_name, start_time, is_home_visit, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
 

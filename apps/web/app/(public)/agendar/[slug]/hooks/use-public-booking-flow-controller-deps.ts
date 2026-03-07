@@ -1,14 +1,21 @@
-
 import { useCallback } from "react";
-import { cardProcessingStages } from "../booking-flow-config";
 import { resolvePositiveMinutes } from "../booking-flow.helpers";
+import { feedbackById, feedbackFromError } from "../../../../../src/shared/feedback/user-feedback";
+import { AppError } from "../../../../../src/shared/errors/AppError";
+import { fail } from "../../../../../src/shared/errors/result";
+import { usePublicCheckoutController } from "../../../../../src/modules/payments/public-checkout/use-public-checkout-controller";
 import { usePublicBookingAvailability } from "../hooks/use-public-booking-availability";
+import {
+  createCardPayment as submitPublicCardPayment,
+  createPixPayment as submitPublicPixPayment,
+  getCardPaymentStatus as getPublicCardPaymentStatus,
+  getPixPaymentStatus as getPublicPixPaymentStatus,
+  submitPublicAppointment,
+} from "../application/public-booking-service";
 import { usePublicBookingFlowDerived } from "../hooks/use-public-booking-flow-derived";
 import { usePublicBookingIdentity } from "../hooks/use-public-booking-identity";
 import { usePublicBookingLocation } from "../hooks/use-public-booking-location";
 import { usePublicBookingNavigation } from "../hooks/use-public-booking-navigation";
-import { usePublicBookingPaymentEffects } from "../hooks/use-public-booking-payment-effects";
-import { usePublicBookingPaymentFlow } from "../hooks/use-public-booking-payment-flow";
 import { usePublicBookingPaymentUi } from "../hooks/use-public-booking-payment-ui";
 import { usePublicBookingServiceActions } from "../hooks/use-public-booking-service-actions";
 import { usePublicBookingVoucherActions } from "../hooks/use-public-booking-voucher-actions";
@@ -75,34 +82,8 @@ export function usePublicBookingFlowControllerDeps({
     setProtocol,
     clientLookupStatus,
     setClientLookupStatus,
-    pixPayment,
-    setPixPayment,
-    pixStatus,
-    setPixStatus,
-    setPixError,
-    pixAttempt,
-    setPixAttempt,
-    pixNowMs,
-    setPixNowMs,
-    paymentMethod,
-    setPaymentMethod,
-    cardStatus,
-    setCardStatus,
-    setCardError,
-    cardAwaitingConfirmation,
-    setCardAwaitingConfirmation,
-    cardProcessingStageIndex,
-    setCardProcessingStageIndex,
-    mpReady,
-    setMpReady,
     showToast,
     phoneInputRef,
-    cardFormRef,
-    cardSubmitInFlightRef,
-    pixAutoRefreshByPaymentRef,
-    pixFailureStatusRef,
-    cardFailureStatusRef,
-    mpInitToastShownRef,
     voucherRef,
     setIsVoucherOpen,
     identityCpfAttempts,
@@ -279,119 +260,201 @@ export function usePublicBookingFlowControllerDeps({
 
   const {
     payableSignalAmount,
-    pixQrExpired,
-    pixRemainingLabel,
-    pixProgressPct,
     isMercadoPagoMinimumInvalid,
-    showCardProcessingOverlay,
-    currentCardProcessingStage,
   } = usePublicBookingPaymentUi({
     totalPrice,
     signalPercentage,
-    pixPayment,
-    pixNowMs,
+    pixPayment: null,
+    pixNowMs: Date.now(),
     step,
-    paymentMethod,
-    cardStatus,
-    cardAwaitingConfirmation,
-    cardProcessingStageIndex,
+    paymentMethod: null,
+    cardStatus: "idle",
+    cardAwaitingConfirmation: false,
+    cardProcessingStageIndex: 0,
   });
 
-  const clearCardSdk = useCallback(() => {
-    try {
-      cardFormRef.current?.unmount?.();
-    } catch {
-      // ignore sdk teardown errors
+  const ensureAppointment = useCallback(async () => {
+    if (appointmentId) return appointmentId;
+    if (
+      !selectedService ||
+      !date ||
+      !selectedTime ||
+      !resolvedClientFullName ||
+      !isEmailValid ||
+      !isPhoneValid
+    ) {
+      return null;
     }
-    cardFormRef.current = null;
-    cardSubmitInFlightRef.current = false;
-  }, [cardFormRef, cardSubmitInFlightRef]);
 
-  const { ensureAppointment, handleCopyPix, handleCreatePix, handleSelectPayment, handleReset } =
-    usePublicBookingPaymentFlow({
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      selectedService,
-      step,
-      date,
-      selectedTime,
-      resolvedClientFullName,
-      clientFirstName,
-      clientLastName,
-      clientPhone,
-      normalizedClientEmail,
-      clientCpf,
-      isHomeVisit,
-      cep,
-      logradouro,
-      numero,
-      complemento,
-      bairro,
-      cidade,
-      estado,
-      displacementEstimate,
-      isEmailValid,
-      isPhoneValid,
-      appointmentId,
-      setAppointmentId,
-      protocol,
-      setProtocol,
-      setIsSubmitting,
-      pixPayment,
-      setPixPayment,
-      pixAttempt,
-      setPixAttempt,
-      pixStatus,
-      setPixStatus,
-      setPixError,
-      setPixNowMs,
-      pixQrExpired,
-      paymentMethod,
-      setPaymentMethod,
-      payableSignalAmount,
-      setCardStatus,
-      setCardError,
-      setCardAwaitingConfirmation,
-      showCardProcessingOverlay,
-      setCardProcessingStageIndex,
-      setIsVoucherOpen,
-      resetIdentityState,
-      showToast,
-      cardProcessingStagesLength: cardProcessingStages.length,
-      cardFormRef,
-      cardSubmitInFlightRef,
-      pixAutoRefreshByPaymentRef,
-      onClearCardSdk: clearCardSdk,
-    });
-
-  usePublicBookingPaymentEffects({
-    step,
-    paymentMethod,
+    setIsSubmitting(true);
+    try {
+      const result = await submitPublicAppointment({
+        tenantSlug: tenant.slug,
+        serviceId: selectedService.id,
+        date,
+        time: selectedTime,
+        clientName: resolvedClientFullName,
+        clientFirstName: clientFirstName.trim(),
+        clientLastName: clientLastName.trim(),
+        clientPhone,
+        clientEmail: normalizedClientEmail,
+        clientCpf,
+        isHomeVisit,
+        addressCep: cep,
+        addressLogradouro: logradouro,
+        addressNumero: numero,
+        addressComplemento: complemento,
+        addressBairro: bairro,
+        addressCidade: cidade,
+        addressEstado: estado,
+        displacementFee: displacementEstimate?.fee,
+        displacementDistanceKm: displacementEstimate?.distanceKm,
+      });
+      if (!result.ok) {
+        showToast(feedbackFromError(result.error, "public_booking"));
+        return null;
+      }
+      const createdId = result.data.appointmentId ?? null;
+      setAppointmentId(createdId);
+      setProtocol(createdId ? `AGD-${createdId.slice(0, 6).toUpperCase()}` : "");
+      showToast(feedbackById("booking_created", { durationMs: 1800 }));
+      return createdId;
+    } catch (error) {
+      showToast(feedbackFromError(error, "public_booking"));
+      return null;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
     appointmentId,
-    tenantId: tenant.id,
-    pixPayment: pixPayment ? { id: pixPayment.id } : null,
-    cardAwaitingConfirmation,
-    showToast,
-    setStep,
-    setPixStatus,
-    setPixError,
-    setCardAwaitingConfirmation,
-    setCardStatus,
-    setCardError,
-    pixFailureStatusRef,
-    cardFailureStatusRef,
-    cardFormRef,
-    cardSubmitInFlightRef,
-    mpInitToastShownRef,
-    mercadoPagoPublicKey: mercadoPagoPublicKey ?? null,
-    mpReady,
-    payableSignalAmount,
-    selectedService,
-    ensureAppointment,
-    normalizedClientEmail,
-    resolvedClientFullName,
+    bairro,
+    cep,
+    cidade,
+    clientCpf,
+    clientFirstName,
+    clientLastName,
     clientPhone,
+    complemento,
+    date,
+    displacementEstimate?.distanceKm,
+    displacementEstimate?.fee,
+    estado,
+    isEmailValid,
+    isHomeVisit,
+    isPhoneValid,
+    logradouro,
+    normalizedClientEmail,
+    numero,
+    resolvedClientFullName,
+    selectedService,
+    selectedTime,
+    setAppointmentId,
+    setIsSubmitting,
+    setProtocol,
+    showToast,
+    tenant.slug,
+  ]);
+
+  const checkout = usePublicCheckoutController({
+    active: step === "PAYMENT" && !isMercadoPagoMinimumInvalid,
+    initialPaymentMethod: null,
+    amount: payableSignalAmount,
+    payerName: resolvedClientFullName,
+    payerEmail: normalizedClientEmail,
+    mercadoPagoPublicKey: mercadoPagoPublicKey ?? null,
+    createPixPayment: async ({ attempt }) => {
+      const ensuredId = appointmentId ?? (await ensureAppointment());
+      if (!ensuredId) {
+        return fail(new AppError("Não foi possível criar o agendamento antes do pagamento.", "VALIDATION_ERROR", 400));
+      }
+      return submitPublicPixPayment({
+        appointmentId: ensuredId,
+        tenantId: tenant.id,
+        amount: payableSignalAmount,
+        payerEmail: normalizedClientEmail,
+        payerName: resolvedClientFullName,
+        payerPhone: clientPhone,
+        attempt,
+      });
+    },
+    getPixPaymentStatus: async () => {
+      if (!appointmentId) {
+        return fail(new AppError("Agendamento ainda não disponível para consultar Pix.", "VALIDATION_ERROR", 400));
+      }
+      return getPublicPixPaymentStatus({
+        appointmentId,
+        tenantId: tenant.id,
+      });
+    },
+    createCardPayment: async ({ token, paymentMethodId, installments, identificationType, identificationNumber }) => {
+      const ensuredId = appointmentId ?? (await ensureAppointment());
+      if (!ensuredId) {
+        return fail(new AppError("Não foi possível criar o agendamento antes do pagamento.", "VALIDATION_ERROR", 400));
+      }
+      return submitPublicCardPayment({
+        appointmentId: ensuredId,
+        tenantId: tenant.id,
+        amount: payableSignalAmount,
+        token,
+        paymentMethodId,
+        installments,
+        payerEmail: normalizedClientEmail,
+        payerName: resolvedClientFullName,
+        payerPhone: clientPhone,
+        identificationType,
+        identificationNumber,
+      });
+    },
+    getCardPaymentStatus: async () => {
+      if (!appointmentId) {
+        return fail(new AppError("Agendamento ainda não disponível para consultar cartão.", "VALIDATION_ERROR", 400));
+      }
+      return getPublicCardPaymentStatus({
+        appointmentId,
+        tenantId: tenant.id,
+      });
+    },
+    onPaymentApproved: () => {
+      setStep("SUCCESS");
+    },
+    onEvent: (event) => {
+      if (event.type === "pix_generated") {
+        showToast(feedbackById("payment_pix_generated", { durationMs: 2200 }));
+        return;
+      }
+      if (event.type === "pix_copy_success") {
+        showToast(feedbackById("payment_pix_copy_success", { durationMs: 1600 }));
+        return;
+      }
+      if (event.type === "pix_copy_error") {
+        showToast(feedbackById("payment_pix_copy_unavailable"));
+        return;
+      }
+      if (event.type === "card_pending") {
+        showToast(feedbackById("payment_pending"));
+        return;
+      }
+      if (event.type === "payment_paid") {
+        showToast(feedbackById("payment_recorded", { durationMs: 1800 }));
+        return;
+      }
+      if (event.type === "pix_error" || event.type === "card_error") {
+        showToast({
+          message: event.message,
+          tone: "error",
+          durationMs: 3200,
+        });
+      }
+    },
   });
+
+  const handleReset = useCallback(() => {
+    resetIdentityState({ clearPhone: true, resetFlow: true, clearSuggestedClient: true });
+    setAppointmentId(null);
+    setProtocol("");
+    checkout.resetCheckout();
+    setIsVoucherOpen(false);
+  }, [checkout, resetIdentityState, setAppointmentId, setIsVoucherOpen, setProtocol]);
 
   const { voucherBusy, handleDownloadVoucher, handleShareVoucher } = usePublicBookingVoucherActions({
     protocol,
@@ -417,7 +480,7 @@ export function usePublicBookingFlowControllerDeps({
       selectedTime,
       addressComplete,
       displacementReady,
-      paymentMethod,
+      paymentMethod: checkout.paymentMethod,
       isMercadoPagoMinimumInvalid,
     });
 
@@ -426,13 +489,11 @@ export function usePublicBookingFlowControllerDeps({
     setSelectedService,
     setSelectedTime,
     setStep,
-    setPaymentMethod,
-    setPixPayment,
-    setCardStatus,
     setProtocol,
     setAppointmentId,
     enforceStudioLocationOnly,
     showToast,
+    resetCheckout: checkout.resetCheckout,
   });
 
   return {
@@ -500,17 +561,24 @@ export function usePublicBookingFlowControllerDeps({
     handleIdentityCaptchaAnswerChange,
     handleNewClientFirstNameChange,
     handleNewClientLastNameChange,
+    paymentMethod: checkout.paymentMethod,
     payableSignalAmount,
-    pixQrExpired,
-    pixRemainingLabel,
-    pixProgressPct,
+    pixPayment: checkout.pixPayment,
+    pixStatus: checkout.pixStatus,
+    pixQrExpired: checkout.pixQrExpired,
+    pixRemainingLabel: checkout.pixRemainingLabel,
+    pixProgressPct: checkout.pixProgressPct,
+    cardStatus: checkout.cardStatus,
+    checkoutStatusMessage: checkout.statusMessage,
     isMercadoPagoMinimumInvalid,
-    showCardProcessingOverlay,
-    currentCardProcessingStage,
+    showCardProcessingOverlay: checkout.showCardProcessingOverlay,
+    cardProcessingStageIndex: checkout.cardProcessingStageIndex,
+    cardAwaitingConfirmation: checkout.cardAwaitingConfirmation,
+    currentCardProcessingStage: checkout.currentCardProcessingStage,
     ensureAppointment,
-    handleCopyPix,
-    handleCreatePix,
-    handleSelectPayment,
+    handleCopyPix: checkout.handleCopyPix,
+    handleCreatePix: checkout.handleRegeneratePix,
+    handleSelectPayment: checkout.setPaymentMethod,
     handleReset,
     voucherBusy,
     handleDownloadVoucher,
@@ -523,6 +591,6 @@ export function usePublicBookingFlowControllerDeps({
     handleNext,
     handleServiceSelect,
     handleTalkToFlora,
-    setMpReady,
+    setMpReady: checkout.setMpReady,
   };
 }

@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { AttendanceOverview, MessageType } from "../../lib/attendance/attendance-types";
-import { buildAppointmentReceiptPath } from "../../src/shared/public-links";
+import { buildAppointmentPaymentPath, buildAppointmentReceiptPath } from "../../src/shared/public-links";
 
 export function toWhatsappLink(phone?: string | null) {
   if (!phone) return null;
@@ -88,7 +88,11 @@ export function buildAgendaMessage(
 
   if (type === "payment_charge") {
     const base = resolvePublicBaseUrl(publicBaseUrl);
-    const paymentLink = base ? `${base}/pagamento` : "";
+    const paymentPath = buildAppointmentPaymentPath({
+      appointmentId: appointment.id,
+      attendanceCode: appointment.attendance_code ?? null,
+    });
+    const paymentLink = base && paymentPath ? `${base}${paymentPath}` : "";
     const chargeAmount = options?.chargeAmount ?? null;
     const chargeLabel =
       typeof chargeAmount === "number" && Number.isFinite(chargeAmount) && chargeAmount > 0

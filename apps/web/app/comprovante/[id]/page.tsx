@@ -3,6 +3,10 @@ import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { resolveClientNames } from "../../../src/modules/clients/name-profile";
 import { formatCurrencyBRL } from "../../../src/shared/currency";
+import {
+  buildMetaReceiptSampleData,
+  isMetaTemplateSampleCode,
+} from "../../../src/shared/meta-template-demo";
 import ReceiptView from "./receipt-view";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +43,33 @@ function ReceiptNotFound() {
 
 export default async function ComprovantePage(props: PageProps) {
   const params = await props.params;
-  const supabase = createServiceClient();
   const publicId = params.id.trim();
+
+  if (isMetaTemplateSampleCode(publicId)) {
+    const sample = buildMetaReceiptSampleData();
+    return (
+      <ReceiptView
+        data={{
+          clientName: sample.clientName,
+          serviceName: sample.serviceName,
+          dateLabel: sample.dateLabel,
+          timeLabel: sample.timeLabel,
+          paymentStatus: sample.paymentStatus,
+          paymentMethodLabel: sample.paymentMethodLabel,
+          locationLabel: sample.locationLabel,
+          locationDetail: sample.locationDetail,
+          totalLabel: sample.totalLabel,
+          signalLabel: sample.signalLabel,
+          paidLabel: sample.paidLabel,
+          remainingLabel: sample.remainingLabel,
+          transactionId: sample.transactionId,
+          generatedAtLabel: sample.generatedAtLabel,
+        }}
+      />
+    );
+  }
+
+  const supabase = createServiceClient();
   const appointmentSelect =
     "id, tenant_id, attendance_code, service_name, start_time, price, payment_status, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients ( name, public_first_name, public_last_name, internal_reference )";
 

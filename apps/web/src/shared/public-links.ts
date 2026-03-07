@@ -26,3 +26,11 @@ export function buildAppointmentReceiptPath(params: {
   const identifier = resolveAppointmentPublicIdentifier(params);
   return identifier ? `/comprovante/${identifier}` : "";
 }
+
+export function buildAppointmentPaymentPath(params: {
+  appointmentId?: string | null;
+  attendanceCode?: string | null;
+}) {
+  const identifier = resolveAppointmentPublicIdentifier(params);
+  return identifier ? `/pagamento/${identifier}` : "";
+}

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { PaymentMethod, Service, Step } from "../booking-flow.types";
+import type { Service, Step } from "../booking-flow.types";
 import type { UserFeedback } from "../../../../../src/shared/feedback/user-feedback";
 import { feedbackById } from "../../../../../src/shared/feedback/user-feedback";
 import { buildWhatsAppLink } from "../booking-flow.helpers";
@@ -9,13 +9,11 @@ type Params = {
   setSelectedService: (service: Service | null) => void;
   setSelectedTime: (value: string) => void;
   setStep: (step: Step) => void;
-  setPaymentMethod: (method: PaymentMethod | null) => void;
-  setPixPayment: (data: null) => void;
-  setCardStatus: (status: "idle" | "loading" | "error") => void;
   setProtocol: (value: string) => void;
   setAppointmentId: (value: string | null) => void;
   enforceStudioLocationOnly: () => void;
   showToast: (feedback: UserFeedback) => void;
+  resetCheckout: () => void;
 };
 
 export function usePublicBookingServiceActions({
@@ -23,22 +21,18 @@ export function usePublicBookingServiceActions({
   setSelectedService,
   setSelectedTime,
   setStep,
-  setPaymentMethod,
-  setPixPayment,
-  setCardStatus,
   setProtocol,
   setAppointmentId,
   enforceStudioLocationOnly,
   showToast,
+  resetCheckout,
 }: Params) {
   const handleServiceSelect = useCallback(
     (service: Service) => {
       setSelectedService(service);
       setSelectedTime("");
       setStep("DATETIME");
-      setPaymentMethod(null);
-      setPixPayment(null);
-      setCardStatus("idle");
+      resetCheckout();
       setProtocol("");
       setAppointmentId(null);
 
@@ -48,10 +42,8 @@ export function usePublicBookingServiceActions({
     },
     [
       enforceStudioLocationOnly,
+      resetCheckout,
       setAppointmentId,
-      setCardStatus,
-      setPaymentMethod,
-      setPixPayment,
       setProtocol,
       setSelectedService,
       setSelectedTime,

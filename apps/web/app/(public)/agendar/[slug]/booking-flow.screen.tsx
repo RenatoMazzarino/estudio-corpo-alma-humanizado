@@ -121,9 +121,11 @@ export function BookingFlow(props: BookingFlowProps) {
           pixProgressPct={controller.pixProgressPct}
           pixQrExpired={controller.pixQrExpired}
           cardStatus={controller.cardStatus}
+          checkoutStatusMessage={controller.checkoutStatusMessage}
           normalizedClientEmail={controller.normalizedClientEmail}
           appointmentId={controller.appointmentId}
           onCopyPix={controller.handleCopyPix}
+          onRegeneratePix={controller.onCreatePixPayment}
           onReset={controller.handleReset}
           onOpenVoucher={() => controller.setIsVoucherOpen(true)}
         />

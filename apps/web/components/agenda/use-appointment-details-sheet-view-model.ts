@@ -5,7 +5,7 @@ import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types"
 import { applyAutoMessageTemplate } from "../../src/shared/auto-messages.utils";
 import { formatCurrencyBRL } from "../../src/shared/currency";
 import { feedbackById, type UserFeedback } from "../../src/shared/feedback/user-feedback";
-import { buildAppointmentReceiptPath } from "../../src/shared/public-links";
+import { buildAppointmentPaymentPath, buildAppointmentReceiptPath } from "../../src/shared/public-links";
 import {
   formatSentLabel,
   getAutomationStatusLabel,
@@ -188,7 +188,12 @@ export function useAppointmentDetailsSheetViewModel({
 
   const buildPaymentLink = () => {
     const base = resolvePublicBaseUrl();
-    return base ? `${base}/pagamento` : "";
+    if (!base) return "";
+    const paymentPath = buildAppointmentPaymentPath({
+      appointmentId: appointment?.id ?? null,
+      attendanceCode: appointment?.attendance_code ?? null,
+    });
+    return paymentPath ? `${base}${paymentPath}` : "";
   };
 
   const buildReceiptLink = (_paymentId?: string | null) => {

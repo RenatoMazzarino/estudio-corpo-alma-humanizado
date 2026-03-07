@@ -3,6 +3,10 @@ import { ptBR } from "date-fns/locale";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import { resolveClientNames } from "../../../../src/modules/clients/name-profile";
 import { formatCurrencyBRL } from "../../../../src/shared/currency";
+import {
+  buildMetaReceiptSampleData,
+  isMetaTemplateSampleCode,
+} from "../../../../src/shared/meta-template-demo";
 import ReceiptView from "../../[id]/receipt-view";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +49,32 @@ function paymentMethodLabel(method: string | null, cardMode: string | null) {
 
 export default async function ComprovantePagamentoPage(props: PageProps) {
   const params = await props.params;
+  const paymentId = params.paymentId.trim();
+
+  if (isMetaTemplateSampleCode(paymentId)) {
+    const sample = buildMetaReceiptSampleData();
+    return (
+      <ReceiptView
+        data={{
+          clientName: sample.clientName,
+          serviceName: sample.serviceName,
+          dateLabel: sample.dateLabel,
+          timeLabel: sample.timeLabel,
+          paymentStatus: sample.paymentStatus,
+          paymentMethodLabel: sample.paymentMethodLabel,
+          locationLabel: sample.locationLabel,
+          locationDetail: sample.locationDetail,
+          totalLabel: sample.totalLabel,
+          signalLabel: sample.signalLabel,
+          paidLabel: sample.paidLabel,
+          remainingLabel: sample.remainingLabel,
+          transactionId: sample.transactionId,
+          generatedAtLabel: sample.generatedAtLabel,
+        }}
+      />
+    );
+  }
+
   const supabase = createServiceClient();
 
   const paymentSelect =
@@ -53,7 +83,7 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
   const { data: paymentById } = await supabase
     .from("appointment_payments")
     .select(paymentSelect)
-    .eq("id", params.paymentId)
+    .eq("id", paymentId)
     .maybeSingle();
 
   const payment =
@@ -62,7 +92,7 @@ export default async function ComprovantePagamentoPage(props: PageProps) {
       await supabase
         .from("appointment_payments")
         .select(paymentSelect)
-        .eq("provider_ref", params.paymentId)
+        .eq("provider_ref", paymentId)
         .maybeSingle()
     ).data;
 
