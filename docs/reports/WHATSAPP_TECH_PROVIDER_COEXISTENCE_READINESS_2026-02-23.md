@@ -1107,8 +1107,8 @@ Observacao:
 3. 360dialog - Webhook events and notifications
 - https://docs.360dialog.com/docs/waba-basics/webhook-events-and-notifications
 
-4. YCloud - referencia de contas WhatsApp Business / onboarding
-- https://docs.ycloud.com/reference/whatsapp-business-accounts#create-a-whatsapp-business-account
+4. Meta - referencia de contas WhatsApp Business / onboarding
+- https://developers.facebook.com/docs/whatsapp/embedded-signup/
 
 ### 19.3 Evidencias internas (repo e testes)
 

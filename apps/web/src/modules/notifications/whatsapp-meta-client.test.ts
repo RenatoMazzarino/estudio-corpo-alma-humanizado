@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./automation-config", () => ({
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN: "token-test",
   WHATSAPP_AUTOMATION_META_API_VERSION: "v99.0",
+  WHATSAPP_AUTOMATION_META_APP_SECRET: "",
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID: "12345",
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT: "55 (19) 99999-0000",
 }));

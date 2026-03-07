@@ -11,8 +11,9 @@ const parseBoolean = (value: string | undefined, defaultValue: boolean) => {
 
 const parseProvider = (value: string | undefined): WhatsAppAutomationProvider => {
   const normalized = (value ?? "").trim().toLowerCase();
-  if (normalized === "meta_cloud") return "meta_cloud";
-  return "none";
+  if (normalized === "none" || normalized === "off" || normalized === "disabled") return "none";
+  if (normalized === "meta_cloud" || normalized === "meta") return "meta_cloud";
+  return "meta_cloud";
 };
 
 const parseBatchLimit = (value: string | undefined, fallback: number) => {
@@ -72,6 +73,9 @@ export const WHATSAPP_AUTOMATION_META_ACCESS_TOKEN =
 
 export const WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID =
   process.env.WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID?.trim() ?? "";
+
+export const WHATSAPP_AUTOMATION_META_BUSINESS_ACCOUNT_ID =
+  process.env.WHATSAPP_AUTOMATION_META_BUSINESS_ACCOUNT_ID?.trim() ?? "";
 
 export const WHATSAPP_AUTOMATION_META_TEST_RECIPIENT =
   process.env.WHATSAPP_AUTOMATION_META_TEST_RECIPIENT?.trim() ?? "";

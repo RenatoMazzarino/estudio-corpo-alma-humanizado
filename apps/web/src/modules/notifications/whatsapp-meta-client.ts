@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import {
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN,
   WHATSAPP_AUTOMATION_META_API_VERSION,
+  WHATSAPP_AUTOMATION_META_APP_SECRET,
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID,
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT,
 } from "./automation-config";
@@ -26,7 +28,19 @@ export function assertMetaCloudConfigBase() {
 }
 
 export function getMetaCloudMessagesUrl() {
-  return `https://graph.facebook.com/${WHATSAPP_AUTOMATION_META_API_VERSION}/${WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID}/messages`;
+  const baseUrl = `https://graph.facebook.com/${WHATSAPP_AUTOMATION_META_API_VERSION}/${WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID}/messages`;
+  if (!WHATSAPP_AUTOMATION_META_APP_SECRET) {
+    return baseUrl;
+  }
+
+  const appSecretProof = crypto
+    .createHmac("sha256", WHATSAPP_AUTOMATION_META_APP_SECRET)
+    .update(WHATSAPP_AUTOMATION_META_ACCESS_TOKEN, "utf8")
+    .digest("hex");
+
+  const url = new URL(baseUrl);
+  url.searchParams.set("appsecret_proof", appSecretProof);
+  return url.toString();
 }
 
 export async function sendMetaCloudMessage(requestBody: Record<string, unknown>) {
