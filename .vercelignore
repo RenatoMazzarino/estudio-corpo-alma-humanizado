@@ -1,0 +1,24 @@
+# VCS / local metadata
+.git
+.git/**
+.vercel
+.tmp_vercel_env_check
+
+# Dependencies and build cache
+node_modules
+**/node_modules
+.turbo
+**/.turbo
+**/.next
+**/dist
+**/build
+coverage
+
+# IDE / local tooling
+.vscode
+.idea
+
+# Repo docs and helper artifacts not needed at deploy time
+docs
+scripts
+.agents
