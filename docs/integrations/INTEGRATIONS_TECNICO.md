@@ -155,12 +155,19 @@ Em conflito com o código, o código vence.
 - Endpoint interno de processamento:
   - `GET|POST /api/internal/notifications/whatsapp/process` (Bearer `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`)
 
-### Templates automáticos usados (MVP atual)
+### Templates automáticos usados (estado atual)
 
-- Aviso de agendamento:
-  - `aviso_agendamento_interno_sem_comprovante`
-- Lembrete 24h:
-  - `confirmacao_de_agendamento_24h`
+- Aviso de agendamento (`appointment_created`):
+  - biblioteca oficial local com 12 variações:
+    - estúdio/domicílio
+    - com sinal pago / pago integral / pagamento no atendimento
+    - com flora / sem oi flora
+  - arquivo canônico:
+    - `apps/web/src/modules/notifications/whatsapp-template-library.ts`
+  - regras de seleção:
+    - `apps/web/src/modules/notifications/whatsapp-created-template-rules.ts`
+- Lembrete 24h (`appointment_reminder`):
+  - `confirmacao_de_agendamento_24h` (resolvido por tenant settings)
 
 ### Fluxos automáticos implementados
 
@@ -173,7 +180,17 @@ Em conflito com o código, o código vence.
 - Pode rodar em modo seguro (teste) com destinatário forçado:
   - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
 - Em DEV e até em PROD (piloto), é válido manter envio apontado para número de teste
-- Janela 24h (MVP) para cancelamento automático:
+- O template de `appointment_created` agora é escolhido por regra de negócio com base em:
+  - local do atendimento (`is_home_visit`)
+  - estado financeiro do agendamento (total vs pago)
+  - preferência de intro (`com_flora`/`sem_oi_flora`)
+- Regra de apresentação da Flora:
+  - primeira automação para a cliente: `com_flora`
+  - após apresentação prévia: `sem_oi_flora`
+  - reapresenta `com_flora` após 180 dias sem automação enviada
+- Se a variante preferida estiver `in_review`, o sistema tenta fallback para a variante oposta do mesmo cenário.
+- Se não houver template ativo para aquele cenário, o envio falha com erro explícito e auditável.
+- Janela 24h (regra atual) para cancelamento automático:
   - inferida por inbound correlacionado ao agendamento nas últimas 24h
 
 ### Arquivos-chave
@@ -206,6 +223,11 @@ Em conflito com o código, o código vence.
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
 - `WHATSAPP_AUTOMATION_META_API_VERSION`
+- `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline para considerar histórico da regra de intro Flora)
+
+Semântica do baseline:
+- histórico de automação anterior ao timestamp informado em `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` não é considerado.
+- isso permite "reset lógico" da apresentação da Flora sem apagar dados históricos do banco.
 
 #### Templates (canônico no banco)
 
@@ -216,6 +238,11 @@ Os nomes/idiomas de template agora são resolvidos por tenant na tabela `setting
 - `whatsapp_template_reminder_language`
 - `whatsapp_automation_enabled`
 - `whatsapp_studio_location_line`
+
+Nota sobre `notification_templates`:
+- a tabela existe por legado do desenho genérico de notificações, mas não é fonte ativa do WhatsApp atual.
+- no fluxo Meta atual, a seleção de template vem da biblioteca local + settings do tenant.
+- portanto, `notification_templates` vazia é comportamento esperado neste estágio.
 
 #### Webhook / assinatura
 

@@ -45,6 +45,11 @@ Para arquitetura técnica, endpoints e envs detalhadas, usar `docs/integrations/
 
 Observação:
 - Sempre validar domínio + commit do deploy antes de testar webhook/auth, porque redeploy manual de deploy antigo mantém commit velho.
+- Na Vercel, o ambiente `Development` (CLI) não usa domínio customizado.
+- O domínio `dev.public...` deve ser tratado como alias de deploy `preview`.
+- Se ficar desatualizado, realinhar com:
+  - `pnpm exec vercel inspect dev.public.corpoealmahumanizado.com.br`
+  - `pnpm exec vercel alias set <deployment-preview>.vercel.app dev.public.corpoealmahumanizado.com.br`
 
 ## 3) Variáveis críticas por integração (checklist rápido)
 
@@ -74,11 +79,16 @@ Observação:
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
+- `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; usar como marco inicial para regra de apresentação da Flora)
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `CRON_SECRET`
 
 Configuração de template e idioma:
 - canônica no banco (`settings` por tenant), não em env.
+
+Uso recomendado do baseline (`WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE`):
+- para iniciar uma nova fase da automação tratando toda base como "primeiro contato", defina essa env com a data/hora de go-live.
+- histórico anterior ao baseline é ignorado na decisão `com_flora` x `sem_oi_flora`.
 
 ### GitHub Actions (scheduler dos lembretes)
 
@@ -128,9 +138,19 @@ Configuração de template e idioma:
 - O envio manual por WhatsApp continua válido e não deve ser removido do fluxo operacional.
 - A automação deve coexistir ao lado do manual.
 
-### O que já está automatizado (MVP)
+### O que já está automatizado (estado atual)
 
-- Aviso de agendamento (template)
+- Aviso de agendamento (template) com matriz de 12 variações:
+  - local: estúdio ou domicílio
+  - financeiro: com sinal pago, pago integral ou pagamento no atendimento
+  - linguagem: com flora ou sem oi flora
+- Regras de apresentação:
+  - primeira automação da cliente recebe `com_flora`
+  - depois segue `sem_oi_flora`
+  - se passar 180 dias sem automação, reapresenta com `com_flora`
+- Regra de seleção automática por cenário financeiro/local do agendamento
+- Fallback automático de variante (`com_flora` <-> `sem_oi_flora`) quando a preferida estiver em análise
+- Falha controlada quando não existe template ativo para aquele cenário
 - Lembrete 24h (template)
 - Respostas automáticas aos botões:
   - `Confirmar`
@@ -175,7 +195,7 @@ O painel já mostra:
 ### WhatsApp (automação)
 
 1. Evento de negócio gera job de notificação
-2. Processador envia via Meta Cloud API (template ou session message)
+2. Processador resolve cenário do template de aviso (local + financeiro + variante) e envia via Meta Cloud API
 3. Webhook Meta atualiza status
 4. Painel `Mensagens` mostra resultado para operação
 
