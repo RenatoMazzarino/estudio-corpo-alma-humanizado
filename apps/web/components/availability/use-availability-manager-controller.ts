@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createShiftBlocks, clearMonthBlocks } from "../../app/(dashboard)/admin/escala/actions";
 import { createAvailabilityBlock, deleteAvailabilityBlock, getMonthOverview } from "../../app/(dashboard)/bloqueios/actions";
+import { extractDateKeyFromIsoLike } from "../../src/shared/datetime";
 import { feedbackById, feedbackFromError } from "../../src/shared/feedback/user-feedback";
 import type { AvailabilityBlock, BlockType, CreateBlockPayload, MonthOverview } from "./availability-manager.types";
 
@@ -102,7 +103,7 @@ export function useAvailabilityManagerController(showToast: (feedback: ReturnTyp
   const blocksByDate = useMemo(() => {
     const grouped = new Map<string, AvailabilityBlock[]>();
     overview.blocks.forEach((block) => {
-      const key = format(parseISO(block.start_time), "yyyy-MM-dd");
+      const key = extractDateKeyFromIsoLike(block.start_time) ?? format(parseISO(block.start_time), "yyyy-MM-dd");
       const list = grouped.get(key) ?? [];
       list.push(block);
       grouped.set(key, list);

@@ -4,6 +4,7 @@ vi.mock("./automation-config", () => ({
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN: "token-test",
   WHATSAPP_AUTOMATION_META_API_VERSION: "v99.0",
   WHATSAPP_AUTOMATION_META_APP_SECRET: "",
+  WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT: true,
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID: "12345",
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT: "55 (19) 99999-0000",
 }));
@@ -69,7 +70,7 @@ describe("whatsapp-meta-client", () => {
     await expect(sendMetaCloudMessage({})).rejects.toThrow("Erro 400");
   });
 
-  it("envia texto sanitizando número do destinatário", async () => {
+  it("envia texto sempre para o número fixo de teste quando a flag está ativa", async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -82,7 +83,7 @@ describe("whatsapp-meta-client", () => {
       text: "Olá",
     });
 
-    expect(result.recipient).toBe("5519988887777");
+    expect(result.recipient).toBe("5519999990000");
     expect(result.providerMessageId).toBe("wamid.456");
   });
 

@@ -24,10 +24,11 @@ jobs:
         run: |
           if [ -z "${CRON_SECRET}" ]; then
             echo "Missing GitHub secret: WHATSAPP_CRON_DEV_SECRET"
-            exit 1
+            echo "Skipping DEV trigger to avoid failing the scheduled workflow."
           fi
 
       - name: Trigger DEV reminder processor
+        if: ${{ env.CRON_SECRET != '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -55,10 +56,11 @@ jobs:
         run: |
           if [ -z "${CRON_SECRET}" ]; then
             echo "Missing GitHub secret: WHATSAPP_CRON_PROD_SECRET"
-            exit 1
+            echo "Skipping PROD trigger to avoid failing the scheduled workflow."
           fi
 
       - name: Trigger PROD reminder processor
+        if: ${{ env.CRON_SECRET != '' }}
         shell: bash
         run: |
           set -euo pipefail

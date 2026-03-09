@@ -3,6 +3,7 @@ import {
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN,
   WHATSAPP_AUTOMATION_META_API_VERSION,
   WHATSAPP_AUTOMATION_META_APP_SECRET,
+  WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT,
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID,
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT,
 } from "./automation-config";
@@ -70,10 +71,13 @@ export async function sendMetaCloudMessage(requestBody: Record<string, unknown>)
 
 export async function sendMetaCloudTextMessage(params: { to: string; text: string }) {
   assertMetaCloudConfigBase();
-  const recipient = onlyDigits(params.to);
-  if (!recipient) {
+  const requestedRecipient = onlyDigits(params.to);
+  if (!requestedRecipient) {
     throw new Error("Número de destino inválido para resposta automática WhatsApp.");
   }
+  const recipient = WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT
+    ? getMetaCloudTestRecipient()
+    : requestedRecipient;
 
   const { payload, providerMessageId } = await sendMetaCloudMessage({
     messaging_product: "whatsapp",

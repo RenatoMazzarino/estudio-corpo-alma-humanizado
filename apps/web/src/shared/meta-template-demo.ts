@@ -1,7 +1,12 @@
 export const META_TEMPLATE_PUBLIC_SAMPLE_CODE = "meta-demo-ycloud-2026";
+const META_TEMPLATE_PUBLIC_SAMPLE_CODE_ALIASES = new Set([
+  "meta-demo-ycloud-2026",
+  "meta-demo-meta-2026",
+]);
 
 export function isMetaTemplateSampleCode(value: string) {
-  return value.trim().toLowerCase() === META_TEMPLATE_PUBLIC_SAMPLE_CODE;
+  const normalized = value.trim().toLowerCase();
+  return normalized.startsWith("meta-demo-") || META_TEMPLATE_PUBLIC_SAMPLE_CODE_ALIASES.has(normalized);
 }
 
 export type MetaVoucherSampleData = {

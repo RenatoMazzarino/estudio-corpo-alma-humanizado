@@ -6,6 +6,7 @@ import { getMonthOverview } from "../app/(dashboard)/bloqueios/actions";
 import { format, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar, Trash2 } from "lucide-react";
+import { extractDateKeyFromIsoLike } from "../src/shared/datetime";
 import { Toast, useToast } from "./ui/toast";
 import { feedbackById, feedbackFromError } from "../src/shared/feedback/user-feedback";
 
@@ -124,12 +125,15 @@ export function ShiftManager() {
       {monthBlocksPreview.length > 0 && (
         <div className="bg-stone-50 border border-stone-100 rounded-xl p-4 space-y-2 text-sm text-gray-600">
           <div className="text-xs font-bold uppercase text-gray-400">Bloqueios recentes</div>
-          {monthBlocksPreview.map((block) => (
-            <div key={block.id} className="flex items-center justify-between">
-              <span>{format(new Date(block.start_time), "dd/MM", { locale: ptBR })}</span>
-              <span className="text-xs text-gray-400">{block.title}</span>
-            </div>
-          ))}
+          {monthBlocksPreview.map((block) => {
+            const dateKey = extractDateKeyFromIsoLike(block.start_time);
+            return (
+              <div key={block.id} className="flex items-center justify-between">
+                <span>{dateKey ? `${dateKey.slice(8, 10)}/${dateKey.slice(5, 7)}` : "--/--"}</span>
+                <span className="text-xs text-gray-400">{block.title}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 

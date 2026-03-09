@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { formatCep, normalizeCep } from "./address/cep";
 import { formatCpf, isCpfLengthValid, normalizeCpfDigits } from "./cpf";
 import { formatCurrencyInput, formatCurrencyLabel, parseDecimalInput } from "./currency";
-import { formatMinutesSeconds, getRemainingSeconds } from "./datetime";
+import { extractDateKeyFromIsoLike, formatMinutesSeconds, getRemainingSeconds } from "./datetime";
 import { formatBrazilPhone, normalizePhoneDigits, phonesMatch } from "./phone";
 
 describe("shared formatters and normalizers", () => {
@@ -37,5 +37,12 @@ describe("shared formatters and normalizers", () => {
     expect(getRemainingSeconds("2026-02-27T12:00:45.000Z")).toBe(45);
     expect(formatMinutesSeconds(65)).toBe("01:05");
     vi.restoreAllMocks();
+  });
+
+  it("extrai chave de data estável a partir de ISO para evitar deslocamento de fuso", () => {
+    expect(extractDateKeyFromIsoLike("2026-04-02T00:00:00.000Z")).toBe("2026-04-02");
+    expect(extractDateKeyFromIsoLike("2026-04-02T03:00:00.000Z")).toBe("2026-04-02");
+    expect(extractDateKeyFromIsoLike("2026-04-02")).toBe("2026-04-02");
+    expect(extractDateKeyFromIsoLike("")).toBeNull();
   });
 });

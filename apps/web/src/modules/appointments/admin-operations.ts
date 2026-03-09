@@ -5,6 +5,7 @@ import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { mapSupabaseError } from "../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
+import { extractDateKeyFromIsoLike } from "../../shared/datetime";
 import { finishAdminAppointmentSchema } from "../../shared/validation/appointments";
 import { getClientById, updateClient } from "../clients/repository";
 import { getTransactionByAppointmentId, insertTransaction } from "../finance/repository";
@@ -160,7 +161,7 @@ export async function createShiftBlocksOperation(
 
       const dayKey = format(currentDay, "yyyy-MM-dd");
       selectedDays.push(dayKey);
-      if (!shiftBlocks.some((block) => format(new Date(block.start_time), "yyyy-MM-dd") === dayKey)) {
+      if (!shiftBlocks.some((block) => extractDateKeyFromIsoLike(block.start_time) === dayKey)) {
         blocksToInsert.push({
           tenant_id: tenantId,
           title: "Plantão",
