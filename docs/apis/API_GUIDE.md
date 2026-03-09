@@ -66,11 +66,19 @@ Observação:
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
 - `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
+- `WHATSAPP_AUTOMATION_PROVIDER`
+- `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
+- `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
+- `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
+- `WHATSAPP_AUTOMATION_META_API_VERSION`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET` (opcional, mas recomendado; se ausente a assinatura do webhook Meta não é exigida)
+- `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline de histórico para regra `com_flora/sem_oi_flora`)
 
 Observação:
 - nomes/idiomas de templates da Meta são configurados por tenant no banco (`settings`), não por env.
+- `appointment_created` usa matriz de 12 templates com seleção por cenário (local + financeiro + intro), definida no backend.
+- para tratar todos os clientes como "primeira mensagem" em uma nova fase, configure `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` com a data/hora de go-live.
 
 ### Spotify
 

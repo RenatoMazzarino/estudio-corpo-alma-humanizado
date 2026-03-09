@@ -59,4 +59,10 @@ describe("whatsapp-automation.helpers", () => {
       timeLabel: "--:--",
     });
   });
+
+  it("formata data no padrão 'Segunda-feira, dia xx de mês'", () => {
+    const result = formatAppointmentDateForTemplate("2026-03-16T15:30:00.000Z");
+    expect(result.dateLabel).toBe("Segunda-feira, dia 16 de março");
+    expect(result.timeLabel).toBe("12:30");
+  });
 });

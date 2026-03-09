@@ -89,6 +89,9 @@ export const WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN =
 export const WHATSAPP_AUTOMATION_META_APP_SECRET =
   process.env.WHATSAPP_AUTOMATION_META_APP_SECRET?.trim() ?? "";
 
+export const WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE =
+  process.env.WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE?.trim() ?? "";
+
 export function isWhatsAppAutomationDispatchEnabled() {
   return WHATSAPP_AUTOMATION_MODE !== "disabled";
 }

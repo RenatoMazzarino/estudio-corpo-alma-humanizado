@@ -156,9 +156,12 @@ export function formatAppointmentDateForTemplate(startTimeIso: string) {
     weekday: "long",
     timeZone: BRAZIL_TIME_ZONE,
   }).format(date);
-  const dayMonth = new Intl.DateTimeFormat("pt-BR", {
+  const day = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
-    month: "2-digit",
+    timeZone: BRAZIL_TIME_ZONE,
+  }).format(date);
+  const month = new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
     timeZone: BRAZIL_TIME_ZONE,
   }).format(date);
   const time = new Intl.DateTimeFormat("pt-BR", {
@@ -169,7 +172,7 @@ export function formatAppointmentDateForTemplate(startTimeIso: string) {
   }).format(date);
 
   return {
-    dateLabel: `${capitalizeFirst(weekday)}, ${dayMonth}`,
+    dateLabel: `${capitalizeFirst(weekday)}, dia ${day} de ${month}`,
     timeLabel: time,
   };
 }

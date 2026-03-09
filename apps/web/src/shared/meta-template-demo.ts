@@ -1,4 +1,4 @@
-export const META_TEMPLATE_PUBLIC_SAMPLE_CODE = "meta-demo-meta-2026";
+export const META_TEMPLATE_PUBLIC_SAMPLE_CODE = "meta-demo-ycloud-2026";
 
 export function isMetaTemplateSampleCode(value: string) {
   return value.trim().toLowerCase() === META_TEMPLATE_PUBLIC_SAMPLE_CODE;

@@ -207,8 +207,10 @@ Tipos manuais recorrentes:
 
 Arquivos principais:
 - `apps/web/src/modules/notifications/whatsapp-automation.ts`
-- `apps/web/app/api/whatsapp/webhook/route.ts` (webhook Meta)
+- `apps/web/app/api/whatsapp/meta/webhook/route.ts` (webhook Meta)
 - `apps/web/app/api/cron/whatsapp-reminders/route.ts` (cron endpoint)
+- `apps/web/src/modules/notifications/whatsapp-template-library.ts`
+- `apps/web/src/modules/notifications/whatsapp-created-template-rules.ts`
 
 Regras gerais:
 - automacao usa fila (`notification_jobs`)
@@ -223,6 +225,18 @@ Automacoes de inicio de conversa / agendadas:
 
 No fluxo atual, esses envios sao feitos como template da Meta (Cloud API), com nome/idioma resolvidos por tenant em `settings` (banco), com fallback interno canônico.
 
+Regra atual de escolha de template em `appointment_created`:
+- local do atendimento (`estudio` ou `domicilio`)
+- situacao financeira (`com_sinal_pago`, `pago_integral`, `pagamento_no_atendimento`)
+- variante de apresentacao (`com_flora` ou `sem_oi_flora`)
+- fallback automatico para variante oposta quando o template preferido estiver `in_review`
+- falha controlada quando nao existe template ativo para o cenario
+
+Regra atual da apresentacao da Flora:
+- primeira automacao da cliente: `com_flora`
+- depois da apresentacao: `sem_oi_flora`
+- reapresenta `com_flora` apos 180 dias sem automacao
+
 ### Quando usa mensagem livre (session / janela 24h)
 
 Exemplo atual:
@@ -234,7 +248,7 @@ Regra:
 
 ### Como a janela de 24h e verificada (regra atual)
 
-Regra de MVP no repo:
+Regra operacional atual no repo:
 - janela aberta = existe inbound do cliente correlacionado ao agendamento (via webhook/resposta) registrado no log de mensagens automaticas nas ultimas 24h
 
 ### Status operacionais de mensagens (logs)

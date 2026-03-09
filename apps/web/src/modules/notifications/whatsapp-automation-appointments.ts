@@ -10,6 +10,12 @@ import {
   resolvePublicBaseUrlFromWebhookOrigin,
 } from "./whatsapp-automation.helpers";
 import {
+  DEFAULT_FLORA_REINTRO_AFTER_DAYS,
+  resolveFloraIntroVariantByHistory,
+  resolveNoticeIntroVariantFromPayload,
+  resolveCreatedAppointmentTemplateSelection,
+} from "./whatsapp-created-template-rules";
+import {
   assertMetaCloudConfigBase,
   getMetaCloudTestRecipient,
   sendMetaCloudMessage,
@@ -17,6 +23,8 @@ import {
 } from "./whatsapp-meta-client";
 import type { NotificationJobRow } from "./repository";
 import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
+import { getWhatsAppTemplateFromLibrary } from "./whatsapp-template-library";
+import { WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE } from "./automation-config";
 
 export interface DeliveryResult {
   providerMessageId: string | null;
@@ -31,11 +39,23 @@ export interface DeliveryResult {
 }
 
 interface AppointmentTemplateContext {
+  clientId: string | null;
   clientName: string;
   serviceName: string;
   dateLabel: string;
   timeLabel: string;
   locationLine: string;
+  isHomeVisit: boolean;
+  homeAddressLine: string;
+  paymentStatus: string | null;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  signalPaidAmount: number;
+  displacementFee: number;
+  careAmount: number;
+  latestPaidPaymentPublicId: string | null;
+  paymentLinkPublicId: string;
 }
 
 export interface CustomerServiceWindowCheckResult {
@@ -58,7 +78,7 @@ async function loadAppointmentTemplateContext(
   const { data, error } = await supabase
     .from("appointments")
     .select(
-      "id, tenant_id, start_time, service_name, is_home_visit, address_logradouro, address_numero, address_bairro, address_cidade, address_estado, clients(name, endereco_completo, public_first_name, public_last_name, internal_reference)"
+      "id, tenant_id, client_id, attendance_code, start_time, service_name, is_home_visit, payment_status, price, displacement_fee, signal_paid_amount, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients(name, endereco_completo, public_first_name, public_last_name, internal_reference)"
     )
     .eq("id", job.appointment_id)
     .eq("tenant_id", job.tenant_id)
@@ -72,6 +92,8 @@ async function loadAppointmentTemplateContext(
   }
 
   const record = data as unknown as Record<string, unknown>;
+  const appointmentId = typeof record.id === "string" ? record.id : job.appointment_id;
+  const clientId = typeof record.client_id === "string" ? record.client_id : null;
   const client = asJsonObject(record.clients as Json | undefined);
   const clientName = resolveClientNames({
     name: typeof client?.name === "string" ? client.name : null,
@@ -87,14 +109,251 @@ async function loadAppointmentTemplateContext(
       ? (asJsonObject(job.payload).start_time as string)
       : "");
   const { dateLabel, timeLabel } = formatAppointmentDateForTemplate(startTimeIso);
+  const toMoney = (value: unknown) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.round((parsed + Number.EPSILON) * 100) / 100;
+  };
+
+  const [checkoutResult, paymentsResult] = await Promise.all([
+    supabase
+      .from("appointment_checkout")
+      .select("total")
+      .eq("appointment_id", appointmentId)
+      .eq("tenant_id", job.tenant_id)
+      .maybeSingle(),
+    supabase
+      .from("appointment_payments")
+      .select("id, provider_ref, amount, status, created_at")
+      .eq("appointment_id", appointmentId)
+      .eq("tenant_id", job.tenant_id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  if (checkoutResult.error) {
+    throw new Error("Falha ao carregar checkout do agendamento para template WhatsApp.");
+  }
+  if (paymentsResult.error) {
+    throw new Error("Falha ao carregar pagamentos do agendamento para template WhatsApp.");
+  }
+
+  const checkoutData = checkoutResult.data;
+  const paymentsData = paymentsResult.data;
+
+  const totalAmount = toMoney(checkoutData?.total ?? record.price ?? 0);
+  const paidPayments = Array.isArray(paymentsData)
+    ? paymentsData.filter((payment) => payment.status === "paid")
+    : [];
+  const paidAmount = toMoney(
+    paidPayments.reduce((acc, payment) => acc + toMoney(payment.amount), 0)
+  );
+  const remainingAmount = toMoney(Math.max(totalAmount - paidAmount, 0));
+  const displacementFee = toMoney(record.displacement_fee ?? 0);
+  const careAmount = toMoney(Math.max(totalAmount - displacementFee, 0));
+  const signalPaidFromAppointment = toMoney(record.signal_paid_amount ?? 0);
+  const signalPaidAmount =
+    signalPaidFromAppointment > 0
+      ? toMoney(Math.min(signalPaidFromAppointment, paidAmount > 0 ? paidAmount : signalPaidFromAppointment))
+      : paidAmount;
+  const latestPaidPayment = paidPayments[paidPayments.length - 1];
+  const latestPaidPaymentPublicId =
+    (typeof latestPaidPayment?.provider_ref === "string" && latestPaidPayment.provider_ref.trim()) ||
+    (typeof latestPaidPayment?.id === "string" && latestPaidPayment.id.trim()) ||
+    null;
+  const attendanceCode =
+    typeof record.attendance_code === "string" && record.attendance_code.trim()
+      ? record.attendance_code.trim()
+      : null;
+  const paymentLinkPublicId = attendanceCode || appointmentId;
+  const homeAddressLine =
+    (typeof client?.endereco_completo === "string" && client.endereco_completo.trim()) ||
+    [
+      record.address_logradouro,
+      record.address_numero,
+      record.address_complemento,
+      record.address_bairro,
+      record.address_cidade,
+      record.address_estado,
+      record.address_cep,
+    ]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean)
+      .join(", ") ||
+    "Endereço informado no agendamento";
+  const isHomeVisit = Boolean(record.is_home_visit);
+  const paymentStatus =
+    typeof record.payment_status === "string" && record.payment_status.trim()
+      ? record.payment_status.trim().toLowerCase()
+      : null;
 
   return {
+    clientId,
     clientName,
     serviceName,
     dateLabel,
     timeLabel,
     locationLine: resolveLocationLineFromAppointmentRecord(record, options?.studioLocationLine),
+    isHomeVisit,
+    homeAddressLine,
+    paymentStatus,
+    totalAmount,
+    paidAmount,
+    remainingAmount,
+    signalPaidAmount,
+    displacementFee,
+    careAmount,
+    latestPaidPaymentPublicId,
+    paymentLinkPublicId,
   };
+}
+
+const SUCCESSFUL_AUTOMATION_MESSAGE_STATUSES = [
+  "sent_auto",
+  "sent_auto_dry_run",
+  "provider_sent",
+  "provider_delivered",
+  "provider_read",
+];
+
+async function loadClientAutomationHistory(params: { tenantId: string; clientId: string | null }) {
+  if (!params.clientId) {
+    return {
+      lastSuccessfulAutomationSentAt: null as string | null,
+      hasPresentedFloraBefore: false,
+    };
+  }
+
+  const supabase = createServiceClient();
+  const floraHistorySinceDate = WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE
+    ? new Date(WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE)
+    : null;
+  const floraHistorySince =
+    floraHistorySinceDate && !Number.isNaN(floraHistorySinceDate.getTime())
+      ? floraHistorySinceDate.toISOString()
+      : null;
+  let lastAutomationQuery = supabase
+      .from("appointment_messages")
+      .select("sent_at, created_at, appointments!inner(client_id)")
+      .eq("tenant_id", params.tenantId)
+      .eq("appointments.client_id", params.clientId)
+      .like("type", "auto_%")
+      .in("status", SUCCESSFUL_AUTOMATION_MESSAGE_STATUSES)
+      .order("sent_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(1);
+  if (floraHistorySince) {
+    lastAutomationQuery = lastAutomationQuery.gte("created_at", floraHistorySince);
+  }
+
+  let floraPresentedQuery = supabase
+      .from("appointment_messages")
+      .select("id, appointments!inner(client_id)")
+      .eq("tenant_id", params.tenantId)
+      .eq("appointments.client_id", params.clientId)
+      .eq("type", "auto_appointment_created")
+      .in("status", SUCCESSFUL_AUTOMATION_MESSAGE_STATUSES)
+      .like("payload->automation->>template_name", "%_com_flora")
+      .limit(1);
+  if (floraHistorySince) {
+    floraPresentedQuery = floraPresentedQuery.gte("created_at", floraHistorySince);
+  }
+
+  const [lastAutomationResult, floraPresentedResult] = await Promise.all([
+    lastAutomationQuery.maybeSingle(),
+    floraPresentedQuery.maybeSingle(),
+  ]);
+
+  if (lastAutomationResult.error) {
+    throw new Error("Falha ao carregar histórico de automação da cliente (último envio).");
+  }
+  if (floraPresentedResult.error) {
+    throw new Error("Falha ao carregar histórico de apresentação da Flora.");
+  }
+
+  const lastSuccessfulAutomationSentAt =
+    (typeof lastAutomationResult.data?.sent_at === "string" && lastAutomationResult.data.sent_at) ||
+    (typeof lastAutomationResult.data?.created_at === "string" && lastAutomationResult.data.created_at) ||
+    null;
+
+  return {
+    lastSuccessfulAutomationSentAt,
+    hasPresentedFloraBefore: Boolean(floraPresentedResult.data?.id),
+  };
+}
+
+const templateAmountFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatMoneyForTemplate(value: number) {
+  return templateAmountFormatter.format(Math.max(0, value));
+}
+
+function buildCreatedAppointmentTemplateVariableMap(context: AppointmentTemplateContext) {
+  return {
+    client_name: context.clientName || "Cliente",
+    service_name: context.serviceName || "Seu cuidado",
+    date_label: context.dateLabel || "--",
+    time_label: context.timeLabel || "--:--",
+    home_address_line: context.homeAddressLine || "Endereço informado no agendamento",
+    total_amount: formatMoneyForTemplate(context.totalAmount),
+    signal_paid_amount: formatMoneyForTemplate(context.signalPaidAmount),
+    remaining_amount: formatMoneyForTemplate(context.remainingAmount),
+    care_amount: formatMoneyForTemplate(context.careAmount),
+    displacement_fee: formatMoneyForTemplate(context.displacementFee),
+    paid_amount: formatMoneyForTemplate(context.paidAmount),
+    total_due: formatMoneyForTemplate(context.remainingAmount > 0 ? context.remainingAmount : context.totalAmount),
+    receipt_payment_public_id: context.latestPaidPaymentPublicId ?? "",
+    payment_link_public_id: context.paymentLinkPublicId,
+  } as const;
+}
+
+function buildCreatedAppointmentTemplateComponents(
+  templateName: string,
+  variableMap: Record<string, string>
+) {
+  const template = getWhatsAppTemplateFromLibrary(templateName);
+  if (!template) {
+    throw new Error(`Template de aviso de agendamento '${templateName}' não existe na biblioteca local.`);
+  }
+
+  const bodyParameters = [...template.variables]
+    .sort((a, b) => a.index - b.index)
+    .map((variable) => {
+      const value = variableMap[variable.key] ?? "";
+      if (!value.trim()) {
+        throw new Error(
+          `Template '${template.name}' está sem variável obrigatória: ${variable.key} (índice ${variable.index}).`
+        );
+      }
+      return { type: "text", text: value };
+    });
+
+  const components: Array<Record<string, unknown>> = [
+    {
+      type: "body",
+      parameters: bodyParameters,
+    },
+  ];
+
+  if (template.button.type === "url_dynamic") {
+    const buttonValue = variableMap[template.button.variableName] ?? "";
+    if (!buttonValue.trim()) {
+      throw new Error(
+        `Template '${template.name}' está sem variável obrigatória do botão: ${template.button.variableName}.`
+      );
+    }
+
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: buttonValue }],
+    });
+  }
+
+  return components;
 }
 
 export async function sendMetaCloudCreatedAppointmentTemplate(
@@ -103,17 +362,36 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
   assertMetaCloudConfigBase();
 
   const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
-  const templateName = tenantSettings.createdTemplateName;
   const templateLanguage = tenantSettings.createdTemplateLanguage;
-
-  if (!templateName) {
-    throw new Error("Template de aviso de agendamento não configurado nas settings do tenant.");
-  }
 
   const to = getMetaCloudTestRecipient();
   const context = await loadAppointmentTemplateContext(job, {
     studioLocationLine: tenantSettings.studioLocationLine,
   });
+
+  const explicitIntroVariant = resolveNoticeIntroVariantFromPayload(job.payload ?? null);
+  const history = await loadClientAutomationHistory({
+    tenantId: job.tenant_id,
+    clientId: context.clientId,
+  });
+  const preferredIntroVariant =
+    explicitIntroVariant ??
+    resolveFloraIntroVariantByHistory({
+      hasPresentedFloraBefore: history.hasPresentedFloraBefore,
+      lastSuccessfulAutomationSentAt: history.lastSuccessfulAutomationSentAt,
+      reintroAfterDays: DEFAULT_FLORA_REINTRO_AFTER_DAYS,
+    });
+
+  const selection = resolveCreatedAppointmentTemplateSelection({
+    isHomeVisit: context.isHomeVisit,
+    totalAmount: context.totalAmount,
+    paidAmount: context.paidAmount,
+    paymentStatus: context.paymentStatus,
+    preferredIntroVariant,
+  });
+  const templateName = selection.templateName;
+  const variableMap = buildCreatedAppointmentTemplateVariableMap(context);
+  const components = buildCreatedAppointmentTemplateComponents(templateName, variableMap);
 
   const requestBody = {
     messaging_product: "whatsapp",
@@ -124,18 +402,7 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
       language: {
         code: templateLanguage,
       },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: context.clientName },
-            { type: "text", text: context.serviceName },
-            { type: "text", text: context.dateLabel },
-            { type: "text", text: context.timeLabel },
-            { type: "text", text: context.locationLine },
-          ],
-        },
-      ],
+      components,
     },
   };
 
@@ -147,7 +414,16 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
     deliveryMode: "meta_cloud_template_created_appointment",
     messagePreview:
       `Meta template created (${templateName}) -> ${to} ` +
-      `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}`,
+      `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}` +
+      ` • ${selection.location}/${selection.paymentScenario}` +
+      ` • intro=${selection.selectedIntroVariant}` +
+      (selection.fallbackApplied
+        ? ` • fallback ${selection.requestedIntroVariant}->${selection.selectedIntroVariant}`
+        : explicitIntroVariant
+          ? " • override_payload"
+          : history.hasPresentedFloraBefore
+            ? " • history_known"
+            : " • first_intro"),
     templateName,
     templateLanguage,
     recipient: to,

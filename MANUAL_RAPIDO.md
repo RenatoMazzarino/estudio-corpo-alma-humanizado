@@ -478,6 +478,8 @@ Regra fixa do Mercado Pago neste projeto:
 WhatsApp (operacao atual):
 - Fluxo manual continua existindo (nao remover).
 - Automacao WhatsApp coexiste com o manual.
+- `appointment_created` usa matriz oficial de 12 templates (estudio/domicilio + financeiro + intro Flora).
+- Regra de intro: primeira automacao `com_flora`, depois `sem_oi_flora`, com reapresentacao apos 180 dias sem automacao.
 - Lembretes 24h usam endpoint `/api/cron/whatsapp-reminders` + scheduler via GitHub Actions (Vercel Hobby nao cobre cron frequente).
 - Webhook Meta (`/api/whatsapp/meta/webhook`) e necessario para status (`sent`, `delivered`, `read`, `failed`) e replies.
 
@@ -500,9 +502,11 @@ Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
+- `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline da regra de intro com Flora)
 - `CRON_SECRET`
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
 
 Observacao:
 - templates e idiomas da automacao WhatsApp agora ficam no banco (`settings` por tenant), nao em env.
+- se quiser iniciar uma nova fase tratando todos como primeiro contato, defina `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` para o timestamp de go-live.

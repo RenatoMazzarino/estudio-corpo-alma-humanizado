@@ -28,7 +28,7 @@ Executar sempre nesta ordem:
 1. Confirmar `git status` limpo e commits em blocos lógicos.
 2. Confirmar `DEV_PASSWORD_LOGIN_ENABLED=false` em produção.
 3. Confirmar `WHATSAPP_AUTOMATION_PROCESSOR_SECRET` definido e válido.
-4. Confirmar segredo de captcha do agendamento online (`PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET`).
+4. Confirmar segredo de captcha do agendamento online (`BOOKING_LOOKUP_CAPTCHA_SECRET`).
 5. Validar se piloto WhatsApp continua em número de teste (`WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`) ou produção real.
 6. Smoke manual mínimo:
   - agendamento interno

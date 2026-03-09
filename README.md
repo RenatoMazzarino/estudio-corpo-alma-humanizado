@@ -75,6 +75,10 @@ Integrações ativas no produto:
 - WhatsApp (manual + automação via Meta Cloud API, webhook, cron e painel `Mensagens`)
 - Spotify (OAuth + estado/controle de player no módulo de atendimento)
 
+WhatsApp (estado atual):
+- `appointment_created` usa biblioteca oficial de 12 templates com seleção automática por cenário (local, financeiro e intro Flora).
+- regra de intro: primeira automação `com_flora`, depois `sem_oi_flora`, com reapresentação após 180 dias sem automação.
+
 ## Documentação
 
 - Índice de docs: `docs/README.md`

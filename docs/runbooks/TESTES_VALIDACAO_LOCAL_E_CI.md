@@ -60,7 +60,7 @@ pnpm --filter web exec playwright install chromium
 ## 4.1) Cobertura atual da suíte (transparência)
 
 1. `test:unit` cobre regras/helpers críticos (pagamento, automação, agenda, formatadores).
-2. `test:smoke` cobre a rota pública legal marcada com `@smoke`.
+2. `test:smoke` cobre páginas legais e fluxo público essencial de checkout/comprovante/voucher (`@smoke`).
 3. Fluxos E2E completos com autenticação e integrações externas (MP/Meta/Spotify) ainda dependem de validação manual guiada por ambiente.
 
 ## 5) Gate de PR

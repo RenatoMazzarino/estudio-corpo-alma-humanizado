@@ -51,12 +51,12 @@ function sha256Hex(value: string) {
 }
 
 function getCaptchaSecret() {
-  const configuredSecret = getServerEnv().PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET?.trim();
+  const configuredSecret = getServerEnv().BOOKING_LOOKUP_CAPTCHA_SECRET?.trim();
 
   if (configuredSecret) return configuredSecret;
 
   throw new AppError(
-    "Configuração obrigatória ausente: defina PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET para validação de segurança do agendamento online.",
+    "Configuração obrigatória ausente: defina BOOKING_LOOKUP_CAPTCHA_SECRET para validação de segurança do agendamento online.",
     "CONFIG_ERROR",
     500
   );

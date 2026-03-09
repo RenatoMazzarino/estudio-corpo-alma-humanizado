@@ -17,7 +17,7 @@ type SettingsCacheEntry = {
 const SETTINGS_CACHE_TTL_MS = 60_000;
 const settingsCache = new Map<string, SettingsCacheEntry>();
 
-const DEFAULT_CREATED_TEMPLATE_NAME = "aviso_agendamento_interno_sem_comprovante";
+const DEFAULT_CREATED_TEMPLATE_NAME = "aviso_agendamento_no_estudio_com_sinal_pago_sem_oi_flora";
 const DEFAULT_CREATED_TEMPLATE_LANGUAGE = "pt_BR";
 const DEFAULT_REMINDER_TEMPLATE_NAME = "confirmacao_de_agendamento_24h";
 const DEFAULT_REMINDER_TEMPLATE_LANGUAGE = "pt_BR";

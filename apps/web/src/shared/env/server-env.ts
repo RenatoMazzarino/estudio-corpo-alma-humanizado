@@ -5,7 +5,7 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   DASHBOARD_ALLOWED_GOOGLE_EMAILS: z.string().optional(),
-  PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET: z.string().min(1).optional(),
+  BOOKING_LOOKUP_CAPTCHA_SECRET: z.string().min(1).optional(),
   APP_TIMEZONE: z.string().min(1).default("America/Sao_Paulo"),
   WHATSAPP_AUTOMATION_PROCESSOR_SECRET: z.string().min(1).optional(),
 });
