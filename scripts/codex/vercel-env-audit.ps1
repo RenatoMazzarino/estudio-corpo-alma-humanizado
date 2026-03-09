@@ -22,7 +22,7 @@ $requiredKeys = @(
   "GEMINI_API_KEY",
   "FLORA_MODEL",
   "DASHBOARD_ALLOWED_GOOGLE_EMAILS",
-  "PUBLIC_BOOKING_LOOKUP_CAPTCHA_SECRET",
+  "BOOKING_LOOKUP_CAPTCHA_SECRET",
   "SPOTIFY_CLIENT_ID",
   "SPOTIFY_CLIENT_SECRET",
   "SPOTIFY_REDIRECT_URI",
@@ -43,7 +43,8 @@ $requiredKeys = @(
   "WHATSAPP_AUTOMATION_META_TEST_RECIPIENT",
   "WHATSAPP_AUTOMATION_META_API_VERSION",
   "WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN",
-  "WHATSAPP_AUTOMATION_META_APP_SECRET"
+  "WHATSAPP_AUTOMATION_META_APP_SECRET",
+  "WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE"
 )
 
 $results = New-Object System.Collections.Generic.List[object]
@@ -63,7 +64,7 @@ function Add-Result {
     })
 }
 
-function Parse-EnvFile {
+function Get-EnvFileMap {
   param([string]$Path)
   $map = @{}
   foreach ($line in (Get-Content $Path)) {
@@ -73,6 +74,12 @@ function Parse-EnvFile {
     $parts = $trimmed -split "=", 2
     $key = $parts[0]
     $value = if ($parts.Length -gt 1) { $parts[1].Trim() } else { "" }
+    if ($value.Length -ge 2) {
+      if (($value.StartsWith('"') -and $value.EndsWith('"')) -or
+          ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+        $value = $value.Substring(1, $value.Length - 2)
+      }
+    }
     $map[$key] = $value
   }
   return $map
@@ -93,7 +100,7 @@ foreach ($file in $expectedFiles) {
   }
 
   Add-Result $file "exists" "OK" $path
-  $vars = Parse-EnvFile -Path $path
+  $vars = Get-EnvFileMap -Path $path
 
   foreach ($key in $requiredKeys) {
     if (-not $vars.ContainsKey($key)) {
@@ -146,4 +153,3 @@ if ($hasFail) {
 }
 
 exit 0
-
