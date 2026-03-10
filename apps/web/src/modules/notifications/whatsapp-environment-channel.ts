@@ -2,6 +2,7 @@ import { createServiceClient } from "../../../lib/supabase/service";
 import {
   getWhatsAppRuntimeEnvironment,
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID,
+  WHATSAPP_AUTOMATION_RECIPIENT_MODE,
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT,
   WHATSAPP_AUTOMATION_MODE,
   WHATSAPP_AUTOMATION_PROVIDER,
@@ -120,6 +121,13 @@ const mapRowToPolicy = (row: RawWhatsAppEnvironmentChannelRow): WhatsAppDispatch
   if (!environment || !profile) {
     return null;
   }
+  const dbRecipientMode: WhatsAppAutomationRecipientMode = row.force_test_recipient
+    ? "test_recipient"
+    : "customer";
+  const recipientMode: WhatsAppAutomationRecipientMode =
+    WHATSAPP_AUTOMATION_RECIPIENT_MODE === "test_recipient"
+      ? "test_recipient"
+      : dbRecipientMode;
 
   return {
     tenantId: row.tenant_id,
@@ -129,7 +137,7 @@ const mapRowToPolicy = (row: RawWhatsAppEnvironmentChannelRow): WhatsAppDispatch
     enabled: Boolean(row.enabled),
     senderPhoneNumberId: normalizeOptionalText(row.sender_phone_number_id),
     senderDisplayPhone: normalizeOptionalText(row.sender_display_phone),
-    recipientMode: row.force_test_recipient ? "test_recipient" : "customer",
+    recipientMode,
     testRecipient: normalizeE164(row.test_recipient_e164) ?? normalizeE164(WHATSAPP_AUTOMATION_META_TEST_RECIPIENT),
     defaultLanguageCode: normalizeRequiredText(row.default_language_code, "pt_BR"),
     allowedCreatedTemplateNames: normalizeTemplateList(
@@ -160,6 +168,9 @@ async function loadRawChannelRow(tenantId: string, environment: WhatsAppRuntimeE
 
 function buildPolicyIssues(policy: WhatsAppDispatchPolicy | null) {
   const issues: string[] = [];
+  const isProdTestRecipientOverride =
+    WHATSAPP_AUTOMATION_RECIPIENT_MODE === "test_recipient" &&
+    policy?.environment === "production";
 
   if (WHATSAPP_AUTOMATION_PROVIDER !== "meta_cloud") {
     issues.push("WHATSAPP_AUTOMATION_PROVIDER deve ser meta_cloud.");
@@ -201,7 +212,11 @@ function buildPolicyIssues(policy: WhatsAppDispatchPolicy | null) {
     issues.push("Destino de teste obrigatório, mas test_recipient_e164 não está configurado.");
   }
 
-  if (policy.profile === "prod_real" && policy.recipientMode !== "customer") {
+  if (
+    policy.profile === "prod_real" &&
+    policy.recipientMode !== "customer" &&
+    !isProdTestRecipientOverride
+  ) {
     issues.push("Perfil prod_real exige envio para número real da cliente.");
   }
 
