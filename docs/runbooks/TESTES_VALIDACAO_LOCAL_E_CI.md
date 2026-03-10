@@ -95,3 +95,5 @@ curl -H "Authorization: Bearer <CRON_SECRET>" https://dev.public.corpoealmahuman
 
 4. Validar Configurações > Push:
 - preferências carregam e persistem por evento.
+- assinaturas ativas aparecem no card (`/api/push/subscriptions`).
+- botão `Enviar push de teste` retorna sucesso e entrega notificação.

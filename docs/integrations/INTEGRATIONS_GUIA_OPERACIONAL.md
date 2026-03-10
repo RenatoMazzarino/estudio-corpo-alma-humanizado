@@ -95,6 +95,10 @@ Observação:
 - `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
 - `ONESIGNAL_REST_API_KEY`
 
+Observação importante:
+- OneSignal push **não exige template pré-cadastrado** para este projeto.
+- O conteúdo das notificações push é gerado dinamicamente pelo backend (evento + contexto operacional).
+
 Perfis recomendados:
 - Development: `dev_sandbox`
 - Preview: `preview_real_test`
@@ -297,6 +301,12 @@ Verificar:
 - `FF_PUSH_NOTIFICATIONS` ativo no ambiente
 - assinatura ativa em `push_subscriptions` (dashboard logado e permissão de notificação aceita)
 - preferências de evento em `/configuracoes` habilitadas para o tipo do alerta
+
+Passo a passo de inscrição (obrigatório para começar a receber):
+1. Abrir o dashboard no navegador/dispositivo da Jana (mesmo browser que será usado no dia a dia).
+2. Ir em `/configuracoes` e aceitar a permissão de notificação quando o navegador pedir.
+3. Confirmar no card de Push que existe ao menos `1` assinatura ativa.
+4. Clicar em `Enviar push de teste` no card de Push e validar o recebimento.
 
 ### 5. Login do dashboard pedindo autenticação com frequência
 

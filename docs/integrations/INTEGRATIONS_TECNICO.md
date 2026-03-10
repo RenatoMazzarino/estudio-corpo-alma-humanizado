@@ -286,6 +286,13 @@ Catálogo oficial de templates:
 - `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
 - `ONESIGNAL_REST_API_KEY`
 
+Observação:
+- Não usamos templates pré-cadastrados de OneSignal neste projeto.
+- O payload push é montado no backend com base no evento de domínio.
+- Endpoint de validação operacional disponível em sessão de dashboard:
+  - `GET /api/push/subscriptions` (saúde da inscrição do usuário atual)
+  - `POST /api/push/test` (disparo de teste para validar recebimento)
+
 #### Localização (fallback de operação)
 
 - `DISPLACEMENT_ORIGIN_ADDRESS` (fallback de linha de estúdio quando setting não estiver preenchida)

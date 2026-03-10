@@ -39,8 +39,10 @@ Escopo: rotas do App Router em `apps/web/app/api/**/route.ts`
 - `POST /api/integrations/spotify/player/control`
 - `GET /api/push/preferences`
 - `POST /api/push/preferences`
+- `GET /api/push/subscriptions`
 - `POST /api/push/subscriptions`
 - `DELETE /api/push/subscriptions`
+- `POST /api/push/test`
 
 ## Borda assíncrona (Supabase Edge Functions)
 
@@ -403,13 +405,27 @@ Função:
 Proteção:
 - Sessão dashboard.
 
-### `POST|DELETE /api/push/subscriptions`
+### `GET|POST|DELETE /api/push/subscriptions`
 
 Função:
-- Registra/desativa inscrição OneSignal Web Push do dispositivo atual.
+- `GET`: lista inscrições ativas do usuário logado (saúde da inscrição).
+- `POST`: registra/atualiza inscrição OneSignal Web Push do dispositivo atual.
+- `DELETE`: desativa inscrição OneSignal Web Push.
 
 Proteção:
 - Sessão dashboard.
+
+### `POST /api/push/test`
+
+Função:
+- Dispara push de teste para o usuário logado (external id da sessão) para validar inscrição OneSignal.
+
+Proteção:
+- Sessão dashboard.
+
+Regras:
+- Retorna `409` se não existir inscrição ativa em `push_subscriptions` para o usuário.
+- Registra tentativa em `push_delivery_attempts` com `event_type = "push.test.manual"`.
 
 ## 4) Spotify (OAuth + player)
 

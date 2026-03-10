@@ -649,12 +649,14 @@ Entregas aplicadas no repo:
 5. Fase 5 (push):
    - bootstrap OneSignal no dashboard + service workers + APIs de subscription/preference.
    - card de preferencias push em Configuracoes.
+   - endpoint operacional de teste (`POST /api/push/test`) e leitura de inscrição ativa (`GET /api/push/subscriptions`).
 6. Fase 6 (loading):
    - biblioteca canonica de loading criada.
    - `fallback={null}` removido do dashboard.
    - `loading.tsx` adicionado nas rotas criticas de dashboard e fluxo publico.
 7. Hardening complementar:
    - emissao de eventos de pagamento para outbox no webhook Mercado Pago.
+   - emissao de `appointment.updated` e `appointment.canceled` para garantir alerta push em alterações operacionais.
    - env templates + auditoria atualizados para flags e secrets novos.
 
 Validacoes executadas:
