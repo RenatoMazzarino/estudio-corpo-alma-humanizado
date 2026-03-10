@@ -1169,29 +1169,56 @@ export type Database = {
       }
       notification_templates: {
         Row: {
-          body: string
+          body: string | null
+          category: string | null
           channel: string
           created_at: string
           id: string
+          language_code: string
+          last_synced_at: string | null
+          metadata: Json
           name: string
+          provider: string
+          provider_template_id: string | null
+          quality: string | null
+          source: string
+          status: string
           tenant_id: string
           updated_at: string
         }
         Insert: {
-          body: string
+          body?: string | null
+          category?: string | null
           channel: string
           created_at?: string
           id?: string
+          language_code?: string
+          last_synced_at?: string | null
+          metadata?: Json
           name: string
+          provider?: string
+          provider_template_id?: string | null
+          quality?: string | null
+          source?: string
+          status?: string
           tenant_id: string
           updated_at?: string
         }
         Update: {
-          body?: string
+          body?: string | null
+          category?: string | null
           channel?: string
           created_at?: string
           id?: string
+          language_code?: string
+          last_synced_at?: string | null
+          metadata?: Json
           name?: string
+          provider?: string
+          provider_template_id?: string | null
+          quality?: string | null
+          source?: string
+          status?: string
           tenant_id?: string
           updated_at?: string
         }
@@ -1494,6 +1521,71 @@ export type Database = {
           },
         ]
       }
+      whatsapp_environment_channels: {
+        Row: {
+          allowed_created_template_names: string[]
+          allowed_reminder_template_names: string[]
+          created_at: string
+          default_language_code: string
+          enabled: boolean
+          environment: string
+          force_test_recipient: boolean
+          id: string
+          metadata: Json
+          profile: string
+          provider: string
+          sender_display_phone: string | null
+          sender_phone_number_id: string | null
+          tenant_id: string
+          test_recipient_e164: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_created_template_names?: string[]
+          allowed_reminder_template_names?: string[]
+          created_at?: string
+          default_language_code?: string
+          enabled?: boolean
+          environment: string
+          force_test_recipient?: boolean
+          id?: string
+          metadata?: Json
+          profile: string
+          provider?: string
+          sender_display_phone?: string | null
+          sender_phone_number_id?: string | null
+          tenant_id: string
+          test_recipient_e164?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_created_template_names?: string[]
+          allowed_reminder_template_names?: string[]
+          created_at?: string
+          default_language_code?: string
+          enabled?: boolean
+          environment?: string
+          force_test_recipient?: boolean
+          id?: string
+          metadata?: Json
+          profile?: string
+          provider?: string
+          sender_display_phone?: string | null
+          sender_phone_number_id?: string | null
+          tenant_id?: string
+          test_recipient_e164?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_environment_channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
@@ -1782,4 +1874,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

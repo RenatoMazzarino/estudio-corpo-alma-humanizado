@@ -4,6 +4,7 @@ const ORIGINAL_ENV = { ...process.env };
 
 function resetAutomationEnv() {
   process.env = { ...ORIGINAL_ENV };
+  delete process.env.WHATSAPP_PROFILE;
   delete process.env.WHATSAPP_AUTOMATION_PROFILE;
   delete process.env.WHATSAPP_AUTOMATION_MODE;
   delete process.env.WHATSAPP_AUTOMATION_RECIPIENT_MODE;
@@ -25,20 +26,20 @@ afterEach(() => {
 });
 
 describe("automation-config", () => {
-  it("aplica preview_safe com dry_run + destinatário fixo de teste", async () => {
+  it("aplica dev_sandbox com dry_run + destinatário fixo de teste", async () => {
     resetAutomationEnv();
-    process.env.WHATSAPP_AUTOMATION_PROFILE = "preview_safe";
+    process.env.WHATSAPP_PROFILE = "dev_sandbox";
 
     const config = await loadConfigModule();
 
-    expect(config.WHATSAPP_AUTOMATION_PROFILE).toBe("preview_safe");
+    expect(config.WHATSAPP_AUTOMATION_PROFILE).toBe("dev_sandbox");
     expect(config.WHATSAPP_AUTOMATION_MODE).toBe("dry_run");
     expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("test_recipient");
   });
 
   it("aplica preview_real_test com envio real mantendo destinatário de teste", async () => {
     resetAutomationEnv();
-    process.env.WHATSAPP_AUTOMATION_PROFILE = "preview_real_test";
+    process.env.WHATSAPP_PROFILE = "preview_real_test";
 
     const config = await loadConfigModule();
 
@@ -47,20 +48,21 @@ describe("automation-config", () => {
     expect(config.WHATSAPP_AUTOMATION_FORCE_DRY_RUN).toBe(false);
   });
 
-  it("aplica production_live com envio real para cliente", async () => {
+  it("aplica prod_real com envio real para cliente", async () => {
     resetAutomationEnv();
-    process.env.WHATSAPP_AUTOMATION_PROFILE = "production_live";
+    process.env.WHATSAPP_PROFILE = "prod_real";
 
     const config = await loadConfigModule();
 
     expect(config.WHATSAPP_AUTOMATION_MODE).toBe("enabled");
     expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("customer");
+    expect(config.WHATSAPP_AUTOMATION_PROFILE).toBe("prod_real");
     expect(config.WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT).toBe(false);
   });
 
   it("permite override explícito de modo e destinatário", async () => {
     resetAutomationEnv();
-    process.env.WHATSAPP_AUTOMATION_PROFILE = "production_live";
+    process.env.WHATSAPP_PROFILE = "prod_real";
     process.env.WHATSAPP_AUTOMATION_MODE = "disabled";
     process.env.WHATSAPP_AUTOMATION_RECIPIENT_MODE = "test_recipient";
 

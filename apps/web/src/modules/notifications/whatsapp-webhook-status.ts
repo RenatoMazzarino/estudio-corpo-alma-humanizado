@@ -174,6 +174,8 @@ export function summarizeMetaWebhookNonMessageFields(payload: Record<string, unk
   const trackedFields = new Set([
     "message_template_status_update",
     "message_template_quality_update",
+    "template_category_update",
+    "message_template_components_update",
     "history",
     "smb_message_echoes",
     "smb_app_state_sync",

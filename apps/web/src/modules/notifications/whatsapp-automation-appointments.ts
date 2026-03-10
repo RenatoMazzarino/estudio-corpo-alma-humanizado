@@ -14,6 +14,7 @@ import {
   APPOINTMENT_NOTICE_TEMPLATE_MATRIX,
   DEFAULT_FLORA_REINTRO_AFTER_DAYS,
   type AppointmentNoticeIntroVariant,
+  type TemplateStatus,
   resolveFloraIntroVariantByHistory,
   resolveNoticeIntroVariantFromPayload,
   resolveCreatedAppointmentTemplateSelection,
@@ -29,6 +30,8 @@ import type { NotificationJobRow } from "./repository";
 import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
 import { getWhatsAppTemplateFromLibrary } from "./whatsapp-template-library";
 import { WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE } from "./automation-config";
+import type { WhatsAppDispatchPolicy } from "./whatsapp-environment-channel";
+import { getNotificationTemplateStatusMap } from "./whatsapp-template-catalog";
 
 export interface DeliveryResult {
   providerMessageId: string | null;
@@ -422,17 +425,28 @@ function isMetaTemplateTranslationMissingError(error: unknown) {
 }
 
 export async function sendMetaCloudCreatedAppointmentTemplate(
-  job: NotificationJobRow
+  job: NotificationJobRow,
+  policy: WhatsAppDispatchPolicy
 ): Promise<DeliveryResult> {
   assertMetaCloudConfigBase();
 
   const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
-  const templateLanguage = tenantSettings.createdTemplateLanguage;
+  const templateLanguage = (tenantSettings.createdTemplateLanguage || policy.defaultLanguageCode).trim();
 
   const context = await loadAppointmentTemplateContext(job, {
     studioLocationLine: tenantSettings.studioLocationLine,
   });
-  const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient);
+  const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient, {
+    recipientMode: policy.recipientMode,
+    testRecipient: policy.testRecipient,
+  });
+  const templateStatusMap = await getNotificationTemplateStatusMap(job.tenant_id);
+  const resolveTemplateStatus = (templateName: string): TemplateStatus => {
+    const fromCatalog = templateStatusMap.get(templateName);
+    if (fromCatalog) return fromCatalog;
+    const fromLibrary = getWhatsAppTemplateFromLibrary(templateName);
+    return fromLibrary?.status ?? "missing";
+  };
 
   const explicitIntroVariant = resolveNoticeIntroVariantFromPayload(job.payload ?? null);
   const history = await loadClientAutomationHistory({
@@ -453,21 +467,35 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
     paidAmount: context.paidAmount,
     paymentStatus: context.paymentStatus,
     preferredIntroVariant,
+    resolveTemplateStatus,
   });
   const variableMap = buildCreatedAppointmentTemplateVariableMap(context);
 
   const providerFallbackVariant = oppositeIntroVariant(selection.selectedIntroVariant);
   const providerFallbackTemplate =
     APPOINTMENT_NOTICE_TEMPLATE_MATRIX[selection.location][selection.paymentScenario][providerFallbackVariant];
+  const allowedTemplateNames = new Set(policy.allowedCreatedTemplateNames);
 
   const templateAttempts = [selection.templateName];
   if (providerFallbackTemplate !== selection.templateName) {
     templateAttempts.push(providerFallbackTemplate);
   }
+  const allowedTemplateAttempts = templateAttempts
+    .filter((name, index, arr) => arr.indexOf(name) === index)
+    .filter((name) => allowedTemplateNames.has(name));
+  if (allowedTemplateAttempts.length === 0) {
+    throw new Error(
+      [
+        "Configuração fail-safe: nenhum template permitido para aviso de agendamento neste ambiente.",
+        `Perfil: ${policy.profile}.`,
+        `Tentativas: ${templateAttempts.join(", ")}.`,
+      ].join(" ")
+    );
+  }
 
   let lastError: Error | null = null;
-  for (let index = 0; index < templateAttempts.length; index += 1) {
-    const templateName = templateAttempts[index];
+  for (let index = 0; index < allowedTemplateAttempts.length; index += 1) {
+    const templateName = allowedTemplateAttempts[index];
     if (!templateName) continue;
     const components = buildCreatedAppointmentTemplateComponents(templateName, variableMap);
     const header = await getMetaCloudTemplateImageHeader({
@@ -533,35 +561,44 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Falha desconhecida ao enviar template da Meta.");
       const canTryProviderFallback =
-        index < templateAttempts.length - 1 && isMetaTemplateTranslationMissingError(lastError);
+        index < allowedTemplateAttempts.length - 1 && isMetaTemplateTranslationMissingError(lastError);
       if (!canTryProviderFallback) {
         break;
       }
     }
   }
 
-  const attempted = templateAttempts.join(", ");
+  const attempted = allowedTemplateAttempts.join(", ");
   const reason = lastError?.message ?? "Erro desconhecido ao enviar template de agendamento.";
   throw new Error(`Falha ao enviar template de agendamento. Tentativas: ${attempted}. Motivo: ${reason}`);
 }
 
 export async function sendMetaCloudReminderAppointmentTemplate(
-  job: NotificationJobRow
+  job: NotificationJobRow,
+  policy: WhatsAppDispatchPolicy
 ): Promise<DeliveryResult> {
   assertMetaCloudConfigBase();
 
   const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
   const templateName = tenantSettings.reminderTemplateName;
-  const templateLanguage = tenantSettings.reminderTemplateLanguage;
+  const templateLanguage = (tenantSettings.reminderTemplateLanguage || policy.defaultLanguageCode).trim();
 
   if (!templateName) {
     throw new Error("Template de lembrete não configurado nas settings do tenant.");
+  }
+  if (!policy.allowedReminderTemplateNames.includes(templateName)) {
+    throw new Error(
+      `Configuração fail-safe: template de lembrete '${templateName}' não está permitido para este ambiente.`
+    );
   }
 
   const context = await loadAppointmentTemplateContext(job, {
     studioLocationLine: tenantSettings.studioLocationLine,
   });
-  const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient);
+  const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient, {
+    recipientMode: policy.recipientMode,
+    testRecipient: policy.testRecipient,
+  });
 
   const requestBody = {
     messaging_product: "whatsapp",
@@ -677,7 +714,8 @@ function buildCanceledAppointmentSessionMessage(context: AppointmentTemplateCont
 }
 
 export async function sendMetaCloudCanceledAppointmentSessionMessage(
-  job: NotificationJobRow
+  job: NotificationJobRow,
+  policy: WhatsAppDispatchPolicy
 ): Promise<DeliveryResult> {
   assertMetaCloudConfigBase();
   const payload = asJsonObject(job.payload ?? null);
@@ -693,7 +731,13 @@ export async function sendMetaCloudCanceledAppointmentSessionMessage(
     studioLocationLine: tenantSettings.studioLocationLine,
   });
   const messageText = buildCanceledAppointmentSessionMessage(context);
-  const outbound = await sendMetaCloudTextMessage({ to: customerWaId, text: messageText });
+  const outbound = await sendMetaCloudTextMessage({
+    to: resolveMetaCloudOutboundRecipient(customerWaId, {
+      recipientMode: policy.recipientMode,
+      testRecipient: policy.testRecipient,
+    }),
+    text: messageText,
+  });
 
   return {
     providerMessageId: outbound.providerMessageId,

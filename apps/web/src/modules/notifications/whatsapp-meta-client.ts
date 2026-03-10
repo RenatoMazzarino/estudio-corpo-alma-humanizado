@@ -24,6 +24,16 @@ export function getMetaCloudTestRecipient() {
   return recipient;
 }
 
+function getMetaCloudTestRecipientFromValue(value: string | null | undefined) {
+  const recipient = normalizeWhatsAppRecipient(value);
+  if (!recipient) {
+    throw new Error(
+      "Destino de teste obrigatório, mas test_recipient não está configurado corretamente."
+    );
+  }
+  return recipient;
+}
+
 export function assertMetaCloudConfigBase() {
   if (!WHATSAPP_AUTOMATION_META_ACCESS_TOKEN) {
     throw new Error("WHATSAPP_AUTOMATION_META_ACCESS_TOKEN não configurado.");
@@ -190,9 +200,18 @@ export async function sendMetaCloudTextMessage(params: { to: string; text: strin
   };
 }
 
-export function resolveMetaCloudOutboundRecipient(requestedRecipient: string | null | undefined) {
-  if (WHATSAPP_AUTOMATION_RECIPIENT_MODE === "test_recipient") {
-    return getMetaCloudTestRecipient();
+export function resolveMetaCloudOutboundRecipient(
+  requestedRecipient: string | null | undefined,
+  options?: {
+    recipientMode?: "customer" | "test_recipient";
+    testRecipient?: string | null;
+  }
+) {
+  const recipientMode = options?.recipientMode ?? WHATSAPP_AUTOMATION_RECIPIENT_MODE;
+  if (recipientMode === "test_recipient") {
+    return options?.testRecipient
+      ? getMetaCloudTestRecipientFromValue(options.testRecipient)
+      : getMetaCloudTestRecipient();
   }
 
   const normalized = normalizeWhatsAppRecipient(requestedRecipient);

@@ -1,7 +1,8 @@
 import {
   WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE,
   WHATSAPP_AUTOMATION_BATCH_LIMIT,
-  WHATSAPP_AUTOMATION_PROFILE,
+  WHATSAPP_PROFILE,
+  WHATSAPP_RUNTIME_ENVIRONMENT,
   WHATSAPP_AUTOMATION_META_BUSINESS_ACCOUNT_ID,
   WHATSAPP_AUTOMATION_MAX_RETRIES,
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN,
@@ -19,7 +20,8 @@ import { onlyDigits } from "./whatsapp-automation.helpers";
 export function getWhatsAppAutomationRuntimeConfig() {
   return {
     mode: WHATSAPP_AUTOMATION_MODE,
-    profile: WHATSAPP_AUTOMATION_PROFILE,
+    profile: WHATSAPP_PROFILE,
+    runtimeEnvironment: WHATSAPP_RUNTIME_ENVIRONMENT,
     provider: WHATSAPP_AUTOMATION_PROVIDER,
     recipientMode: WHATSAPP_AUTOMATION_RECIPIENT_MODE,
     queueEnabled: true,
@@ -35,7 +37,7 @@ export function getWhatsAppAutomationRuntimeConfig() {
       accessTokenConfigured: Boolean(WHATSAPP_AUTOMATION_META_ACCESS_TOKEN),
       testRecipientConfigured: Boolean(onlyDigits(WHATSAPP_AUTOMATION_META_TEST_RECIPIENT)),
       forceTestRecipient: WHATSAPP_AUTOMATION_RECIPIENT_MODE === "test_recipient",
-      templatesSource: "database_settings",
+      templatesSource: "notification_templates_catalog",
     },
   };
 }

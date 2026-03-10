@@ -7,7 +7,8 @@ export type AppointmentNoticePaymentScenario = "signal_paid" | "paid_integral" |
 export type AppointmentNoticeIntroVariant = "com_flora" | "sem_oi_flora";
 export const DEFAULT_FLORA_REINTRO_AFTER_DAYS = 180;
 
-type TemplateStatus = "active" | "in_review" | "missing";
+export type TemplateStatus = "active" | "in_review" | "missing";
+export type TemplateStatusResolver = (templateName: string) => TemplateStatus;
 
 export const APPOINTMENT_NOTICE_TEMPLATE_MATRIX: Record<
   AppointmentNoticeLocation,
@@ -161,7 +162,7 @@ export function resolveNoticePaymentScenario(params: {
   return "pay_at_attendance";
 }
 
-function resolveTemplateStatus(name: string): TemplateStatus {
+function resolveTemplateStatusFromLibrary(name: string): TemplateStatus {
   const template = getWhatsAppTemplateFromLibrary(name);
   if (!template) return "missing";
   return template.status;
@@ -177,6 +178,7 @@ export function resolveCreatedAppointmentTemplateSelection(params: {
   paidAmount: number;
   paymentStatus: string | null | undefined;
   preferredIntroVariant: AppointmentNoticeIntroVariant;
+  resolveTemplateStatus?: TemplateStatusResolver;
 }): CreatedAppointmentTemplateSelection {
   const location = resolveNoticeLocation(params.isHomeVisit);
   const paymentScenario = resolveNoticePaymentScenario({
@@ -189,6 +191,7 @@ export function resolveCreatedAppointmentTemplateSelection(params: {
   const selectedIntroVariant = requestedIntroVariant;
   const requestedTemplateName =
     APPOINTMENT_NOTICE_TEMPLATE_MATRIX[location][paymentScenario][selectedIntroVariant];
+  const resolveTemplateStatus = params.resolveTemplateStatus ?? resolveTemplateStatusFromLibrary;
   const requestedStatus = resolveTemplateStatus(requestedTemplateName);
 
   if (requestedStatus === "active") {

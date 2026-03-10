@@ -1,11 +1,8 @@
 type WhatsAppAutomationMode = "disabled" | "dry_run" | "enabled";
 type WhatsAppAutomationProvider = "none" | "meta_cloud";
-type WhatsAppAutomationProfile =
-  | "development_safe"
-  | "preview_safe"
-  | "preview_real_test"
-  | "production_live";
+type WhatsAppAutomationProfile = "dev_sandbox" | "preview_real_test" | "prod_real";
 type WhatsAppAutomationRecipientMode = "customer" | "test_recipient";
+type WhatsAppRuntimeEnvironment = "development" | "preview" | "production";
 
 type ProfilePreset = {
   mode: WhatsAppAutomationMode;
@@ -14,6 +11,7 @@ type ProfilePreset = {
 
 type WhatsAppAutomationConfig = {
   profile: WhatsAppAutomationProfile;
+  runtimeEnvironment: WhatsAppRuntimeEnvironment;
   mode: WhatsAppAutomationMode;
   provider: WhatsAppAutomationProvider;
   recipientMode: WhatsAppAutomationRecipientMode;
@@ -38,10 +36,9 @@ type WhatsAppAutomationConfig = {
 };
 
 const PROFILE_PRESETS: Record<WhatsAppAutomationProfile, ProfilePreset> = {
-  development_safe: { mode: "dry_run", recipientMode: "test_recipient" },
-  preview_safe: { mode: "dry_run", recipientMode: "test_recipient" },
+  dev_sandbox: { mode: "dry_run", recipientMode: "test_recipient" },
   preview_real_test: { mode: "enabled", recipientMode: "test_recipient" },
-  production_live: { mode: "enabled", recipientMode: "customer" },
+  prod_real: { mode: "enabled", recipientMode: "customer" },
 };
 
 const normalizeText = (value: string | undefined) => value?.trim() ?? "";
@@ -100,31 +97,47 @@ const parseRecipientMode = (value: string | undefined): WhatsAppAutomationRecipi
 const parseAutomationProfile = (value: string | undefined): WhatsAppAutomationProfile | null => {
   const normalized = normalizeText(value).toLowerCase();
   if (!normalized) return null;
-  if (normalized === "development_safe" || normalized === "dev_safe" || normalized === "development") {
-    return "development_safe";
-  }
-  if (normalized === "preview_safe" || normalized === "preview") {
-    return "preview_safe";
+  if (
+    normalized === "dev_sandbox" ||
+    normalized === "dev" ||
+    normalized === "development" ||
+    normalized === "development_safe" ||
+    normalized === "dev_safe"
+  ) {
+    return "dev_sandbox";
   }
   if (
     normalized === "preview_real_test" ||
     normalized === "preview_real" ||
-    normalized === "preview_live_test"
+    normalized === "preview_live_test" ||
+    normalized === "preview_safe" ||
+    normalized === "preview"
   ) {
     return "preview_real_test";
   }
-  if (normalized === "production_live" || normalized === "prod_live" || normalized === "production") {
-    return "production_live";
+  if (
+    normalized === "prod_real" ||
+    normalized === "production" ||
+    normalized === "production_live" ||
+    normalized === "prod_live"
+  ) {
+    return "prod_real";
   }
   return null;
 };
 
-const resolveDefaultProfile = (): WhatsAppAutomationProfile => {
+const resolveRuntimeEnvironment = (): WhatsAppRuntimeEnvironment => {
   const vercelEnv = normalizeText(process.env.VERCEL_ENV).toLowerCase();
-  if (vercelEnv === "production") return "production_live";
-  if (vercelEnv === "preview") return "preview_safe";
-  if (process.env.NODE_ENV === "production") return "production_live";
-  return "development_safe";
+  if (vercelEnv === "production") return "production";
+  if (vercelEnv === "preview") return "preview";
+  return "development";
+};
+
+const resolveDefaultProfile = (): WhatsAppAutomationProfile => {
+  const runtime = resolveRuntimeEnvironment();
+  if (runtime === "production") return "prod_real";
+  if (runtime === "preview") return "preview_real_test";
+  return "dev_sandbox";
 };
 
 const hasLegacyModeFlags = () =>
@@ -158,13 +171,16 @@ const resolveRecipientModeFromLegacyFlags = (
 };
 
 const buildAutomationConfig = (): WhatsAppAutomationConfig => {
-  const profile = parseAutomationProfile(process.env.WHATSAPP_AUTOMATION_PROFILE) ?? resolveDefaultProfile();
+  const runtimeEnvironment = resolveRuntimeEnvironment();
+  const profile =
+    parseAutomationProfile(process.env.WHATSAPP_PROFILE) ??
+    parseAutomationProfile(process.env.WHATSAPP_AUTOMATION_PROFILE) ??
+    resolveDefaultProfile();
   const profilePreset = PROFILE_PRESETS[profile];
   const explicitMode = parseAutomationMode(process.env.WHATSAPP_AUTOMATION_MODE);
   const mode = explicitMode ?? resolveModeFromLegacyFlags(profilePreset.mode);
   const explicitRecipientMode = parseRecipientMode(process.env.WHATSAPP_AUTOMATION_RECIPIENT_MODE);
-  const recipientMode =
-    explicitRecipientMode ?? resolveRecipientModeFromLegacyFlags(profilePreset.recipientMode);
+  const recipientMode = explicitRecipientMode ?? resolveRecipientModeFromLegacyFlags(profilePreset.recipientMode);
   const provider = parseProvider(process.env.WHATSAPP_AUTOMATION_PROVIDER);
   const forceDryRunLegacy = mode === "dry_run";
   const globalEnabledLegacy = mode !== "disabled";
@@ -172,6 +188,7 @@ const buildAutomationConfig = (): WhatsAppAutomationConfig => {
 
   return {
     profile,
+    runtimeEnvironment,
     mode,
     provider,
     recipientMode,
@@ -198,6 +215,8 @@ const buildAutomationConfig = (): WhatsAppAutomationConfig => {
 
 export const WHATSAPP_AUTOMATION_CONFIG = buildAutomationConfig();
 
+export const WHATSAPP_PROFILE = WHATSAPP_AUTOMATION_CONFIG.profile;
+export const WHATSAPP_RUNTIME_ENVIRONMENT = WHATSAPP_AUTOMATION_CONFIG.runtimeEnvironment;
 export const WHATSAPP_AUTOMATION_PROFILE = WHATSAPP_AUTOMATION_CONFIG.profile;
 export const WHATSAPP_AUTOMATION_MODE = WHATSAPP_AUTOMATION_CONFIG.mode;
 export const WHATSAPP_AUTOMATION_PROVIDER = WHATSAPP_AUTOMATION_CONFIG.provider;
@@ -243,4 +262,9 @@ export type {
   WhatsAppAutomationProvider,
   WhatsAppAutomationRecipientMode,
   WhatsAppAutomationConfig,
+  WhatsAppRuntimeEnvironment,
 };
+
+export function getWhatsAppRuntimeEnvironment(): WhatsAppRuntimeEnvironment {
+  return WHATSAPP_RUNTIME_ENVIRONMENT;
+}

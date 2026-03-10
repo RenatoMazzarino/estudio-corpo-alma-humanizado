@@ -24,6 +24,7 @@ import {
   sendMetaCloudReminderAppointmentTemplate,
   type DeliveryResult,
 } from "./whatsapp-automation-appointments";
+import { assertTenantWhatsAppDispatchPolicy } from "./whatsapp-environment-channel";
 import {
   listPendingNotificationJobsDue,
   updateNotificationJobStatus,
@@ -31,9 +32,12 @@ import {
 } from "./repository";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
 import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
+import { syncNotificationTemplateCatalogFromLibrary } from "./whatsapp-template-catalog";
 import type { ProcessJobsParams, ProcessSummary } from "./whatsapp-automation.types";
 
-async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<DeliveryResult> {
+async function deliverWhatsAppNotification(
+  job: NotificationJobRow
+): Promise<DeliveryResult> {
   if (!isWhatsAppAutomationLiveSendEnabled()) {
     return {
       providerMessageId: null,
@@ -51,13 +55,16 @@ async function deliverWhatsAppNotification(job: NotificationJobRow): Promise<Del
   }
 
   if (job.type === "appointment_created") {
-    return sendMetaCloudCreatedAppointmentTemplate(job);
+    const dispatchPolicy = await assertTenantWhatsAppDispatchPolicy(job.tenant_id);
+    return sendMetaCloudCreatedAppointmentTemplate(job, dispatchPolicy);
   }
   if (job.type === "appointment_reminder") {
-    return sendMetaCloudReminderAppointmentTemplate(job);
+    const dispatchPolicy = await assertTenantWhatsAppDispatchPolicy(job.tenant_id);
+    return sendMetaCloudReminderAppointmentTemplate(job, dispatchPolicy);
   }
   if (job.type === "appointment_canceled") {
-    return sendMetaCloudCanceledAppointmentSessionMessage(job);
+    const dispatchPolicy = await assertTenantWhatsAppDispatchPolicy(job.tenant_id);
+    return sendMetaCloudCanceledAppointmentSessionMessage(job, dispatchPolicy);
   }
 
   throw new Error(`Template automático para '${job.type}' ainda não implementado.`);
@@ -106,6 +113,8 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
       });
       continue;
     }
+
+    await syncNotificationTemplateCatalogFromLibrary(job.tenant_id);
 
     const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
     if (!tenantSettings.automationEnabledInSettings) {

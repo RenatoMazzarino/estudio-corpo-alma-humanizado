@@ -13,6 +13,7 @@ import {
 } from "./whatsapp-automation-appointments";
 import { sendMetaCloudTextMessage } from "./whatsapp-meta-client";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
+import { syncNotificationTemplateCatalogFromMetaWebhook } from "./whatsapp-template-catalog";
 
 export async function processMetaCloudWebhookEvents(
   payload: Record<string, unknown>,
@@ -38,6 +39,12 @@ export async function processMetaCloudWebhookEvents(
     }
   );
   const nonMessageFields = summarizeMetaWebhookNonMessageFields(payload);
+  let templateCatalogSync: { updatesApplied: number; updatesFound: number } | null = null;
+  try {
+    templateCatalogSync = await syncNotificationTemplateCatalogFromMetaWebhook(payload);
+  } catch (error) {
+    console.error("[whatsapp-automation] Falha ao sincronizar catálogo de templates via webhook:", error);
+  }
   if (nonMessageFields.totalTracked > 0) {
     console.log("[whatsapp-automation] Webhook Meta recebeu eventos extras (rastreados):", nonMessageFields);
   }
@@ -46,5 +53,6 @@ export async function processMetaCloudWebhookEvents(
     statuses: statusResult,
     inboundMessages: inboundResult,
     nonMessageFields,
+    templateCatalogSync,
   };
 }
