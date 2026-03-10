@@ -208,8 +208,8 @@ Em conflito com o código, o código vence.
 
 #### Core / fila / processador
 
-- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
-- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
+- `WHATSAPP_AUTOMATION_PROFILE` (`development_safe` | `preview_safe` | `preview_real_test` | `production_live`)
+- `WHATSAPP_AUTOMATION_RECIPIENT_MODE` (`test_recipient` | `customer`)
 - `WHATSAPP_AUTOMATION_PROVIDER` (`none` | `meta_cloud`)
 - `WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
@@ -224,6 +224,13 @@ Em conflito com o código, o código vence.
 - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
 - `WHATSAPP_AUTOMATION_META_API_VERSION`
 - `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline para considerar histórico da regra de intro Flora)
+
+Compatibilidade legada:
+- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
+- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
+- `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`
+
+Essas flags antigas continuam aceitas para transição, mas o padrão oficial agora é profile-first.
 
 Semântica do baseline:
 - histórico de automação anterior ao timestamp informado em `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` não é considerado.

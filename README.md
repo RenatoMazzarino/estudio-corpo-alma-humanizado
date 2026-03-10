@@ -113,8 +113,14 @@ Referencias oficiais OpenAI:
 Fluxo recomendado:
 
 1. Development (local) via `vercel dev` com env Development.
-2. Preview (branch) com env Preview e `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`.
-3. Production (`main`) com env Production e `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=false`.
+2. Preview (branch) com env Preview e `WHATSAPP_AUTOMATION_PROFILE=preview_real_test`.
+3. Production (`main`) com env Production e `WHATSAPP_AUTOMATION_PROFILE=production_live`.
+
+Padrão profile-first (WhatsApp):
+
+1. `WHATSAPP_AUTOMATION_PROFILE` define o comportamento-base por ambiente.
+2. `WHATSAPP_AUTOMATION_RECIPIENT_MODE` define se envia para `test_recipient` (fixo) ou `customer` (cliente real).
+3. Flags legadas continuam compatíveis, mas não são o caminho principal.
 
 Comandos:
 

@@ -180,9 +180,12 @@ Arquivos modelo:
 
 Regra recomendada para WhatsApp:
 
-1. Development: `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`
-2. Preview: `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`
-3. Production: `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=false`
+1. Development: `WHATSAPP_AUTOMATION_PROFILE=development_safe`
+2. Preview: `WHATSAPP_AUTOMATION_PROFILE=preview_real_test`
+3. Production: `WHATSAPP_AUTOMATION_PROFILE=production_live`
+4. Destinatário:
+   - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (teste controlado)
+   - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (cliente real)
 
 ## VS Code - painel de testes mostrando so Playwright
 
@@ -494,8 +497,8 @@ Variaveis criticas na Vercel:
 - `APP_TIMEZONE=America/Sao_Paulo`
 
 Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
-- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
-- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
+- `WHATSAPP_AUTOMATION_PROFILE`
+- `WHATSAPP_AUTOMATION_RECIPIENT_MODE`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`

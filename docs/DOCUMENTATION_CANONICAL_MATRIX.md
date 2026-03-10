@@ -1,6 +1,6 @@
 # Matriz de Documentação Canônica (v2)
 
-Data de referência: 2026-03-03  
+Data de referência: 2026-03-10  
 Escopo desta v2: `docs/**/*.md` + `README.md` + `MANUAL_RAPIDO.md` + `apps/web/README.md`
 
 ## Objetivo
@@ -46,6 +46,7 @@ Reduzir ambiguidade de onboarding e manutenção documental, classificando:
 | `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md` | `canônico` | Operação diária de integrações | `parcial` | `atual` | Forte valor operacional; depende de envs reais | Atualizar quando mudar fluxo/rotina de produção |
 | `docs/integrations/INTEGRATIONS_TECNICO.md` | `canônico` | Arquitetura técnica de integrações | `parcial` | `atual` | Referência técnica central de integrações | Atualizar quando mudar endpoints, envs ou provedores |
 | `docs/integrations/WEBHOOK_OPERACIONAL.md` | `canônico` | Runbook do webhook Mercado Pago | `parcial` | `atual` | Muito útil para operação/painel MP; env/deploy real ainda vence | Manter com URLs e checklist por ambiente |
+| `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md` | `canônico` | Estratégia profile-first para automação WhatsApp por ambiente | `parcial` | `atual` | Define padrão operacional para reduzir flags manuais e confusão entre ambientes | Atualizar quando mudar perfis/política de destinatário |
 | `docs/sql/README.md` | `canônico` | Governança de dumps SQL de auditoria | `sim` | `atual` | Define corretamente que dumps não são fonte de verdade | Manter como regra da pasta `docs/sql` |
 | `docs/engineering/MODULARIZATION_CONVENTIONS.md` | `canônico` | Convenções de modularização e fronteiras de camada | `sim` | `atual` | Define padrão técnico de evolução do repo e guardrails arquiteturais | Manter atualizado a cada ciclo de refatoração |
 | `docs/engineering/PR_CHECKLIST_REFACTOR.md` | `canônico` | Checklist de qualidade para refatoração/hardening | `sim` | `atual` | Define gate obrigatório por bloco técnico | Usar em todos os blocos de refatoração na `main` |

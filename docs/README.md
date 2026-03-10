@@ -1,6 +1,6 @@
 # Docs Index
 
-Atualizado em: 2026-03-03
+Atualizado em: 2026-03-10
 
 Este diretório foi organizado em duas camadas:
 
@@ -14,6 +14,7 @@ Este diretório foi organizado em duas camadas:
 - `docs/integrations/INTEGRATIONS_TECNICO.md`: arquitetura e requisitos técnicos das integrações.
 - `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: operação de produção.
 - `docs/integrations/WEBHOOK_OPERACIONAL.md`: runbook operacional do webhook Mercado Pago (produção).
+- `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md`: estratégia oficial profile-first para automação WhatsApp por ambiente.
 - `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`: documento canônico de roadmap/readiness WhatsApp/Meta/coexistência (estratégia, não runtime).
 - `docs/ui-system/*`: design system e padrões canônicos de UI.
 - `docs/sql/README.md`: orientação para snapshots SQL de auditoria.

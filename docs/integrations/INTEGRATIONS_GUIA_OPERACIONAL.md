@@ -72,8 +72,8 @@ Observação:
 
 ### WhatsApp / Meta (automação)
 
-- `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
-- `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
+- `WHATSAPP_AUTOMATION_PROFILE`
+- `WHATSAPP_AUTOMATION_RECIPIENT_MODE`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
@@ -82,6 +82,15 @@ Observação:
 - `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; usar como marco inicial para regra de apresentação da Flora)
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - `CRON_SECRET`
+
+Perfis recomendados:
+- Development: `development_safe`
+- Preview: `preview_real_test`
+- Production: `production_live`
+
+Modo de destinatário:
+- `test_recipient` para homologação/piloto controlado
+- `customer` para envio real à cliente
 
 Configuração de template e idioma:
 - canônica no banco (`settings` por tenant), não em env.
@@ -286,7 +295,7 @@ Verificar:
 - Não remover o fluxo manual de WhatsApp ao ativar automação.
 - Não ligar scheduler PROD sem checar fila/backlog e destinatário/allowlist.
 - Em incidente, priorizar:
-  1. pausar automação (`WHATSAPP_AUTOMATION_GLOBAL_ENABLED=false` ou `WHATSAPP_AUTOMATION_FORCE_DRY_RUN=true`)
+  1. pausar automação (`WHATSAPP_AUTOMATION_MODE=disabled` ou `WHATSAPP_AUTOMATION_PROFILE=development_safe`)
   2. corrigir env/webhook
   3. validar em DEV
   4. religar rollout controlado
