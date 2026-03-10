@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CRON_URL: https://dev.public.corpoealmahumanizado.com.br/api/cron/whatsapp-reminders
-      CRON_SECRET: ${{ secrets[format('{0}', 'WHATSAPP_CRON_DEV_SECRET')] }}
+      CRON_SECRET: ${{ secrets.WHATSAPP_CRON_DEV_SECRET }}
     steps:
       - name: Validate DEV cron secret
         run: |
@@ -46,11 +46,11 @@ jobs:
 
   whatsapp-reminders-prod:
     name: WhatsApp reminders (PROD)
-    if: ${{ vars[format('{0}', 'WHATSAPP_CRON_ENABLE_PROD')] == 'true' }}
+    if: ${{ vars.WHATSAPP_CRON_ENABLE_PROD == 'true' }}
     runs-on: ubuntu-latest
     env:
       CRON_URL: https://public.corpoealmahumanizado.com.br/api/cron/whatsapp-reminders
-      CRON_SECRET: ${{ secrets[format('{0}', 'WHATSAPP_CRON_PROD_SECRET')] }}
+      CRON_SECRET: ${{ secrets.WHATSAPP_CRON_PROD_SECRET }}
     steps:
       - name: Validate PROD cron secret
         run: |
