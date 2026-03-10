@@ -28,8 +28,13 @@ export function PushNotificationsSettingsCard({
 }: PushNotificationsSettingsCardProps) {
   const [loading, setLoading] = useState(false);
   const [savingEventType, setSavingEventType] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<PreferenceItem[]>([]);
+  const [subscriptions, setSubscriptions] = useState<
+    Array<{ id: string; deviceLabel: string | null; lastSeenAt: string | null }>
+  >([]);
+  const [testStatus, setTestStatus] = useState<string | null>(null);
 
   const mergedPreferences = useMemo(() => {
     const map = new Map(preferences.map((item) => [item.eventType, item.enabled]));
@@ -74,6 +79,28 @@ export function PushNotificationsSettingsCard({
         })
         .filter((item): item is PreferenceItem => Boolean(item));
       setPreferences(normalized);
+
+      const subscriptionsResponse = await fetch("/api/push/subscriptions", {
+        method: "GET",
+        headers: { accept: "application/json" },
+        cache: "no-store",
+      });
+      const subscriptionsPayload = (await subscriptionsResponse.json().catch(() => null)) as
+        | {
+            ok: true;
+            subscriptions: Array<{ id: string; deviceLabel: string | null; lastSeenAt: string | null }>;
+          }
+        | { ok: false; error: string }
+        | null;
+
+      if (
+        subscriptionsResponse.ok &&
+        subscriptionsPayload &&
+        subscriptionsPayload.ok &&
+        Array.isArray(subscriptionsPayload.subscriptions)
+      ) {
+        setSubscriptions(subscriptionsPayload.subscriptions);
+      }
     } catch (requestError) {
       const message =
         requestError instanceof Error ? requestError.message : "Falha ao carregar preferências de push.";
@@ -131,6 +158,36 @@ export function PushNotificationsSettingsCard({
     []
   );
 
+  const handleSendTest = useCallback(async () => {
+    setSendingTest(true);
+    setError(null);
+    setTestStatus(null);
+    try {
+      const response = await fetch("/api/push/test", {
+        method: "POST",
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true; subscriptions: number; providerMessageId: string | null }
+        | { ok: false; error: string }
+        | null;
+
+      if (!response.ok || !payload || !payload.ok) {
+        const message = payload && "error" in payload ? payload.error : "Falha ao disparar push de teste.";
+        throw new Error(message);
+      }
+
+      setTestStatus(
+        `Push de teste enviado com sucesso (${payload.subscriptions} assinatura(s) ativa(s)).`
+      );
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : "Falha ao disparar push de teste.";
+      setError(message);
+    } finally {
+      setSendingTest(false);
+    }
+  }, []);
+
   return (
     <div className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4">
       <div className="flex items-center gap-2">
@@ -181,6 +238,23 @@ export function PushNotificationsSettingsCard({
       )}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {testStatus ? <p className="text-xs text-studio-green">{testStatus}</p> : null}
+      {pushConfigured ? (
+        <div className="space-y-2 rounded-xl border border-dashed border-line p-3">
+          <p className="text-xs text-muted">
+            Assinaturas ativas neste usuário: <strong>{subscriptions.length}</strong>
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleSendTest()}
+            disabled={sendingTest}
+            className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-studio-text disabled:opacity-60"
+          >
+            {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            Enviar push de teste
+          </button>
+        </div>
+      ) : null}
       <p className="text-[11px] text-muted">
         Observação: para receber push no celular, é necessário autorizar notificações no navegador usado pela Jana.
       </p>

@@ -4,6 +4,7 @@ import type { Json } from "../../../lib/supabase/types";
 import { listEnabledPushExternalIdsForEvent, insertPushDeliveryAttempt } from "../push/push-repository";
 import { isPushNotificationsEnabled } from "../push/push-config";
 import { sendPushViaOneSignal } from "../push/onesignal-server";
+import { buildPushMessageForEvent } from "./push-message-mapper";
 
 type OutboxRow = {
   id: string;
@@ -68,9 +69,6 @@ type EventDispatcherClient = {
 
 const asEventClient = () => createServiceClient() as unknown as EventDispatcherClient;
 
-const asRecord = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-
 const toJson = (value: unknown): Json => JSON.parse(JSON.stringify(value ?? null)) as Json;
 
 const delaySeconds = (attempt: number) => {
@@ -79,57 +77,6 @@ const delaySeconds = (attempt: number) => {
 };
 
 const toIsoAfterSeconds = (seconds: number) => new Date(Date.now() + seconds * 1000).toISOString();
-
-function buildPushMessageForEvent(event: OutboxRow) {
-  const payload = asRecord(event.payload);
-  const appointmentId = typeof payload.appointment_id === "string" ? payload.appointment_id : null;
-
-  switch (event.event_type) {
-    case "appointment.created":
-      return {
-        heading: "Novo agendamento",
-        message: "Um novo agendamento foi criado no estúdio.",
-        url: appointmentId ? `/atendimento/${appointmentId}` : "/",
-      };
-    case "appointment.updated":
-      return {
-        heading: "Agendamento atualizado",
-        message: "Um agendamento foi alterado e precisa de atenção.",
-        url: appointmentId ? `/atendimento/${appointmentId}` : "/",
-      };
-    case "appointment.canceled":
-      return {
-        heading: "Agendamento cancelado",
-        message: "Um atendimento foi cancelado.",
-        url: "/mensagens?tab=fila",
-      };
-    case "payment.created":
-      return {
-        heading: "Novo pagamento registrado",
-        message: "Um novo pagamento foi registrado no sistema.",
-        url: "/caixa",
-      };
-    case "payment.status_changed":
-      return {
-        heading: "Atualização de pagamento",
-        message: "Houve alteração no status de pagamento.",
-        url: "/caixa",
-      };
-    case "whatsapp.job.status_changed": {
-      const toStatus = typeof payload.to_status === "string" ? payload.to_status : "";
-      if (toStatus === "failed") {
-        return {
-          heading: "Falha na automação WhatsApp",
-          message: "Uma mensagem automática falhou e precisa de revisão.",
-          url: "/mensagens?tab=fila",
-        };
-      }
-      return null;
-    }
-    default:
-      return null;
-  }
-}
 
 async function insertDispatchLog(params: {
   tenantId: string;
@@ -278,7 +225,10 @@ export async function processNotificationOutbox(params?: { limit?: number }) {
     const start = Date.now();
 
     try {
-      const pushMessage = buildPushMessageForEvent(event);
+      const pushMessage = buildPushMessageForEvent({
+        eventType: event.event_type,
+        payload: event.payload,
+      });
       if (!pushMessage) {
         await markOutboxProcessed(event.id);
         await insertDispatchLog({

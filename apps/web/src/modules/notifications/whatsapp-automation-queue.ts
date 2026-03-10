@@ -266,17 +266,4 @@ export async function scheduleAppointmentCanceledNotification(
     options
   );
 
-  const correlationId = createEventCorrelationId("appt");
-  await safeEmitDomainEventToOutbox({
-    tenantId: params.tenantId,
-    eventType: "appointment.canceled",
-    sourceModule: "notifications.whatsapp-automation-queue",
-    correlationId,
-    idempotencyKey: `${params.tenantId}:${params.appointmentId}:appointment.canceled`,
-    payload: {
-      appointment_id: params.appointmentId,
-      notify_client: params.notifyClient,
-      source: params.source,
-    } as Json,
-  });
 }

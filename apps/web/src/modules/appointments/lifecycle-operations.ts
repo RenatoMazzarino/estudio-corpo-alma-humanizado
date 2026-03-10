@@ -4,6 +4,8 @@ import { insertTransaction, getTransactionByAppointmentId } from "../finance/rep
 import {
   scheduleAppointmentCanceledNotification,
 } from "../notifications/whatsapp-automation";
+import { createEventCorrelationId } from "../events/outbox";
+import { safeEmitDomainEventToOutbox } from "../events/safe-outbox";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
 import { AppError } from "../../shared/errors/AppError";
@@ -142,6 +144,19 @@ export async function cancelAppointmentOperation(
       timer_paused_at: null,
     })
     .eq("appointment_id", id);
+
+  await safeEmitDomainEventToOutbox({
+    tenantId,
+    eventType: "appointment.canceled",
+    sourceModule: "appointments.lifecycle-operations",
+    correlationId: createEventCorrelationId("appt"),
+    idempotencyKey: `${tenantId}:${id}:appointment.canceled`,
+    payload: {
+      appointment_id: id,
+      source: "admin_cancel",
+      notify_client: options?.notifyClient === true,
+    },
+  });
 
   await scheduleAppointmentCanceledNotification({
     tenantId,

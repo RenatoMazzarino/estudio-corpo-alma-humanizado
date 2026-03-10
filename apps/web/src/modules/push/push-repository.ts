@@ -11,6 +11,9 @@ type PushSubscriptionRow = {
   tenant_id: string;
   external_id: string;
   onesignal_subscription_id: string;
+  device_label: string | null;
+  platform: string | null;
+  last_seen_at: string | null;
   is_active: boolean;
   metadata: Json;
   updated_at: string;
@@ -104,7 +107,9 @@ export async function upsertPushSubscription(params: {
       },
       { onConflict: "tenant_id,onesignal_subscription_id" }
     )
-    .select("id, tenant_id, external_id, onesignal_subscription_id, is_active, metadata, updated_at")
+    .select(
+      "id, tenant_id, external_id, onesignal_subscription_id, device_label, platform, last_seen_at, is_active, metadata, updated_at"
+    )
     .maybeSingle();
 
   if (error) throw new Error(`Falha ao salvar inscrição push: ${error.message}`);
@@ -125,10 +130,42 @@ export async function disablePushSubscription(params: {
     })
     .eq("tenant_id", params.tenantId)
     .eq("onesignal_subscription_id", params.oneSignalSubscriptionId)
-    .select("id, tenant_id, external_id, onesignal_subscription_id, is_active, metadata, updated_at")
+    .select(
+      "id, tenant_id, external_id, onesignal_subscription_id, device_label, platform, last_seen_at, is_active, metadata, updated_at"
+    )
     .maybeSingle();
   if (error) throw new Error(`Falha ao desativar inscrição push: ${error.message}`);
   return data;
+}
+
+export async function listActivePushSubscriptionsForUser(params: {
+  tenantId: string;
+  externalId: string;
+}) {
+  const supabase = asPushClient();
+  const table = supabase.from("push_subscriptions") as PushSubscriptionsTable;
+  const { data, error } = await table
+    .select(
+      "id, tenant_id, external_id, onesignal_subscription_id, device_label, platform, last_seen_at, is_active, metadata, updated_at"
+    )
+    .eq("tenant_id", params.tenantId)
+    .eq("external_id", params.externalId)
+    .order("updated_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw new Error(`Falha ao listar assinaturas push: ${error.message}`);
+  return (data ?? [])
+    .map((row: Record<string, unknown>) => ({
+      id: typeof row.id === "string" ? row.id : "",
+      oneSignalSubscriptionId:
+        typeof row.onesignal_subscription_id === "string" ? row.onesignal_subscription_id : "",
+      deviceLabel: typeof row.device_label === "string" ? row.device_label : null,
+      platform: typeof row.platform === "string" ? row.platform : null,
+      lastSeenAt: typeof row.last_seen_at === "string" ? row.last_seen_at : null,
+      updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+      isActive: Boolean(row.is_active),
+    }))
+    .filter((row) => row.id && row.oneSignalSubscriptionId && row.isActive);
 }
 
 export async function upsertNotificationPreference(params: {

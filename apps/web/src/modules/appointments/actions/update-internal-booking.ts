@@ -25,6 +25,8 @@ import {
   listAvailabilityBlocksInRange,
   updateAppointment,
 } from "../repository";
+import { createEventCorrelationId } from "../../events/outbox";
+import { safeEmitDomainEventToOutbox } from "../../events/safe-outbox";
 
 
 export async function updateInternalAppointmentForTenant(
@@ -410,6 +412,22 @@ export async function updateInternalAppointmentForTenant(
 
   const mappedUpdateError = mapSupabaseError(updateError);
   if (mappedUpdateError) throw mappedUpdateError;
+
+  await safeEmitDomainEventToOutbox({
+    tenantId,
+    eventType: "appointment.updated",
+    sourceModule: "appointments.update-internal-booking",
+    correlationId: createEventCorrelationId("appt"),
+    idempotencyKey: `${tenantId}:${parsed.data.appointmentId}:appointment.updated:${startDateTime.toISOString()}:${service.id}`,
+    payload: {
+      appointment_id: parsed.data.appointmentId,
+      start_time: startDateTime.toISOString(),
+      service_id: service.id,
+      service_name: service.name,
+      is_home_visit: parsed.data.isHomeVisit,
+      source: "admin_update",
+    },
+  });
 
   revalidatePath(`/?view=day&date=${parsed.data.date}`);
   if (returnTo) {

@@ -5,6 +5,7 @@ import { isPushNotificationsEnabled } from "../../../../src/modules/push/push-co
 import {
   disablePushSubscription,
   ensureDefaultNotificationPreferences,
+  listActivePushSubscriptionsForUser,
   upsertPushSubscription,
 } from "../../../../src/modules/push/push-repository";
 import { PUSH_EVENT_TYPES } from "../../../../src/modules/push/push-events";
@@ -68,6 +69,35 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao registrar assinatura push.";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  const access = await getDashboardAccessForCurrentUser();
+  if (!access.ok) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isPushNotificationsEnabled(access.data.tenantId)) {
+    return NextResponse.json(
+      { ok: false, error: "Push notifications estão desabilitadas neste ambiente." },
+      { status: 423 }
+    );
+  }
+
+  try {
+    const subscriptions = await listActivePushSubscriptionsForUser({
+      tenantId: access.data.tenantId,
+      externalId: access.data.userId,
+    });
+    return NextResponse.json({
+      ok: true,
+      total: subscriptions.length,
+      subscriptions,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha ao listar assinaturas push.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
