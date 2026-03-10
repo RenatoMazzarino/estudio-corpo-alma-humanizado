@@ -28,8 +28,7 @@ Profile-first strategy (recommended):
 2. Controle de destinatário via:
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (fixo)
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (real)
-3. `WHATSAPP_AUTOMATION_PROFILE` permanece apenas por compatibilidade.
-4. Flags legadas (`WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`, `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`) continuam suportadas por transição, mas não são mais o caminho principal.
+3. Não usar variáveis legadas de modo/roteamento (`WHATSAPP_AUTOMATION_PROFILE`, `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`, `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`).
 
 Files in this folder are templates (no secrets):
 

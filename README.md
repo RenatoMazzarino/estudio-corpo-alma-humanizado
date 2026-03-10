@@ -120,8 +120,7 @@ Padrão profile-first (WhatsApp):
 
 1. `WHATSAPP_PROFILE` define o comportamento-base por ambiente.
 2. `WHATSAPP_AUTOMATION_RECIPIENT_MODE` define se envia para `test_recipient` (fixo) ou `customer` (cliente real).
-3. `WHATSAPP_AUTOMATION_PROFILE` continua aceito por compatibilidade.
-4. Flags legadas continuam compatíveis, mas não são o caminho principal.
+3. Variáveis legadas de modo/roteamento foram descontinuadas e não devem ser usadas.
 
 Comandos:
 

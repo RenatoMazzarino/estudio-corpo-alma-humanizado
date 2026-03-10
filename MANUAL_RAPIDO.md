@@ -498,7 +498,6 @@ Variaveis criticas na Vercel:
 
 Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
 - `WHATSAPP_PROFILE`
-- `WHATSAPP_AUTOMATION_PROFILE` (compatibilidade)
 - `WHATSAPP_AUTOMATION_RECIPIENT_MODE`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`

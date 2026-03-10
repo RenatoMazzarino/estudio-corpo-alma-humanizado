@@ -44,16 +44,9 @@ O padrão oficial passa a ser:
    - `WHATSAPP_PROFILE=prod_real`
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer`
 
-## Compatibilidade legada
+## Política de legados
 
-As chaves antigas continuam funcionando durante transição:
-
-1. `WHATSAPP_AUTOMATION_PROFILE`
-2. `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`
-3. `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
-4. `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`
-
-Mas o uso novo recomendado é profile-first.
+As chaves antigas de modo/roteamento foram descontinuadas e não devem ser usadas.
 
 ## Auditoria operacional
 
@@ -63,4 +56,4 @@ Execute:
 pnpm vercel:env:audit
 ```
 
-O auditor aceita pacotes legados e também profile-first, para transição segura.
+O auditor exige profile-first consistente nos 3 ambientes.
