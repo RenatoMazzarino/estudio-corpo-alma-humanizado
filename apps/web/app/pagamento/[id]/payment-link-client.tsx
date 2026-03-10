@@ -74,14 +74,14 @@ export default function PaymentLinkClient({
   const resolvedRemainingAmountLabel = checkout.paymentCompleted ? "R$ 0,00" : remainingAmountLabel;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#f6f4f1_55%,_#efe8dd)] px-4 py-8 text-studio-text sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff7ed,#f6f4f1_55%,#efe8dd)] px-4 py-8 text-studio-text sm:px-6 lg:px-8">
       {!isSample && !checkout.paymentCompleted && (
         <Script src="https://sdk.mercadopago.com/js/v2" strategy="afterInteractive" onLoad={() => checkout.setMpReady(true)} />
       )}
 
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 lg:flex-row">
-        <section className="lg:w-[420px]">
-          <div className="rounded-[32px] border border-stone-200/70 bg-white/90 p-6 shadow-[0_30px_80px_rgba(70,54,32,0.12)] backdrop-blur">
+        <section className="lg:w-105">
+          <div className="rounded-4xl border border-stone-200/70 bg-white/90 p-6 shadow-[0_30px_80px_rgba(70,54,32,0.12)] backdrop-blur">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-studio-green">Checkout público</p>
             <h1 className="mt-3 text-3xl font-serif leading-tight">{checkout.paymentCompleted ? "Pagamento confirmado" : `Olá, ${clientName}`}</h1>
             <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -137,7 +137,7 @@ export default function PaymentLinkClient({
         </section>
 
         <section className="relative flex-1">
-          <div className="rounded-[32px] border border-stone-200/70 bg-white/95 p-6 shadow-[0_30px_80px_rgba(70,54,32,0.12)] backdrop-blur sm:p-8">
+          <div className="rounded-4xl border border-stone-200/70 bg-white/95 p-6 shadow-[0_30px_80px_rgba(70,54,32,0.12)] backdrop-blur sm:p-8">
             {isSample && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
                 Esta é a página de demonstração usada como amostra para a Meta aprovar o botão dinâmico de pagamento.
@@ -159,7 +159,7 @@ export default function PaymentLinkClient({
                 title="Total a pagar"
                 amountLabel={remainingAmountLabel}
                 paymentMethod={checkout.paymentMethod}
-                onSelectPayment={checkout.setPaymentMethod}
+                onSelectPaymentAction={checkout.setPaymentMethod}
                 showMethodSelector={!isSample}
                 pixPayment={checkout.pixPayment}
                 pixStatus={checkout.pixStatus}
@@ -170,8 +170,8 @@ export default function PaymentLinkClient({
                 payerName={clientName}
                 payerEmail={payerEmail}
                 subjectLabel={`Referência ${referenceLabel}`}
-                onCopyPix={checkout.handleCopyPix}
-                onRegeneratePix={checkout.handleRegeneratePix}
+                onCopyPixAction={checkout.handleCopyPix}
+                onRegeneratePixAction={checkout.handleRegeneratePix}
                 statusMessage={checkout.statusMessage}
               />
             )}

@@ -18,7 +18,7 @@ function PaymentLinkNotFound() {
   return (
     <div className="min-h-screen bg-[#f6f4f1] px-6 py-12 text-studio-text">
       <div className="mx-auto flex min-h-[70vh] max-w-xl items-center justify-center">
-        <div className="w-full rounded-[32px] border border-stone-200 bg-white p-8 text-center shadow-[0_30px_80px_rgba(70,54,32,0.12)]">
+        <div className="w-full rounded-4xl border border-stone-200 bg-white p-8 text-center shadow-[0_30px_80px_rgba(70,54,32,0.12)]">
           <h1 className="text-3xl font-serif font-bold">Link de pagamento não encontrado</h1>
           <p className="mt-4 text-sm leading-relaxed text-muted">
             Não localizamos um agendamento válido para este link. Se precisar, responda a mensagem no

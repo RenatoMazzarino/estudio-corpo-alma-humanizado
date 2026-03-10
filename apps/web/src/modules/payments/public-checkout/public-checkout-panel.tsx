@@ -8,7 +8,7 @@ type PublicCheckoutPanelProps = {
   title: string;
   amountLabel: string;
   paymentMethod: PublicCheckoutPaymentMethod;
-  onSelectPayment?: (method: Exclude<PublicCheckoutPaymentMethod, null>) => void;
+  onSelectPaymentAction?: (method: Exclude<PublicCheckoutPaymentMethod, null>) => void;
   showMethodSelector?: boolean;
   pixPayment: PublicCheckoutPixPayment | null;
   pixStatus: "idle" | "loading" | "error";
@@ -19,8 +19,8 @@ type PublicCheckoutPanelProps = {
   payerName: string;
   payerEmail: string;
   subjectLabel?: string | null;
-  onCopyPix: () => void;
-  onRegeneratePix?: () => void;
+  onCopyPixAction: () => void;
+  onRegeneratePixAction?: () => void;
   statusMessage?: string | null;
 };
 
@@ -28,7 +28,7 @@ export function PublicCheckoutPanel({
   title,
   amountLabel,
   paymentMethod,
-  onSelectPayment,
+  onSelectPaymentAction,
   showMethodSelector = false,
   pixPayment,
   pixStatus,
@@ -39,11 +39,11 @@ export function PublicCheckoutPanel({
   payerName,
   payerEmail,
   subjectLabel,
-  onCopyPix,
-  onRegeneratePix,
+  onCopyPixAction,
+  onRegeneratePixAction,
   statusMessage,
 }: PublicCheckoutPanelProps) {
-  const showSelector = showMethodSelector && onSelectPayment;
+  const showSelector = showMethodSelector && onSelectPaymentAction;
   const toneClass =
     paymentMethod === "pix" && pixStatus === "error"
       ? "text-rose-700"
@@ -57,8 +57,8 @@ export function PublicCheckoutPanel({
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => onSelectPayment("pix")}
-            className={`rounded-[24px] border px-5 py-4 text-left transition ${
+            onClick={() => onSelectPaymentAction("pix")}
+            className={`rounded-3xl border px-5 py-4 text-left transition ${
               paymentMethod === "pix"
                 ? "border-studio-green bg-studio-green/10"
                 : "border-stone-200 bg-white hover:border-stone-300"
@@ -76,8 +76,8 @@ export function PublicCheckoutPanel({
           </button>
           <button
             type="button"
-            onClick={() => onSelectPayment("card")}
-            className={`rounded-[24px] border px-5 py-4 text-left transition ${
+            onClick={() => onSelectPaymentAction("card")}
+            className={`rounded-3xl border px-5 py-4 text-left transition ${
               paymentMethod === "card"
                 ? "border-studio-green bg-studio-green/10"
                 : "border-stone-200 bg-white hover:border-stone-300"
@@ -151,16 +151,16 @@ export function PublicCheckoutPanel({
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
-              onClick={onCopyPix}
+              onClick={onCopyPixAction}
               disabled={!pixPayment?.qr_code || pixStatus === "loading" || pixQrExpired}
               className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-studio-green py-3 font-bold text-studio-green disabled:opacity-40"
             >
               <Copy className="h-4 w-4" /> Copiar chave Pix
             </button>
-            {onRegeneratePix && (
+            {onRegeneratePixAction && (
               <button
                 type="button"
-                onClick={onRegeneratePix}
+                onClick={onRegeneratePixAction}
                 className="flex w-full items-center justify-center rounded-2xl border border-stone-300 py-3 font-bold text-studio-text"
               >
                 Gerar novo Pix
