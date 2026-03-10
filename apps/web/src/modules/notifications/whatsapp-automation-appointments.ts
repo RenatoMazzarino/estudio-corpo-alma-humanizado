@@ -10,7 +10,9 @@ import {
   resolvePublicBaseUrlFromWebhookOrigin,
 } from "./whatsapp-automation.helpers";
 import {
+  APPOINTMENT_NOTICE_TEMPLATE_MATRIX,
   DEFAULT_FLORA_REINTRO_AFTER_DAYS,
+  type AppointmentNoticeIntroVariant,
   resolveFloraIntroVariantByHistory,
   resolveNoticeIntroVariantFromPayload,
   resolveCreatedAppointmentTemplateSelection,
@@ -356,6 +358,21 @@ function buildCreatedAppointmentTemplateComponents(
   return components;
 }
 
+function oppositeIntroVariant(variant: AppointmentNoticeIntroVariant): AppointmentNoticeIntroVariant {
+  return variant === "com_flora" ? "sem_oi_flora" : "com_flora";
+}
+
+function isMetaTemplateTranslationMissingError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  const normalized = message.toLowerCase();
+  return normalized.includes("132001") && normalized.includes("template name") && normalized.includes("translation");
+}
+
 export async function sendMetaCloudCreatedAppointmentTemplate(
   job: NotificationJobRow
 ): Promise<DeliveryResult> {
@@ -389,47 +406,78 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
     paymentStatus: context.paymentStatus,
     preferredIntroVariant,
   });
-  const templateName = selection.templateName;
   const variableMap = buildCreatedAppointmentTemplateVariableMap(context);
-  const components = buildCreatedAppointmentTemplateComponents(templateName, variableMap);
 
-  const requestBody = {
-    messaging_product: "whatsapp",
-    to,
-    type: "template",
-    template: {
-      name: templateName,
-      language: {
-        code: templateLanguage,
+  const providerFallbackVariant = oppositeIntroVariant(selection.selectedIntroVariant);
+  const providerFallbackTemplate =
+    APPOINTMENT_NOTICE_TEMPLATE_MATRIX[selection.location][selection.paymentScenario][providerFallbackVariant];
+
+  const templateAttempts = [selection.templateName];
+  if (providerFallbackTemplate !== selection.templateName) {
+    templateAttempts.push(providerFallbackTemplate);
+  }
+
+  let lastError: Error | null = null;
+  for (let index = 0; index < templateAttempts.length; index += 1) {
+    const templateName = templateAttempts[index];
+    if (!templateName) continue;
+    const components = buildCreatedAppointmentTemplateComponents(templateName, variableMap);
+
+    const requestBody = {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: templateLanguage,
+        },
+        components,
       },
-      components,
-    },
-  };
+    };
 
-  const { payload, providerMessageId } = await sendMetaCloudMessage(requestBody);
+    try {
+      const { payload, providerMessageId } = await sendMetaCloudMessage(requestBody);
+      const providerFallbackApplied = templateName !== selection.templateName;
 
-  return {
-    providerMessageId,
-    deliveredAt: new Date().toISOString(),
-    deliveryMode: "meta_cloud_template_created_appointment",
-    messagePreview:
-      `Meta template created (${templateName}) -> ${to} ` +
-      `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}` +
-      ` • ${selection.location}/${selection.paymentScenario}` +
-      ` • intro=${selection.selectedIntroVariant}` +
-      (selection.fallbackApplied
-        ? ` • fallback ${selection.requestedIntroVariant}->${selection.selectedIntroVariant}`
-        : explicitIntroVariant
-          ? " • override_payload"
-          : history.hasPresentedFloraBefore
-            ? " • history_known"
-            : " • first_intro"),
-    templateName,
-    templateLanguage,
-    recipient: to,
-    providerName: "meta_cloud",
-    providerResponse: payload,
-  };
+      return {
+        providerMessageId,
+        deliveredAt: new Date().toISOString(),
+        deliveryMode: "meta_cloud_template_created_appointment",
+        messagePreview:
+          `Meta template created (${templateName}) -> ${to} ` +
+          `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}` +
+          ` • ${selection.location}/${selection.paymentScenario}` +
+          ` • intro=${selection.selectedIntroVariant}` +
+          (selection.fallbackApplied
+            ? ` • fallback ${selection.requestedIntroVariant}->${selection.selectedIntroVariant}`
+            : explicitIntroVariant
+              ? " • override_payload"
+              : history.hasPresentedFloraBefore
+                ? " • history_known"
+                : " • first_intro") +
+          (providerFallbackApplied
+            ? ` • provider_fallback ${selection.templateName}->${templateName}`
+            : ""),
+        templateName,
+        templateLanguage,
+        recipient: to,
+        providerName: "meta_cloud",
+        providerResponse: payload,
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Falha desconhecida ao enviar template da Meta.");
+      const canTryProviderFallback =
+        index < templateAttempts.length - 1 && isMetaTemplateTranslationMissingError(lastError);
+      if (!canTryProviderFallback) {
+        break;
+      }
+    }
+  }
+
+  const attempted = templateAttempts.join(", ");
+  const reason = lastError?.message ?? "Erro desconhecido ao enviar template de agendamento.";
+  throw new Error(`Falha ao enviar template de agendamento. Tentativas: ${attempted}. Motivo: ${reason}`);
 }
 
 export async function sendMetaCloudReminderAppointmentTemplate(
