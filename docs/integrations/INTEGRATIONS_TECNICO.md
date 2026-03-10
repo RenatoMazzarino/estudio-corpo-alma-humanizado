@@ -141,12 +141,13 @@ Em conflito com o código, o código vence.
 
 ---
 
-## 4) WhatsApp (manual + automação Meta Cloud API em coexistência)
+## 4) WhatsApp (automação lifecycle + envio manual operacional)
 
 ### Objetivo arquitetural atual
 
-- A automação **coexiste** com o fluxo manual (não substitui o manual).
-- O envio manual por WhatsApp continua disponível.
+- `appointment_created` e `appointment_reminder` são **exclusivos da automação**.
+- O envio manual no dashboard permanece apenas para contatos operacionais
+  (`payment_charge`, `payment_receipt`, `post_survey`).
 - A automação opera por fila + processador + webhook + painel operacional
   `Mensagens`.
 
@@ -195,11 +196,25 @@ Em conflito com o código, o código vence.
     - estado financeiro (pago integral/saldo pendente)
   - arquivo canônico:
     - `apps/web/src/modules/notifications/whatsapp-reminder-template-rules.ts`
+- Resposta automática quando cliente clica em `CONFIRMAR` no lembrete:
+  - matriz oficial com 2 templates Meta:
+    - `resposta_confirmacao_estudio` (ativo)
+    - `resposta_confirmacao_domicilio` (em análise)
+  - arquivo canônico:
+    - `apps/web/src/modules/notifications/whatsapp-confirmation-reply-template-rules.ts`
+  - regra de envio:
+    - estúdio usa template ativo
+    - domicílio cai em fallback de mensagem livre enquanto o template estiver
+      `in_review`
 
 ### Fluxos automáticos implementados
 
 - `appointment_created` (template)
 - `appointment_reminder` (template, processado por cron/scheduler)
+- resposta inbound do lembrete (`confirm/reagendar/falar_com_a_jana`) com:
+  - atualização de status do agendamento
+  - log em `appointment_messages` + `appointment_events`
+  - template de confirmação para `confirm` quando disponível
 - `appointment_canceled` (mensagem livre/session, apenas com janela 24h aberta e
   checkbox marcado no cancelamento)
 
@@ -224,6 +239,10 @@ Em conflito com o código, o código vence.
   explícito e auditável.
 - Janela 24h (regra atual) para cancelamento automático:
   - inferida por inbound correlacionado ao agendamento nas últimas 24h
+- Atualização de status por resposta do cliente:
+  - `CONFIRMAR` => marca agendamento como `confirmed` (quando aplicável)
+  - `REAGENDAR` => retorna agendamento para `pending` (quando aplicável)
+  - `FALAR COM A JANA` => mantém status e registra evento operacional
 
 ### Arquivos-chave (WhatsApp)
 

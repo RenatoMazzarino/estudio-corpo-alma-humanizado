@@ -542,7 +542,7 @@ Integracoes em uso:
 1. Supabase (banco + RPCs)
 2. Google Maps Platform (endereco e taxa de deslocamento)
 3. Mercado Pago Checkout Transparente (Pix/cartao + webhook)
-4. WhatsApp (manual + automacao via Meta Cloud API, webhook, cron e painel
+4. WhatsApp (automacao lifecycle + envio manual operacional via Meta Cloud API, webhook, cron e painel
    `Mensagens`)
 5. Spotify (OAuth + estado/controle de player no atendimento/configuracoes)
 
@@ -558,8 +558,9 @@ Regra fixa do Mercado Pago neste projeto:
 
 WhatsApp (operacao atual):
 
-- Fluxo manual continua existindo (nao remover).
-- Automacao WhatsApp coexiste com o manual.
+- `appointment_created` e `appointment_reminder` sao 100% automaticos.
+- Envio manual permanece somente para `payment_charge`, `payment_receipt` e
+  `post_survey`.
 - `appointment_created` usa matriz oficial de 12 templates (estudio/domicilio +
   financeiro + intro Flora).
 - Regra de intro: primeira automacao `com_flora`, depois `sem_oi_flora`, com

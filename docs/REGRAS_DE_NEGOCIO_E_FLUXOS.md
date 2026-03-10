@@ -20,7 +20,7 @@ Em conflito entre este documento e o codigo, o codigo vence.
 - Agendamento (criacao, estados e regras principais)
 - Atendimento (fluxo operacional e finalizacao)
 - Pagamentos (checkout, sinal, parcial, total, liberado, estorno)
-- Mensagens (manual + automacao WhatsApp/Meta coexistindo)
+- Mensagens (automacao obrigatoria para aviso/lembrete 24h + envio manual para contatos nao-lifecycle)
 - IDs e codigos (UUIDs, provider refs, codigo de atendimento)
 
 ## Identificadores e codigos
@@ -109,8 +109,6 @@ Regra:
 - o agendamento e considerado criado/salvo apos sucesso da RPC
   `create_internal_appointment`
 - apos criar, o sistema agenda automacoes de lifecycle (criacao + lembrete 24h)
-- se o usuario enviar mensagem manual de criacao, isso e logado em
-  `appointment_messages`
 
 ## Status de agendamento (appointments.status)
 
@@ -219,12 +217,12 @@ Interpretacao operacional atual:
 - `pending` = sem pagamento, ou saldo restante em aberto apos conclusao do
   atendimento
 
-## Regras de mensageria (manual + automacao coexistindo)
+## Regras de mensageria (automacao lifecycle + manual operacional)
 
 Principio arquitetural:
 
-- automacao nao substitui fluxo manual
-- automacao e fluxo manual coexistem
+- `created_confirmation` e `reminder_24h` sao exclusivos da automacao
+- envio manual permanece apenas para contatos operacionais nao-lifecycle
 
 ### Manual (dashboard)
 
@@ -240,8 +238,6 @@ Comportamento:
 
 Tipos manuais recorrentes:
 
-- `created_confirmation`
-- `reminder_24h`
 - `payment_charge`
 - `payment_receipt`
 - `post_survey`
@@ -308,6 +304,22 @@ Regra operacional atual no repo:
 - janela aberta = existe inbound do cliente correlacionado ao agendamento (via
   webhook/resposta) registrado no log de mensagens automaticas nas ultimas 24h
 
+### Resposta do cliente no lembrete 24h (estado atual)
+
+Quando o cliente responde os botões do lembrete (`CONFIRMAR`, `REAGENDAR`,
+`FALAR COM A JANA`), o webhook da Meta processa a ação e:
+
+- atualiza trilha operacional em `appointment_messages` e `notification_jobs`;
+- registra evento em `appointment_events`;
+- aplica regra de status do agendamento:
+  - `CONFIRMAR` -> `confirmed` (quando o agendamento não está em estado terminal)
+  - `REAGENDAR` -> `pending` (quando o agendamento não está em estado terminal)
+  - `FALAR COM A JANA` -> sem troca de status (somente registro operacional)
+- para `CONFIRMAR`, tenta responder com template Meta de confirmação:
+  - `resposta_confirmacao_estudio` (ativo)
+  - `resposta_confirmacao_domicilio` (em análise; fallback para texto enquanto
+    não estiver ativo)
+
 ### Status operacionais de mensagens (logs)
 
 Exemplos usados no repo:
@@ -347,7 +359,8 @@ Regras ja adotadas:
 - Webhook MP trata eventos `payment` e `order`
 - Cron frequente de lembretes na Vercel Hobby deve usar endpoint + GitHub
   Actions (nao depender de cron frequente da Vercel Hobby)
-- Fluxo manual de WhatsApp deve continuar disponivel mesmo com automacao ativa
+- Fluxo manual de WhatsApp deve continuar disponivel apenas para
+  `payment_charge`, `payment_receipt` e `post_survey`
 
 ## Checklist de impacto quando alterar regras de negocio
 

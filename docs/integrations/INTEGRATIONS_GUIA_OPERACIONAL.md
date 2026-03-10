@@ -30,11 +30,11 @@ Para arquitetura técnica, endpoints e envs detalhadas, usar
 - Fora de escopo: `Checkout Pro`
 - Eventos de webhook usados: `payment` e `order`
 
-1. WhatsApp (manual + automação Meta Cloud API)
+1. WhatsApp (automação lifecycle + envio manual operacional)
 
-- Função: comunicação com cliente (manual + automática)
-- Criticidade: média/alta (automação melhora operação, mas fluxo manual continua
-  coexistindo)
+- Função: comunicação com cliente (automática em lifecycle e manual em contatos
+  operacionais)
+- Criticidade: média/alta
 - Painel operacional: `Mensagens`
 
 1. Spotify (dashboard)
@@ -182,13 +182,13 @@ Uso recomendado do baseline (`WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE`):
 2. Simulação de webhook no MP retorna `200/201`
 3. Pagamento real/teste atualiza status no sistema
 
-## 5) WhatsApp (manual + automação) - operação atual
+## 5) WhatsApp (automação lifecycle + envio manual operacional) - operação atual
 
 ### Regra de produto (obrigatória)
 
-- O envio manual por WhatsApp continua válido e não deve ser removido do fluxo
-  operacional.
-- A automação deve coexistir ao lado do manual.
+- `created_confirmation` e `reminder_24h` são enviados apenas por automação.
+- Envio manual no dashboard fica restrito aos contatos operacionais:
+  `payment_charge`, `payment_receipt` e `post_survey`.
 
 ### O que já está automatizado (estado atual)
 
@@ -209,6 +209,10 @@ Uso recomendado do baseline (`WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE`):
   - `Confirmar`
   - `Reagendar`
   - `Falar com a Jana`
+  - `Confirmar` prioriza template Meta:
+    - `resposta_confirmacao_estudio` (ativo)
+    - `resposta_confirmacao_domicilio` (em análise, com fallback de mensagem
+      livre)
 - Cancelamento com checkbox (mensagem livre) quando janela 24h está aberta
 
 ### Painel operacional (`Mensagens`)
@@ -259,7 +263,10 @@ O painel já mostra:
 2. Processador resolve cenário do template de aviso (local + financeiro +
    variante) e envia via Meta Cloud API
 3. Webhook Meta atualiza status
-4. Painel `Mensagens` mostra resultado para operação
+4. Resposta do cliente no lembrete também atualiza status do agendamento:
+   - confirmar -> confirmado
+   - reagendar -> pendente
+5. Painel `Mensagens` mostra resultado para operação
 
 ## 7) Rotina de validação antes de deploy (operacional)
 
@@ -382,7 +389,7 @@ Verificar:
 
 - Não misturar credenciais entre DEV e PROD.
 - Não trocar Mercado Pago para Checkout Pro neste repo.
-- Não remover o fluxo manual de WhatsApp ao ativar automação.
+- Não reativar envio manual para `created_confirmation` e `reminder_24h`.
 - Não ligar scheduler PROD sem checar fila/backlog e destinatário/allowlist.
 - Em incidente, priorizar:
   1. pausar automação (`WHATSAPP_AUTOMATION_MODE=disabled` ou
