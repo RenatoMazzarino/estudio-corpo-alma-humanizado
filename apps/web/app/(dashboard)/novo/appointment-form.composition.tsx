@@ -703,7 +703,7 @@ export function AppointmentForm({
           canHomeVisit,
           hasLocationChoice,
           isHomeVisit,
-          onServiceChange: handleServiceChange,
+          onServiceChangeAction: handleServiceChange,
           onClearSelectedServiceAction: handleClearSelectedService,
           onSelectStudioLocationAction: () => {
             setHasLocationChoice(true);

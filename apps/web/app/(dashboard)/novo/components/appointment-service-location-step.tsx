@@ -24,7 +24,7 @@ type AppointmentServiceLocationStepProps = {
   canHomeVisit: boolean;
   hasLocationChoice: boolean;
   isHomeVisit: boolean;
-  onServiceChange: ChangeEventHandler<HTMLSelectElement>;
+  onServiceChangeAction: ChangeEventHandler<HTMLSelectElement>;
   onClearSelectedServiceAction: () => void;
   onSelectStudioLocationAction: () => void;
   onSelectHomeVisitLocationAction: () => void;
@@ -45,7 +45,7 @@ export function AppointmentServiceLocationStep({
   canHomeVisit,
   hasLocationChoice,
   isHomeVisit,
-  onServiceChange,
+  onServiceChangeAction,
   onClearSelectedServiceAction,
   onSelectStudioLocationAction,
   onSelectHomeVisitLocationAction,
@@ -65,7 +65,7 @@ export function AppointmentServiceLocationStep({
             <select
               name="serviceId"
               value={selectedServiceId}
-              onChange={onServiceChange}
+              onChange={onServiceChangeAction}
               className={selectClass}
               required
             >

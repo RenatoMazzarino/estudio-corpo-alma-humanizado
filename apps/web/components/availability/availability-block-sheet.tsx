@@ -22,9 +22,9 @@ type AvailabilityBlockSheetProps = {
   loading: boolean;
   pendingBlockConfirm: { payload: CreateBlockPayload; appointments: number } | null;
   onCloseAction: () => void;
-  onDragStart: PointerEventHandler<HTMLDivElement>;
-  onDragMove: PointerEventHandler<HTMLDivElement>;
-  onDragEnd: PointerEventHandler<HTMLDivElement>;
+  onDragStartAction: PointerEventHandler<HTMLDivElement>;
+  onDragMoveAction: PointerEventHandler<HTMLDivElement>;
+  onDragEndAction: PointerEventHandler<HTMLDivElement>;
   onSelectBlockTypeAction: (value: BlockType) => void;
   onChangeBlockDateAction: (value: string) => void;
   onToggleBlockFullDayAction: () => void;
@@ -52,9 +52,9 @@ export function AvailabilityBlockSheet({
   loading,
   pendingBlockConfirm,
   onCloseAction,
-  onDragStart,
-  onDragMove,
-  onDragEnd,
+  onDragStartAction,
+  onDragMoveAction,
+  onDragEndAction,
   onSelectBlockTypeAction,
   onChangeBlockDateAction,
   onToggleBlockFullDayAction,
@@ -79,10 +79,10 @@ export function AvailabilityBlockSheet({
       >
         <div
           className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
-          onPointerDown={onDragStart}
-          onPointerMove={onDragMove}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
+          onPointerDown={onDragStartAction}
+          onPointerMove={onDragMoveAction}
+          onPointerUp={onDragEndAction}
+          onPointerCancel={onDragEndAction}
         >
           <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
         </div>

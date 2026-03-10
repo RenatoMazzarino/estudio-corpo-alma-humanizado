@@ -160,9 +160,9 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         loading={controller.loading}
         pendingBlockConfirm={controller.pendingBlockConfirm}
         onCloseAction={() => controller.setIsModalOpen(false)}
-        onDragStart={controller.handleBlockDragStart}
-        onDragMove={controller.handleBlockDragMove}
-        onDragEnd={controller.handleBlockDragEnd}
+        onDragStartAction={controller.handleBlockDragStart}
+        onDragMoveAction={controller.handleBlockDragMove}
+        onDragEndAction={controller.handleBlockDragEnd}
         onSelectBlockTypeAction={controller.setBlockType}
         onChangeBlockDateAction={controller.setBlockDate}
         onToggleBlockFullDayAction={() => controller.setBlockFullDay((prev) => !prev)}
@@ -190,9 +190,9 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         loading={controller.loading}
         pendingScaleConfirm={controller.pendingScaleConfirm}
         onCloseAction={() => controller.setIsScaleModalOpen(false)}
-        onDragStart={controller.handleScaleDragStart}
-        onDragMove={controller.handleScaleDragMove}
-        onDragEnd={controller.handleScaleDragEnd}
+        onDragStartAction={controller.handleScaleDragStart}
+        onDragMoveAction={controller.handleScaleDragMove}
+        onDragEndAction={controller.handleScaleDragEnd}
         onChangeScaleMonthAction={controller.setScaleMonth}
         onSelectScaleTypeAction={controller.setScaleType}
         onClearScaleAction={controller.handleClearScale}

@@ -17,9 +17,9 @@ type AvailabilityScaleSheetProps = {
   loading: boolean;
   pendingScaleConfirm: { type: "even" | "odd"; appointments: number } | null;
   onCloseAction: () => void;
-  onDragStart: PointerEventHandler<HTMLDivElement>;
-  onDragMove: PointerEventHandler<HTMLDivElement>;
-  onDragEnd: PointerEventHandler<HTMLDivElement>;
+  onDragStartAction: PointerEventHandler<HTMLDivElement>;
+  onDragMoveAction: PointerEventHandler<HTMLDivElement>;
+  onDragEndAction: PointerEventHandler<HTMLDivElement>;
   onChangeScaleMonthAction: (value: string) => void;
   onSelectScaleTypeAction: (value: "even" | "odd") => void;
   onClearScaleAction: (month: string, keepOpen?: boolean) => void;
@@ -41,9 +41,9 @@ export function AvailabilityScaleSheet({
   loading,
   pendingScaleConfirm,
   onCloseAction,
-  onDragStart,
-  onDragMove,
-  onDragEnd,
+  onDragStartAction,
+  onDragMoveAction,
+  onDragEndAction,
   onChangeScaleMonthAction,
   onSelectScaleTypeAction,
   onClearScaleAction,
@@ -65,10 +65,10 @@ export function AvailabilityScaleSheet({
       >
         <div
           className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
-          onPointerDown={onDragStart}
-          onPointerMove={onDragMove}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
+          onPointerDown={onDragStartAction}
+          onPointerMove={onDragMoveAction}
+          onPointerUp={onDragEndAction}
+          onPointerCancel={onDragEndAction}
         >
           <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
         </div>
