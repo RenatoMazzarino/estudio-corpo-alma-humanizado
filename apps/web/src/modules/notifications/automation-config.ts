@@ -28,11 +28,6 @@ type WhatsAppAutomationConfig = {
   metaWebhookVerifyToken: string;
   metaAppSecret: string;
   floraHistorySince: string;
-  legacy: {
-    globalEnabled: boolean;
-    forceDryRun: boolean;
-    forceTestRecipient: boolean;
-  };
 };
 
 const PROFILE_PRESETS: Record<WhatsAppAutomationProfile, ProfilePreset> = {
@@ -140,51 +135,15 @@ const resolveDefaultProfile = (): WhatsAppAutomationProfile => {
   return "dev_sandbox";
 };
 
-const hasLegacyModeFlags = () =>
-  process.env.WHATSAPP_AUTOMATION_GLOBAL_ENABLED != null ||
-  process.env.WHATSAPP_AUTOMATION_FORCE_DRY_RUN != null;
-
-const resolveModeFromLegacyFlags = (defaultMode: WhatsAppAutomationMode): WhatsAppAutomationMode => {
-  if (!hasLegacyModeFlags()) {
-    return defaultMode;
-  }
-  const globallyEnabled = parseBoolean(process.env.WHATSAPP_AUTOMATION_GLOBAL_ENABLED, true);
-  if (!globallyEnabled) {
-    return "disabled";
-  }
-  const forceDryRun = parseBoolean(
-    process.env.WHATSAPP_AUTOMATION_FORCE_DRY_RUN,
-    process.env.NODE_ENV !== "production"
-  );
-  return forceDryRun ? "dry_run" : "enabled";
-};
-
-const resolveRecipientModeFromLegacyFlags = (
-  defaultMode: WhatsAppAutomationRecipientMode
-): WhatsAppAutomationRecipientMode => {
-  if (process.env.WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT == null) {
-    return defaultMode;
-  }
-  return parseBoolean(process.env.WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT, true)
-    ? "test_recipient"
-    : "customer";
-};
-
 const buildAutomationConfig = (): WhatsAppAutomationConfig => {
   const runtimeEnvironment = resolveRuntimeEnvironment();
-  const profile =
-    parseAutomationProfile(process.env.WHATSAPP_PROFILE) ??
-    parseAutomationProfile(process.env.WHATSAPP_AUTOMATION_PROFILE) ??
-    resolveDefaultProfile();
+  const profile = parseAutomationProfile(process.env.WHATSAPP_PROFILE) ?? resolveDefaultProfile();
   const profilePreset = PROFILE_PRESETS[profile];
   const explicitMode = parseAutomationMode(process.env.WHATSAPP_AUTOMATION_MODE);
-  const mode = explicitMode ?? resolveModeFromLegacyFlags(profilePreset.mode);
+  const mode = explicitMode ?? profilePreset.mode;
   const explicitRecipientMode = parseRecipientMode(process.env.WHATSAPP_AUTOMATION_RECIPIENT_MODE);
-  const recipientMode = explicitRecipientMode ?? resolveRecipientModeFromLegacyFlags(profilePreset.recipientMode);
+  const recipientMode = explicitRecipientMode ?? profilePreset.recipientMode;
   const provider = parseProvider(process.env.WHATSAPP_AUTOMATION_PROVIDER);
-  const forceDryRunLegacy = mode === "dry_run";
-  const globalEnabledLegacy = mode !== "disabled";
-  const forceTestRecipientLegacy = recipientMode === "test_recipient";
 
   return {
     profile,
@@ -205,11 +164,6 @@ const buildAutomationConfig = (): WhatsAppAutomationConfig => {
     metaWebhookVerifyToken: normalizeText(process.env.WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN),
     metaAppSecret: normalizeText(process.env.WHATSAPP_AUTOMATION_META_APP_SECRET),
     floraHistorySince: normalizeText(process.env.WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE),
-    legacy: {
-      globalEnabled: globalEnabledLegacy,
-      forceDryRun: forceDryRunLegacy,
-      forceTestRecipient: forceTestRecipientLegacy,
-    },
   };
 };
 
@@ -217,7 +171,6 @@ export const WHATSAPP_AUTOMATION_CONFIG = buildAutomationConfig();
 
 export const WHATSAPP_PROFILE = WHATSAPP_AUTOMATION_CONFIG.profile;
 export const WHATSAPP_RUNTIME_ENVIRONMENT = WHATSAPP_AUTOMATION_CONFIG.runtimeEnvironment;
-export const WHATSAPP_AUTOMATION_PROFILE = WHATSAPP_AUTOMATION_CONFIG.profile;
 export const WHATSAPP_AUTOMATION_MODE = WHATSAPP_AUTOMATION_CONFIG.mode;
 export const WHATSAPP_AUTOMATION_PROVIDER = WHATSAPP_AUTOMATION_CONFIG.provider;
 export const WHATSAPP_AUTOMATION_RECIPIENT_MODE = WHATSAPP_AUTOMATION_CONFIG.recipientMode;
@@ -237,11 +190,6 @@ export const WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN =
   WHATSAPP_AUTOMATION_CONFIG.metaWebhookVerifyToken;
 export const WHATSAPP_AUTOMATION_META_APP_SECRET = WHATSAPP_AUTOMATION_CONFIG.metaAppSecret;
 export const WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE = WHATSAPP_AUTOMATION_CONFIG.floraHistorySince;
-
-export const WHATSAPP_AUTOMATION_GLOBAL_ENABLED = WHATSAPP_AUTOMATION_CONFIG.legacy.globalEnabled;
-export const WHATSAPP_AUTOMATION_FORCE_DRY_RUN = WHATSAPP_AUTOMATION_CONFIG.legacy.forceDryRun;
-export const WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT =
-  WHATSAPP_AUTOMATION_CONFIG.legacy.forceTestRecipient;
 
 export function isWhatsAppAutomationDispatchEnabled() {
   return WHATSAPP_AUTOMATION_MODE !== "disabled";

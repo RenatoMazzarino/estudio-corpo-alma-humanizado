@@ -5,12 +5,8 @@ const ORIGINAL_ENV = { ...process.env };
 function resetAutomationEnv() {
   process.env = { ...ORIGINAL_ENV };
   delete process.env.WHATSAPP_PROFILE;
-  delete process.env.WHATSAPP_AUTOMATION_PROFILE;
   delete process.env.WHATSAPP_AUTOMATION_MODE;
   delete process.env.WHATSAPP_AUTOMATION_RECIPIENT_MODE;
-  delete process.env.WHATSAPP_AUTOMATION_GLOBAL_ENABLED;
-  delete process.env.WHATSAPP_AUTOMATION_FORCE_DRY_RUN;
-  delete process.env.WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT;
   delete process.env.WHATSAPP_AUTOMATION_PROVIDER;
   delete process.env.VERCEL_ENV;
 }
@@ -32,7 +28,7 @@ describe("automation-config", () => {
 
     const config = await loadConfigModule();
 
-    expect(config.WHATSAPP_AUTOMATION_PROFILE).toBe("dev_sandbox");
+    expect(config.WHATSAPP_PROFILE).toBe("dev_sandbox");
     expect(config.WHATSAPP_AUTOMATION_MODE).toBe("dry_run");
     expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("test_recipient");
   });
@@ -45,7 +41,6 @@ describe("automation-config", () => {
 
     expect(config.WHATSAPP_AUTOMATION_MODE).toBe("enabled");
     expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("test_recipient");
-    expect(config.WHATSAPP_AUTOMATION_FORCE_DRY_RUN).toBe(false);
   });
 
   it("aplica prod_real com envio real para cliente", async () => {
@@ -56,8 +51,7 @@ describe("automation-config", () => {
 
     expect(config.WHATSAPP_AUTOMATION_MODE).toBe("enabled");
     expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("customer");
-    expect(config.WHATSAPP_AUTOMATION_PROFILE).toBe("prod_real");
-    expect(config.WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT).toBe(false);
+    expect(config.WHATSAPP_PROFILE).toBe("prod_real");
   });
 
   it("permite override explícito de modo e destinatário", async () => {
@@ -70,18 +64,5 @@ describe("automation-config", () => {
 
     expect(config.WHATSAPP_AUTOMATION_MODE).toBe("disabled");
     expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("test_recipient");
-    expect(config.WHATSAPP_AUTOMATION_GLOBAL_ENABLED).toBe(false);
-  });
-
-  it("mantém compatibilidade com flags legadas quando profile explícito não existe", async () => {
-    resetAutomationEnv();
-    process.env.WHATSAPP_AUTOMATION_GLOBAL_ENABLED = "true";
-    process.env.WHATSAPP_AUTOMATION_FORCE_DRY_RUN = "false";
-    process.env.WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT = "false";
-
-    const config = await loadConfigModule();
-
-    expect(config.WHATSAPP_AUTOMATION_MODE).toBe("enabled");
-    expect(config.WHATSAPP_AUTOMATION_RECIPIENT_MODE).toBe("customer");
   });
 });

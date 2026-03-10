@@ -1,5 +1,6 @@
-export const META_TEMPLATE_PUBLIC_SAMPLE_CODE = "meta-demo-ycloud-2026";
+export const META_TEMPLATE_PUBLIC_SAMPLE_CODE = "meta-demo-2026";
 const META_TEMPLATE_PUBLIC_SAMPLE_CODE_ALIASES = new Set([
+  "meta-demo-2026",
   "meta-demo-ycloud-2026",
   "meta-demo-meta-2026",
 ]);
