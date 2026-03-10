@@ -1,6 +1,8 @@
 import { META_TEMPLATE_PUBLIC_SAMPLE_CODE } from "../../shared/meta-template-demo";
 
-export type WhatsAppTemplateLibraryGroup = "appointment_notice_variations";
+export type WhatsAppTemplateLibraryGroup =
+  | "appointment_notice_variations"
+  | "appointment_reminder_confirmation_24h";
 export type WhatsAppTemplateStatus = "active" | "in_review";
 
 export type WhatsAppTemplateVariableDefinition = {
@@ -20,6 +22,13 @@ export type WhatsAppTemplateButtonDefinition =
       urlBase: string;
       variableName: string;
       sampleValue: string;
+    }
+  | {
+      type: "quick_reply";
+      buttons: Array<{
+        id: string;
+        text: string;
+      }>;
     };
 
 export type WhatsAppTemplateDefinition = {
@@ -60,6 +69,17 @@ const PAY_NOW_BUTTON: WhatsAppTemplateButtonDefinition = {
 
 const RECEIPT_META_TEST_URL = `${RECEIPT_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
 const PAYMENT_META_TEST_URL = `${PAYMENT_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
+const REMINDER_META_TEST_URL = "https://public.corpoealmahumanizado.com.br/mensagens";
+const REMINDER_CONFIRMATION_BUTTONS = [
+  { id: "confirmar", text: "CONFIRMAR" },
+  { id: "reagendar", text: "REAGENDAR" },
+  { id: "falar_com_a_jana", text: "FALAR COM A JANA" },
+] as const;
+
+const REMINDER_CONFIRMATION_BUTTON: WhatsAppTemplateButtonDefinition = {
+  type: "quick_reply",
+  buttons: [...REMINDER_CONFIRMATION_BUTTONS],
+};
 
 export const WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_NOTICE_VARIATIONS: WhatsAppTemplateDefinition[] = [
   {
@@ -644,8 +664,159 @@ _Até breve._`,
   },
 ];
 
+export const WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_REMINDER_CONFIRMATION_24H: WhatsAppTemplateDefinition[] =
+  [
+    {
+      provider: "meta",
+      status: "active",
+      statusLabel: STATUS_ACTIVE_LABEL,
+      locale: "pt_BR",
+      group: "appointment_reminder_confirmation_24h",
+      name: "lembrete_confirmacao_24h_estudio_pago_integral",
+      body: `Olá, *{{1}}*! Tudo bem? Aqui é a Flora, Assistente Virtual do Estúdio, passando para lembrar do seu agendamento de amanhã. 🌿
+
+⏳ *Falta muito pouco para o seu momento de cuidado com a Jana!*
+
+✨ Seu cuidado é *{{2}}*.
+📅 Horário: *Amanhã às {{3}}*.
+📍 Local: *no Estúdio: Rua Silva Pinto, 186, Centro Histórico, Amparo - SP, 13900-319.*
+
+*_(Seu atendimento já está totalmente pago. É só vir relaxar!)_*
+
+Como a nossa agenda é organizada com muito carinho, peço que confirme sua presença nos botões abaixo ou me avise caso tenha algum imprevisto.
+
+_Até breve._`,
+      footer: "Mensagem automática. Por favor, selecione uma opção.",
+      variables: [
+        { index: 1, key: "client_name", description: "Nome da cliente", example: "Maria" },
+        { index: 2, key: "service_name", description: "Nome do cuidado", example: "Massagem Relaxante" },
+        { index: 3, key: "time_label", description: "Horário formatado", example: "18:30" },
+      ],
+      button: REMINDER_CONFIRMATION_BUTTON,
+      metaTestUrl: REMINDER_META_TEST_URL,
+    },
+    {
+      provider: "meta",
+      status: "active",
+      statusLabel: STATUS_ACTIVE_LABEL,
+      locale: "pt_BR",
+      group: "appointment_reminder_confirmation_24h",
+      name: "lembrete_confirmacao_24h_estudio_saldo_pendente",
+      body: `Olá, *{{1}}*! Tudo bem? Aqui é a Flora, Assistente Virtual do Estúdio, passando para lembrar do seu agendamento de amanhã. 🌿
+
+⏳ *Falta muito pouco para o seu momento de cuidado com a Jana!*
+
+✨ Seu cuidado é *{{2}}*.
+📅 Horário: *Amanhã às {{3}}*.
+📍 Local: *no Estúdio: Rua Silva Pinto, 186, Centro Histórico, Amparo - SP, 13900-319.*
+
+🧾 *Lembrete Financeiro*
+• *Total a pagar no dia:* R$ {{4}}
+
+_(O pagamento pode ser feito presencialmente via Pix, cartão ou dinheiro)._
+
+Como a nossa agenda é organizada com muito carinho, peço que confirme sua presença nos botões abaixo ou me avise caso tenha algum imprevisto.
+
+_Até breve._`,
+      footer: "Mensagem automática. Por favor, selecione uma opção.",
+      variables: [
+        { index: 1, key: "client_name", description: "Nome da cliente", example: "Maria" },
+        { index: 2, key: "service_name", description: "Nome do cuidado", example: "Massagem Relaxante" },
+        { index: 3, key: "time_label", description: "Horário formatado", example: "18:30" },
+        {
+          index: 4,
+          key: "total_due",
+          description: "Valor total a pagar no dia sem prefixo monetário",
+          example: "220,00",
+        },
+      ],
+      button: REMINDER_CONFIRMATION_BUTTON,
+      metaTestUrl: REMINDER_META_TEST_URL,
+    },
+    {
+      provider: "meta",
+      status: "active",
+      statusLabel: STATUS_ACTIVE_LABEL,
+      locale: "pt_BR",
+      group: "appointment_reminder_confirmation_24h",
+      name: "lembrete_confirmacao_24h_domicilio_pago_integral",
+      body: `Olá, *{{1}}*! Tudo bem? Aqui é a Flora, Assistente Virtual do Estúdio, passando para lembrar do seu agendamento de amanhã. 🌿
+
+⏳ *Falta muito pouco para o seu momento de cuidado em casa com a Jana!*
+
+✨ Seu cuidado é *{{2}}*.
+📅 Horário: *Amanhã às {{3}}*.
+📍 Local: *no seu endereço: {{4}}*.
+
+*_(Seu atendimento já está totalmente pago. É só relaxar e esperar a Jana!)_*
+
+Como a nossa agenda é organizada com muito carinho, peço que confirme sua presença nos botões abaixo ou me avise caso tenha algum imprevisto.
+
+_Até breve._`,
+      footer: "Mensagem automática. Por favor, selecione uma opção.",
+      variables: [
+        { index: 1, key: "client_name", description: "Nome da cliente", example: "Maria" },
+        { index: 2, key: "service_name", description: "Nome do cuidado", example: "Massagem Relaxante" },
+        { index: 3, key: "time_label", description: "Horário formatado", example: "18:30" },
+        {
+          index: 4,
+          key: "home_address_line",
+          description: "Endereço completo para atendimento domiciliar",
+          example: "Rua Exemplo, 123, Centro, Amparo - SP",
+        },
+      ],
+      button: REMINDER_CONFIRMATION_BUTTON,
+      metaTestUrl: REMINDER_META_TEST_URL,
+    },
+    {
+      provider: "meta",
+      status: "active",
+      statusLabel: STATUS_ACTIVE_LABEL,
+      locale: "pt_BR",
+      group: "appointment_reminder_confirmation_24h",
+      name: "lembrete_confirmacao_24h_domicilio_saldo_pendente",
+      body: `Olá, *{{1}}*! Tudo bem? Aqui é a Flora, Assistente Virtual do Estúdio, passando para lembrar do seu agendamento de amanhã. 🌿
+
+⏳ *Falta muito pouco para o seu momento de cuidado em casa com a Jana!*
+
+✨ Seu cuidado é *{{2}}*.
+📅 Horário: *Amanhã às {{3}}*.
+📍 Local: *no seu endereço: {{4}}*.
+
+🧾 *Lembrete Financeiro*
+• *Total a pagar no dia:* R$ {{5}}
+
+_(O pagamento pode ser feito no momento do atendimento via Pix, cartão ou dinheiro)._
+
+Como a nossa agenda é organizada com muito carinho, peço que confirme sua presença nos botões abaixo ou me avise caso tenha algum imprevisto.
+
+_Até breve._`,
+      footer: "Mensagem automática. Por favor, selecione uma opção.",
+      variables: [
+        { index: 1, key: "client_name", description: "Nome da cliente", example: "Maria" },
+        { index: 2, key: "service_name", description: "Nome do cuidado", example: "Massagem Relaxante" },
+        { index: 3, key: "time_label", description: "Horário formatado", example: "18:30" },
+        {
+          index: 4,
+          key: "home_address_line",
+          description: "Endereço completo para atendimento domiciliar",
+          example: "Rua Exemplo, 123, Centro, Amparo - SP",
+        },
+        {
+          index: 5,
+          key: "total_due",
+          description: "Valor total a pagar no dia sem prefixo monetário",
+          example: "220,00",
+        },
+      ],
+      button: REMINDER_CONFIRMATION_BUTTON,
+      metaTestUrl: REMINDER_META_TEST_URL,
+    },
+  ];
+
 export const WHATSAPP_TEMPLATE_LIBRARY: WhatsAppTemplateDefinition[] = [
   ...WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_NOTICE_VARIATIONS,
+  ...WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_REMINDER_CONFIRMATION_24H,
 ];
 
 const templateLibraryByName = new Map(

@@ -20,6 +20,10 @@ import {
   resolveCreatedAppointmentTemplateSelection,
 } from "./whatsapp-created-template-rules";
 import {
+  type ReminderTemplateStatus,
+  resolveReminderTemplateSelection,
+} from "./whatsapp-reminder-template-rules";
+import {
   assertMetaCloudConfigBase,
   getMetaCloudTemplateImageHeader,
   resolveMetaCloudOutboundRecipient,
@@ -356,7 +360,17 @@ function buildCreatedAppointmentTemplateVariableMap(context: AppointmentTemplate
   } as const;
 }
 
-function buildCreatedAppointmentTemplateComponents(
+function buildReminderTemplateVariableMap(context: AppointmentTemplateContext) {
+  return {
+    client_name: context.clientName || "Cliente",
+    service_name: context.serviceName || "Seu cuidado",
+    time_label: context.timeLabel || "--:--",
+    home_address_line: context.homeAddressLine || "Endereço informado no agendamento",
+    total_due: formatMoneyForTemplate(context.remainingAmount > 0 ? context.remainingAmount : context.totalAmount),
+  } as const;
+}
+
+function buildTemplateComponents(
   templateName: string,
   variableMap: Record<string, string>
 ) {
@@ -497,7 +511,7 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
   for (let index = 0; index < allowedTemplateAttempts.length; index += 1) {
     const templateName = allowedTemplateAttempts[index];
     if (!templateName) continue;
-    const components = buildCreatedAppointmentTemplateComponents(templateName, variableMap);
+    const components = buildTemplateComponents(templateName, variableMap);
     const header = await getMetaCloudTemplateImageHeader({
       templateName,
       languageCode: templateLanguage,
@@ -580,47 +594,68 @@ export async function sendMetaCloudReminderAppointmentTemplate(
   assertMetaCloudConfigBase();
 
   const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
-  const templateName = tenantSettings.reminderTemplateName;
   const templateLanguage = (tenantSettings.reminderTemplateLanguage || policy.defaultLanguageCode).trim();
-
-  if (!templateName) {
-    throw new Error("Template de lembrete não configurado nas settings do tenant.");
-  }
-  if (!policy.allowedReminderTemplateNames.includes(templateName)) {
-    throw new Error(
-      `Configuração fail-safe: template de lembrete '${templateName}' não está permitido para este ambiente.`
-    );
-  }
 
   const context = await loadAppointmentTemplateContext(job, {
     studioLocationLine: tenantSettings.studioLocationLine,
   });
+  const templateStatusMap = await getNotificationTemplateStatusMap(job.tenant_id);
+  const resolveTemplateStatus = (templateName: string): ReminderTemplateStatus => {
+    const fromCatalog = templateStatusMap.get(templateName);
+    if (fromCatalog) return fromCatalog;
+    const fromLibrary = getWhatsAppTemplateFromLibrary(templateName);
+    return fromLibrary?.status ?? "missing";
+  };
+  const selection = resolveReminderTemplateSelection({
+    isHomeVisit: context.isHomeVisit,
+    totalAmount: context.totalAmount,
+    paidAmount: context.paidAmount,
+    paymentStatus: context.paymentStatus,
+    resolveTemplateStatus,
+  });
+  if (!policy.allowedReminderTemplateNames.includes(selection.templateName)) {
+    throw new Error(
+      [
+        "Configuração fail-safe: template de lembrete não está permitido para este ambiente.",
+        `Perfil: ${policy.profile}.`,
+        `Template selecionado: ${selection.templateName}.`,
+      ].join(" ")
+    );
+  }
+
   const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient, {
     recipientMode: policy.recipientMode,
     testRecipient: policy.testRecipient,
   });
+  const variableMap = buildReminderTemplateVariableMap(context);
+  const components = buildTemplateComponents(selection.templateName, variableMap);
+  const header = await getMetaCloudTemplateImageHeader({
+    templateName: selection.templateName,
+    languageCode: templateLanguage,
+  });
+  const headerImageLink = header.requiresImageHeader ? resolveAppointmentNoticeHeaderImageUrl() : null;
+  const templateComponents = [
+    ...(headerImageLink
+      ? [
+          {
+            type: "header",
+            parameters: [{ type: "image", image: { link: headerImageLink } }],
+          },
+        ]
+      : []),
+    ...components,
+  ];
 
   const requestBody = {
     messaging_product: "whatsapp",
     to,
     type: "template",
     template: {
-      name: templateName,
+      name: selection.templateName,
       language: {
         code: templateLanguage,
       },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: context.clientName },
-            { type: "text", text: context.serviceName },
-            { type: "text", text: context.dateLabel },
-            { type: "text", text: context.timeLabel },
-            { type: "text", text: context.locationLine },
-          ],
-        },
-      ],
+      components: templateComponents,
     },
   };
 
@@ -631,9 +666,9 @@ export async function sendMetaCloudReminderAppointmentTemplate(
     deliveredAt: new Date().toISOString(),
     deliveryMode: "meta_cloud_template_appointment_reminder",
     messagePreview:
-      `Meta template reminder (${templateName}) -> ${to} ` +
+      `Meta template reminder (${selection.templateName}) -> ${to} ` +
       `• ${context.clientName} • ${context.serviceName} • ${context.dateLabel} ${context.timeLabel}`,
-    templateName,
+    templateName: selection.templateName,
     templateLanguage,
     recipient: to,
     providerName: "meta_cloud",

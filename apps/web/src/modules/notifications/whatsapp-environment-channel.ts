@@ -49,7 +49,13 @@ export type WhatsAppDispatchPolicyStatus = {
   issues: string[];
 };
 
-const DEFAULT_REMINDER_TEMPLATE_NAMES = ["confirmacao_de_agendamento_24h"];
+const DEFAULT_REMINDER_TEMPLATE_NAMES = [
+  "lembrete_confirmacao_24h_estudio_pago_integral",
+  "lembrete_confirmacao_24h_estudio_saldo_pendente",
+  "lembrete_confirmacao_24h_domicilio_pago_integral",
+  "lembrete_confirmacao_24h_domicilio_saldo_pendente",
+];
+const LEGACY_REMINDER_TEMPLATE_NAMES = new Set(["confirmacao_de_agendamento_24h"]);
 const DEFAULT_CREATED_TEMPLATE_NAMES = WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_NOTICE_VARIATIONS.map(
   (template) => template.name
 );
@@ -74,6 +80,14 @@ const normalizeTemplateList = (value: unknown, fallback: string[]) => {
     .filter((item): item is string => item.length > 0);
   const unique = Array.from(new Set(normalized));
   return unique.length > 0 ? unique : [...fallback];
+};
+
+const normalizeReminderTemplateList = (value: unknown) => {
+  const normalized = normalizeTemplateList(value, DEFAULT_REMINDER_TEMPLATE_NAMES).filter(
+    (name) => !LEGACY_REMINDER_TEMPLATE_NAMES.has(name)
+  );
+  const merged = Array.from(new Set([...normalized, ...DEFAULT_REMINDER_TEMPLATE_NAMES]));
+  return merged.length > 0 ? merged : [...DEFAULT_REMINDER_TEMPLATE_NAMES];
 };
 
 const normalizeE164 = (value: unknown) => {
@@ -122,10 +136,7 @@ const mapRowToPolicy = (row: RawWhatsAppEnvironmentChannelRow): WhatsAppDispatch
       row.allowed_created_template_names,
       DEFAULT_CREATED_TEMPLATE_NAMES
     ),
-    allowedReminderTemplateNames: normalizeTemplateList(
-      row.allowed_reminder_template_names,
-      DEFAULT_REMINDER_TEMPLATE_NAMES
-    ),
+    allowedReminderTemplateNames: normalizeReminderTemplateList(row.allowed_reminder_template_names),
   };
 };
 

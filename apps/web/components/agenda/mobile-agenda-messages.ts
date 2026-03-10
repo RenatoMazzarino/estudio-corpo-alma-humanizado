@@ -2,6 +2,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { AttendanceOverview, MessageType } from "../../lib/attendance/attendance-types";
 import { buildAppointmentPaymentPath, buildAppointmentReceiptPath } from "../../src/shared/public-links";
+import { renderWhatsAppTemplateAsText } from "../../src/modules/notifications/whatsapp-template-renderer";
+import { resolveReminderTemplateSelection } from "../../src/modules/notifications/whatsapp-reminder-template-rules";
 
 export function toWhatsappLink(phone?: string | null) {
   if (!phone) return null;
@@ -24,7 +26,12 @@ export function buildAgendaMessage(
   type: MessageType,
   appointment: AttendanceOverview["appointment"],
   publicBaseUrl: string,
-  options?: { paymentId?: string | null; chargeAmount?: number | null }
+  options?: {
+    paymentId?: string | null;
+    chargeAmount?: number | null;
+    checkoutTotal?: number | null;
+    paidAmount?: number | null;
+  }
 ) {
   const name = appointment.clients?.name?.trim() ?? "";
   const greeting = name ? `Olá, ${name}!` : "Olá!";
@@ -43,7 +50,6 @@ export function buildAgendaMessage(
   const locationLine = appointment.is_home_visit
     ? `🏡 Local: Domicílio${clientAddress ? ` (${clientAddress})` : ""}`
     : "📍 Local: Estúdio Corpo & Alma";
-  const confirmationReplyOptions = "1 - Confirmar\n2 - Reagendar\n3 - Falar com a Jana";
   const serviceLine = serviceName ? `para o seu ${serviceName} às ${timeLabel}.` : `para o seu horário às ${timeLabel}.`;
 
   if (type === "created_confirmation") {
@@ -62,19 +68,35 @@ export function buildAgendaMessage(
   }
 
   if (type === "reminder_24h") {
-    return [
-      `${greeting}`,
-      "",
-      `Passando para lembrar do seu atendimento ${serviceLine}`,
-      `📅 Data: ${dateLine}`,
-      locationLine,
-      serviceSegment,
-      "",
-      "Responda com:",
-      confirmationReplyOptions,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const formatCurrency = (value: number) =>
+      new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+        Math.max(0, value)
+      );
+    const totalAmount =
+      typeof options?.checkoutTotal === "number" && Number.isFinite(options.checkoutTotal)
+        ? options.checkoutTotal
+        : Number(appointment.price ?? 0);
+    const paidAmount =
+      typeof options?.paidAmount === "number" && Number.isFinite(options.paidAmount) ? options.paidAmount : 0;
+    const selection = resolveReminderTemplateSelection({
+      isHomeVisit: appointment.is_home_visit,
+      totalAmount,
+      paidAmount,
+      paymentStatus: appointment.payment_status ?? null,
+    });
+    return renderWhatsAppTemplateAsText({
+      templateName: selection.templateName,
+      variableMap: {
+        client_name: name || "Cliente",
+        service_name: serviceName,
+        time_label: timeLabel,
+        home_address_line:
+          clientAddress ||
+          appointment.clients?.endereco_completo?.trim() ||
+          "Endereço informado no agendamento",
+        total_due: formatCurrency(Math.max(totalAmount - paidAmount, 0)),
+      },
+    });
   }
 
   if (type === "post_survey") {

@@ -6,8 +6,8 @@ import {
 import { META_TEMPLATE_PUBLIC_SAMPLE_CODE } from "../../shared/meta-template-demo";
 
 describe("whatsapp-template-library", () => {
-  it("mantém os 12 templates oficiais de aviso/agendamento cadastrados", () => {
-    expect(WHATSAPP_TEMPLATE_LIBRARY).toHaveLength(12);
+  it("mantém os 16 templates oficiais de aviso/agendamento + lembrete 24h", () => {
+    expect(WHATSAPP_TEMPLATE_LIBRARY).toHaveLength(16);
     expect(WHATSAPP_TEMPLATE_LIBRARY.map((template) => template.name)).toEqual([
       "aviso_agendamento_no_estudio_com_sinal_pago_com_flora",
       "aviso_agendamento_no_estudio_com_sinal_pago_sem_oi_flora",
@@ -21,6 +21,10 @@ describe("whatsapp-template-library", () => {
       "aviso_agendamento_estudio_pagamento_no_atendimento_sem_oi_flora",
       "aviso_agendamento_domicilio_pagamento_no_atendimento_com_flora",
       "aviso_agendamento_domicilio_pagamento_no_atendimento_sem_oi_flora",
+      "lembrete_confirmacao_24h_estudio_pago_integral",
+      "lembrete_confirmacao_24h_estudio_saldo_pendente",
+      "lembrete_confirmacao_24h_domicilio_pago_integral",
+      "lembrete_confirmacao_24h_domicilio_saldo_pendente",
     ]);
   });
 
@@ -28,7 +32,7 @@ describe("whatsapp-template-library", () => {
     const active = WHATSAPP_TEMPLATE_LIBRARY.filter((template) => template.status === "active");
     const inReview = WHATSAPP_TEMPLATE_LIBRARY.filter((template) => template.status === "in_review");
 
-    expect(active).toHaveLength(9);
+    expect(active).toHaveLength(13);
     expect(inReview).toHaveLength(3);
     expect(inReview.map((template) => template.name).sort()).toEqual(
       [
@@ -43,12 +47,15 @@ describe("whatsapp-template-library", () => {
     ).toBe("CRIADO E EM ANÁLISE");
   });
 
-  it("mantém botões dinâmicos de comprovante e pagar agora", () => {
+  it("mantém botões dinâmicos e de resposta rápida", () => {
     const receiptTemplate = getWhatsAppTemplateFromLibrary(
       "aviso_agendamento_no_estudio_com_sinal_pago_com_flora"
     );
     const paymentTemplate = getWhatsAppTemplateFromLibrary(
       "aviso_agendamento_estudio_pagamento_no_atendimento_com_flora"
+    );
+    const reminderTemplate = getWhatsAppTemplateFromLibrary(
+      "lembrete_confirmacao_24h_estudio_saldo_pendente"
     );
 
     expect(receiptTemplate?.button).toEqual(
@@ -67,5 +74,15 @@ describe("whatsapp-template-library", () => {
         sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
       })
     );
+    expect(reminderTemplate?.button).toEqual(
+      expect.objectContaining({
+        type: "quick_reply",
+      })
+    );
+    expect(
+      reminderTemplate?.button.type === "quick_reply"
+        ? reminderTemplate.button.buttons.map((item) => item.text)
+        : []
+    ).toEqual(["CONFIRMAR", "REAGENDAR", "FALAR COM A JANA"]);
   });
 });

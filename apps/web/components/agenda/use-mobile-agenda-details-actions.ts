@@ -163,7 +163,14 @@ export function useMobileAgendaDetailsActions({
       return;
     }
     setDetailsActionPending(true);
-    const message = buildAgendaMessage("reminder_24h", detailsData.appointment, publicBaseUrl);
+    const checkoutTotal = Number(detailsData.checkout?.total ?? detailsData.appointment.price ?? 0);
+    const paidAmount = (detailsData.payments ?? [])
+      .filter((payment) => payment.status === "paid")
+      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
+    const message = buildAgendaMessage("reminder_24h", detailsData.appointment, publicBaseUrl, {
+      checkoutTotal,
+      paidAmount,
+    });
     openWhatsapp(phone, message);
     const result = await sendReminder24h({ appointmentId: detailsData.appointment.id, message });
     if (!result.ok) {

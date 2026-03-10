@@ -31,4 +31,20 @@ describe("whatsapp-template-renderer", () => {
       })
     ).toThrow("sem valor para variável");
   });
+
+  it("renderiza opções de resposta rápida para lembrete 24h", () => {
+    const text = renderWhatsAppTemplateAsText({
+      templateName: "lembrete_confirmacao_24h_estudio_saldo_pendente",
+      variableMap: {
+        client_name: "Renata",
+        service_name: "Drenagem Linfática",
+        time_label: "18:30",
+        total_due: "220,00",
+      },
+    });
+
+    expect(text).toContain("Amanhã às 18:30");
+    expect(text).toContain("Total a pagar no dia");
+    expect(text).toContain("Opções de resposta: CONFIRMAR | REAGENDAR | FALAR COM A JANA");
+  });
 });

@@ -57,5 +57,13 @@ export function renderWhatsAppTemplateAsText(params: RenderTemplateAsTextParams)
     lines.push(`${template.button.buttonText}: ${template.button.urlBase}${buttonValue}`);
   }
 
+  if (params.includeButtonUrl !== false && template.button.type === "quick_reply") {
+    const quickReplyOptions = template.button.buttons.map((button) => button.text.trim()).filter(Boolean);
+    if (quickReplyOptions.length === 0) {
+      throw new Error(`Template '${template.name}' sem botões de resposta rápida configurados.`);
+    }
+    lines.push(`Opções de resposta: ${quickReplyOptions.join(" | ")}`);
+  }
+
   return lines.join("\n\n").trim();
 }
