@@ -61,6 +61,13 @@ interface AppointmentTemplateContext {
   paymentLinkPublicId: string;
 }
 
+const APPOINTMENT_NOTICE_HEADER_IMAGE_PATH = "/assets/whatsapp/aviso-agendamento-header.jpg";
+
+function resolveAppointmentNoticeHeaderImageUrl() {
+  const base = resolvePublicBaseUrlFromWebhookOrigin();
+  return new URL(APPOINTMENT_NOTICE_HEADER_IMAGE_PATH, `${base}/`).toString();
+}
+
 export interface CustomerServiceWindowCheckResult {
   isOpen: boolean;
   reason: "open" | "no_inbound" | "expired";
@@ -433,18 +440,14 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
       templateName,
       languageCode: templateLanguage,
     });
-    if (header.requiresImageHeader && !header.imageLink) {
-      throw new Error(
-        `Template '${templateName}' exige HEADER de imagem, mas não foi possível resolver um link de mídia válido na Meta.`
-      );
-    }
+    const headerImageLink = header.requiresImageHeader ? resolveAppointmentNoticeHeaderImageUrl() : null;
 
     const requestComponents = [
-      ...(header.imageLink
+      ...(headerImageLink
         ? [
             {
               type: "header",
-              parameters: [{ type: "image", image: { link: header.imageLink } }],
+              parameters: [{ type: "image", image: { link: headerImageLink } }],
             },
           ]
         : []),
