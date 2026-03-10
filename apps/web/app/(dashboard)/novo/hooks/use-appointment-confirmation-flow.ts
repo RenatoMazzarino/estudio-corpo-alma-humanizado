@@ -34,6 +34,8 @@ type Params = {
   selectedDate: string;
   selectedTime: string;
   selectedServiceName: string;
+  scheduleTotal: number;
+  effectiveDisplacementFee: number;
   isHomeVisit: boolean;
   addressLabel: string;
   clientMessageFirstName: string;
@@ -90,6 +92,8 @@ export function useAppointmentConfirmationFlow({
   selectedDate,
   selectedTime,
   selectedServiceName,
+  scheduleTotal,
+  effectiveDisplacementFee,
   isHomeVisit,
   addressLabel,
   clientMessageFirstName,
@@ -152,20 +156,57 @@ export function useAppointmentConfirmationFlow({
   );
 
   const buildCreatedMessageText = useCallback(
-    () =>
+    () => {
+      const checkoutTotal = Number(chargeBookingState?.checkout?.total ?? scheduleTotal ?? 0);
+      const paidAmount = (chargeBookingState?.payments ?? [])
+        .filter((payment) => payment.status === "paid")
+        .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
+      const latestPaidPayment = [...(chargeBookingState?.payments ?? [])]
+        .filter((payment) => payment.status === "paid")
+        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+      const receiptPublicId =
+        latestPaidPayment?.provider_ref?.trim() || latestPaidPayment?.id?.trim() || null;
+      const paymentLinkPublicId =
+        chargeBookingState?.attendanceCode?.trim() || chargeBookingState?.appointmentId || null;
+
+      return (
       buildCreatedMessage({
         clientName: clientMessageFirstName,
         date: selectedDate,
         time: selectedTime,
         serviceName: selectedServiceName,
+        isHomeVisit,
+        totalAmount: checkoutTotal,
+        displacementFee: isHomeVisit ? effectiveDisplacementFee : 0,
+        paidAmount,
+        paymentStatus: chargeBookingState?.appointmentPaymentStatus ?? null,
+        receiptPublicId,
+        paymentLinkPublicId,
         locationLine: isHomeVisit
           ? addressLabel
             ? `No endereço informado: ${addressLabel}`
             : "Atendimento domiciliar (endereço a confirmar)"
           : "No estúdio",
         template: messageTemplate,
-      }),
-    [addressLabel, clientMessageFirstName, isHomeVisit, messageTemplate, selectedDate, selectedServiceName, selectedTime]
+      })
+      );
+    },
+    [
+      addressLabel,
+      chargeBookingState?.appointmentId,
+      chargeBookingState?.appointmentPaymentStatus,
+      chargeBookingState?.attendanceCode,
+      chargeBookingState?.checkout?.total,
+      chargeBookingState?.payments,
+      clientMessageFirstName,
+      effectiveDisplacementFee,
+      isHomeVisit,
+      messageTemplate,
+      scheduleTotal,
+      selectedDate,
+      selectedServiceName,
+      selectedTime,
+    ]
   );
 
   const buildAgendaDayReturnUrl = useCallback(

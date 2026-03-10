@@ -546,6 +546,8 @@ export function AppointmentForm({
     selectedDate,
     selectedTime,
     selectedServiceName: selectedService?.name ?? "",
+    scheduleTotal,
+    effectiveDisplacementFee,
     isHomeVisit,
     addressLabel,
     clientMessageFirstName,
