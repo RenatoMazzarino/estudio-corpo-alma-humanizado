@@ -1,6 +1,6 @@
 # Plano Enterprise - Realtime, Edge Functions, Push e Padronizacao de Loading
 
-Status: proposto para execucao  
+Status: em execucao (implementacao base aplicada em 2026-03-10)  
 Data base: 2026-03-10  
 Escopo: repo completo (`apps/web`, `supabase/functions`, `supabase/migrations`, `docs`)  
 Ambientes alvo: `development -> preview -> production`  
@@ -478,3 +478,210 @@ A entrega final enterprise so deve ser considerada pronta quando:
 ## 14) Decisao recomendada
 
 Este plano deve ser aprovado como programa oficial de evolucao enterprise do repo, com execucao em blocos curtos e auditaveis, sem atalho de MVP para os fluxos criticos.
+
+## 15) Plano de execucao fechado (RACI + cronograma)
+
+## 15.1 RACI operacional (fixo)
+
+Papeis:
+
+1. Sponsor de negocio: Renato (define prioridade e aprova Go/No-Go final de fase).
+2. Operacao do estudio: Jana (valida uso real na operacao diaria).
+3. Execucao tecnica: Codex (implementacao ponta a ponta, testes, docs e rollout tecnico).
+4. Aprovacao tecnica de gate: Codex (checklist objetivo por fase + evidencias).
+
+Responsabilidade por fase:
+
+1. Fase 0: Codex (R), Renato (A), Jana (C)
+2. Fase 1: Codex (R), Renato (A), Jana (I)
+3. Fase 2: Codex (R), Renato (A), Jana (C)
+4. Fase 3: Codex (R), Renato (A), Jana (C)
+5. Fase 4: Codex (R), Renato (A), Jana (I)
+6. Fase 5: Codex (R), Renato (A), Jana (C)
+7. Fase 6: Codex (R), Renato (A), Jana (C)
+8. Fase 7: Codex (R), Renato (A), Jana (C)
+
+Legenda:
+
+1. R = Responsavel por executar.
+2. A = Responsavel por aprovar.
+3. C = Consultado na validacao.
+4. I = Informado.
+
+## 15.2 Modelo de execucao (continuo, ponta a ponta)
+
+Inicio previsto: 2026-03-11
+
+1. Este programa sera executado em fluxo continuo ate conclusao, sem particionar por semana.
+2. A progressao ocorre por marcos de fase (F0 -> F7), com validacao de gate ao fim de cada fase.
+3. Assim que o gate da fase atual estiver aprovado, a fase seguinte inicia imediatamente.
+4. O plano de comunicacao de progresso usa marcos concluidos e percentual consolidado, nao calendario semanal.
+
+## 15.3 Capacidade e regra de priorizacao
+
+1. Capacidade: foco em um workstream principal por vez.
+2. Paralelismo permitido apenas quando:
+   - nao houver conflito de schema/contrato
+   - gates da fase anterior estiverem aprovados
+3. Ordem oficial de prioridade de modulo:
+   - Mensagens -> Agenda -> Atendimento -> Caixa/Financeiro -> Fluxo publico.
+
+## 16) Decisoes predefinidas (padrao recomendado)
+
+Estas decisoes ja ficam definidas como padrao deste programa para evitar bloqueio:
+
+1. Push provider inicial: OneSignal.
+2. Escopo inicial de push: Web Push (PWA) para operacao da Jana.
+3. App nativo: fora deste plano (vira programa separado apos Fase 7).
+4. Politica de horario de alerta: 24h/dia.
+5. Canary em producao:
+   - 10% por 24h
+   - 50% por 48h
+   - 100% apos estabilizacao
+6. Janela de mudanca:
+   - terca a quinta, 10:00-18:00 (America/Sao_Paulo)
+   - evitar mudanca critica em sexta/noite/fim de semana
+7. Fail-safe obrigatorio:
+   - configuracao inconsistente bloqueia envio/processamento critico.
+
+## 17) Matriz de feature flags (executavel)
+
+Flags obrigatorias:
+
+1. `FF_REALTIME_PATCH_MODE`
+   - development: on
+   - preview: on
+   - production: canary
+2. `FF_EDGE_DISPATCHER_V2`
+   - development: on
+   - preview: on
+   - production: canary
+3. `FF_PUSH_NOTIFICATIONS`
+   - development: on
+   - preview: on (grupo interno)
+   - production: canary
+4. `FF_LOADING_SYSTEM_V2`
+   - development: on
+   - preview: on
+   - production: canary
+
+Regra:
+
+1. Nenhuma flag nova entra sem plano de remocao.
+2. Flag deve ter owner e data alvo de consolidacao.
+
+## 18) Contrato de eventos (campos obrigatorios)
+
+Todo evento canonico deve conter:
+
+1. `event_id` (unico)
+2. `event_type`
+3. `event_version`
+4. `occurred_at` (timestamp)
+5. `source_module`
+6. `correlation_id`
+7. `tenant_id`
+8. `payload` (json validado)
+9. `idempotency_key`
+10. `processing_status`
+
+## 19) Criterio objetivo de gate por fase
+
+1. Gate funcional:
+   - testes unitarios/integracao/E2E da fase em verde.
+2. Gate operacional:
+   - metricas minimas da fase dentro do limite definido.
+3. Gate de seguranca:
+   - assinatura/segredo/idempotencia validados nos fluxos criticos.
+4. Gate de documentacao:
+   - docs e runbooks atualizados no mesmo bloco de entrega.
+
+Se qualquer gate falhar, fase nao fecha.
+
+## 20) Rollback formal por fase
+
+1. Gatilhos de rollback:
+   - erro critico acima do limite de SLO por 15 min
+   - regressao funcional em fluxo critico
+   - falha de seguranca em webhook/processamento
+2. Acao:
+   - desabilitar flag da fase
+   - restaurar caminho estavel anterior
+   - abrir incidente e relatorio de causa raiz
+3. Responsavel:
+   - execucao tecnica: Codex
+   - aprovacao de continuidade apos incidente: Renato
+
+## 21) Decisoes do sponsor (fechadas)
+
+Status final das decisoes:
+
+1. Push provider:
+   - definido: OneSignal.
+2. Escopo de app nativo:
+   - definido: fora deste plano (depois).
+3. Politica de horario:
+   - definido: 24h/dia.
+4. Modelo de execucao:
+   - definido: execucao continua ponta a ponta (sem particionar por semanas).
+5. Politica de escalonamento de alerta critico:
+   - definido: alerta recorrente ate resolucao.
+   - padrao de operacao:
+     - repeticao a cada 15 minutos
+     - limite de 8 repeticoes por incidente
+     - encerramento automatico do alerta recorrente quando o incidente voltar ao estado saudavel
+
+Com estas definicoes, o plano esta 100% pronto para execucao sem lacunas de decisao de negocio.
+
+## 22) Progresso de implementacao (2026-03-10)
+
+Entregas aplicadas no repo:
+
+1. Fase 1 (dados e contratos):
+   - migration base criada com outbox, dispatch logs, DLQ, push subscriptions/preferencias/tentativas.
+2. Fase 2 (core realtime):
+   - `use-supabase-realtime-refresh` evoluido com health state, reconexao com backoff e modo patch/reload governado por flag.
+3. Fase 3 (mensagens realtime first):
+   - tela Mensagens migrada para shell client com atualizacao realtime e endpoint interno de snapshot.
+4. Fase 4 (edge consolidado):
+   - dispatcher interno (`/api/internal/events/dispatch`) + cron route (`/api/cron/event-dispatcher`) + edge function `event-dispatcher`.
+   - workflow GitHub de cron atualizado para disparar reminders + dispatcher.
+5. Fase 5 (push):
+   - bootstrap OneSignal no dashboard + service workers + APIs de subscription/preference.
+   - card de preferencias push em Configuracoes.
+6. Fase 6 (loading):
+   - biblioteca canonica de loading criada.
+   - `fallback={null}` removido do dashboard.
+   - `loading.tsx` adicionado nas rotas criticas de dashboard e fluxo publico.
+7. Hardening complementar:
+   - emissao de eventos de pagamento para outbox no webhook Mercado Pago.
+   - env templates + auditoria atualizados para flags e secrets novos.
+
+Validacoes executadas:
+
+1. `pnpm --filter web lint`
+2. `pnpm --filter web lint:architecture`
+3. `pnpm --filter web check-types`
+4. `pnpm --filter web test:unit`
+5. `pnpm --filter web test:smoke`
+6. `pnpm build`
+
+Pendencias externas (painel/infra):
+
+1. Concluido em 2026-03-10:
+   - migration `20260311090000_enterprise_events_push_loading_foundation.sql` aplicada em local e remoto.
+2. Concluido em 2026-03-10:
+   - variaveis enterprise sincronizadas nos 3 ambientes Vercel (`development`, `preview`, `production`), incluindo:
+     - `EVENT_DISPATCHER_SECRET`
+     - `FF_REALTIME_PATCH_MODE`
+     - `FF_EDGE_DISPATCHER_V2`
+     - `FF_PUSH_NOTIFICATIONS`
+     - `FF_LOADING_SYSTEM_V2`
+     - `FF_CANARY_PERCENT`
+     - `NEXT_PUBLIC_ONESIGNAL_APP_ID`
+     - `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
+     - `ONESIGNAL_REST_API_KEY`
+3. Pendente operacional (painel):
+   - validar inscricao real do dispositivo da Jana no OneSignal em `preview` e `production` (permissao de navegador + subscription ativa).
+4. Pendente operacional (teste real controlado):
+   - executar 1 E2E real em preview: `agendamento -> fila -> envio WhatsApp real -> status de entrega`.

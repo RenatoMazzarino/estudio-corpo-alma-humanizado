@@ -23,16 +23,24 @@ Escopo: rotas do App Router em `apps/web/app/api/**/route.ts`
 ### Protegidas por segredo (Bearer)
 
 - `GET /api/cron/whatsapp-reminders` (`Authorization: Bearer <CRON_SECRET>`)
+- `GET /api/cron/event-dispatcher` (`Authorization: Bearer <CRON_SECRET>`)
+- `GET /api/internal/events/dispatch` (`Authorization: Bearer <EVENT_DISPATCHER_SECRET>`)
+- `POST /api/internal/events/dispatch` (`Authorization: Bearer <EVENT_DISPATCHER_SECRET>`)
 - `GET /api/internal/notifications/whatsapp/process` (`Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`)
 - `POST /api/internal/notifications/whatsapp/process` (`Authorization: Bearer <WHATSAPP_AUTOMATION_PROCESSOR_SECRET>`)
 
 ### Protegidas por sessão do dashboard (Supabase auth + guard)
 
 - `GET /api/search`
+- `GET /api/internal/messages/state`
 - `GET /api/integrations/spotify/connect`
 - `GET /api/integrations/spotify/callback`
 - `GET /api/integrations/spotify/player/state`
 - `POST /api/integrations/spotify/player/control`
+- `GET /api/push/preferences`
+- `POST /api/push/preferences`
+- `POST /api/push/subscriptions`
+- `DELETE /api/push/subscriptions`
 
 ## Borda assíncrona (Supabase Edge Functions)
 
@@ -41,6 +49,7 @@ Além das rotas `app/api`, o repo mantém funções de borda em `supabase/functi
 - `mercadopago-webhook-proxy`
 - `whatsapp-meta-webhook`
 - `whatsapp-automation-processor`
+- `event-dispatcher`
 
 Essas funções não substituem as rotas `app/api` por padrão; são fronteira complementar para operação e evolução de arquitetura.
 
@@ -74,6 +83,18 @@ Observação:
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET` (opcional, mas recomendado; se ausente a assinatura do webhook Meta não é exigida)
 - `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline de histórico para regra `com_flora/sem_oi_flora`)
+- `EVENT_DISPATCHER_SECRET` (segredo dedicado para o dispatcher de eventos, recomendado)
+- `FF_REALTIME_PATCH_MODE`
+- `FF_EDGE_DISPATCHER_V2`
+- `FF_PUSH_NOTIFICATIONS`
+- `FF_LOADING_SYSTEM_V2`
+- `FF_CANARY_PERCENT`
+
+### Push (OneSignal)
+
+- `NEXT_PUBLIC_ONESIGNAL_APP_ID`
+- `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
+- `ONESIGNAL_REST_API_KEY`
 
 Padrão oficial atual:
 - profile-first + recipient mode.
@@ -321,6 +342,74 @@ Respostas:
 
 Observação:
 - No projeto atual, a frequência alta é executada por GitHub Actions (Vercel Hobby não cobre cron frequente).
+
+### `GET /api/cron/event-dispatcher`
+
+Função:
+- Processa o outbox de eventos (`notification_event_outbox`) e dispara integrações assíncronas (push e trilha operacional).
+
+Proteção:
+- `Authorization: Bearer <CRON_SECRET>`
+
+Respostas:
+- `200` `{ ok: true, summary }`
+- `401` unauthorized
+- `500` erro de processamento
+
+### `GET /api/internal/events/dispatch`
+
+Função:
+- Healthcheck do dispatcher interno de eventos.
+
+Proteção:
+- `Authorization: Bearer <EVENT_DISPATCHER_SECRET>`
+- fallback temporário para `WHATSAPP_AUTOMATION_PROCESSOR_SECRET` quando `EVENT_DISPATCHER_SECRET` não estiver definido.
+
+Resposta:
+- `200` com flags e estado de disponibilidade
+
+### `POST /api/internal/events/dispatch`
+
+Função:
+- Processa lote do outbox com retry/DLQ.
+
+Proteção:
+- `Authorization: Bearer <EVENT_DISPATCHER_SECRET>`
+
+Payload opcional:
+- `{ limit?: number }`
+
+Respostas:
+- `200` `{ ok: true, summary }`
+- `401` unauthorized
+- `503` secret ausente
+- `500` erro de processamento
+
+## 3.1) Push e estado do módulo Mensagens
+
+### `GET /api/internal/messages/state`
+
+Função:
+- Retorna snapshot serializado da tela Mensagens (fila, histórico e catálogo de templates) para atualização realtime client-side.
+
+Proteção:
+- Sessão dashboard.
+
+### `GET|POST /api/push/preferences`
+
+Função:
+- Consulta e atualiza preferências de push por tipo de evento para a usuária logada.
+
+Proteção:
+- Sessão dashboard.
+
+### `POST|DELETE /api/push/subscriptions`
+
+Função:
+- Registra/desativa inscrição OneSignal Web Push do dispositivo atual.
+
+Proteção:
+- Sessão dashboard.
 
 ## 4) Spotify (OAuth + player)
 

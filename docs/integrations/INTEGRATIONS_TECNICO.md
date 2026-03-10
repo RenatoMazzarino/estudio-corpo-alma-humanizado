@@ -143,6 +143,7 @@ Em conflito com o código, o código vence.
 ### Funcionalidades implementadas (repo atual)
 
 - Fila de jobs de automação (`notification_jobs`)
+- Outbox de eventos e dispatcher (`notification_event_outbox`, `notification_dispatch_logs`, `notification_dead_letter_queue`)
 - Processador de jobs de WhatsApp
 - Meta Cloud API como provider (`meta_cloud`)
 - Webhook Meta:
@@ -152,8 +153,12 @@ Em conflito com o código, o código vence.
   - `sent`, `delivered`, `read`, `failed`
 - Cron endpoint para lembretes 24h:
   - `GET /api/cron/whatsapp-reminders` (Bearer `CRON_SECRET`)
+- Cron endpoint para dispatcher de eventos:
+  - `GET /api/cron/event-dispatcher` (Bearer `CRON_SECRET`)
 - Endpoint interno de processamento:
   - `GET|POST /api/internal/notifications/whatsapp/process` (Bearer `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`)
+- Endpoint interno de dispatcher:
+  - `GET|POST /api/internal/events/dispatch` (Bearer `EVENT_DISPATCHER_SECRET`)
 
 ### Templates automáticos usados (estado atual)
 
@@ -222,6 +227,7 @@ Em conflito com o código, o código vence.
 - `WHATSAPP_AUTOMATION_PROVIDER` (`none` | `meta_cloud`)
 - `WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
+- `EVENT_DISPATCHER_SECRET`
 - `WHATSAPP_AUTOMATION_BATCH_LIMIT`
 - `WHATSAPP_AUTOMATION_MAX_RETRIES`
 - `WHATSAPP_AUTOMATION_RETRY_BASE_DELAY_SECONDS`
@@ -265,6 +271,20 @@ Catálogo oficial de templates:
 
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
+
+#### Feature flags enterprise
+
+- `FF_REALTIME_PATCH_MODE`
+- `FF_EDGE_DISPATCHER_V2`
+- `FF_PUSH_NOTIFICATIONS`
+- `FF_LOADING_SYSTEM_V2`
+- `FF_CANARY_PERCENT`
+
+#### OneSignal (push operacional)
+
+- `NEXT_PUBLIC_ONESIGNAL_APP_ID`
+- `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
+- `ONESIGNAL_REST_API_KEY`
 
 #### Localização (fallback de operação)
 
@@ -349,6 +369,7 @@ GitHub Actions (estado atual):
 - Job DEV ativo no cron
 - Job PROD protegido por variável `WHATSAPP_CRON_ENABLE_PROD == 'true'`
 - Autenticação por Bearer secret (`WHATSAPP_CRON_DEV_SECRET` / `WHATSAPP_CRON_PROD_SECRET`)
+- O workflow também dispara o endpoint `/api/cron/event-dispatcher` em DEV/PROD para processar o outbox.
 
 ---
 

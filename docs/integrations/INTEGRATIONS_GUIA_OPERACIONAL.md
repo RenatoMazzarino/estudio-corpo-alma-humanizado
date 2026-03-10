@@ -81,7 +81,19 @@ Observação:
 - `WHATSAPP_AUTOMATION_META_APP_SECRET`
 - `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; usar como marco inicial para regra de apresentação da Flora)
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
+- `EVENT_DISPATCHER_SECRET`
 - `CRON_SECRET`
+- `FF_REALTIME_PATCH_MODE`
+- `FF_EDGE_DISPATCHER_V2`
+- `FF_PUSH_NOTIFICATIONS`
+- `FF_LOADING_SYSTEM_V2`
+- `FF_CANARY_PERCENT`
+
+### Push (OneSignal)
+
+- `NEXT_PUBLIC_ONESIGNAL_APP_ID`
+- `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
+- `ONESIGNAL_REST_API_KEY`
 
 Perfis recomendados:
 - Development: `dev_sandbox`
@@ -188,6 +200,8 @@ O painel já mostra:
 - Lembretes 24h são processados por:
   - endpoint `/api/cron/whatsapp-reminders`
   - GitHub Actions (`*/5`)
+- O dispatcher de eventos enterprise também roda no mesmo scheduler:
+  - endpoint `/api/cron/event-dispatcher`
 
 ## 6) Fluxo operacional resumido (pagamento + mensagens)
 
@@ -235,6 +249,8 @@ pnpm supabase db push        # remoto linkado
 - `messages` chegando no webhook
 - status `sent/delivered/read` atualizando no painel
 - cron de reminder funcionando (manual ou GitHub Actions)
+- dispatcher processando outbox sem crescimento anormal de `pending/failed`
+- push habilitado no dashboard da Jana (quando `FF_PUSH_NOTIFICATIONS` estiver ativo)
 
 ## 8) Troubleshooting rápido
 
@@ -272,6 +288,15 @@ Verificar:
 - GitHub Actions workflow `whatsapp-reminders-cron`
 - `WHATSAPP_CRON_ENABLE_PROD` (quando testando produção)
 - secret correto (`WHATSAPP_CRON_DEV_SECRET` / `WHATSAPP_CRON_PROD_SECRET`)
+- validar também o endpoint `/api/cron/event-dispatcher` (quando status da automação não atualiza no módulo Mensagens)
+
+### 7. Push não chega para a Jana
+
+Verificar:
+- OneSignal App ID e REST key corretos no ambiente
+- `FF_PUSH_NOTIFICATIONS` ativo no ambiente
+- assinatura ativa em `push_subscriptions` (dashboard logado e permissão de notificação aceita)
+- preferências de evento em `/configuracoes` habilitadas para o tipo do alerta
 
 ### 5. Login do dashboard pedindo autenticação com frequência
 

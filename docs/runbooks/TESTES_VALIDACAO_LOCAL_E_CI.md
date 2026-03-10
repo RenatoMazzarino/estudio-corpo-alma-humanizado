@@ -74,3 +74,24 @@ Nunca publicar alteracao de fluxo critico sem:
 1. validacao local completa
 2. CI verde
 3. smoke funcional do fluxo afetado
+
+## 7) Validacao enterprise adicional (realtime + dispatcher + push)
+
+1. Processar dispatcher interno (preview):
+
+```powershell
+curl -H "Authorization: Bearer <EVENT_DISPATCHER_SECRET>" https://dev.public.corpoealmahumanizado.com.br/api/internal/events/dispatch
+curl -X POST -H "Authorization: Bearer <EVENT_DISPATCHER_SECRET>" -H "Content-Type: application/json" -d "{\"limit\":20}" https://dev.public.corpoealmahumanizado.com.br/api/internal/events/dispatch
+```
+
+2. Processar cron dispatcher (preview):
+
+```powershell
+curl -H "Authorization: Bearer <CRON_SECRET>" https://dev.public.corpoealmahumanizado.com.br/api/cron/event-dispatcher
+```
+
+3. Validar módulo Mensagens:
+- fila/status/templates atualizando automaticamente sem recarregar manual.
+
+4. Validar Configurações > Push:
+- preferências carregam e persistem por evento.
