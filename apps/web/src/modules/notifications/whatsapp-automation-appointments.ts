@@ -320,7 +320,13 @@ function buildCreatedAppointmentTemplateComponents(
     throw new Error(`Template de aviso de agendamento '${templateName}' não existe na biblioteca local.`);
   }
 
-  const bodyParameters = [...template.variables]
+  let bodyVariables = template.variables;
+  if (template.button.type === "url_dynamic") {
+    const buttonVariableName = template.button.variableName;
+    bodyVariables = template.variables.filter((variable) => variable.key !== buttonVariableName);
+  }
+
+  const bodyParameters = [...bodyVariables]
     .sort((a, b) => a.index - b.index)
     .map((variable) => {
       const value = variableMap[variable.key] ?? "";
