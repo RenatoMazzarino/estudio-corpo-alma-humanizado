@@ -15,6 +15,7 @@ import {
   findPendingNotificationJobDuplicate,
   insertNotificationJob,
 } from "./repository";
+import { processPendingWhatsAppNotificationJobs } from "./whatsapp-automation-processor";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
 import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
 import type {
@@ -87,11 +88,12 @@ export async function enqueueNotificationJobWithAutomationGuard(
   if (
     WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE &&
     isWhatsAppAutomationDispatchEnabled() &&
-    insertedJob?.id &&
-    options?.processJobs
+    insertedJob?.id
   ) {
+    const processJobs = options?.processJobs ?? processPendingWhatsAppNotificationJobs;
+
     try {
-      await options.processJobs({
+      await processJobs({
         jobId: insertedJob.id,
         type: isSupportedWhatsAppJobType(insertedJob.type) ? insertedJob.type : undefined,
         limit: 1,
