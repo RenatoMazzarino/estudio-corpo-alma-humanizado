@@ -10,26 +10,26 @@ Environment intent:
 
 1. Development
    - Local workflow via `vercel dev` and `vercel pull --environment=development`.
-   - Use `WHATSAPP_AUTOMATION_PROFILE=development_safe` (simulado + destinatário fixo de teste).
+   - Use `WHATSAPP_PROFILE=dev_sandbox` (simulado + destinatário fixo de teste).
 2. Preview
    - Deployments from non-main branches.
    - Used for staging validation before production.
-   - Use `WHATSAPP_AUTOMATION_PROFILE=preview_real_test` para envio real controlado (destino fixo de teste).
+   - Use `WHATSAPP_PROFILE=preview_real_test` para envio real controlado (destino fixo de teste).
 3. Production
    - Deployments from `main`.
-   - Use `WHATSAPP_AUTOMATION_PROFILE=production_live` (envio real para cliente).
+   - Use `WHATSAPP_PROFILE=prod_real` (envio real para cliente).
 
 Profile-first strategy (recommended):
 
 1. Defina o perfil por ambiente:
-   - `development_safe`
-   - `preview_safe`
+   - `dev_sandbox`
    - `preview_real_test`
-   - `production_live`
+   - `prod_real`
 2. Controle de destinatário via:
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (fixo)
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (real)
-3. Flags legadas (`WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`, `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`) continuam suportadas por compatibilidade, mas não são mais o caminho principal.
+3. `WHATSAPP_AUTOMATION_PROFILE` permanece apenas por compatibilidade.
+4. Flags legadas (`WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`, `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`) continuam suportadas por transição, mas não são mais o caminho principal.
 
 Files in this folder are templates (no secrets):
 

@@ -180,9 +180,9 @@ Arquivos modelo:
 
 Regra recomendada para WhatsApp:
 
-1. Development: `WHATSAPP_AUTOMATION_PROFILE=development_safe`
-2. Preview: `WHATSAPP_AUTOMATION_PROFILE=preview_real_test`
-3. Production: `WHATSAPP_AUTOMATION_PROFILE=production_live`
+1. Development: `WHATSAPP_PROFILE=dev_sandbox`
+2. Preview: `WHATSAPP_PROFILE=preview_real_test`
+3. Production: `WHATSAPP_PROFILE=prod_real`
 4. Destinatário:
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (teste controlado)
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (cliente real)
@@ -497,7 +497,8 @@ Variaveis criticas na Vercel:
 - `APP_TIMEZONE=America/Sao_Paulo`
 
 Variaveis criticas adicionais (se automacoes/Spotify estiverem ativos):
-- `WHATSAPP_AUTOMATION_PROFILE`
+- `WHATSAPP_PROFILE`
+- `WHATSAPP_AUTOMATION_PROFILE` (compatibilidade)
 - `WHATSAPP_AUTOMATION_RECIPIENT_MODE`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`

@@ -29,6 +29,7 @@ $requiredKeys = @(
   "MERCADOPAGO_ACCESS_TOKEN",
   "MERCADOPAGO_PUBLIC_KEY",
   "MERCADOPAGO_WEBHOOK_SECRET",
+  "WHATSAPP_PROFILE",
   "WHATSAPP_AUTOMATION_PROVIDER",
   "WHATSAPP_AUTOMATION_PROCESSOR_SECRET",
   "WHATSAPP_AUTOMATION_BATCH_LIMIT",
@@ -39,6 +40,7 @@ $requiredKeys = @(
   "WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID",
   "WHATSAPP_AUTOMATION_META_BUSINESS_ACCOUNT_ID",
   "WHATSAPP_AUTOMATION_META_TEST_RECIPIENT",
+  "WHATSAPP_AUTOMATION_RECIPIENT_MODE",
   "WHATSAPP_AUTOMATION_META_API_VERSION",
   "WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN",
   "WHATSAPP_AUTOMATION_META_APP_SECRET",
@@ -147,7 +149,10 @@ foreach ($file in $expectedFiles) {
   }
 
   if ($file -eq "vercel-production-required.env") {
-    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_PROFILE"
+    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
+    if ($profile -eq "") {
+      $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_PROFILE"
+    }
     $recipientMode = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_RECIPIENT_MODE"
     $legacyGlobalEnabled = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_GLOBAL_ENABLED"
     $legacyForceDryRun = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_FORCE_DRY_RUN"
@@ -155,14 +160,14 @@ foreach ($file in $expectedFiles) {
 
     if ($profile -eq "") {
       if ($legacyGlobalEnabled -eq "" -and $legacyForceDryRun -eq "") {
-        Add-Result $file "prod-profile-default" "OK" "Profile ausente: runtime usará padrão de VERCEL_ENV=production (production_live)."
+        Add-Result $file "prod-profile-default" "OK" "Profile ausente: runtime usará padrão de VERCEL_ENV=production (prod_real)."
       } elseif ($legacyGlobalEnabled -ne "true" -or $legacyForceDryRun -ne "false") {
         Add-Result $file "prod-profile-legacy" "FAIL" "Pacote legado em produção exige GLOBAL_ENABLED=true e FORCE_DRY_RUN=false."
       } else {
         Add-Result $file "prod-profile-legacy" "OK" "Pacote legado aceito (migração recomendada para profile-first)."
       }
-    } elseif ($profile -ne "production_live") {
-      Add-Result $file "prod-profile" "FAIL" "Production deve usar WHATSAPP_AUTOMATION_PROFILE=production_live."
+    } elseif ($profile -ne "prod_real") {
+      Add-Result $file "prod-profile" "FAIL" "Production deve usar WHATSAPP_PROFILE=prod_real."
     }
 
     if ($recipientMode -eq "") {
@@ -179,7 +184,10 @@ foreach ($file in $expectedFiles) {
   }
 
   if ($file -eq "vercel-preview-required.env") {
-    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_PROFILE"
+    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
+    if ($profile -eq "") {
+      $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_PROFILE"
+    }
     $recipientMode = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_RECIPIENT_MODE"
     $legacyGlobalEnabled = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_GLOBAL_ENABLED"
     $legacyForceDryRun = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_FORCE_DRY_RUN"
@@ -187,12 +195,12 @@ foreach ($file in $expectedFiles) {
 
     if ($profile -eq "") {
       if ($legacyGlobalEnabled -eq "" -and $legacyForceDryRun -eq "") {
-        Add-Result $file "preview-profile-default" "OK" "Profile ausente: runtime usará padrão de VERCEL_ENV=preview (preview_safe)."
+        Add-Result $file "preview-profile-default" "OK" "Profile ausente: runtime usará padrão de VERCEL_ENV=preview (preview_real_test)."
       } else {
         Add-Result $file "preview-profile-legacy" "OK" "Pacote legado aceito (migração recomendada para profile-first)."
       }
-    } elseif ($profile -ne "preview_safe" -and $profile -ne "preview_real_test") {
-      Add-Result $file "preview-profile" "FAIL" "Preview deve usar profile preview_safe ou preview_real_test."
+    } elseif ($profile -ne "preview_real_test") {
+      Add-Result $file "preview-profile" "FAIL" "Preview deve usar WHATSAPP_PROFILE=preview_real_test."
     }
 
     if ($recipientMode -eq "") {
@@ -209,7 +217,10 @@ foreach ($file in $expectedFiles) {
   }
 
   if ($file -eq "vercel-development-required.env") {
-    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_PROFILE"
+    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
+    if ($profile -eq "") {
+      $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_PROFILE"
+    }
     $recipientMode = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_RECIPIENT_MODE"
     $legacyGlobalEnabled = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_GLOBAL_ENABLED"
     $legacyForceDryRun = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_FORCE_DRY_RUN"
@@ -217,12 +228,12 @@ foreach ($file in $expectedFiles) {
 
     if ($profile -eq "") {
       if ($legacyGlobalEnabled -eq "" -and $legacyForceDryRun -eq "") {
-        Add-Result $file "dev-profile-default" "OK" "Profile ausente: runtime local padrão usa development_safe."
+        Add-Result $file "dev-profile-default" "OK" "Profile ausente: runtime local padrão usa dev_sandbox."
       } else {
         Add-Result $file "dev-profile-legacy" "OK" "Pacote legado aceito (migração recomendada para profile-first)."
       }
-    } elseif ($profile -ne "development_safe") {
-      Add-Result $file "dev-profile" "FAIL" "Development deve usar WHATSAPP_AUTOMATION_PROFILE=development_safe."
+    } elseif ($profile -ne "dev_sandbox") {
+      Add-Result $file "dev-profile" "FAIL" "Development deve usar WHATSAPP_PROFILE=dev_sandbox."
     }
 
     if ($recipientMode -eq "") {

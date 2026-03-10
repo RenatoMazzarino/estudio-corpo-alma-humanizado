@@ -72,7 +72,8 @@ Observação:
 
 ### WhatsApp / Meta (automação)
 
-- `WHATSAPP_AUTOMATION_PROFILE`
+- `WHATSAPP_PROFILE`
+- `WHATSAPP_AUTOMATION_PROFILE` (compatibilidade)
 - `WHATSAPP_AUTOMATION_RECIPIENT_MODE`
 - `WHATSAPP_AUTOMATION_PROVIDER`
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
@@ -84,9 +85,9 @@ Observação:
 - `CRON_SECRET`
 
 Perfis recomendados:
-- Development: `development_safe`
+- Development: `dev_sandbox`
 - Preview: `preview_real_test`
-- Production: `production_live`
+- Production: `prod_real`
 
 Modo de destinatário:
 - `test_recipient` para homologação/piloto controlado
@@ -295,7 +296,7 @@ Verificar:
 - Não remover o fluxo manual de WhatsApp ao ativar automação.
 - Não ligar scheduler PROD sem checar fila/backlog e destinatário/allowlist.
 - Em incidente, priorizar:
-  1. pausar automação (`WHATSAPP_AUTOMATION_MODE=disabled` ou `WHATSAPP_AUTOMATION_PROFILE=development_safe`)
+  1. pausar automação (`WHATSAPP_AUTOMATION_MODE=disabled` ou `WHATSAPP_PROFILE=dev_sandbox`)
   2. corrigir env/webhook
   3. validar em DEV
   4. religar rollout controlado

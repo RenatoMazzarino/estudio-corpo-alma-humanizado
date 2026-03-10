@@ -208,7 +208,8 @@ Em conflito com o código, o código vence.
 
 #### Core / fila / processador
 
-- `WHATSAPP_AUTOMATION_PROFILE` (`development_safe` | `preview_safe` | `preview_real_test` | `production_live`)
+- `WHATSAPP_PROFILE` (`dev_sandbox` | `preview_real_test` | `prod_real`)
+- `WHATSAPP_AUTOMATION_PROFILE` (compatibilidade)
 - `WHATSAPP_AUTOMATION_RECIPIENT_MODE` (`test_recipient` | `customer`)
 - `WHATSAPP_AUTOMATION_PROVIDER` (`none` | `meta_cloud`)
 - `WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE`
@@ -236,7 +237,7 @@ Semântica do baseline:
 - histórico de automação anterior ao timestamp informado em `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` não é considerado.
 - isso permite "reset lógico" da apresentação da Flora sem apagar dados históricos do banco.
 
-#### Templates (canônico no banco)
+#### Templates e canal por ambiente (canônico no banco)
 
 Os nomes/idiomas de template agora são resolvidos por tenant na tabela `settings`:
 - `whatsapp_template_created_name`
@@ -246,10 +247,14 @@ Os nomes/idiomas de template agora são resolvidos por tenant na tabela `setting
 - `whatsapp_automation_enabled`
 - `whatsapp_studio_location_line`
 
-Nota sobre `notification_templates`:
-- a tabela existe por legado do desenho genérico de notificações, mas não é fonte ativa do WhatsApp atual.
-- no fluxo Meta atual, a seleção de template vem da biblioteca local + settings do tenant.
-- portanto, `notification_templates` vazia é comportamento esperado neste estágio.
+Canal oficial por ambiente:
+- tabela `whatsapp_environment_channels`
+- define perfil ativo por ambiente, política de destino, remetente e allowlist de templates.
+
+Catálogo oficial de templates:
+- tabela `notification_templates` (sincronizada pela biblioteca local + eventos webhook da Meta).
+- campos de status/qualidade/categoria (`status`, `quality`, `category`, `language_code`, `provider_template_id`).
+- a seleção de template no envio usa esse catálogo como estado principal.
 
 #### Webhook / assinatura
 
