@@ -3,6 +3,13 @@ import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Clock3, TimerReset, XCircle } from "lucide-react";
 import { createServiceClient } from "../../../lib/supabase/service";
 import { getDashboardAccessForCurrentUser } from "../../../src/modules/auth/dashboard-access";
+import { getWhatsAppAutomationRuntimeConfig } from "../../../src/modules/notifications/whatsapp-automation";
+import { getTenantWhatsAppDispatchPolicyStatus } from "../../../src/modules/notifications/whatsapp-environment-channel";
+import {
+  listNotificationTemplateCatalog,
+  syncNotificationTemplateCatalogFromLibrary,
+  type NotificationTemplateCatalogRow,
+} from "../../../src/modules/notifications/whatsapp-template-catalog";
 import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
 
 export type JobRow = {
@@ -31,8 +38,34 @@ export type JourneyStep = {
   note?: string | null;
 };
 
+export type AutomationState = {
+  profile: string;
+  runtimeEnvironment: string;
+  senderPhoneNumberId: string | null;
+  senderDisplayPhone: string | null;
+  recipientMode: string;
+  forcedRecipient: string | null;
+  templatesTotal: number;
+  templatesActive: number;
+  templatesInReview: number;
+  templatesOther: number;
+  latestOperationalError: string | null;
+  latestOperationalErrorAt: string | null;
+  failSafeIssues: string[];
+  templates: NotificationTemplateCatalogRow[];
+};
+
 const asObj = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+
+const extractAutomationError = (payload: unknown) => {
+  const automation = asObj(asObj(payload).automation);
+  const providerError =
+    typeof automation.provider_delivery_error === "string" ? automation.provider_delivery_error.trim() : "";
+  if (providerError) return providerError;
+  const fallbackError = typeof automation.error === "string" ? automation.error.trim() : "";
+  return fallbackError || null;
+};
 
 export const getAutomation = (payload: Record<string, unknown> | null) => asObj(asObj(payload).automation);
 
@@ -422,10 +455,71 @@ export const toneClasses = {
   error: "bg-red-50 text-red-700 border-red-200",
 } as const;
 
+async function loadAutomationState(tenantId: string): Promise<AutomationState> {
+  const runtime = getWhatsAppAutomationRuntimeConfig();
+  const supabase = createServiceClient();
+
+  try {
+    await syncNotificationTemplateCatalogFromLibrary(tenantId);
+  } catch (error) {
+    console.warn("[mensagens] Falha ao sincronizar catálogo local de templates:", error);
+  }
+
+  const [policyStatus, templateCatalog, latestFailedJob] = await Promise.all([
+    getTenantWhatsAppDispatchPolicyStatus(tenantId).catch((error) => ({
+      policy: null,
+      issues: [error instanceof Error ? error.message : "Falha ao carregar política de envio."],
+    })),
+    listNotificationTemplateCatalog(tenantId).catch(() => [] as NotificationTemplateCatalogRow[]),
+    supabase
+      .from("notification_jobs")
+      .select("payload, updated_at")
+      .eq("tenant_id", tenantId)
+      .eq("channel", "whatsapp")
+      .eq("status", "failed")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const templatesActive = templateCatalog.filter(
+    (template) => (template.status ?? "").toLowerCase() === "active"
+  ).length;
+  const templatesInReview = templateCatalog.filter((template) =>
+    ["in_review", "pending", "paused"].includes((template.status ?? "").toLowerCase())
+  ).length;
+  const templatesOther = Math.max(templateCatalog.length - templatesActive - templatesInReview, 0);
+  const latestOperationalError = extractAutomationError(latestFailedJob.data?.payload ?? null);
+
+  return {
+    profile: runtime.profile,
+    runtimeEnvironment: runtime.runtimeEnvironment,
+    senderPhoneNumberId: policyStatus.policy?.senderPhoneNumberId ?? null,
+    senderDisplayPhone: policyStatus.policy?.senderDisplayPhone ?? null,
+    recipientMode: policyStatus.policy?.recipientMode ?? runtime.recipientMode,
+    forcedRecipient:
+      policyStatus.policy?.recipientMode === "test_recipient"
+        ? policyStatus.policy.testRecipient
+        : null,
+    templatesTotal: templateCatalog.length,
+    templatesActive,
+    templatesInReview,
+    templatesOther,
+    latestOperationalError,
+    latestOperationalErrorAt: latestFailedJob.data?.updated_at ?? null,
+    failSafeIssues: policyStatus.issues,
+    templates: templateCatalog,
+  };
+}
+
 export async function loadMessagesData() {
   const access = await getDashboardAccessForCurrentUser();
   if (!access.ok) {
-    return { jobs: [] as JobRow[], appointmentsById: new Map<string, AppointmentMini>() };
+    return {
+      jobs: [] as JobRow[],
+      appointmentsById: new Map<string, AppointmentMini>(),
+      automationState: null as AutomationState | null,
+    };
   }
 
   const supabase = createServiceClient();
@@ -457,5 +551,7 @@ export async function loadMessagesData() {
     }
   }
 
-  return { jobs, appointmentsById };
+  const automationState = await loadAutomationState(tenantId);
+
+  return { jobs, appointmentsById, automationState };
 }
