@@ -65,7 +65,9 @@ Ele e complementar ao codigo e aos documentos canonicos de operacao.
 7. `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`
 8. `docs/engineering/MODULARIZATION_CONVENTIONS.md`
 9. `docs/engineering/PR_CHECKLIST_REFACTOR.md`
-10. `docs/runbooks/TESTES_VALIDACAO_LOCAL_E_CI.md`
+10. `docs/engineering/AGENTS_GOVERNANCE.md`
+11. `docs/engineering/AGENTS_PRECEDENCE_MAP.md`
+12. `docs/runbooks/TESTES_VALIDACAO_LOCAL_E_CI.md`
 
 ## 6) Contrato arquitetural global
 
@@ -198,32 +200,16 @@ Toda entrega tecnica deve deixar claro:
    - regra global + regra local
    - com prioridade para a regra local em caso de conflito.
 
-## 19) Overrides ativos no repositorio
+## 19) Governanca dos overrides
 
-1. `apps/AGENTS.override.md`
-2. `apps/web/AGENTS.override.md`
-3. `apps/web/app/AGENTS.override.md`
-4. `apps/web/app/api/AGENTS.override.md`
-5. `apps/web/app/(public)/AGENTS.override.md`
-6. `apps/web/app/(dashboard)/AGENTS.override.md`
-7. `apps/web/src/AGENTS.override.md`
-8. `apps/web/src/modules/AGENTS.override.md`
-9. `apps/web/src/modules/appointments/AGENTS.override.md`
-10. `apps/web/src/modules/notifications/AGENTS.override.md`
-11. `apps/web/src/modules/payments/AGENTS.override.md`
-12. `apps/web/src/shared/AGENTS.override.md`
-13. `apps/web/components/AGENTS.override.md`
-14. `apps/web/tests/AGENTS.override.md`
-15. `supabase/AGENTS.override.md`
-16. `supabase/migrations/AGENTS.override.md`
-17. `supabase/functions/AGENTS.override.md`
-18. `docs/AGENTS.override.md`
-19. `scripts/AGENTS.override.md`
-20. `vercel/AGENTS.override.md`
-21. `packages/AGENTS.override.md`
-22. `packages/ui/AGENTS.override.md`
-23. `.agents/AGENTS.override.md`
-24. `.agents/skills/estudio-repo-context/AGENTS.override.md`
+1. Nao manter lista manual de overrides no `AGENTS.md` raiz.
+2. Fonte de verdade dos overrides ativos: `docs/engineering/AGENTS_PRECEDENCE_MAP.md`.
+3. Para validar consistencia e regenerar mapa:
+   - `pnpm agents:check`
+4. Regras de escrita e manutencao:
+   - `docs/engineering/AGENTS_GOVERNANCE.md`
+   - `docs/agents/AGENTS_LINT_RULES.md`
+   - `docs/agents/AGENTS_TEMPLATE.md`
 
 ## 20) Comandos uteis de operacao do repo
 
@@ -235,6 +221,52 @@ Toda entrega tecnica deve deixar claro:
 6. `pnpm --filter web test:smoke`
 7. `pnpm build`
 8. `pnpm codex:skills:check`
-9. `pnpm vercel:env:audit`
-10. `pnpm vercel:deploy:preview`
-11. `pnpm vercel:deploy:prod`
+9. `pnpm agents:check`
+10. `pnpm vercel:env:audit`
+11. `pnpm vercel:deploy:preview`
+12. `pnpm vercel:deploy:prod`
+
+## Regra de maturidade (V1 final de producao)
+
+1. Este escopo nao aceita entrega em mentalidade MVP ou "so para funcionar".
+2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao, observabilidade e manutencao previsivel.
+3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou acoplamento oculto.
+4. Solucoes devem incluir:
+   - tratamento de erro explicito
+   - contratos claros de entrada/saida
+   - testes proporcionais ao risco
+   - documentacao operacional quando houver impacto de runtime
+5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade estrutural e registrar tradeoff.
+
+## 21) Definition of Done (nivel producao)
+
+Uma entrega so e considerada pronta quando:
+
+1. arquitetura do trecho alterado ficou mais clara (nunca mais confusa);
+2. nao houve aumento de acoplamento oculto, duplicacao oportunista ou fallback sem governanca;
+3. contratos de API, banco, webhook e env ficaram consistentes entre codigo e docs;
+4. validacao tecnica minima foi executada e registrada;
+5. risco residual e plano de rollback foram explicitados quando houver mudanca critica.
+
+## 22) Anti-gambiarra (regras de bloqueio)
+
+Mudancas devem ser recusadas/adiadas quando:
+
+1. exigem bypass permanente de validacao, auth, RLS ou verificacao de assinatura;
+2. inserem flag/env temporaria sem plano de remocao;
+3. dependem de ajuste manual recorrente para funcionar;
+4. resolvem sintoma local criando regressao sistêmica em outro fluxo.
+
+## 23) Diretrizes para realtime, edge e loading
+
+1. Realtime:
+   - preferir patch local de estado em vez de `router.refresh()` global;
+   - manter fallback degradado com telemetria, nao fallback silencioso.
+2. Edge Functions:
+   - idempotencia obrigatoria;
+   - retries com controle e trilha de auditoria;
+   - segredo somente via env seguro.
+3. Loading UX:
+   - evitar spinner ad-hoc espalhado;
+   - padronizar componentes de loading por contexto (pagina/secao/inline/bloqueante);
+   - nunca deixar `fallback={null}` em fluxo critico de operacao.

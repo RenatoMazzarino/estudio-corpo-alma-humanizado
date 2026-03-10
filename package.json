@@ -9,6 +9,7 @@
     "check-types": "pnpm exec turbo run check-types",
     "supabase:types": "supabase gen types typescript --local --schema public > apps/web/lib/supabase/types.ts",
     "codex:skills:check": "powershell -ExecutionPolicy Bypass -File scripts/codex/check-skills-readiness.ps1",
+    "agents:check": "powershell -ExecutionPolicy Bypass -File scripts/codex/check-agents-consistency.ps1",
     "vercel:env:audit": "powershell -ExecutionPolicy Bypass -File scripts/codex/vercel-env-audit.ps1",
     "vercel:dev": "pnpm exec vercel dev",
     "vercel:deploy:preview": "pnpm exec vercel deploy",

@@ -1,19 +1,34 @@
-# AGENTS.override.md (packages)
+# Template de AGENTS.override.md
 
-Escopo: `packages/*`.
+```md
+# AGENTS.override.md (<caminho>)
 
-## Diretriz
+Escopo: <responsabilidade local>
 
-1. Pacotes sao compartilhados; evitar acoplamento com detalhes de `apps/web`.
-2. APIs de pacote devem ser estaveis e versionadas no contexto do workspace.
+## Objetivo
+
+1. <objetivo 1>
+2. <objetivo 2>
 
 ## Regras
 
-1. Mudou interface publica de pacote:
-   - validar consumidores
-   - ajustar tipos/imports no app.
-2. Evitar dependencia circular entre pacotes.
-3. Manter foco de cada pacote (UI, eslint config, tsconfig etc.).
+1. <regra local 1>
+2. <regra local 2>
+
+## Aplica / Nao aplica
+
+1. Aplica: <...>
+2. Nao aplica: <...>
+
+## Checklist minimo de validacao
+
+1. <teste/check 1>
+2. <teste/check 2>
+
+## Risco de regressao
+
+1. <risco 1>
+2. <risco 2>
 
 ## Regra de maturidade (V1 final de producao)
 
@@ -26,4 +41,4 @@ Escopo: `packages/*`.
    - testes proporcionais ao risco
    - documentacao operacional quando houver impacto de runtime
 5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade estrutural e registrar tradeoff.
-
+```
