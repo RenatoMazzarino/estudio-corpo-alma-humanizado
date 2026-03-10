@@ -19,6 +19,7 @@ import {
 } from "./whatsapp-created-template-rules";
 import {
   assertMetaCloudConfigBase,
+  getMetaCloudTemplateImageHeader,
   getMetaCloudTestRecipient,
   sendMetaCloudMessage,
   sendMetaCloudTextMessage,
@@ -428,6 +429,27 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
     const templateName = templateAttempts[index];
     if (!templateName) continue;
     const components = buildCreatedAppointmentTemplateComponents(templateName, variableMap);
+    const header = await getMetaCloudTemplateImageHeader({
+      templateName,
+      languageCode: templateLanguage,
+    });
+    if (header.requiresImageHeader && !header.imageLink) {
+      throw new Error(
+        `Template '${templateName}' exige HEADER de imagem, mas não foi possível resolver um link de mídia válido na Meta.`
+      );
+    }
+
+    const requestComponents = [
+      ...(header.imageLink
+        ? [
+            {
+              type: "header",
+              parameters: [{ type: "image", image: { link: header.imageLink } }],
+            },
+          ]
+        : []),
+      ...components,
+    ];
 
     const requestBody = {
       messaging_product: "whatsapp",
@@ -438,7 +460,7 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
         language: {
           code: templateLanguage,
         },
-        components,
+        components: requestComponents,
       },
     };
 
