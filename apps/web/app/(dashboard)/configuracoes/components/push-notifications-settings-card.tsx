@@ -14,6 +14,41 @@ type PushNotificationsSettingsCardProps = {
   pushConfigured: boolean;
 };
 
+type OneSignalPushChangeEvent = {
+  previous?: { id?: string | null; optedIn?: boolean | null };
+  current?: { id?: string | null; optedIn?: boolean | null };
+};
+
+type OneSignalRuntime = {
+  User: {
+    PushSubscription: {
+      id?: string | null;
+      optedIn?: boolean | null;
+      addEventListener?: (event: "change", callback: (event: OneSignalPushChangeEvent) => void) => void;
+    };
+  };
+  Notifications: {
+    permission?: string;
+  };
+  Slidedown: {
+    promptPush: () => Promise<void>;
+  };
+};
+
+function normalizeOneSignalPermission(permission: unknown): string {
+  if (typeof permission === "string") return permission.toLowerCase();
+  if (permission && typeof permission === "object") {
+    const maybePermission = permission as { permission?: unknown; value?: unknown };
+    if (typeof maybePermission.permission === "string") {
+      return maybePermission.permission.toLowerCase();
+    }
+    if (typeof maybePermission.value === "string") {
+      return maybePermission.value.toLowerCase();
+    }
+  }
+  return "unknown";
+}
+
 const eventLabels: Record<(typeof PUSH_EVENT_TYPES)[number], string> = {
   "payment.created": "Novo pagamento registrado",
   "appointment.created": "Novo agendamento",
@@ -29,12 +64,14 @@ export function PushNotificationsSettingsCard({
   const [loading, setLoading] = useState(false);
   const [savingEventType, setSavingEventType] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
+  const [forcingSubscription, setForcingSubscription] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<PreferenceItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<
     Array<{ id: string; deviceLabel: string | null; lastSeenAt: string | null }>
   >([]);
   const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [forceStatus, setForceStatus] = useState<string | null>(null);
 
   const mergedPreferences = useMemo(() => {
     const map = new Map(preferences.map((item) => [item.eventType, item.enabled]));
@@ -162,6 +199,7 @@ export function PushNotificationsSettingsCard({
     setSendingTest(true);
     setError(null);
     setTestStatus(null);
+    setForceStatus(null);
     try {
       const response = await fetch("/api/push/test", {
         method: "POST",
@@ -187,6 +225,106 @@ export function PushNotificationsSettingsCard({
       setSendingTest(false);
     }
   }, []);
+
+  const handleForceSubscription = useCallback(async () => {
+    if (!pushConfigured) return;
+
+    setForcingSubscription(true);
+    setError(null);
+    setTestStatus(null);
+    setForceStatus(null);
+
+    try {
+      const oneSignalData = await new Promise<{
+        permission: string;
+        subscriptionId: string | null;
+        optedIn: boolean;
+      }>((resolve, reject) => {
+        if (typeof window === "undefined") {
+          reject(new Error("Navegador indisponível para forçar inscrição."));
+          return;
+        }
+        const runtimeWindow = window as Window & {
+          OneSignalDeferred?: Array<(oneSignal: OneSignalRuntime) => void | Promise<void>>;
+        };
+        runtimeWindow.OneSignalDeferred = runtimeWindow.OneSignalDeferred ?? [];
+        runtimeWindow.OneSignalDeferred.push(async (OneSignal) => {
+          try {
+            const permissionBeforePrompt = normalizeOneSignalPermission(
+              OneSignal.Notifications?.permission
+            );
+            if (
+              permissionBeforePrompt !== "granted" ||
+              !OneSignal.User?.PushSubscription?.optedIn
+            ) {
+              await OneSignal.Slidedown.promptPush();
+            }
+
+            const permission = normalizeOneSignalPermission(OneSignal.Notifications?.permission);
+            const subscriptionId =
+              typeof OneSignal.User?.PushSubscription?.id === "string"
+                ? OneSignal.User.PushSubscription.id
+                : null;
+            const optedIn = Boolean(OneSignal.User?.PushSubscription?.optedIn);
+
+            resolve({
+              permission,
+              subscriptionId,
+              optedIn,
+            });
+          } catch (callbackError) {
+            reject(callbackError);
+          }
+        });
+      });
+
+      if (!oneSignalData.subscriptionId || !oneSignalData.optedIn) {
+        throw new Error(
+          `Inscrição ainda não concluída neste aparelho. Permissão atual: ${oneSignalData.permission}.`
+        );
+      }
+
+      const deviceLabel = (() => {
+        if (typeof navigator === "undefined") return "Dashboard Web (forçado)";
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes("android")) return "Dashboard Android (forçado)";
+        if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) {
+          return "Dashboard iOS (forçado)";
+        }
+        return "Dashboard Web (forçado)";
+      })();
+
+      const response = await fetch("/api/push/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json; charset=utf-8" },
+        body: JSON.stringify({
+          oneSignalSubscriptionId: oneSignalData.subscriptionId,
+          deviceLabel,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | { ok: true }
+        | { ok: false; error: string }
+        | null;
+
+      if (!response.ok || !payload || !payload.ok) {
+        const message = payload && "error" in payload ? payload.error : "Falha ao registrar inscrição forçada.";
+        throw new Error(message);
+      }
+
+      await loadPreferences();
+      setForceStatus(
+        `Inscrição registrada neste aparelho. Permissão: ${oneSignalData.permission}.`
+      );
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : "Falha ao forçar inscrição neste aparelho.";
+      setError(message);
+    } finally {
+      setForcingSubscription(false);
+    }
+  }, [loadPreferences, pushConfigured]);
 
   return (
     <div className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4">
@@ -239,20 +377,32 @@ export function PushNotificationsSettingsCard({
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {testStatus ? <p className="text-xs text-studio-green">{testStatus}</p> : null}
+      {forceStatus ? <p className="text-xs text-studio-green">{forceStatus}</p> : null}
       {pushConfigured ? (
         <div className="space-y-2 rounded-xl border border-dashed border-line p-3">
           <p className="text-xs text-muted">
             Assinaturas ativas neste usuário: <strong>{subscriptions.length}</strong>
           </p>
-          <button
-            type="button"
-            onClick={() => void handleSendTest()}
-            disabled={sendingTest}
-            className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-studio-text disabled:opacity-60"
-          >
-            {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-            Enviar push de teste
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleSendTest()}
+              disabled={sendingTest}
+              className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-studio-text disabled:opacity-60"
+            >
+              {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Enviar push de teste
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleForceSubscription()}
+              disabled={forcingSubscription}
+              className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-studio-text disabled:opacity-60"
+            >
+              {forcingSubscription ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Forçar inscrição neste aparelho
+            </button>
+          </div>
         </div>
       ) : null}
       <p className="text-[11px] text-muted">

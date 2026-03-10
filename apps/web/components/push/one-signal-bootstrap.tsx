@@ -37,6 +37,20 @@ type OneSignalBootstrapProps = {
   tenantId: string;
 };
 
+function normalizeOneSignalPermission(permission: unknown): string {
+  if (typeof permission === "string") return permission.toLowerCase();
+  if (permission && typeof permission === "object") {
+    const maybePermission = permission as { permission?: unknown; value?: unknown };
+    if (typeof maybePermission.permission === "string") {
+      return maybePermission.permission.toLowerCase();
+    }
+    if (typeof maybePermission.value === "string") {
+      return maybePermission.value.toLowerCase();
+    }
+  }
+  return "unknown";
+}
+
 const ONESIGNAL_APP_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ?? "").trim();
 const ONESIGNAL_SAFARI_WEB_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID ?? "").trim();
 
@@ -127,9 +141,9 @@ export function OneSignalBootstrap({ externalId, tenantId }: OneSignalBootstrapP
           });
         }
 
-        const permission = (OneSignal.Notifications?.permission ?? "").toLowerCase();
+        const permission = normalizeOneSignalPermission(OneSignal.Notifications?.permission);
         const optedIn = Boolean(OneSignal.User?.PushSubscription?.optedIn);
-        if (!optedIn && permission === "default") {
+        if (!optedIn && permission !== "granted") {
           await OneSignal.Slidedown.promptPush();
         }
       } catch (error) {
