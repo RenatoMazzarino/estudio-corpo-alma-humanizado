@@ -15,6 +15,10 @@ Estas funções foram adicionadas para endurecer a borda de integrações e sepa
 3. `mercadopago-webhook-proxy`
 - Encaminha `POST` para `/api/mercadopago/webhook`.
 
+4. `event-dispatcher`
+- Encaminha `POST` para `/api/internal/events/dispatch`.
+- Injeta `Authorization: Bearer <EVENT_DISPATCHER_SECRET>`.
+
 ## Variáveis necessárias (Edge Runtime)
 
 1. `APP_BASE_URL`
@@ -23,7 +27,11 @@ Estas funções foram adicionadas para endurecer a borda de integrações e sepa
 2. `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`
 - Necessária para `whatsapp-automation-processor`.
 
-3. `INTERNAL_EDGE_FORWARD_TOKEN` (opcional)
+3. `EVENT_DISPATCHER_SECRET`
+- Necessária para `event-dispatcher`.
+- Se ausente, pode reutilizar `WHATSAPP_AUTOMATION_PROCESSOR_SECRET` como fallback temporário.
+
+4. `INTERNAL_EDGE_FORWARD_TOKEN` (opcional)
 - Token opcional para validar origem de proxy no app.
 
 ## Observações
@@ -34,5 +42,5 @@ Estas funções foram adicionadas para endurecer a borda de integrações e sepa
 ## Validação local recomendada
 
 ```powershell
-deno check --config supabase/functions/deno.json supabase/functions/mercadopago-webhook-proxy/index.ts supabase/functions/whatsapp-automation-processor/index.ts supabase/functions/whatsapp-meta-webhook/index.ts
+deno check --config supabase/functions/deno.json supabase/functions/mercadopago-webhook-proxy/index.ts supabase/functions/whatsapp-automation-processor/index.ts supabase/functions/whatsapp-meta-webhook/index.ts supabase/functions/event-dispatcher/index.ts
 ```

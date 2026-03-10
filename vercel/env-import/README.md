@@ -18,6 +18,7 @@ Environment intent:
 3. Production
    - Deployments from `main`.
    - Use `WHATSAPP_PROFILE=prod_real` (envio real para cliente).
+   - Use App OneSignal de produção (separado de preview/dev).
 
 Profile-first strategy (recommended):
 
@@ -29,6 +30,31 @@ Profile-first strategy (recommended):
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (fixo)
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (real)
 3. Não usar variáveis legadas de modo/roteamento (`WHATSAPP_AUTOMATION_PROFILE`, `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`, `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`).
+
+Push notifications (OneSignal):
+
+1. Variáveis necessárias por ambiente:
+   - `NEXT_PUBLIC_ONESIGNAL_APP_ID`
+   - `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
+   - `ONESIGNAL_REST_API_KEY`
+2. Recomenda-se app OneSignal separado para:
+   - `development/preview` (homologação)
+   - `production` (operação real)
+3. Não commitar chave REST do OneSignal no repositório.
+
+Feature flags e dispatcher:
+
+1. Variáveis operacionais obrigatórias:
+   - `EVENT_DISPATCHER_SECRET`
+   - `FF_REALTIME_PATCH_MODE`
+   - `FF_EDGE_DISPATCHER_V2`
+   - `FF_PUSH_NOTIFICATIONS`
+   - `FF_LOADING_SYSTEM_V2`
+   - `FF_CANARY_PERCENT`
+2. Padrão recomendado:
+   - `development` e `preview`: `on`
+   - `production`: `canary` com `FF_CANARY_PERCENT` progressivo
+3. O `EVENT_DISPATCHER_SECRET` deve ser diferente por ambiente e nunca versionado.
 
 Files in this folder are templates (no secrets):
 
