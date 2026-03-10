@@ -148,6 +148,14 @@ Arquivos de agente no repo:
 - `.codex/config.toml`
 - `apps/web/AGENTS.override.md`
 - `supabase/functions/AGENTS.override.md`
+- `docs/engineering/AGENTS_GOVERNANCE.md`
+- `docs/engineering/AGENTS_PRECEDENCE_MAP.md`
+
+Validacao de consistencia dos arquivos de agente:
+
+```powershell
+pnpm agents:check
+```
 
 Links oficiais OpenAI:
 - `https://developers.openai.com/codex`
@@ -186,6 +194,13 @@ Regra recomendada para WhatsApp:
 4. Destinatário:
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (teste controlado)
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (cliente real)
+
+### VS Code + Vercel (importante)
+
+1. Use apenas **uma** extensao Vercel ativa por vez.
+2. Recomendacao oficial do repo: `aarondill.vercel-project-manager-vscode`.
+3. Motivo: algumas extensoes de Vercel usam os mesmos IDs de view (`vercel-deployments`) e entram em conflito, deixando painel em `Loading...`.
+4. Runbook oficial: `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`.
 
 ## VS Code - painel de testes mostrando so Playwright
 

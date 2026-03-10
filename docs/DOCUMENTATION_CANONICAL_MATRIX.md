@@ -47,9 +47,15 @@ Reduzir ambiguidade de onboarding e manutenção documental, classificando:
 | `docs/integrations/INTEGRATIONS_TECNICO.md` | `canônico` | Arquitetura técnica de integrações | `parcial` | `atual` | Referência técnica central de integrações | Atualizar quando mudar endpoints, envs ou provedores |
 | `docs/integrations/WEBHOOK_OPERACIONAL.md` | `canônico` | Runbook do webhook Mercado Pago | `parcial` | `atual` | Muito útil para operação/painel MP; env/deploy real ainda vence | Manter com URLs e checklist por ambiente |
 | `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md` | `canônico` | Estratégia profile-first para automação WhatsApp por ambiente | `parcial` | `atual` | Define padrão operacional para reduzir flags manuais e confusão entre ambientes | Atualizar quando mudar perfis/política de destinatário |
+| `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md` | `canônico` | Runbook de operacao Vercel no VS Code sem conflito de extensoes | `sim` | `atual` | Define setup unico de extensao e troubleshooting para painel em loading | Usar como referencia oficial de tooling Vercel no editor |
 | `docs/sql/README.md` | `canônico` | Governança de dumps SQL de auditoria | `sim` | `atual` | Define corretamente que dumps não são fonte de verdade | Manter como regra da pasta `docs/sql` |
 | `docs/engineering/MODULARIZATION_CONVENTIONS.md` | `canônico` | Convenções de modularização e fronteiras de camada | `sim` | `atual` | Define padrão técnico de evolução do repo e guardrails arquiteturais | Manter atualizado a cada ciclo de refatoração |
 | `docs/engineering/PR_CHECKLIST_REFACTOR.md` | `canônico` | Checklist de qualidade para refatoração/hardening | `sim` | `atual` | Define gate obrigatório por bloco técnico | Usar em todos os blocos de refatoração na `main` |
+| `docs/engineering/AGENTS_GOVERNANCE.md` | `canônico` | Regras de escrita e manutenção de AGENTS/overrides | `sim` | `atual` | Define padrão de governança para instruções de agente no repo | Atualizar quando surgirem novos escopos críticos |
+| `docs/engineering/AGENTS_PRECEDENCE_MAP.md` | `canônico` | Mapa de precedência de AGENTS por caminho | `sim` | `atual` | Arquivo gerado automaticamente por script de consistência | Regenerar com `pnpm agents:check` após mexer em overrides |
+| `docs/engineering/AGENTS_CHANGELOG.md` | `ativo` | Histórico de alterações na governança dos AGENTS | `parcial` | `atual` | Registro operacional de evolução das regras | Manter atualizado por rodada de governança |
+| `docs/agents/AGENTS_TEMPLATE.md` | `canônico` | Template padrão para novos AGENTS.override.md | `sim` | `atual` | Evita drift de estrutura entre overrides | Reusar em todo novo escopo local |
+| `docs/agents/AGENTS_LINT_RULES.md` | `canônico` | Regras validadas por lint/check de agentes | `sim` | `atual` | Explica critérios estruturais e comando de validação | Manter alinhado ao script `check-agents-consistency.ps1` |
 
 ## 3) Reports e Planos Ativos/Parciais
 
@@ -57,6 +63,7 @@ Reduzir ambiguidade de onboarding e manutenção documental, classificando:
 |---|---|---|---|---|---|---|
 | `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md` | `canônico` | Estratégia/readiness Meta/WhatsApp/coexistência/Tech Provider | `parcial` | `atual` | Documento canônico de roadmap/readiness; não substitui código/env | Manter como referência estratégica única e atualizar por fase |
 | `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md` | `canônico` | Evidência de validação técnica e atualização documental | `parcial` | `atual` | Registro objetivo da bateria de testes executada e docs alinhadas | Atualizar a cada rodada de validação ampla |
+| `docs/plans/PLANO_ENTERPRISE_REALTIME_EDGE_PUSH_LOADING_2026-03-10.md` | `canônico` | Plano enterprise de evolução para realtime, edge, push e loading UX | `parcial` | `atual` | Plano de implementação multi-fase com baseline do repo e critérios de validação/rollout | Usar como referência principal desta trilha e atualizar a cada fase concluída |
 | `docs/reports/ERROR_CATALOG_AGENDA_PAYMENTS_2026-02-13.md` | `histórico` | Catálogo de feedbacks UI (agenda/pagamentos) | `parcial` | `parcialmente desatualizado` | Útil para contexto de UX/IDs; datado | Manter como referência; consolidar se catálogo evoluir |
 | `docs/plans/PLANO_IMPLANTACAO_ATENDIMENTO_V1_UNIFICADO.md` | `histórico` | Plano de implantação Atendimento V1 unificado | `não` | `desatualizado` | Plano de execução já absorvido em grande parte pelo código/commits | Manter arquivado; usar apenas para rastreabilidade |
 

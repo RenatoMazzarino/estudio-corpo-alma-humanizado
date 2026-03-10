@@ -2,7 +2,10 @@
   "recommendations": [
     "ms-playwright.playwright",
     "vitest.explorer",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "aarondill.vercel-project-manager-vscode"
+  ],
+  "unwantedRecommendations": [
+    "frenco.vscode-vercel"
   ]
 }
-

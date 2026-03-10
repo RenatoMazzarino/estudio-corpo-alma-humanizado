@@ -101,12 +101,20 @@ Arquivos de agente no repositorio:
 - `.codex/config.toml` (config de projeto do Codex)
 - `apps/web/AGENTS.override.md` (regras locais do app web)
 - `supabase/functions/AGENTS.override.md` (regras locais das edge functions)
+- `docs/engineering/AGENTS_GOVERNANCE.md` (governanca de agentes)
+- `docs/engineering/AGENTS_PRECEDENCE_MAP.md` (heranca por caminho)
 
 Referencias oficiais OpenAI:
 - `https://developers.openai.com/codex`
 - `https://developers.openai.com/codex/skills`
 - `https://developers.openai.com/codex/config-basic`
 - `https://developers.openai.com/codex/config-reference`
+
+Validacao de consistencia dos arquivos de agente:
+
+```powershell
+pnpm agents:check
+```
 
 ## Vercel (3 ambientes)
 
@@ -130,6 +138,12 @@ pnpm vercel:dev
 pnpm vercel:deploy:preview
 pnpm vercel:deploy:prod
 ```
+
+VS Code (Vercel):
+
+1. Recomendado usar somente `aarondill.vercel-project-manager-vscode`.
+2. Evite manter duas extensoes Vercel ativas ao mesmo tempo para nao gerar conflito de views e painel preso em `Loading...`.
+3. Runbook oficial: `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`.
 
 Templates versionados de env:
 
