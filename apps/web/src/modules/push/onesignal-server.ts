@@ -37,8 +37,16 @@ export async function sendPushViaOneSignal(payload: PushDispatchPayload) {
       include_aliases: {
         external_id: payload.externalIds,
       },
-      headings: { pt: payload.heading },
-      contents: { pt: payload.message },
+      // OneSignal exige idioma `en`/`any` para notificações web.
+      // Mantemos PT-BR e adicionamos fallback EN com o mesmo texto.
+      headings: {
+        en: payload.heading,
+        pt: payload.heading,
+      },
+      contents: {
+        en: payload.message,
+        pt: payload.message,
+      },
       data: payload.data ?? {},
       url: payload.url ?? undefined,
     }),
