@@ -19,6 +19,7 @@ import { PixKeysSettingsCard } from "./components/pix-keys-settings-card";
 import { AttendanceChecklistSettingsCard } from "./components/attendance-checklist-settings-card";
 import { PointSettingsCard } from "./components/point-settings-card";
 import { OnlineBookingRulesCard } from "./components/online-booking-rules-card";
+import { PushNotificationsSettingsCard } from "./components/push-notifications-settings-card";
 import type { BusinessHourItem, PixKeyItem, PixKeyType, PointDeviceItem } from "./components/settings-form.types";
 
 interface SettingsFormProps {
@@ -41,6 +42,7 @@ interface SettingsFormProps {
   pixPaymentKeys: PixKeyItem[];
   attendanceChecklistEnabled: boolean;
   attendanceChecklistItems: string[];
+  pushConfigured: boolean;
 }
 
 const dayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -65,6 +67,7 @@ export function SettingsForm({
   pixPaymentKeys,
   attendanceChecklistEnabled,
   attendanceChecklistItems,
+  pushConfigured,
 }: SettingsFormProps) {
   const { toast, showToast } = useToast();
   const [pointDevices, setPointDevices] = useState<PointDeviceItem[]>([]);
@@ -390,6 +393,8 @@ export function SettingsForm({
           onEnabledChangeAction={setAttendanceChecklistEnabledValue}
           onItemsTextChangeAction={setAttendanceChecklistItemsValue}
         />
+
+        <PushNotificationsSettingsCard pushConfigured={pushConfigured} />
 
         <input type="hidden" name="mp_point_terminal_id" value={pointTerminalIdValue} />
         <input type="hidden" name="mp_point_terminal_name" value={pointTerminalNameValue} />

@@ -18,6 +18,8 @@ import {
 import { processPendingWhatsAppNotificationJobs } from "./whatsapp-automation-processor";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
 import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
+import { createEventCorrelationId } from "../events/outbox";
+import { safeEmitDomainEventToOutbox } from "../events/safe-outbox";
 import type {
   QueueSource,
   ScheduleCanceledParams,
@@ -85,6 +87,26 @@ export async function enqueueNotificationJobWithAutomationGuard(
     payload: enrichedPayload,
   });
 
+  if (insertedJob?.id) {
+    const correlationId = createEventCorrelationId("waq");
+    await safeEmitDomainEventToOutbox({
+      tenantId: payload.tenant_id,
+      eventType: "whatsapp.job.queued",
+      sourceModule: "notifications.whatsapp-automation-queue",
+      correlationId,
+      idempotencyKey: `${payload.tenant_id}:${insertedJob.id}:queued`,
+      payload: {
+        job_id: insertedJob.id,
+        appointment_id: insertedJob.appointment_id,
+        job_type: insertedJob.type,
+        channel: insertedJob.channel,
+        status: insertedJob.status,
+        scheduled_for: insertedJob.scheduled_for,
+        source,
+      } as Json,
+    });
+  }
+
   if (
     WHATSAPP_AUTOMATION_AUTO_DISPATCH_ON_QUEUE &&
     isWhatsAppAutomationDispatchEnabled() &&
@@ -151,6 +173,20 @@ export async function scheduleAppointmentLifecycleNotifications(
     },
     options
   );
+
+  const correlationId = createEventCorrelationId("appt");
+  await safeEmitDomainEventToOutbox({
+    tenantId: params.tenantId,
+    eventType: "appointment.created",
+    sourceModule: "notifications.whatsapp-automation-queue",
+    correlationId,
+    idempotencyKey: `${params.tenantId}:${params.appointmentId}:appointment.created`,
+    payload: {
+      appointment_id: params.appointmentId,
+      start_time: params.startTimeIso,
+      source: params.source,
+    } as Json,
+  });
 }
 
 export async function scheduleAppointmentCanceledNotification(
@@ -229,4 +265,18 @@ export async function scheduleAppointmentCanceledNotification(
     },
     options
   );
+
+  const correlationId = createEventCorrelationId("appt");
+  await safeEmitDomainEventToOutbox({
+    tenantId: params.tenantId,
+    eventType: "appointment.canceled",
+    sourceModule: "notifications.whatsapp-automation-queue",
+    correlationId,
+    idempotencyKey: `${params.tenantId}:${params.appointmentId}:appointment.canceled`,
+    payload: {
+      appointment_id: params.appointmentId,
+      notify_client: params.notifyClient,
+      source: params.source,
+    } as Json,
+  });
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import type { Json } from "../../../../lib/supabase/types";
+import { createEventCorrelationId } from "../../../../src/modules/events/outbox";
+import { safeEmitDomainEventToOutbox } from "../../../../src/modules/events/safe-outbox";
 import { recalculateAppointmentPaymentStatus } from "../../../../src/modules/payments/mercadopago-orders";
 import {
   getPaymentId,
@@ -134,6 +136,7 @@ export async function POST(request: Request) {
   }
 
   const resolvedTenantId = appointment?.tenant_id ?? existing?.tenant_id ?? null;
+  const isNewPaymentRecord = !existing;
 
   if (resolvedAppointmentId && resolvedTenantId) {
     const { error: paymentUpsertError } = await supabase.from("appointment_payments").upsert(
@@ -206,6 +209,41 @@ export async function POST(request: Request) {
         error: eventError,
         appointmentId: appointment.id,
         tenantId: appointment.tenant_id,
+      });
+    }
+  }
+
+  if (resolvedAppointmentId && resolvedTenantId) {
+    const correlationId = createEventCorrelationId("mp_webhook");
+    const basePayload = {
+      appointment_id: resolvedAppointmentId,
+      provider_ref: resolvedProviderRef,
+      provider_status: providerStatus,
+      internal_status: status,
+      payment_method_id: paymentMethodId,
+      payment_type_id: paymentTypeId,
+      amount,
+      approved_at: approvedAt,
+      source: notificationType,
+    } as Json;
+
+    await safeEmitDomainEventToOutbox({
+      tenantId: resolvedTenantId,
+      eventType: "payment.status_changed",
+      sourceModule: "mercadopago_webhook",
+      correlationId,
+      idempotencyKey: `payment_status:${resolvedTenantId}:${resolvedProviderRef}:${providerStatus}`,
+      payload: basePayload,
+    });
+
+    if (isNewPaymentRecord) {
+      await safeEmitDomainEventToOutbox({
+        tenantId: resolvedTenantId,
+        eventType: "payment.created",
+        sourceModule: "mercadopago_webhook",
+        correlationId,
+        idempotencyKey: `payment_created:${resolvedTenantId}:${resolvedProviderRef}`,
+        payload: basePayload,
       });
     }
   }

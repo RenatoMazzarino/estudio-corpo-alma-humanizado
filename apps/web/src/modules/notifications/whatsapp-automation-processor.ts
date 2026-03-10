@@ -34,6 +34,8 @@ import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
 import { getTenantWhatsAppSettings } from "./tenant-whatsapp-settings";
 import { syncNotificationTemplateCatalogFromLibrary } from "./whatsapp-template-catalog";
 import type { ProcessJobsParams, ProcessSummary } from "./whatsapp-automation.types";
+import { createEventCorrelationId } from "../events/outbox";
+import { safeEmitDomainEventToOutbox } from "../events/safe-outbox";
 
 async function deliverWhatsAppNotification(
   job: NotificationJobRow
@@ -176,6 +178,24 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
         sentAt: delivery.deliveredAt,
       });
 
+      await safeEmitDomainEventToOutbox({
+        tenantId: job.tenant_id,
+        eventType: "whatsapp.job.status_changed",
+        sourceModule: "notifications.whatsapp-automation-processor",
+        correlationId: createEventCorrelationId("wa-status"),
+        idempotencyKey: `${job.tenant_id}:${job.id}:sent:${delivery.deliveredAt}`,
+        payload: {
+          job_id: job.id,
+          appointment_id: job.appointment_id,
+          from_status: "pending",
+          to_status: "sent",
+          provider_status: "sent",
+          provider_message_id: delivery.providerMessageId,
+          delivery_mode: delivery.deliveryMode,
+          updated_at: delivery.deliveredAt,
+        },
+      });
+
       summary.sent += 1;
       summary.results.push({
         jobId: job.id,
@@ -230,6 +250,22 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
             status: "retry_scheduled_auto",
             payload: retryPayload,
           });
+          await safeEmitDomainEventToOutbox({
+            tenantId: job.tenant_id,
+            eventType: "whatsapp.job.status_changed",
+            sourceModule: "notifications.whatsapp-automation-processor",
+            correlationId: createEventCorrelationId("wa-status"),
+            idempotencyKey: `${job.tenant_id}:${job.id}:retry:${retryAt}:${nextRetryCount}`,
+            payload: {
+              job_id: job.id,
+              appointment_id: job.appointment_id,
+              from_status: "pending",
+              to_status: "pending",
+              retry_count: nextRetryCount,
+              retry_at: retryAt,
+              error: message,
+            },
+          });
           summary.skipped += 1;
           summary.results.push({
             jobId: job.id,
@@ -267,6 +303,22 @@ export async function processPendingWhatsAppNotificationJobs(params?: ProcessJob
         type: buildMessageTypeFromJobType(job.type),
         status: "failed_auto",
         payload: nextPayload,
+      });
+
+      await safeEmitDomainEventToOutbox({
+        tenantId: job.tenant_id,
+        eventType: "whatsapp.job.status_changed",
+        sourceModule: "notifications.whatsapp-automation-processor",
+        correlationId: createEventCorrelationId("wa-status"),
+        idempotencyKey: `${job.tenant_id}:${job.id}:failed:${nextRetryCount}`,
+        payload: {
+          job_id: job.id,
+          appointment_id: job.appointment_id,
+          from_status: "pending",
+          to_status: "failed",
+          error: message,
+          retry_count: nextRetryCount,
+        },
       });
 
       summary.failed += 1;

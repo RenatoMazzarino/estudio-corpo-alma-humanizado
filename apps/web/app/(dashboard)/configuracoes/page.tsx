@@ -11,6 +11,9 @@ const PIX_KEY_TYPES = ["cnpj", "cpf", "email", "phone", "evp"] as const;
 export default async function ConfiguracoesPage() {
   noStore();
   const { tenantId } = await requireDashboardAccessForPage("/configuracoes");
+  const pushConfigured = Boolean(
+    process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() && process.env.ONESIGNAL_REST_API_KEY?.trim()
+  );
   const [{ data: businessHoursData }, { data: settingsData }, { data: pixKeysData }] = await Promise.all([
     listBusinessHours(tenantId),
     getSettings(tenantId),
@@ -98,6 +101,7 @@ export default async function ConfiguracoesPage() {
         }
         attendanceChecklistEnabled={settingsData?.attendance_checklist_enabled ?? true}
         attendanceChecklistItems={attendanceChecklistItems}
+        pushConfigured={pushConfigured}
       />
     </div>
   );

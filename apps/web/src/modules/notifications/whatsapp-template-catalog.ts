@@ -3,6 +3,8 @@ import {
   WHATSAPP_TEMPLATE_LIBRARY,
   type WhatsAppTemplateStatus,
 } from "./whatsapp-template-library";
+import { createEventCorrelationId } from "../events/outbox";
+import { safeEmitDomainEventToOutbox } from "../events/safe-outbox";
 
 export type NotificationTemplateCatalogRow = {
   id: string;
@@ -260,6 +262,43 @@ export async function syncNotificationTemplateCatalogFromMetaWebhook(payload: Re
   if (error) {
     throw new Error(`Falha ao sincronizar catálogo por webhook Meta: ${error.message}`);
   }
+
+  for (const tenantId of tenantIds) {
+    for (const update of updates) {
+      const basePayload = {
+        template_name: update.name,
+        language_code: update.languageCode,
+        provider_template_id: update.providerTemplateId,
+        status: update.status,
+        quality: update.quality,
+        category: update.category,
+        field: update.field,
+      };
+
+      if (update.status) {
+        await safeEmitDomainEventToOutbox({
+          tenantId,
+          eventType: "whatsapp.template.status_changed",
+          sourceModule: "notifications.whatsapp-template-catalog",
+          correlationId: createEventCorrelationId("wa-template"),
+          idempotencyKey: `${tenantId}:${update.name}:${update.languageCode}:status:${update.status}:${nowIso}`,
+          payload: basePayload,
+        });
+      }
+
+      if (update.quality) {
+        await safeEmitDomainEventToOutbox({
+          tenantId,
+          eventType: "whatsapp.template.quality_changed",
+          sourceModule: "notifications.whatsapp-template-catalog",
+          correlationId: createEventCorrelationId("wa-template"),
+          idempotencyKey: `${tenantId}:${update.name}:${update.languageCode}:quality:${update.quality}:${nowIso}`,
+          payload: basePayload,
+        });
+      }
+    }
+  }
+
   statusCache.clear();
   return { updatesApplied: rows.length, updatesFound: updates.length };
 }
