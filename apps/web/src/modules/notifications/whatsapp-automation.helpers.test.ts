@@ -6,6 +6,7 @@ import {
   isSupportedWhatsAppJobType,
   mapButtonSelectionToAction,
   mapMetaStatusToAppointmentMessageStatus,
+  normalizeWhatsAppRecipient,
   normalizeMetaStatus,
   resolvePublicBaseUrlFromWebhookOrigin,
 } from "./whatsapp-automation.helpers";
@@ -28,6 +29,12 @@ describe("whatsapp-automation.helpers", () => {
     expect(mapMetaStatusToAppointmentMessageStatus("sent")).toBe("provider_sent");
     expect(mapMetaStatusToAppointmentMessageStatus("failed")).toBe("provider_failed");
     expect(mapMetaStatusToAppointmentMessageStatus("custom")).toBe("provider_custom");
+  });
+
+  it("normaliza destinatário WhatsApp para E.164 em dígitos", () => {
+    expect(normalizeWhatsAppRecipient("(19) 99979-3349")).toBe("5519999793349");
+    expect(normalizeWhatsAppRecipient("5519999793349")).toBe("5519999793349");
+    expect(normalizeWhatsAppRecipient("")).toBe(null);
   });
 
   it("mapeia seleção de botão para ação interna", () => {

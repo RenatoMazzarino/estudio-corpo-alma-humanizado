@@ -79,6 +79,19 @@ export const buildAutomationMessagePreview = (job: NotificationJobRow) => {
 };
 
 export const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
+export function normalizeWhatsAppRecipient(value: string | null | undefined) {
+  const digits = onlyDigits(value ?? "");
+  if (!digits) return null;
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
+  return digits.length >= 12 ? digits : null;
+}
+
 const capitalizeFirst = (value: string) => (value ? `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}` : value);
 
 export const parseJsonResponse = async (response: Response) => {

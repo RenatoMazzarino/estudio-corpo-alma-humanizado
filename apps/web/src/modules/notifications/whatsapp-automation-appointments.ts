@@ -5,6 +5,7 @@ import { resolveClientNames } from "../clients/name-profile";
 import {
   asJsonObject,
   formatAppointmentDateForTemplate,
+  normalizeWhatsAppRecipient,
   onlyDigits,
   resolveLocationLineFromAppointmentRecord,
   resolvePublicBaseUrlFromWebhookOrigin,
@@ -20,7 +21,7 @@ import {
 import {
   assertMetaCloudConfigBase,
   getMetaCloudTemplateImageHeader,
-  getMetaCloudTestRecipient,
+  resolveMetaCloudOutboundRecipient,
   sendMetaCloudMessage,
   sendMetaCloudTextMessage,
 } from "./whatsapp-meta-client";
@@ -43,6 +44,7 @@ export interface DeliveryResult {
 
 interface AppointmentTemplateContext {
   clientId: string | null;
+  customerWhatsAppRecipient: string | null;
   clientName: string;
   serviceName: string;
   dateLabel: string;
@@ -88,7 +90,7 @@ async function loadAppointmentTemplateContext(
   const { data, error } = await supabase
     .from("appointments")
     .select(
-      "id, tenant_id, client_id, attendance_code, start_time, service_name, is_home_visit, payment_status, price, displacement_fee, signal_paid_amount, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients(name, endereco_completo, public_first_name, public_last_name, internal_reference)"
+      "id, tenant_id, client_id, attendance_code, start_time, service_name, is_home_visit, payment_status, price, displacement_fee, signal_paid_amount, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado, clients(name, phone, endereco_completo, public_first_name, public_last_name, internal_reference)"
     )
     .eq("id", job.appointment_id)
     .eq("tenant_id", job.tenant_id)
@@ -105,6 +107,7 @@ async function loadAppointmentTemplateContext(
   const appointmentId = typeof record.id === "string" ? record.id : job.appointment_id;
   const clientId = typeof record.client_id === "string" ? record.client_id : null;
   const client = asJsonObject(record.clients as Json | undefined);
+  const legacyClientPhone = typeof client.phone === "string" ? client.phone : "";
   const clientName = resolveClientNames({
     name: typeof client?.name === "string" ? client.name : null,
     publicFirstName: typeof client?.public_first_name === "string" ? client.public_first_name : null,
@@ -125,7 +128,7 @@ async function loadAppointmentTemplateContext(
     return Math.round((parsed + Number.EPSILON) * 100) / 100;
   };
 
-  const [checkoutResult, paymentsResult] = await Promise.all([
+  const [checkoutResult, paymentsResult, clientPhonesResult] = await Promise.all([
     supabase
       .from("appointment_checkout")
       .select("total")
@@ -138,6 +141,13 @@ async function loadAppointmentTemplateContext(
       .eq("appointment_id", appointmentId)
       .eq("tenant_id", job.tenant_id)
       .order("created_at", { ascending: true }),
+    clientId
+      ? supabase
+          .from("client_phones")
+          .select("number_raw, number_e164, is_whatsapp, is_primary, created_at")
+          .eq("tenant_id", job.tenant_id)
+          .eq("client_id", clientId)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (checkoutResult.error) {
@@ -146,9 +156,32 @@ async function loadAppointmentTemplateContext(
   if (paymentsResult.error) {
     throw new Error("Falha ao carregar pagamentos do agendamento para template WhatsApp.");
   }
+  if (clientPhonesResult.error) {
+    throw new Error("Falha ao carregar telefone da cliente para template WhatsApp.");
+  }
 
   const checkoutData = checkoutResult.data;
   const paymentsData = paymentsResult.data;
+  const clientPhonesData = Array.isArray(clientPhonesResult.data) ? clientPhonesResult.data : [];
+  const sortedClientPhones = [...clientPhonesData].sort((a, b) => {
+    const rank = (value: { is_whatsapp?: boolean | null; is_primary?: boolean | null }) =>
+      value.is_whatsapp ? 0 : value.is_primary ? 1 : 2;
+    const rankA = rank(a);
+    const rankB = rank(b);
+    if (rankA !== rankB) return rankA - rankB;
+    const createdAtA = typeof a.created_at === "string" ? Date.parse(a.created_at) : 0;
+    const createdAtB = typeof b.created_at === "string" ? Date.parse(b.created_at) : 0;
+    return createdAtA - createdAtB;
+  });
+  const customerWhatsAppRecipient =
+    sortedClientPhones
+      .map((entry) =>
+        normalizeWhatsAppRecipient(
+          (typeof entry.number_e164 === "string" && entry.number_e164) ||
+            (typeof entry.number_raw === "string" ? entry.number_raw : "")
+        )
+      )
+      .find((value): value is string => Boolean(value)) ?? normalizeWhatsAppRecipient(legacyClientPhone);
 
   const totalAmount = toMoney(checkoutData?.total ?? record.price ?? 0);
   const paidPayments = Array.isArray(paymentsData)
@@ -198,6 +231,7 @@ async function loadAppointmentTemplateContext(
 
   return {
     clientId,
+    customerWhatsAppRecipient,
     clientName,
     serviceName,
     dateLabel,
@@ -395,10 +429,10 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
   const tenantSettings = await getTenantWhatsAppSettings(job.tenant_id);
   const templateLanguage = tenantSettings.createdTemplateLanguage;
 
-  const to = getMetaCloudTestRecipient();
   const context = await loadAppointmentTemplateContext(job, {
     studioLocationLine: tenantSettings.studioLocationLine,
   });
+  const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient);
 
   const explicitIntroVariant = resolveNoticeIntroVariantFromPayload(job.payload ?? null);
   const history = await loadClientAutomationHistory({
@@ -524,10 +558,10 @@ export async function sendMetaCloudReminderAppointmentTemplate(
     throw new Error("Template de lembrete não configurado nas settings do tenant.");
   }
 
-  const to = getMetaCloudTestRecipient();
   const context = await loadAppointmentTemplateContext(job, {
     studioLocationLine: tenantSettings.studioLocationLine,
   });
+  const to = resolveMetaCloudOutboundRecipient(context.customerWhatsAppRecipient);
 
   const requestBody = {
     messaging_product: "whatsapp",

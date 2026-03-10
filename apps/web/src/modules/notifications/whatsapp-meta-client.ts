@@ -4,14 +4,18 @@ import {
   WHATSAPP_AUTOMATION_META_API_VERSION,
   WHATSAPP_AUTOMATION_META_APP_SECRET,
   WHATSAPP_AUTOMATION_META_BUSINESS_ACCOUNT_ID,
-  WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT,
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID,
+  WHATSAPP_AUTOMATION_RECIPIENT_MODE,
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT,
 } from "./automation-config";
-import { extractMetaApiErrorMessage, onlyDigits, parseJsonResponse } from "./whatsapp-automation.helpers";
+import {
+  extractMetaApiErrorMessage,
+  normalizeWhatsAppRecipient,
+  parseJsonResponse,
+} from "./whatsapp-automation.helpers";
 
 export function getMetaCloudTestRecipient() {
-  const recipient = onlyDigits(WHATSAPP_AUTOMATION_META_TEST_RECIPIENT);
+  const recipient = normalizeWhatsAppRecipient(WHATSAPP_AUTOMATION_META_TEST_RECIPIENT);
   if (!recipient) {
     throw new Error(
       "WHATSAPP_AUTOMATION_META_TEST_RECIPIENT não configurado (use apenas dígitos com DDI, ex.: 5519...)."
@@ -160,11 +164,11 @@ export async function sendMetaCloudMessage(requestBody: Record<string, unknown>)
 
 export async function sendMetaCloudTextMessage(params: { to: string; text: string }) {
   assertMetaCloudConfigBase();
-  const requestedRecipient = onlyDigits(params.to);
+  const requestedRecipient = normalizeWhatsAppRecipient(params.to);
   if (!requestedRecipient) {
     throw new Error("Número de destino inválido para resposta automática WhatsApp.");
   }
-  const recipient = WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT
+  const recipient = WHATSAPP_AUTOMATION_RECIPIENT_MODE === "test_recipient"
     ? getMetaCloudTestRecipient()
     : requestedRecipient;
 
@@ -184,4 +188,17 @@ export async function sendMetaCloudTextMessage(params: { to: string; text: strin
     deliveredAt: new Date().toISOString(),
     recipient,
   };
+}
+
+export function resolveMetaCloudOutboundRecipient(requestedRecipient: string | null | undefined) {
+  if (WHATSAPP_AUTOMATION_RECIPIENT_MODE === "test_recipient") {
+    return getMetaCloudTestRecipient();
+  }
+
+  const normalized = normalizeWhatsAppRecipient(requestedRecipient);
+  if (!normalized) {
+    throw new Error("Cliente sem número de WhatsApp válido para envio automático.");
+  }
+
+  return normalized;
 }

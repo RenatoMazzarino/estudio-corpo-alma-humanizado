@@ -4,7 +4,7 @@ vi.mock("./automation-config", () => ({
   WHATSAPP_AUTOMATION_META_ACCESS_TOKEN: "token-test",
   WHATSAPP_AUTOMATION_META_API_VERSION: "v99.0",
   WHATSAPP_AUTOMATION_META_APP_SECRET: "",
-  WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT: true,
+  WHATSAPP_AUTOMATION_RECIPIENT_MODE: "test_recipient",
   WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID: "12345",
   WHATSAPP_AUTOMATION_META_TEST_RECIPIENT: "55 (19) 99999-0000",
 }));
@@ -13,6 +13,12 @@ vi.mock("./whatsapp-automation.helpers", () => ({
   extractMetaApiErrorMessage: (payload: Record<string, unknown> | null, status: number) =>
     `Erro ${status}: ${JSON.stringify(payload ?? {})}`,
   onlyDigits: (value: string | null | undefined) => (value ?? "").replace(/\D/g, ""),
+  normalizeWhatsAppRecipient: (value: string | null | undefined) => {
+    const digits = (value ?? "").replace(/\D/g, "");
+    if (!digits) return null;
+    if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+    return digits;
+  },
   parseJsonResponse: async (response: { json: () => Promise<unknown> }) =>
     (await response.json()) as Record<string, unknown>,
 }));
@@ -70,7 +76,7 @@ describe("whatsapp-meta-client", () => {
     await expect(sendMetaCloudMessage({})).rejects.toThrow("Erro 400");
   });
 
-  it("envia texto sempre para o número fixo de teste quando a flag está ativa", async () => {
+  it("envia texto sempre para o número fixo quando recipient mode está em test_recipient", async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValueOnce({
       ok: true,
