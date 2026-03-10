@@ -81,6 +81,7 @@ Padrão oficial atual:
 Observação:
 - nomes/idiomas de templates da Meta são configurados por tenant no banco (`settings`), não por env.
 - `appointment_created` usa matriz de 12 templates com seleção por cenário (local + financeiro + intro), definida no backend.
+- `appointment_reminder` usa matriz de 4 templates com seleção por cenário (estúdio/domicílio + pago integral/saldo pendente), definida no backend.
 - para tratar todos os clientes como "primeira mensagem" em uma nova fase, configure `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` com a data/hora de go-live.
 
 ### Spotify
@@ -246,7 +247,8 @@ Respostas:
 ### `POST /api/whatsapp/meta/webhook`
 
 Função:
-- Recebe eventos `messages` do WhatsApp Cloud API e atualiza status/replies da automação.
+- Recebe eventos do WhatsApp Cloud API e atualiza status/replies da automação.
+- Também sincroniza o catálogo de templates quando recebe campos de template (status/qualidade/categoria/componentes).
 
 Header relevante:
 - `x-hub-signature-256`
@@ -260,6 +262,13 @@ Respostas:
 - `400`: JSON inválido
 - `401`: assinatura inválida
 - `500`: erro de processamento
+
+Campos recomendados na assinatura do webhook Meta:
+- `messages`
+- `message_template_status_update`
+- `message_template_quality_update`
+- `template_category_update`
+- `message_template_components_update`
 
 ### `GET /api/internal/notifications/whatsapp/process`
 

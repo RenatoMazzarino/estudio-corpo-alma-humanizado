@@ -147,7 +147,7 @@ Em conflito com o código, o código vence.
 - Meta Cloud API como provider (`meta_cloud`)
 - Webhook Meta:
   - `GET /api/whatsapp/meta/webhook` (verify)
-  - `POST /api/whatsapp/meta/webhook` (events `messages`)
+  - `POST /api/whatsapp/meta/webhook` (events `messages` + status/qualidade/categoria de template)
 - Status reais no painel:
   - `sent`, `delivered`, `read`, `failed`
 - Cron endpoint para lembretes 24h:
@@ -167,7 +167,16 @@ Em conflito com o código, o código vence.
   - regras de seleção:
     - `apps/web/src/modules/notifications/whatsapp-created-template-rules.ts`
 - Lembrete 24h (`appointment_reminder`):
-  - `confirmacao_de_agendamento_24h` (resolvido por tenant settings)
+  - matriz oficial com 4 templates Meta:
+    - `lembrete_confirmacao_24h_estudio_pago_integral`
+    - `lembrete_confirmacao_24h_estudio_saldo_pendente`
+    - `lembrete_confirmacao_24h_domicilio_pago_integral`
+    - `lembrete_confirmacao_24h_domicilio_saldo_pendente`
+  - regras de seleção por cenário:
+    - local do atendimento (estúdio/domicílio)
+    - estado financeiro (pago integral/saldo pendente)
+  - arquivo canônico:
+    - `apps/web/src/modules/notifications/whatsapp-reminder-template-rules.ts`
 
 ### Fluxos automáticos implementados
 
@@ -231,13 +240,17 @@ Semântica do baseline:
 
 #### Templates e canal por ambiente (canônico no banco)
 
-Os nomes/idiomas de template agora são resolvidos por tenant na tabela `settings`:
+Campos legados de template em `settings` (mantidos por compatibilidade):
 - `whatsapp_template_created_name`
 - `whatsapp_template_created_language`
 - `whatsapp_template_reminder_name`
 - `whatsapp_template_reminder_language`
 - `whatsapp_automation_enabled`
 - `whatsapp_studio_location_line`
+
+Observação importante:
+- `appointment_created` e `appointment_reminder` são selecionados por regra de negócio + catálogo.
+- os campos `whatsapp_template_*` em `settings` funcionam como fallback operacional, não como orquestrador principal da seleção.
 
 Canal oficial por ambiente:
 - tabela `whatsapp_environment_channels`
@@ -362,7 +375,12 @@ pnpm build
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
 - `WHATSAPP_AUTOMATION_META_APP_SECRET` (recomendado/esperado)
 - webhook Meta verificado no domínio correto
-- `messages` assinados / recebidos
+- campos assinados no webhook:
+  - `messages`
+  - `message_template_status_update`
+  - `message_template_quality_update`
+  - `template_category_update`
+  - `message_template_components_update`
 - `CRON_SECRET` configurado (se reminders automáticos ligados)
 
 5. Spotify (se habilitado)
