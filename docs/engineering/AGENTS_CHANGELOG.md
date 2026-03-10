@@ -1,7 +1,6 @@
 # AGENTS Changelog
 
-Status: active
-Owner: engenharia de plataforma
+Status: active Owner: engenharia de plataforma
 
 ## 2026-03-10
 

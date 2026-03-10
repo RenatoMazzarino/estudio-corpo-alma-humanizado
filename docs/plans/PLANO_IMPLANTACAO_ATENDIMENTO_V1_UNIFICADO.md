@@ -1,12 +1,19 @@
 # PLANO_IMPLANTACAO_ATENDIMENTO_V1_UNIFICADO
 
-> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
-> **Nao canonico:** Documento datado. Use apenas como referencia historica; comportamento atual deve ser validado no codigo e docs ativos.
+> **Status documental:** Histórico/legado. Use apenas para contexto e
+> rastreabilidade. **Nao canonico:** Documento datado. Use apenas como
+> referencia historica; comportamento atual deve ser validado no codigo e docs
+> ativos.
 
 ## Objetivo
-Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinheiro, Pix e Point), e pós-atendimento dentro do modal do agendamento para status `completed`, mantendo Checkout Transparente (Orders API + webhook) e sem mudanças destrutivas de histórico.
+
+Consolidar o Atendimento V1 em tela única de sessão, checkout em modal
+(Dinheiro, Pix e Point), e pós-atendimento dentro do modal do agendamento para
+status `completed`, mantendo Checkout Transparente (Orders API + webhook) e sem
+mudanças destrutivas de histórico.
 
 ## Escopo consolidado
+
 - `/atendimento/[id]` como tela única: timer, checklist, evolução.
 - Checkout em modal bottom-sheet com:
   - edição de itens;
@@ -17,17 +24,21 @@ Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinhei
 - Modal de agendamento com dois modos:
   - não concluído: fluxo operacional atual;
   - concluído: logística, financeiro completo, pesquisa, follow-up e evolução.
-- Recibo por pagamento (`/comprovante/pagamento/[paymentId]`) com envio por WhatsApp após confirmação.
+- Recibo por pagamento (`/comprovante/pagamento/[paymentId]`) com envio por
+  WhatsApp após confirmação.
 - Webhook robusto para `order` e `payment`, com reconciliação e idempotência.
 
 ## Banco de dados (migrations idempotentes)
+
 - `20260213103000_add_point_terminal_settings.sql`
   - adiciona `mp_point_*` em `settings`.
 - `20260213104000_add_point_metadata_to_appointment_payments.sql`
-  - adiciona `provider_order_id`, `point_terminal_id`, `card_mode` em `appointment_payments`.
+  - adiciona `provider_order_id`, `point_terminal_id`, `card_mode` em
+    `appointment_payments`.
   - cria índices por tenant/order e tenant/appointment/created_at.
 
 ## Backend
+
 - Módulo compartilhado: `apps/web/src/modules/payments/mercadopago-orders.ts`
   - `createPixOrderForAppointment`
   - `createOnlineCardOrderForAppointment`
@@ -44,9 +55,11 @@ Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinhei
   - atualiza `appointments.payment_status`.
 
 ## Frontend
+
 - Nova tela de atendimento unificada: `attendance-page.tsx`.
 - Novo modal de checkout de atendimento: `attendance-payment-modal.tsx`.
-- Modal do agendamento (`appointment-details-sheet.tsx`) com modo pós-atendimento para `completed`.
+- Modal do agendamento (`appointment-details-sheet.tsx`) com modo
+  pós-atendimento para `completed`.
 - `mobile-agenda.tsx` atualizado com callbacks de:
   - cobrança;
   - recibo;
@@ -55,12 +68,14 @@ Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinhei
 - Configurações (`settings-form.tsx`) com gestão de terminal Point.
 
 ## Recibo e mensageria
+
 - Nova rota: `app/comprovante/pagamento/[paymentId]/page.tsx`.
 - Template de recibo por pagamento usando `ReceiptView`.
 - Prompt de envio de recibo após pagamento confirmado no modal de checkout.
 - Registro de envio/reenvio em `appointment_messages`.
 
 ## Critérios de aceite
+
 - Tela única de sessão funcionando com timer e checklist.
 - Modal checkout registra Dinheiro, gera Pix e cobra no Point.
 - Desconto e itens alteram subtotal/total corretamente.
@@ -70,6 +85,7 @@ Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinhei
 - Sem mensagens técnicas cruas para usuário final.
 
 ## Rollout
+
 1. Aplicar migrations em local.
 2. Aplicar migrations em preview.
 3. Aplicar migrations em produção.
@@ -78,6 +94,7 @@ Consolidar o Atendimento V1 em tela única de sessão, checkout em modal (Dinhei
 6. Smoke real em produção com valor baixo.
 
 ## Assumptions
+
 - Modelo oficial: Checkout Transparente (Orders API + webhook).
 - Cartão no atendimento interno: somente Point físico.
 - Modal pós-atendimento aparece apenas para `completed`.

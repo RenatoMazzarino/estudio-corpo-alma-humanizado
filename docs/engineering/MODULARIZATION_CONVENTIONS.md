@@ -6,16 +6,19 @@ Escopo: `apps/web` e módulos de suporte
 
 ## Objetivo
 
-Padronizar evolução técnica do repo com separação real de responsabilidades e baixo risco de regressão.
+Padronizar evolução técnica do repo com separação real de responsabilidades e
+baixo risco de regressão.
 
 ## 1) Princípios obrigatórios
 
 1. Modularizar por responsabilidade, não por tamanho.
 2. Fluxo de dependência unidirecional:
-  - `ui/hooks/actions` -> `application` -> `domain` -> `infrastructure`.
-3. Regras de negócio críticas não ficam em componente visual.
-4. `app/*` é camada de entrega (routing/auth/wiring), não de domínio.
-5. Evitar duplicação de normalização/formatação em formulários.
+
+- `ui/hooks/actions` -> `application` -> `domain` -> `infrastructure`.
+
+1. Regras de negócio críticas não ficam em componente visual.
+2. `app/*` é camada de entrega (routing/auth/wiring), não de domínio.
+3. Evitar duplicação de normalização/formatação em formulários.
 
 ## 2) Estrutura recomendada por feature
 
@@ -38,15 +41,20 @@ Para cada fluxo crítico:
 ## 4) Regras de fronteira
 
 1. Não usar `as unknown as` em caminhos críticos:
-  - `src/modules/payments/*`
-  - `src/modules/appointments/*`
-  - `app/(dashboard)/atendimento/[id]/*`
-2. Não criar imports relativos com mais de 5 subidas de pasta (`../../../../../..`).
-3. Preferir aliases de path (`@src/*`, `@components/*`, `@app/*`, `@lib/*`) em código novo.
+
+- `src/modules/payments/*`
+- `src/modules/appointments/*`
+- `app/(dashboard)/atendimento/[id]/*`
+
+1. Não criar imports relativos com mais de 5 subidas de pasta
+   (`../../../../../..`).
+2. Preferir aliases de path (`@src/*`, `@components/*`, `@app/*`, `@lib/*`) em
+   código novo.
 
 ## 5) Centralização de utilitários transversais
 
-Toda regra de formatação/normalização compartilhável deve ir para `src/shared`, por tema:
+Toda regra de formatação/normalização compartilhável deve ir para `src/shared`,
+por tema:
 
 1. `src/shared/cpf.ts`
 2. `src/shared/phone.ts`
@@ -68,4 +76,3 @@ Toda regra de formatação/normalização compartilhável deve ir para `src/shar
 3. `pnpm --filter web check-types`
 4. `pnpm --filter web build`
 5. Smoke manual do fluxo alterado
-

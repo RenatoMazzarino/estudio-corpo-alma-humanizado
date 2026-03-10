@@ -1,11 +1,15 @@
 ---
 name: estudio-repo-context
-description: Use when working in this repository and you need canonical project context (setup, run, docs map, integrations, or Codex skills readiness). Do not use for generic coding tasks that do not depend on repo conventions.
+description:
+  Use when working in this repository and you need canonical project context
+  (setup, run, docs map, integrations, or Codex skills readiness). Do not use
+  for generic coding tasks that do not depend on repo conventions.
 ---
 
 # Estudio Repo Context
 
-Use this skill to align implementation and decisions with the repository standards.
+Use this skill to align implementation and decisions with the repository
+standards.
 
 ## Quick Checks
 

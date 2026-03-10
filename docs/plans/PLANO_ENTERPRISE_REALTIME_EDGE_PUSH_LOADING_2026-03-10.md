@@ -2,14 +2,16 @@
 
 Status: em execucao (implementacao base aplicada em 2026-03-10)  
 Data base: 2026-03-10  
-Escopo: repo completo (`apps/web`, `supabase/functions`, `supabase/migrations`, `docs`)  
+Escopo: repo completo (`apps/web`, `supabase/functions`, `supabase/migrations`,
+`docs`)  
 Ambientes alvo: `development -> preview -> production`  
 Perfil de entrega: producao enterprise (sem abordagem MVP)
 
 ## 0) Premissas inegociaveis (execucao)
 
 1. Este programa nao admite entrega "minimo viavel" para fluxo critico.
-2. Cada fase deve entregar blocos completos de capacidade (codigo + testes + observabilidade + documentacao).
+2. Cada fase deve entregar blocos completos de capacidade (codigo + testes +
+   observabilidade + documentacao).
 3. E proibido fechar fase com:
    - workaround manual recorrente
    - acoplamento oculto
@@ -71,7 +73,8 @@ Edge Functions existentes:
 Conclusao:
 
 1. Ja existe base de borda/proxy.
-2. Falta consolidar uma arquitetura de eventos e fila unificada para todos os dominos criticos.
+2. Falta consolidar uma arquitetura de eventos e fila unificada para todos os
+   dominos criticos.
 
 ## 3.3 Push atual
 
@@ -105,8 +108,10 @@ Distribuicao principal de polling (`setInterval`):
 Diagnostico objetivo:
 
 1. Ha loading funcional, mas fragmentado.
-2. Ha polling manual em excesso para casos que podem migrar para realtime/eventos.
-3. Falta padrao de UX para loading por contexto (pagina, secao, inline, bloqueante).
+2. Ha polling manual em excesso para casos que podem migrar para
+   realtime/eventos.
+3. Falta padrao de UX para loading por contexto (pagina, secao, inline,
+   bloqueante).
 
 ## 4) Arquitetura alvo
 
@@ -121,10 +126,13 @@ Diagnostico objetivo:
 ## 4.2 Camadas alvo
 
 1. Camada de dominio (app/src/modules): gera eventos de negocio.
-2. Camada de persistencia (Supabase): outbox + tabelas operacionais + projections.
-3. Camada de execucao assincrona (Edge): ingestao, orquestracao, retry, reconciliacao.
+2. Camada de persistencia (Supabase): outbox + tabelas operacionais +
+   projections.
+3. Camada de execucao assincrona (Edge): ingestao, orquestracao, retry,
+   reconciliacao.
 4. Camada de apresentacao (UI): subscriptions realtime + patch local de estado.
-5. Camada de notificacao (push): channel provider + preferencias + entrega auditavel.
+5. Camada de notificacao (push): channel provider + preferencias + entrega
+   auditavel.
 
 ## 4.3 Modelo de eventos (novo)
 
@@ -162,7 +170,8 @@ Entregas:
    - Checkout publico adapter
 3. Introduzir fallback controlado:
    - realtime indisponivel -> polling degradado temporario com telemetria
-4. Remover `router.refresh()` em pontos elegiveis e substituir por atualizacao incremental.
+4. Remover `router.refresh()` em pontos elegiveis e substituir por atualizacao
+   incremental.
 
 ## 5.2 Workstream B - Edge Functions e processamento assincrono
 
@@ -263,7 +272,8 @@ Gate de saida:
 
 ## Fase 1 - Dados e contratos de evento
 
-1. Criar migrations para outbox, dispatch log, push subscriptions, push attempts, DLQ.
+1. Criar migrations para outbox, dispatch log, push subscriptions, push
+   attempts, DLQ.
 2. Definir payload schema versionado.
 3. Definir politica de retencao.
 
@@ -477,7 +487,9 @@ A entrega final enterprise so deve ser considerada pronta quando:
 
 ## 14) Decisao recomendada
 
-Este plano deve ser aprovado como programa oficial de evolucao enterprise do repo, com execucao em blocos curtos e auditaveis, sem atalho de MVP para os fluxos criticos.
+Este plano deve ser aprovado como programa oficial de evolucao enterprise do
+repo, com execucao em blocos curtos e auditaveis, sem atalho de MVP para os
+fluxos criticos.
 
 ## 15) Plano de execucao fechado (RACI + cronograma)
 
@@ -485,9 +497,11 @@ Este plano deve ser aprovado como programa oficial de evolucao enterprise do rep
 
 Papeis:
 
-1. Sponsor de negocio: Renato (define prioridade e aprova Go/No-Go final de fase).
+1. Sponsor de negocio: Renato (define prioridade e aprova Go/No-Go final de
+   fase).
 2. Operacao do estudio: Jana (valida uso real na operacao diaria).
-3. Execucao tecnica: Codex (implementacao ponta a ponta, testes, docs e rollout tecnico).
+3. Execucao tecnica: Codex (implementacao ponta a ponta, testes, docs e rollout
+   tecnico).
 4. Aprovacao tecnica de gate: Codex (checklist objetivo por fase + evidencias).
 
 Responsabilidade por fase:
@@ -512,10 +526,14 @@ Legenda:
 
 Inicio previsto: 2026-03-11
 
-1. Este programa sera executado em fluxo continuo ate conclusao, sem particionar por semana.
-2. A progressao ocorre por marcos de fase (F0 -> F7), com validacao de gate ao fim de cada fase.
-3. Assim que o gate da fase atual estiver aprovado, a fase seguinte inicia imediatamente.
-4. O plano de comunicacao de progresso usa marcos concluidos e percentual consolidado, nao calendario semanal.
+1. Este programa sera executado em fluxo continuo ate conclusao, sem particionar
+   por semana.
+2. A progressao ocorre por marcos de fase (F0 -> F7), com validacao de gate ao
+   fim de cada fase.
+3. Assim que o gate da fase atual estiver aprovado, a fase seguinte inicia
+   imediatamente.
+4. O plano de comunicacao de progresso usa marcos concluidos e percentual
+   consolidado, nao calendario semanal.
 
 ## 15.3 Capacidade e regra de priorizacao
 
@@ -528,7 +546,8 @@ Inicio previsto: 2026-03-11
 
 ## 16) Decisoes predefinidas (padrao recomendado)
 
-Estas decisoes ja ficam definidas como padrao deste programa para evitar bloqueio:
+Estas decisoes ja ficam definidas como padrao deste programa para evitar
+bloqueio:
 
 1. Push provider inicial: OneSignal.
 2. Escopo inicial de push: Web Push (PWA) para operacao da Jana.
@@ -629,34 +648,43 @@ Status final das decisoes:
    - padrao de operacao:
      - repeticao a cada 15 minutos
      - limite de 8 repeticoes por incidente
-     - encerramento automatico do alerta recorrente quando o incidente voltar ao estado saudavel
+     - encerramento automatico do alerta recorrente quando o incidente voltar ao
+       estado saudavel
 
-Com estas definicoes, o plano esta 100% pronto para execucao sem lacunas de decisao de negocio.
+Com estas definicoes, o plano esta 100% pronto para execucao sem lacunas de
+decisao de negocio.
 
 ## 22) Progresso de implementacao (2026-03-10)
 
 Entregas aplicadas no repo:
 
 1. Fase 1 (dados e contratos):
-   - migration base criada com outbox, dispatch logs, DLQ, push subscriptions/preferencias/tentativas.
+   - migration base criada com outbox, dispatch logs, DLQ, push
+     subscriptions/preferencias/tentativas.
 2. Fase 2 (core realtime):
-   - `use-supabase-realtime-refresh` evoluido com health state, reconexao com backoff e modo patch/reload governado por flag.
+   - `use-supabase-realtime-refresh` evoluido com health state, reconexao com
+     backoff e modo patch/reload governado por flag.
 3. Fase 3 (mensagens realtime first):
-   - tela Mensagens migrada para shell client com atualizacao realtime e endpoint interno de snapshot.
+   - tela Mensagens migrada para shell client com atualizacao realtime e
+     endpoint interno de snapshot.
 4. Fase 4 (edge consolidado):
-   - dispatcher interno (`/api/internal/events/dispatch`) + cron route (`/api/cron/event-dispatcher`) + edge function `event-dispatcher`.
+   - dispatcher interno (`/api/internal/events/dispatch`) + cron route
+     (`/api/cron/event-dispatcher`) + edge function `event-dispatcher`.
    - workflow GitHub de cron atualizado para disparar reminders + dispatcher.
 5. Fase 5 (push):
-   - bootstrap OneSignal no dashboard + service workers + APIs de subscription/preference.
+   - bootstrap OneSignal no dashboard + service workers + APIs de
+     subscription/preference.
    - card de preferencias push em Configuracoes.
-   - endpoint operacional de teste (`POST /api/push/test`) e leitura de inscrição ativa (`GET /api/push/subscriptions`).
+   - endpoint operacional de teste (`POST /api/push/test`) e leitura de
+     inscrição ativa (`GET /api/push/subscriptions`).
 6. Fase 6 (loading):
    - biblioteca canonica de loading criada.
    - `fallback={null}` removido do dashboard.
    - `loading.tsx` adicionado nas rotas criticas de dashboard e fluxo publico.
 7. Hardening complementar:
    - emissao de eventos de pagamento para outbox no webhook Mercado Pago.
-   - emissao de `appointment.updated` e `appointment.canceled` para garantir alerta push em alterações operacionais.
+   - emissao de `appointment.updated` e `appointment.canceled` para garantir
+     alerta push em alterações operacionais.
    - env templates + auditoria atualizados para flags e secrets novos.
 
 Validacoes executadas:
@@ -671,9 +699,11 @@ Validacoes executadas:
 Pendencias externas (painel/infra):
 
 1. Concluido em 2026-03-10:
-   - migration `20260311090000_enterprise_events_push_loading_foundation.sql` aplicada em local e remoto.
+   - migration `20260311090000_enterprise_events_push_loading_foundation.sql`
+     aplicada em local e remoto.
 2. Concluido em 2026-03-10:
-   - variaveis enterprise sincronizadas nos 3 ambientes Vercel (`development`, `preview`, `production`), incluindo:
+   - variaveis enterprise sincronizadas nos 3 ambientes Vercel (`development`,
+     `preview`, `production`), incluindo:
      - `EVENT_DISPATCHER_SECRET`
      - `FF_REALTIME_PATCH_MODE`
      - `FF_EDGE_DISPATCHER_V2`
@@ -684,6 +714,8 @@ Pendencias externas (painel/infra):
      - `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
      - `ONESIGNAL_REST_API_KEY`
 3. Pendente operacional (painel):
-   - validar inscricao real do dispositivo da Jana no OneSignal em `preview` e `production` (permissao de navegador + subscription ativa).
+   - validar inscricao real do dispositivo da Jana no OneSignal em `preview` e
+     `production` (permissao de navegador + subscription ativa).
 4. Pendente operacional (teste real controlado):
-   - executar 1 E2E real em preview: `agendamento -> fila -> envio WhatsApp real -> status de entrega`.
+   - executar 1 E2E real em preview:
+     `agendamento -> fila -> envio WhatsApp real -> status de entrega`.

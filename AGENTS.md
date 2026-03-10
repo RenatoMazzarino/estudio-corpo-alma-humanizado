@@ -2,14 +2,18 @@
 
 Projeto: `estudio-corpo-alma-humanizado`
 
-Este arquivo define orientacoes globais para qualquer agente trabalhando neste repositorio.
-Ele e complementar ao codigo e aos documentos canonicos de operacao.
+Este arquivo define orientacoes globais para qualquer agente trabalhando neste
+repositorio. Ele e complementar ao codigo e aos documentos canonicos de
+operacao.
 
 ## 1) Escopo e objetivo
 
-1. Escopo: repo inteiro (monorepo Turbo com app web, pacotes compartilhados, Supabase e docs operacionais).
-2. Objetivo principal: manter o produto operacional com seguranca e previsibilidade.
-3. Objetivo tecnico: evoluir funcionalidades sem quebrar fluxo de agenda, atendimento, pagamento e comunicacao.
+1. Escopo: repo inteiro (monorepo Turbo com app web, pacotes compartilhados,
+   Supabase e docs operacionais).
+2. Objetivo principal: manter o produto operacional com seguranca e
+   previsibilidade.
+3. Objetivo tecnico: evoluir funcionalidades sem quebrar fluxo de agenda,
+   atendimento, pagamento e comunicacao.
 
 ## 2) Contexto funcional do produto
 
@@ -41,7 +45,8 @@ Ele e complementar ao codigo e aos documentos canonicos de operacao.
 6. `supabase/migrations`: historico de schema e regras SQL.
 7. `supabase/functions`: edge functions (proxy/borda de integracoes).
 8. `packages/*`: bibliotecas compartilhadas do monorepo.
-9. `vercel/env-import`: templates de env por ambiente (versionados, sem segredo).
+9. `vercel/env-import`: templates de env por ambiente (versionados, sem
+   segredo).
 10. `.vercel`: metadata local de link/projeto e env local (nao versionada).
 11. `docs/*`: guias tecnicos, runbooks, planos e historico.
 12. `.agents/skills`: skills versionadas do repo.
@@ -85,7 +90,8 @@ Ele e complementar ao codigo e aos documentos canonicos de operacao.
 
 1. Mudanca de schema exige migration em `supabase/migrations`.
 2. Nao editar migration historica ja aplicada em ambientes compartilhados.
-3. Toda mudanca de status/regra de negocio com persistencia deve ter impacto mapeado.
+3. Toda mudanca de status/regra de negocio com persistencia deve ter impacto
+   mapeado.
 4. Nao assumir bypass de RLS no cliente.
 5. Scripts SQL de docs sao referencia de auditoria, nao fonte principal.
 
@@ -100,8 +106,10 @@ Ele e complementar ao codigo e aos documentos canonicos de operacao.
 
 1. Supabase: base de dados, auth e realtime operacional.
 2. Google Maps: busca de endereco e deslocamento.
-3. Mercado Pago: Checkout Transparente (Orders API + webhook) como caminho oficial.
-4. WhatsApp: provider oficial atual `meta_cloud`, coexistencia manual + automacao.
+3. Mercado Pago: Checkout Transparente (Orders API + webhook) como caminho
+   oficial.
+4. WhatsApp: provider oficial atual `meta_cloud`, coexistencia manual +
+   automacao.
 5. Spotify: OAuth + player state/control com guards de sessao.
 
 ## 10) Ambientes e deploy
@@ -150,7 +158,8 @@ Antes de considerar uma mudanca pronta:
 ## 14) Politica de commits e arvore de trabalho
 
 1. Commits em blocos logicos pequenos e auditaveis.
-2. Evitar commit gigante misturando arquitetura + env + docs + fluxo sem necessidade.
+2. Evitar commit gigante misturando arquitetura + env + docs + fluxo sem
+   necessidade.
 3. Preservar alteracoes locais nao relacionadas do usuario.
 4. Antes de editar:
    - `git branch --show-current`
@@ -203,7 +212,8 @@ Toda entrega tecnica deve deixar claro:
 ## 19) Governanca dos overrides
 
 1. Nao manter lista manual de overrides no `AGENTS.md` raiz.
-2. Fonte de verdade dos overrides ativos: `docs/engineering/AGENTS_PRECEDENCE_MAP.md`.
+2. Fonte de verdade dos overrides ativos:
+   `docs/engineering/AGENTS_PRECEDENCE_MAP.md`.
 3. Para validar consistencia e regenerar mapa:
    - `pnpm agents:check`
 4. Regras de escrita e manutencao:
@@ -229,30 +239,37 @@ Toda entrega tecnica deve deixar claro:
 ## Regra de maturidade (V1 final de producao)
 
 1. Este escopo nao aceita entrega em mentalidade MVP ou "so para funcionar".
-2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao, observabilidade e manutencao previsivel.
-3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou acoplamento oculto.
+2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao,
+   observabilidade e manutencao previsivel.
+3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou
+   acoplamento oculto.
 4. Solucoes devem incluir:
    - tratamento de erro explicito
    - contratos claros de entrada/saida
    - testes proporcionais ao risco
    - documentacao operacional quando houver impacto de runtime
-5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade estrutural e registrar tradeoff.
+5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade
+   estrutural e registrar tradeoff.
 
 ## 21) Definition of Done (nivel producao)
 
 Uma entrega so e considerada pronta quando:
 
 1. arquitetura do trecho alterado ficou mais clara (nunca mais confusa);
-2. nao houve aumento de acoplamento oculto, duplicacao oportunista ou fallback sem governanca;
-3. contratos de API, banco, webhook e env ficaram consistentes entre codigo e docs;
+2. nao houve aumento de acoplamento oculto, duplicacao oportunista ou fallback
+   sem governanca;
+3. contratos de API, banco, webhook e env ficaram consistentes entre codigo e
+   docs;
 4. validacao tecnica minima foi executada e registrada;
-5. risco residual e plano de rollback foram explicitados quando houver mudanca critica.
+5. risco residual e plano de rollback foram explicitados quando houver mudanca
+   critica.
 
 ## 22) Anti-gambiarra (regras de bloqueio)
 
 Mudancas devem ser recusadas/adiadas quando:
 
-1. exigem bypass permanente de validacao, auth, RLS ou verificacao de assinatura;
+1. exigem bypass permanente de validacao, auth, RLS ou verificacao de
+   assinatura;
 2. inserem flag/env temporaria sem plano de remocao;
 3. dependem de ajuste manual recorrente para funcionar;
 4. resolvem sintoma local criando regressao sistêmica em outro fluxo.
@@ -268,5 +285,6 @@ Mudancas devem ser recusadas/adiadas quando:
    - segredo somente via env seguro.
 3. Loading UX:
    - evitar spinner ad-hoc espalhado;
-   - padronizar componentes de loading por contexto (pagina/secao/inline/bloqueante);
+   - padronizar componentes de loading por contexto
+     (pagina/secao/inline/bloqueante);
    - nunca deixar `fallback={null}` em fluxo critico de operacao.

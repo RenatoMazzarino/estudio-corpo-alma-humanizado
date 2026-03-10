@@ -431,7 +431,7 @@ export function MessagesRealtimeShell({ initialData }: MessagesRealtimeShellProp
             <p className="text-xs text-muted">Sem templates catalogados ainda para este tenant.</p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-line/70">
-              <table className="min-w-[980px] w-full text-[11px]">
+              <table className="min-w-245 w-full text-[11px]">
                 <thead className="bg-studio-bg/60 text-muted">
                   <tr className="text-left">
                     <th className="px-3 py-2 font-semibold">Template</th>

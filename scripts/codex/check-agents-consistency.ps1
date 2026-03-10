@@ -149,15 +149,27 @@ $mapLines.Add('')
 $mapLines.Add('1. A cadeia mostra a ordem de heranca de regras para cada override local.')
 $mapLines.Add('2. O ultimo item da cadeia e o arquivo de maior prioridade para aquele caminho.')
 $mapLines.Add('')
-$mapLines.Add('| Override local | Cadeia de precedencia |')
-$mapLines.Add('| --- | --- |')
+$mapLines.Add('## Overrides locais e cadeia de precedencia')
+$mapLines.Add('')
 
 foreach ($file in $overrideFiles) {
   $relative = Get-RelativePath -FullPath $file.FullName
   $chain = Build-PrecedenceChain -OverrideFile $file.FullName
   $tick = [char]96
-  $chainText = ($chain | ForEach-Object { "$tick$_$tick" }) -join ' -> '
-  $mapLines.Add("| $tick$relative$tick | $chainText |")
+  $mapLines.Add("### $tick$relative$tick")
+  $mapLines.Add('')
+  $mapLines.Add('Cadeia:')
+  $mapLines.Add('')
+  $index = 1
+  foreach ($item in $chain) {
+    $mapLines.Add("$index. $tick$item$tick")
+    $index += 1
+  }
+  $mapLines.Add('')
+}
+
+while ($mapLines.Count -gt 0 -and $mapLines[$mapLines.Count - 1] -eq '') {
+  $mapLines.RemoveAt($mapLines.Count - 1)
 }
 
 Set-Content -Path $mapPath -Value ($mapLines -join "`r`n")

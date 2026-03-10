@@ -15,10 +15,12 @@ Escopo: configuracoes de automacao GitHub (`.github/*`).
    - comportamento em ausencia de segredo
 2. Nao mover valor sensivel para `vars`.
 3. Nao expor token/secret em log.
-4. Mudanca de automacao de deploy/cron exige atualizacao de runbook e docs operacionais.
+4. Mudanca de automacao de deploy/cron exige atualizacao de runbook e docs
+   operacionais.
 
 ## Regra de maturidade (V1 final de producao)
 
 1. Nao aceitar workflow "best effort" sem tratamento de erro e idempotencia.
-2. Nao manter automacao opaca: logs devem permitir diagnostico sem revelar segredo.
+2. Nao manter automacao opaca: logs devem permitir diagnostico sem revelar
+   segredo.
 3. Toda alteracao de CI/CD deve prever rollback operacional.

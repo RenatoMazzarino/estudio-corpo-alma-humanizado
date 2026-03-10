@@ -1,12 +1,17 @@
 # Catalogo de feedbacks (Agenda + Pagamentos)
 
-> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
-> **Nao canonico:** Documento datado. Use apenas como referencia historica; comportamento atual deve ser validado no codigo e docs ativos.
+> **Status documental:** Histórico/legado. Use apenas para contexto e
+> rastreabilidade. **Nao canonico:** Documento datado. Use apenas como
+> referencia historica; comportamento atual deve ser validado no codigo e docs
+> ativos.
 
 ## Objetivo
-Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com linguagem humana e sem texto tecnico cru na tela.
+
+Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com
+linguagem humana e sem texto tecnico cru na tela.
 
 ## Escopo desta camada
+
 - Fluxo publico de agendamento (`/agendar/[slug]`)
 - Pagamentos Checkout Transparente (Pix e Cartao)
 - Agenda interna (detalhes, atendimento, bloqueios/escala)
@@ -15,21 +20,26 @@ Padronizar todas as mensagens visiveis para o usuario em um unico catalogo, com 
 - Integracao Spotify no atendimento (estado/controle)
 
 ## Como funciona
+
 - Fonte unica de mensagens: `apps/web/src/shared/feedback/user-feedback.ts`
 - Exibicao visual: `apps/web/components/ui/toast.tsx`
 - Canais:
+
 1. `toast`: aviso curto no rodape, auto fechamento rapido
 2. `banner`: aviso sobreposto no topo, para casos mais importantes
 
-Obs.: evoluimos a exibicao para estilo notificacao no topo da tela (inclusive avisos curtos), preservando o mesmo componente/camada.
+Obs.: evoluimos a exibicao para estilo notificacao no topo da tela (inclusive
+avisos curtos), preservando o mesmo componente/camada.
 
 ## Regras aplicadas
+
 1. Sem `alert()`/`window.alert()` no modulo agenda/pagamentos.
 2. Erros tecnicos nao sobem direto para a UI.
 3. Erros de backend/SDK passam por `feedbackFromError(...)`.
 4. Mensagens de sucesso/aviso usam `feedbackById(...)`.
 
 ## Principais IDs do catalogo
+
 - `booking_created`
 - `booking_create_failed`
 - `payment_pix_generated`
@@ -69,7 +79,9 @@ Obs.: evoluimos a exibicao para estilo notificacao no topo da tela (inclusive av
 - `generic_try_again`
 
 ## Mapeamento Mercado Pago (Checkout Transparente)
-No backend de pagamentos (`public-actions/payments.ts`), respostas do MP sao traduzidas para mensagens de usuario:
+
+No backend de pagamentos (`public-actions/payments.ts`), respostas do MP sao
+traduzidas para mensagens de usuario:
 
 - `invalid_credentials` -> servico indisponivel
 - `high_risk` -> cartao recusado por seguranca
@@ -81,6 +93,7 @@ No backend de pagamentos (`public-actions/payments.ts`), respostas do MP sao tra
 Detalhes tecnicos continuam apenas em logs de servidor para diagnostico.
 
 ## Arquivos principais alterados
+
 - `apps/web/src/shared/feedback/user-feedback.ts`
 - `apps/web/components/ui/toast.tsx`
 - `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
@@ -96,6 +109,8 @@ Detalhes tecnicos continuam apenas em logs de servidor para diagnostico.
 - `apps/web/app/(dashboard)/novo/appointment-form.tsx`
 
 ## Resultado esperado para o usuario final
+
 - Mensagens consistentes
 - Sem "erro tecnico" exposto
-- Fluxo mais limpo (mensagens no topo, estilo notificacao, sem quebrar layout da tela)
+- Fluxo mais limpo (mensagens no topo, estilo notificacao, sem quebrar layout da
+  tela)

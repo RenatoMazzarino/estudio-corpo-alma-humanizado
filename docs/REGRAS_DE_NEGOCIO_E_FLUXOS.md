@@ -2,7 +2,8 @@
 
 ## Objetivo
 
-Consolidar as regras de negocio que hoje estao implementadas no repo para reduzir ambiguidade operacional, onboarding e regressao em ajustes futuros.
+Consolidar as regras de negocio que hoje estao implementadas no repo para
+reduzir ambiguidade operacional, onboarding e regressao em ajustes futuros.
 
 ## Fonte de verdade (ordem de prioridade)
 
@@ -30,25 +31,33 @@ Em conflito entre este documento e o codigo, o codigo vence.
 - `clients.id`: ID canonico do cliente
 - `appointment_payments.id`: ID interno do pagamento registrado no sistema
 - `notification_jobs.id`: job de automacao WhatsApp
-- `appointment_messages.id`: log de mensagens manuais/automaticas por agendamento
+- `appointment_messages.id`: log de mensagens manuais/automaticas por
+  agendamento
 
 ### IDs externos / provider refs
 
-- `appointment_payments.provider_ref`: referencia externa do pagamento (ex.: ID do pagamento no Mercado Pago)
+- `appointment_payments.provider_ref`: referencia externa do pagamento (ex.: ID
+  do pagamento no Mercado Pago)
 - `appointment_payments.provider_order_id`: ID da Orders API do Mercado Pago
 
 Observacao importante:
-- A rota de recibo por pagamento (`/comprovante/pagamento/[paymentId]`) aceita tanto o ID interno (`appointment_payments.id`) quanto `provider_ref` (Mercado Pago), para manter compatibilidade com links antigos.
+
+- A rota de recibo por pagamento (`/comprovante/pagamento/[paymentId]`) aceita
+  tanto o ID interno (`appointment_payments.id`) quanto `provider_ref` (Mercado
+  Pago), para manter compatibilidade com links antigos.
 
 ### Codigo de atendimento (persistido em banco)
 
 Campo:
+
 - `appointments.attendance_code` (persistido no banco)
 
 Formato atual:
+
 - `SS-CTOKEN-YYMMDD-NNNNNN`
 
 Onde:
+
 - `SS`: referencia curta do servico (2 caracteres)
 - `CTOKEN`: identificacao compacta do cliente
   - `N..` = baseado em nome (iniciais)
@@ -58,15 +67,20 @@ Onde:
 - `NNNNNN`: sequencia global persistida (nao reutilizavel)
 
 Regras do codigo:
+
 - gerado automaticamente no banco (trigger)
 - unico por agendamento
 - quando campos-chave mudam (cliente/servico/data), um novo codigo e gerado
 - o codigo antigo nao e reaproveitado (sequencia global)
-- o sequencial global segue ordem de geracao/entrada (`created_at`), e nao a data do atendimento
+- o sequencial global segue ordem de geracao/entrada (`created_at`), e nao a
+  data do atendimento
 
 Nota sobre o `##` mencionado antes:
-- no modelo provisoriamente calculado na UI, `##` era a ordem sequencial do mesmo servico no mesmo dia (`01`, `02`, ...)
-- agora o bloco final persistido virou `NNNNNN` (sequencia global) para garantir unicidade e nao reuso
+
+- no modelo provisoriamente calculado na UI, `##` era a ordem sequencial do
+  mesmo servico no mesmo dia (`01`, `02`, ...)
+- agora o bloco final persistido virou `NNNNNN` (sequencia global) para garantir
+  unicidade e nao reuso
 
 ## Regras de agendamento (criacao e salvamento na agenda)
 
@@ -75,21 +89,28 @@ Nota sobre o `##` mencionado antes:
 #### Agendamento publico
 
 Arquivo principal:
+
 - `apps/web/src/modules/appointments/public-booking.ts`
 
 Regra:
-- o agendamento e considerado criado/salvo apos sucesso da RPC `create_public_appointment`
+
+- o agendamento e considerado criado/salvo apos sucesso da RPC
+  `create_public_appointment`
 - apos criar, o sistema agenda automacoes de lifecycle (criacao + lembrete 24h)
 
 #### Agendamento interno (dashboard)
 
 Arquivo principal:
+
 - `apps/web/src/modules/appointments/actions.ts`
 
 Regra:
-- o agendamento e considerado criado/salvo apos sucesso da RPC `create_internal_appointment`
+
+- o agendamento e considerado criado/salvo apos sucesso da RPC
+  `create_internal_appointment`
 - apos criar, o sistema agenda automacoes de lifecycle (criacao + lembrete 24h)
-- se o usuario enviar mensagem manual de criacao, isso e logado em `appointment_messages`
+- se o usuario enviar mensagem manual de criacao, isso e logado em
+  `appointment_messages`
 
 ## Status de agendamento (appointments.status)
 
@@ -104,13 +125,18 @@ Status operacionais encontrados no codigo/UI:
 - `no_show` (nao compareceu)
 
 Observacoes:
-- na agenda mobile, itens cancelados/no-show sao ocultados da visualizacao principal por regra de UI
-- "reagendado" hoje nao e um `appointments.status` canonico no repo (estado primario)
-- reagendamento hoje acontece como alteracao de horario/dados + logs/eventos/mensagens
+
+- na agenda mobile, itens cancelados/no-show sao ocultados da visualizacao
+  principal por regra de UI
+- "reagendado" hoje nao e um `appointments.status` canonico no repo (estado
+  primario)
+- reagendamento hoje acontece como alteracao de horario/dados +
+  logs/eventos/mensagens
 
 ## Fluxo de atendimento (operacional)
 
 Arquivo principal:
+
 - `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`
 
 Fluxo macro:
@@ -122,8 +148,11 @@ Fluxo macro:
 5. Pos-atendimento (pesquisa/evolucao/observacoes)
 
 Regra importante:
-- ao finalizar o atendimento (`completed`), o status financeiro e recalculado novamente
-- isso garante que pagamento parcial (sinal) vire `pending` se o servico foi prestado e ainda restou saldo
+
+- ao finalizar o atendimento (`completed`), o status financeiro e recalculado
+  novamente
+- isso garante que pagamento parcial (sinal) vire `pending` se o servico foi
+  prestado e ainda restou saldo
 
 ## Regras de pagamento (appointments.payment_status)
 
@@ -138,23 +167,29 @@ Status financeiros suportados no repo (atual):
 ### Regra canonica para calcular status financeiro
 
 Fonte de regra centralizada:
-- `apps/web/src/modules/payments/mercadopago-orders.ts` (`recalculateAppointmentPaymentStatus`)
+
+- `apps/web/src/modules/payments/mercadopago-orders.ts`
+  (`recalculateAppointmentPaymentStatus`)
 
 Base de comparacao (valor devido):
 
-1. usar `appointment_checkout.total` se existir (valor final com desconto aplicado)
+1. usar `appointment_checkout.total` se existir (valor final com desconto
+   aplicado)
 2. fallback para `appointments.price_override`
 3. fallback para `appointments.price`
 
 Isso corrige o caso de desconto em checkout:
+
 - Ex.: servico `150`, desconto `149`, total do checkout `1`
-- se o cliente pagar `1`, o status correto e `paid` (quitado com desconto), nao `partial`
+- se o cliente pagar `1`, o status correto e `paid` (quitado com desconto), nao
+  `partial`
 
 ### Regra de parcial vs pendente (antes e depois do atendimento)
 
 - Se existe pagamento > 0 mas ainda falta saldo:
   - **antes** de `completed` => `partial` (ex.: "Sinal pago")
-  - **depois** de `completed` => `pending` (saldo em aberto apos servico prestado)
+  - **depois** de `completed` => `pending` (saldo em aberto apos servico
+    prestado)
 
 ### Regra de "Liberado" (`waived`)
 
@@ -164,8 +199,10 @@ Isso corrige o caso de desconto em checkout:
 - na tela de checkout interno o nome operacional sugerido e **Cortesia**
 
 Observacao atual:
+
 - o status `waived` ja esta suportado no schema e nas leituras/UI principais
-- a acao/toggle operacional para marcar manualmente como `waived` ainda pode ser evoluida em tarefa dedicada
+- a acao/toggle operacional para marcar manualmente como `waived` ainda pode ser
+  evoluida em tarefa dedicada
 
 ### Regra de estorno (`refunded`)
 
@@ -176,27 +213,33 @@ Observacao atual:
 
 Interpretacao operacional atual:
 
-- `partial` = geralmente usado como "sinal pago" enquanto ainda existe saldo e o atendimento nao foi concluido
+- `partial` = geralmente usado como "sinal pago" enquanto ainda existe saldo e o
+  atendimento nao foi concluido
 - `paid` = valor devido totalmente quitado (considerando desconto do checkout)
-- `pending` = sem pagamento, ou saldo restante em aberto apos conclusao do atendimento
+- `pending` = sem pagamento, ou saldo restante em aberto apos conclusao do
+  atendimento
 
 ## Regras de mensageria (manual + automacao coexistindo)
 
 Principio arquitetural:
+
 - automacao nao substitui fluxo manual
 - automacao e fluxo manual coexistem
 
 ### Manual (dashboard)
 
 Pontos de uso:
+
 - atendimento e modal de detalhes da agenda
 
 Comportamento:
+
 - o sistema monta a mensagem com templates internos de texto
 - abre fluxo manual (ex.: WhatsApp/wa.me) quando aplicavel
 - registra log em `appointment_messages` com status manual (`sent_manual`, etc.)
 
 Tipos manuais recorrentes:
+
 - `created_confirmation`
 - `reminder_24h`
 - `payment_charge`
@@ -206,6 +249,7 @@ Tipos manuais recorrentes:
 ### Automacao WhatsApp (Meta Cloud API)
 
 Arquivos principais:
+
 - `apps/web/src/modules/notifications/whatsapp-automation.ts`
 - `apps/web/app/api/whatsapp/meta/webhook/route.ts` (webhook Meta)
 - `apps/web/app/api/cron/whatsapp-reminders/route.ts` (cron endpoint)
@@ -213,6 +257,7 @@ Arquivos principais:
 - `apps/web/src/modules/notifications/whatsapp-created-template-rules.ts`
 
 Regras gerais:
+
 - automacao usa fila (`notification_jobs`)
 - processador envia e atualiza logs/status
 - painel `Mensagens` exibe fila/status/timeline
@@ -220,19 +265,26 @@ Regras gerais:
 ### Quando usa template aprovado (Meta)
 
 Automacoes de inicio de conversa / agendadas:
+
 - `appointment_created`
 - `appointment_reminder` (24h)
 
-No fluxo atual, esses envios sao feitos como template da Meta (Cloud API), com nome/idioma resolvidos por tenant em `settings` (banco), com fallback interno canônico.
+No fluxo atual, esses envios sao feitos como template da Meta (Cloud API), com
+nome/idioma resolvidos por tenant em `settings` (banco), com fallback interno
+canônico.
 
 Regra atual de escolha de template em `appointment_created`:
+
 - local do atendimento (`estudio` ou `domicilio`)
-- situacao financeira (`com_sinal_pago`, `pago_integral`, `pagamento_no_atendimento`)
+- situacao financeira (`com_sinal_pago`, `pago_integral`,
+  `pagamento_no_atendimento`)
 - variante de apresentacao (`com_flora` ou `sem_oi_flora`)
-- fallback automatico para variante oposta quando o template preferido estiver `in_review`
+- fallback automatico para variante oposta quando o template preferido estiver
+  `in_review`
 - falha controlada quando nao existe template ativo para o cenario
 
 Regra atual da apresentacao da Flora:
+
 - primeira automacao da cliente: `com_flora`
 - depois da apresentacao: `sem_oi_flora`
 - reapresenta `com_flora` apos 180 dias sem automacao
@@ -240,20 +292,26 @@ Regra atual da apresentacao da Flora:
 ### Quando usa mensagem livre (session / janela 24h)
 
 Exemplo atual:
-- cancelamento automatico de agendamento (quando checkbox de aviso estiver marcado)
+
+- cancelamento automatico de agendamento (quando checkbox de aviso estiver
+  marcado)
 
 Regra:
+
 - so envia automaticamente se a janela de atendimento (24h) estiver aberta
 - se nao houver janela 24h aberta, loga `skipped_auto` com motivo amigavel
 
 ### Como a janela de 24h e verificada (regra atual)
 
 Regra operacional atual no repo:
-- janela aberta = existe inbound do cliente correlacionado ao agendamento (via webhook/resposta) registrado no log de mensagens automaticas nas ultimas 24h
+
+- janela aberta = existe inbound do cliente correlacionado ao agendamento (via
+  webhook/resposta) registrado no log de mensagens automaticas nas ultimas 24h
 
 ### Status operacionais de mensagens (logs)
 
 Exemplos usados no repo:
+
 - `queued_auto`
 - `sent_auto`
 - `sent_auto_dry_run`
@@ -269,20 +327,26 @@ Exemplos usados no repo:
 ### Modo seguro (piloto / dev)
 
 Regras ja adotadas:
+
 - pode enviar via numero de teste da Meta
-- pode forcar destinatario de teste por env (`WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`)
-- isso pode permanecer ativo inclusive em prod (piloto controlado), por decisao operacional
+- pode forcar destinatario de teste por env
+  (`WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`)
+- isso pode permanecer ativo inclusive em prod (piloto controlado), por decisao
+  operacional
 
 ## Voucher vs recibo (nao confundir)
 
 - **Voucher** (`/voucher/[appointmentId]`): comprovante de agendamento/servico
-- **Comprovante/Recibo** (`/comprovante/[id]` ou `/comprovante/pagamento/[paymentId]`): comprovante financeiro/pagamento
+- **Comprovante/Recibo** (`/comprovante/[id]` ou
+  `/comprovante/pagamento/[paymentId]`): comprovante financeiro/pagamento
 
 ## Regras importantes de robustez operacional
 
-- Mercado Pago usa Orders API (nao voltar para Payments API classica sem migracao consciente)
+- Mercado Pago usa Orders API (nao voltar para Payments API classica sem
+  migracao consciente)
 - Webhook MP trata eventos `payment` e `order`
-- Cron frequente de lembretes na Vercel Hobby deve usar endpoint + GitHub Actions (nao depender de cron frequente da Vercel Hobby)
+- Cron frequente de lembretes na Vercel Hobby deve usar endpoint + GitHub
+  Actions (nao depender de cron frequente da Vercel Hobby)
 - Fluxo manual de WhatsApp deve continuar disponivel mesmo com automacao ativa
 
 ## Checklist de impacto quando alterar regras de negocio
@@ -293,7 +357,8 @@ Ao alterar regra de agendamento/pagamento/mensagem, revisar:
 2. Server actions / webhooks (regras de calculo)
 3. UI do dashboard (badges, labels, botoes)
 4. Paginas publicas (voucher/comprovante)
-5. Logs/auditoria (`appointment_events`, `appointment_messages`, `notification_jobs`)
+5. Logs/auditoria (`appointment_events`, `appointment_messages`,
+   `notification_jobs`)
 6. Documentacao ativa (este arquivo + docs tecnicos/operacionais relevantes)
 
 ## Referencias de codigo (pontos principais)

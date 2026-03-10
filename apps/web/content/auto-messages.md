@@ -2,14 +2,16 @@
 
 Edite este arquivo para atualizar as mensagens sem precisar alterar código.
 
-**Placeholders disponíveis**
+## Placeholders disponíveis
+
 - `{{greeting}}`: "Olá, Nome!" ou "Olá!"
 - `{{date_line}}`: "Terça, 03/02"
 - `{{time}}`: "08:00"
 - `{{service_name}}`: nome do serviço
 - `{{location_line}}`: "No estúdio" ou "No endereço informado: ..."
 - `{{service_segment}}`: " 💆‍♀️ Serviço: Nome do Serviço" (ou vazio)
-- `{{service_line}}`: "para o seu Nome do Serviço às 08:00." (ou fallback sem serviço)
+- `{{service_line}}`: "para o seu Nome do Serviço às 08:00." (ou fallback sem
+  serviço)
 - `{{confirmation_reply_options}}`: opções numeradas para confirmação manual
 - `{{signal_amount}}`: valor do sinal (ex: R$ 50,00)
 - `{{payment_link_block}}`: bloco com link de pagamento (ou vazio)
@@ -18,28 +20,28 @@ Edite este arquivo para atualizar as mensagens sem precisar alterar código.
 ---
 
 ## created_confirmation
+
 {{greeting}} Tudo bem?
 
 Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado. 🌿
 
-✅ *Seu agendamento com a Jana foi realizado.*
+✅ _Seu agendamento com a Jana foi realizado._
 
-✨ *Seu cuidado:* {{service_name}}
-🗓️ *Seu momento está reservado para:* {{date_line}}, às {{time}}
-📍 *Nosso ponto de encontro:* {{location_line}}
+✨ _Seu cuidado:_ {{service_name}} 🗓️ _Seu momento está reservado para:_
+{{date_line}}, às {{time}} 📍 _Nosso ponto de encontro:_ {{location_line}}
 
 Se precisar ajustar algo, é só responder por aqui.
 
 Flora | Estúdio Corpo & Alma Humanizado
 
 ## reminder_24h
+
 {{greeting}} A Flora passando para confirmar seu horário 🙂
 
 Amanhã é o seu momento com a Jana 🙂
 
-✨ *Seu cuidado é:* {{service_name}}
-📅 *Seu momento está reservado para:* {{date_line}} às {{time}}
-📍 *Nosso ponto de encontro:* {{location_line}}
+✨ _Seu cuidado é:_ {{service_name}} 📅 _Seu momento está reservado para:_
+{{date_line}} às {{time}} 📍 _Nosso ponto de encontro:_ {{location_line}}
 
 Pode responder por aqui com uma das opções abaixo (é só enviar o número):
 {{confirmation_reply_options}}
@@ -47,25 +49,34 @@ Pode responder por aqui com uma das opções abaixo (é só enviar o número):
 Flora | Estúdio Corpo & Alma Humanizado
 
 ## signal_charge
+
 {{greeting}} Tudo bem? 🌿
 
 Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado.
 
-Fiquei muito feliz com seu agendamento! Para deixarmos o seu horário de {{service_name}} reservadinho e confirmado para o dia {{date_line}} às {{time}}, precisamos apenas da confirmação do sinal/reserva.
+Fiquei muito feliz com seu agendamento! Para deixarmos o seu horário de
+{{service_name}} reservadinho e confirmado para o dia {{date_line}} às {{time}},
+precisamos apenas da confirmação do sinal/reserva.
 
-{{payment_link_block}}É rapidinho! Assim que confirmar, eu já te envio o comprovante e garantimos a sua vaga.
+{{payment_link_block}}É rapidinho! Assim que confirmar, eu já te envio o
+comprovante e garantimos a sua vaga.
 
 Qualquer dúvida, estou por aqui! Um abraço 🌸
 
 ## signal_receipt
-{{greeting}} Tudo bem? 🌿 Aqui é a Flora. Passando para confirmar que recebemos seu sinal de {{signal_amount}}! ✨ Seu horário para {{service_name}} está reservado.
+
+{{greeting}} Tudo bem? 🌿 Aqui é a Flora. Passando para confirmar que recebemos
+seu sinal de {{signal_amount}}! ✨ Seu horário para {{service_name}} está
+reservado.
 
 {{receipt_link_block}}Até o dia do atendimento! 🌸
 
 ## payment_receipt
+
 {{greeting}} Tudo bem? 🌿
 
-Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma. Passando para avisar que recebemos o seu pagamento e está tudo certinho! ✨
+Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma. Passando para avisar
+que recebemos o seu pagamento e está tudo certinho! ✨
 
 Seu horário para {{service_name}} está super confirmado.
 

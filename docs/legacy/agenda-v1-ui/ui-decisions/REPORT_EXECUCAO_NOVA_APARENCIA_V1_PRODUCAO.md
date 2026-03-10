@@ -1,10 +1,14 @@
 # REPORT — Execução do Plano Nova Aparência/UX v1.0 (Produção)
 
-> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
-> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+> **Status documental:** Histórico/legado. Use apenas para contexto e
+> rastreabilidade. **Nao canonico:** Para comportamento atual do sistema, valide
+> `codigo + migrations + env real` e docs ativos (`README.md`,
+> `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
 
 ## Atualização final (2026-02-13)
-Este arquivo manteve histórico cumulativo. Para evitar ambiguidades de leitura, considerar as regras abaixo como estado final vigente desta branch:
+
+Este arquivo manteve histórico cumulativo. Para evitar ambiguidades de leitura,
+considerar as regras abaixo como estado final vigente desta branch:
 
 - Mercado Pago deste projeto: **Checkout Transparente**.
 - Implementação de pagamento: **Orders API** (`/v1/orders`) + webhook interno.
@@ -12,8 +16,10 @@ Este arquivo manteve histórico cumulativo. Para evitar ambiguidades de leitura,
 - Webhook ativo da aplicação: `POST /api/mercadopago/webhook`.
 - Eventos de webhook utilizados pelo sistema: **payment** e **order** (somente).
 - URLs operacionais de webhook:
-  - Dev: `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
-  - Produção: `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+  - Dev:
+    `https://dev.public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
+  - Produção:
+    `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
 - Variáveis obrigatórias de pagamento:
   - `MERCADOPAGO_ACCESS_TOKEN`
   - `MERCADOPAGO_PUBLIC_KEY`
@@ -21,128 +27,249 @@ Este arquivo manteve histórico cumulativo. Para evitar ambiguidades de leitura,
 - Slug público canônico do tenant principal: `estudio-corpo-alma`.
 
 Resumo do ciclo final:
+
 - validação de webhook com assinatura HMAC consolidada;
 - ajustes de UX no checkout (Pix e cartão) concluídos;
 - voucher atualizado com nova aparência da marca;
 - lint/build web validados sem erro em 2026-02-13.
 
 ## 1) Resumo executivo
-- Agenda: header padronizado (saudação + mês clicável + tabs), correção de mês selecionado e troca de visão sem “pisca-pisca”.
-- Agenda: busca em modal com resultados em tempo real (Agenda + Clientes) e CTA “Buscar”.
+
+- Agenda: header padronizado (saudação + mês clicável + tabs), correção de mês
+  selecionado e troca de visão sem “pisca-pisca”.
+- Agenda: busca em modal com resultados em tempo real (Agenda + Clientes) e CTA
+  “Buscar”.
 - Agenda: FAB inclui opção “Novo Cliente”.
-- Shell/UI: padronização de layout em 3 partes (Header / Content / Navigation) com `ModulePage` e BottomNav fixa fora do scroll.
-- Shell: BottomNav fixa e regras de visibilidade por rota aplicadas (inclui /clientes/novo, exclui /clientes/[id], /novo e /atendimento).
-- Shell: moldura mobile agora ocupa toda a altura do viewport, sem cantos arredondados.
-- Agenda: rolagem horizontal com drag em toda a área útil; cards com altura mínima e marcação de “Hoje”.
-- Agenda: header colapsável, modal de busca com overlay, cards sem sobreposição e BottomNav mais compacta.
-- Agenda: botão Hoje movido para o cabeçalho do dia, FAB menor/alinhada e menos padding inferior.
+- Shell/UI: padronização de layout em 3 partes (Header / Content / Navigation)
+  com `ModulePage` e BottomNav fixa fora do scroll.
+- Shell: BottomNav fixa e regras de visibilidade por rota aplicadas (inclui
+  /clientes/novo, exclui /clientes/[id], /novo e /atendimento).
+- Shell: moldura mobile agora ocupa toda a altura do viewport, sem cantos
+  arredondados.
+- Agenda: rolagem horizontal com drag em toda a área útil; cards com altura
+  mínima e marcação de “Hoje”.
+- Agenda: header colapsável, modal de busca com overlay, cards sem sobreposição
+  e BottomNav mais compacta.
+- Agenda: botão Hoje movido para o cabeçalho do dia, FAB menor/alinhada e menos
+  padding inferior.
 - Agenda: remoção do gap acima da BottomNav e ajuste de posição do FAB.
 - Agenda: botão Hoje separado da tag e posicionado abaixo do cabeçalho.
 - Agenda: cards com layout final (status, chips, botões de WhatsApp/GPS).
 - Agenda: cards com altura mínima maior e indicador de conexão no header.
-- Agenda: botão Hoje na linha do dia da semana; cards padronizados via componente único.
+- Agenda: botão Hoje na linha do dia da semana; cards padronizados via
+  componente único.
 - Agenda: retorno do atendimento mantém dia/visão de origem.
-- Agendamento online: fluxo público refeito em 4 etapas (WhatsApp, serviço/data/horário, revisão, pagamento Pix) com UI guiada pela Flora.
-- Agendamento online: carrossel de datas, chips de horários, revisão tipo “ticket” e etapa de pagamento Pix integrada ao Mercado Pago (QR code, copiar e abrir Pix).
-- Agendamento online: taxa de deslocamento em domicílio agora é **calculada automaticamente por endereço** (Google Maps/Distance Matrix) e aplicada no total sem edição pelo cliente.
-- Agendamento interno (/novo): taxa de deslocamento passou a ser **recomendação editável** (inclusive zerar), mantendo cálculo automático base por endereço.
-- Serviços/DB: removida taxa fixa de domicílio por serviço (`services.home_visit_fee`) para centralizar a regra em cálculo dinâmico.
-- Branding: logos padronizados em `apps/web/public/brand/*` e aplicados nas telas/fluxos que já usam identidade visual do estúdio.
-- Pagamentos MP: webhook interno criado (`/api/mercadopago/webhook`) para atualizar status e refletir no pagamento do agendamento.
-- Pagamentos MP: hardening do checkout transparente (Pix + cartão) com mapeamento de status do provedor para status interno (`paid/pending/failed`) e recálculo do `appointments.payment_status` por soma real dos pagamentos confirmados.
-- Pagamentos MP: webhook validado por assinatura secreta (`x-signature`) com comparação segura, suporte a notificações `payment` e `order`, e tratamento idempotente/robusto de persistência.
-- Agendamento online: busca de cliente por telefone com confirmação “Você é X?” + preenchimento automático.
-- Agendamento online/Clientes: normalização de telefone centralizada em utilitário compartilhado para reduzir duplicidade por formatação.
-- Agendamento online: voucher extraído para componente dedicado (`VoucherOverlay`) para reduzir acoplamento do fluxo.
-- Agenda: central de mensagens automáticas via arquivo MD (templates editáveis sem mexer no código).
+- Agendamento online: fluxo público refeito em 4 etapas (WhatsApp,
+  serviço/data/horário, revisão, pagamento Pix) com UI guiada pela Flora.
+- Agendamento online: carrossel de datas, chips de horários, revisão tipo
+  “ticket” e etapa de pagamento Pix integrada ao Mercado Pago (QR code, copiar e
+  abrir Pix).
+- Agendamento online: taxa de deslocamento em domicílio agora é **calculada
+  automaticamente por endereço** (Google Maps/Distance Matrix) e aplicada no
+  total sem edição pelo cliente.
+- Agendamento interno (/novo): taxa de deslocamento passou a ser **recomendação
+  editável** (inclusive zerar), mantendo cálculo automático base por endereço.
+- Serviços/DB: removida taxa fixa de domicílio por serviço
+  (`services.home_visit_fee`) para centralizar a regra em cálculo dinâmico.
+- Branding: logos padronizados em `apps/web/public/brand/*` e aplicados nas
+  telas/fluxos que já usam identidade visual do estúdio.
+- Pagamentos MP: webhook interno criado (`/api/mercadopago/webhook`) para
+  atualizar status e refletir no pagamento do agendamento.
+- Pagamentos MP: hardening do checkout transparente (Pix + cartão) com
+  mapeamento de status do provedor para status interno (`paid/pending/failed`) e
+  recálculo do `appointments.payment_status` por soma real dos pagamentos
+  confirmados.
+- Pagamentos MP: webhook validado por assinatura secreta (`x-signature`) com
+  comparação segura, suporte a notificações `payment` e `order`, e tratamento
+  idempotente/robusto de persistência.
+- Agendamento online: busca de cliente por telefone com confirmação “Você é
+  X?” + preenchimento automático.
+- Agendamento online/Clientes: normalização de telefone centralizada em
+  utilitário compartilhado para reduzir duplicidade por formatação.
+- Agendamento online: voucher extraído para componente dedicado
+  (`VoucherOverlay`) para reduzir acoplamento do fluxo.
+- Agenda: central de mensagens automáticas via arquivo MD (templates editáveis
+  sem mexer no código).
 - TimerBubble: botão “X” para fechar contador flutuante.
-- Agendamento interno (/novo): header padronizado, retorno para o dia correto, override de preço e buffers pré/pós configuráveis.
-- Agendamento interno (/novo): seleção automática de cliente existente (anti-duplicidade), endereço domiciliar com busca por CEP ou texto e preenchimento inteligente.
-- Agendamento interno (/novo): botões de busca de endereço com visual enterprise e persistência dos dados ao alternar local.
-- Agendamento interno (/novo): botões "Buscar por CEP" e "Buscar endereço" com altura reduzida para otimizar o espaço.
-- Agendamento interno (/novo): confirmação de envio da mensagem de agendamento com registro automático no modal.
-- Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header colapsável, índice A–Z completo, anti-duplicidade, múltiplos telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
-- Agenda: grade com meia-hora, horários menores por padrão e buffers de atendimento (pré/pós) visíveis.
-- Agenda (Dia): escala **1 min = 2px** (slot 30 min = 60px), linhas tracejadas e altura dos cards alinhada exatamente à grade.
-- Agenda (Dia): buffers com efeito “sanduíche” (listras diagonais + borda esquerda tracejada) e cards com layout elástico (pequeno/médio/grande) com botões adaptativos.
-- Agenda (Dia): cards refatorados para exibir sempre 5 dados; versão compacta para 25–30min; status de agendamento como **dot** e status financeiro em **chip**.
-- Agenda (Dia/Semana): cancelados ocultos na grade; cards domiciliares com cor correta; linhas de semana alinhadas ao padrão visual.
-- Agenda: clique abre **Bottom Sheet** com gesto de arrastar para fechar e conteúdo dentro do frame.
-- Agenda: bloqueios não impedem agendamento interno (apenas aviso no formulário); agendamento online continua respeitando bloqueios.
-- Agenda (Dia/Semana): plantão agora aparece como **tag** no topo; bloqueios parciais seguem como cards com borda âmbar.
-- Agenda: horário Brasil (America/Sao_Paulo) aplicado no cálculo de disponibilidade.
+- Agendamento interno (/novo): header padronizado, retorno para o dia correto,
+  override de preço e buffers pré/pós configuráveis.
+- Agendamento interno (/novo): seleção automática de cliente existente
+  (anti-duplicidade), endereço domiciliar com busca por CEP ou texto e
+  preenchimento inteligente.
+- Agendamento interno (/novo): botões de busca de endereço com visual enterprise
+  e persistência dos dados ao alternar local.
+- Agendamento interno (/novo): botões "Buscar por CEP" e "Buscar endereço" com
+  altura reduzida para otimizar o espaço.
+- Agendamento interno (/novo): confirmação de envio da mensagem de agendamento
+  com registro automático no modal.
+- Clientes (lista/detalhe/novo): UI reescrita conforme HTML/PDF, header
+  colapsável, índice A–Z completo, anti-duplicidade, múltiplos
+  telefones/emails/endereço e saúde estruturada (alergias/condições + textos).
+- Agenda: grade com meia-hora, horários menores por padrão e buffers de
+  atendimento (pré/pós) visíveis.
+- Agenda (Dia): escala **1 min = 2px** (slot 30 min = 60px), linhas tracejadas e
+  altura dos cards alinhada exatamente à grade.
+- Agenda (Dia): buffers com efeito “sanduíche” (listras diagonais + borda
+  esquerda tracejada) e cards com layout elástico (pequeno/médio/grande) com
+  botões adaptativos.
+- Agenda (Dia): cards refatorados para exibir sempre 5 dados; versão compacta
+  para 25–30min; status de agendamento como **dot** e status financeiro em
+  **chip**.
+- Agenda (Dia/Semana): cancelados ocultos na grade; cards domiciliares com cor
+  correta; linhas de semana alinhadas ao padrão visual.
+- Agenda: clique abre **Bottom Sheet** com gesto de arrastar para fechar e
+  conteúdo dentro do frame.
+- Agenda: bloqueios não impedem agendamento interno (apenas aviso no
+  formulário); agendamento online continua respeitando bloqueios.
+- Agenda (Dia/Semana): plantão agora aparece como **tag** no topo; bloqueios
+  parciais seguem como cards com borda âmbar.
+- Agenda: horário Brasil (America/Sao_Paulo) aplicado no cálculo de
+  disponibilidade.
 - UI: toast padrão para feedback de sucesso/erro.
-- UI: módulos Financeiro (ex-Caixa) e Mensagens adicionados; FAB com ações financeiras em “em dev”.
-- Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura sem “V4”.
-- Atendimento: **pré-atendimento removido**, sessão vira etapa 1; checklist movido para a sessão; etapas reduzidas (sessão → checkout → pós).
-- Atendimento: cancelamento de agendamento via modal com confirmação e refresh da agenda.
-- Modal de detalhes: logística com mapa clicável; cabeçalho com badge de agendamento e chip financeiro; mensagens e observações ajustadas.
-- Financeiro: seção de **Sinal/Reserva** no modal, com templates de WhatsApp e links públicos (pagamento + comprovante).
+- UI: módulos Financeiro (ex-Caixa) e Mensagens adicionados; FAB com ações
+  financeiras em “em dev”.
+- Atendimento: limpeza de debug, labels de observações ajustadas e nomenclatura
+  sem “V4”.
+- Atendimento: **pré-atendimento removido**, sessão vira etapa 1; checklist
+  movido para a sessão; etapas reduzidas (sessão → checkout → pós).
+- Atendimento: cancelamento de agendamento via modal com confirmação e refresh
+  da agenda.
+- Modal de detalhes: logística com mapa clicável; cabeçalho com badge de
+  agendamento e chip financeiro; mensagens e observações ajustadas.
+- Financeiro: seção de **Sinal/Reserva** no modal, com templates de WhatsApp e
+  links públicos (pagamento + comprovante).
 - Checkout: valor a cobrar considera sinal já pago (total restante).
-- Gestão de Agenda: novo módulo de **Disponibilidade Inteligente** (macro calendário + micro detalhes), com gerador de escala, tipos de bloqueio e confirmação de conflitos.
-- Gestão de Agenda: módulo integrado à visão **Mês** da Agenda (calendário + detalhes + “+ NOVO” + varinha), com remoção da tela `/bloqueios` e do atalho no FAB.
-- Agenda: calendário mensal extraído para componente reutilizável (Agenda + Gestão de Agenda).
-- Gestão de Agenda: layout refinado (cards compactos, calendário com legenda em pills e lista de bloqueios mais leve).
-- Gestão de Agenda: modal de “Novo Bloqueio” redesenhado em bottom sheet com seleção de motivo, toggle e CTA fixo.
-- Gestão de Agenda: resumo do mês removido; gerador automático compacto e ordem (escala → calendário → detalhes).
-- Gestão de Agenda: gerador de escala virou botão que abre modal para mês + par/ímpar.
-- Gestão de Agenda: botões do modal de escala renomeados para "Bloquear dias ímpares/pares".
-- Gestão de Agenda: gerador automático virou botão compacto (ícone varinha) no cabeçalho da página.
-- Calendário mensal: dia atual com círculo transparente e borda verde; dia selecionado com preenchimento verde.
-- Gestão de Agenda: cores de bloqueio ajustadas (plantão vermelho, parcial âmbar) e dots com agendamentos/domicílio.
-- Gestão de Agenda: legenda do calendário abaixo e detalhes do dia integrados no card do calendário.
-- Gestão de Agenda: modais de **Novo Bloqueio** e **Gerador de Escala** reestilizados para seguir a mesma linguagem visual do modal de agendamento.
-- Gestão de Agenda: card externo removido — calendário virou o único card, com legenda + divisor e detalhes do dia dentro dele.
-- Gestão de Agenda: legenda do calendário voltou em formato de chip/card (pill) como no layout anterior.
-- Gestão de Agenda: calendário com swipe horizontal entre meses; modais de bloqueio/escala com gesto de arrastar para fechar.
-- Agenda: botão “+ NOVO” saiu do calendário e virou ação do FAB como **Bloquear horário** (abre modal com data editável).
-- Gestão de Agenda: gerador de escala alerta quando já existe plantão no mês e solicita limpeza antes de gerar nova escala.
-- Gestão de Agenda: título do modal de bloqueio acompanha a data selecionada no campo.
-- Configurações: novo percentual de sinal e URL pública do estúdio; correção de exibição dos buffers (sem cache antigo).
-- Público: página estática de pagamento “em produção” + imagem de comprovante adicionadas.
-- DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e price override, bucket de avatar e atualização da RPC de agendamento interno.
-- DB: `availability_blocks` com `block_type` e `is_full_day` para suportar bloqueios inteligentes.
-- DB: `appointments` com `displacement_fee` e `displacement_distance_km`; RPCs pública/interna atualizadas para receber taxa/distância calculadas.
-- DB: reconciliação local/online pós-ajustes em migrations aplicadas (correções forward-only) para eliminar drift de schema/RPC/policies em produção.
-- DB: ambiente de teste configurado com `signal_percentage = 1` para validar cobrança real em produção/prévia com tickets baixos.
-- Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do dashboard (fix de build em `/clientes/novo`).
-- APIs internas: novas rotas para busca de endereço por texto (Google Places Autocomplete + Details) e guia de APIs.
-- Repo/Docs: alinhamento de versões Node/pnpm, comandos de `next`/`turbo`/migrations e documentação de APIs.
-- Repo/Docs: versão do Turbo ajustada para `2.8.3` (downgrade temporário para estabilidade do TUI no Windows).
+- Gestão de Agenda: novo módulo de **Disponibilidade Inteligente** (macro
+  calendário + micro detalhes), com gerador de escala, tipos de bloqueio e
+  confirmação de conflitos.
+- Gestão de Agenda: módulo integrado à visão **Mês** da Agenda (calendário +
+  detalhes + “+ NOVO” + varinha), com remoção da tela `/bloqueios` e do atalho
+  no FAB.
+- Agenda: calendário mensal extraído para componente reutilizável (Agenda +
+  Gestão de Agenda).
+- Gestão de Agenda: layout refinado (cards compactos, calendário com legenda em
+  pills e lista de bloqueios mais leve).
+- Gestão de Agenda: modal de “Novo Bloqueio” redesenhado em bottom sheet com
+  seleção de motivo, toggle e CTA fixo.
+- Gestão de Agenda: resumo do mês removido; gerador automático compacto e ordem
+  (escala → calendário → detalhes).
+- Gestão de Agenda: gerador de escala virou botão que abre modal para mês +
+  par/ímpar.
+- Gestão de Agenda: botões do modal de escala renomeados para "Bloquear dias
+  ímpares/pares".
+- Gestão de Agenda: gerador automático virou botão compacto (ícone varinha) no
+  cabeçalho da página.
+- Calendário mensal: dia atual com círculo transparente e borda verde; dia
+  selecionado com preenchimento verde.
+- Gestão de Agenda: cores de bloqueio ajustadas (plantão vermelho, parcial
+  âmbar) e dots com agendamentos/domicílio.
+- Gestão de Agenda: legenda do calendário abaixo e detalhes do dia integrados no
+  card do calendário.
+- Gestão de Agenda: modais de **Novo Bloqueio** e **Gerador de Escala**
+  reestilizados para seguir a mesma linguagem visual do modal de agendamento.
+- Gestão de Agenda: card externo removido — calendário virou o único card, com
+  legenda + divisor e detalhes do dia dentro dele.
+- Gestão de Agenda: legenda do calendário voltou em formato de chip/card (pill)
+  como no layout anterior.
+- Gestão de Agenda: calendário com swipe horizontal entre meses; modais de
+  bloqueio/escala com gesto de arrastar para fechar.
+- Agenda: botão “+ NOVO” saiu do calendário e virou ação do FAB como **Bloquear
+  horário** (abre modal com data editável).
+- Gestão de Agenda: gerador de escala alerta quando já existe plantão no mês e
+  solicita limpeza antes de gerar nova escala.
+- Gestão de Agenda: título do modal de bloqueio acompanha a data selecionada no
+  campo.
+- Configurações: novo percentual de sinal e URL pública do estúdio; correção de
+  exibição dos buffers (sem cache antigo).
+- Público: página estática de pagamento “em produção” + imagem de comprovante
+  adicionadas.
+- DB: novas tabelas/colunas para endereços/contatos/saúde de clientes, buffers e
+  price override, bucket de avatar e atualização da RPC de agendamento interno.
+- DB: `availability_blocks` com `block_type` e `is_full_day` para suportar
+  bloqueios inteligentes.
+- DB: `appointments` com `displacement_fee` e `displacement_distance_km`; RPCs
+  pública/interna atualizadas para receber taxa/distância calculadas.
+- DB: reconciliação local/online pós-ajustes em migrations aplicadas (correções
+  forward-only) para eliminar drift de schema/RPC/policies em produção.
+- DB: ambiente de teste configurado com `signal_percentage = 1` para validar
+  cobrança real em produção/prévia com tickets baixos.
+- Build: `useSearchParams` passou a rodar dentro de `<Suspense>` no layout do
+  dashboard (fix de build em `/clientes/novo`).
+- APIs internas: novas rotas para busca de endereço por texto (Google Places
+  Autocomplete + Details) e guia de APIs.
+- Repo/Docs: alinhamento de versões Node/pnpm, comandos de
+  `next`/`turbo`/migrations e documentação de APIs.
+- Repo/Docs: versão do Turbo ajustada para `2.8.3` (downgrade temporário para
+  estabilidade do TUI no Windows).
 - Dev: `pnpm dev` segue com o TUI padrão do Turbo (comportamento original).
-- Dev/Editor: `$schema` removido do `turbo.json` para evitar aviso de schema não confiável no VSCode.
-- Domínios: base pública padrão ajustada para `public.corpoealmahumanizado.com.br`.
-- Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro de build.
-- Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e configuração do banco para evitar offsets.
-- UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após agendar para evitar loops.
-- UI: modais do formulário abrem dentro do frame do app; ajustes de classes canônicas e avisos de schema.
-- Integrações: documentação técnica e operacional dedicada adicionada em `docs/integrations/*` e referenciada no README/Manual.
+- Dev/Editor: `$schema` removido do `turbo.json` para evitar aviso de schema não
+  confiável no VSCode.
+- Domínios: base pública padrão ajustada para
+  `public.corpoealmahumanizado.com.br`.
+- Build: ajuste de tipagem no RPC `create_internal_appointment` para evitar erro
+  de build.
+- Timezone: padronização para `America/Sao_Paulo` no app (via `APP_TIMEZONE`) e
+  configuração do banco para evitar offsets.
+- UX: remoção do envio automático de WhatsApp ao abrir modal; envio manual após
+  agendar para evitar loops.
+- UI: modais do formulário abrem dentro do frame do app; ajustes de classes
+  canônicas e avisos de schema.
+- Integrações: documentação técnica e operacional dedicada adicionada em
+  `docs/integrations/*` e referenciada no README/Manual.
 
 ## 2) Checklist — Definition of Done (Produção v1.0)
-- [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e hierarquia).
+
+- [x] Visual seguindo HTML + Auditoria Visual (tipografia, tokens, layout e
+      hierarquia).
 - [x] UI ↔ DB 1:1 (campos exibidos com backing no DB, dados novos persistidos).
 - [x] Mutação via Server Actions (sem writes client-side).
 - [x] Qualidade (pnpm lint/check-types/build).
 - [x] Atendimento padrão sem fallback (UI antiga não usada).
 
 ## 3) Migrations adicionadas
-1. `20260203100000_add_client_addresses.sql` — tabela `client_addresses` + backfill + `appointments.client_address_id`.
-2. `20260203101000_add_client_contacts.sql` — tabelas `client_phones`/`client_emails` + `clients.extra_data`, `clients.avatar_url`, `clients.clinical_history`, `clients.anamnese_url`.
-3. `20260203102000_add_buffers_and_price_override.sql` — buffers em `settings/services` + `appointments.price_override`.
-4. `20260203103000_update_internal_appointment_rpc.sql` — RPC `create_internal_appointment` com endereço do cliente, buffers e override de preço.
-5. `20260203104000_add_client_health_items.sql` — tabela `client_health_items` (alergias/condições).
-6. `20260203105000_add_client_avatars_bucket.sql` — bucket `client-avatars` + policies.
-7. `20260209090000_add_signal_percentage_to_settings.sql` — configura percentual de sinal no `settings`.
-8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública do estúdio no `settings`.
-9. `20260210230000_update_availability_blocks_types.sql` — adiciona `block_type` + `is_full_day` em `availability_blocks`.
-10. `20260211120000_backfill_client_phones.sql` — backfill de `clients.phone` para `client_phones` (sem duplicar).
-11. `20260212100000_displacement_fee_rules.sql` — adiciona `appointments.displacement_fee`/`displacement_distance_km`, remove `services.home_visit_fee` e recria RPCs `create_public_appointment`/`create_internal_appointment` com taxa de deslocamento.
-12. `20260212113000_normalize_client_phone_uniqueness.sql` — normaliza telefone, deduplica clientes por tenant+telefone, atualiza FKs e cria índice único por telefone normalizado.
-13. `20260212191500_set_signal_percentage_for_testing.sql` — define `settings.signal_percentage = 1` para testes controlados de pagamento em ambiente real.
-14. `20260212203000_reconcile_remote_schema_and_rpcs.sql` — reconcilia drift remoto (constraints/FK `business_hours`), reaplica deduplicação robusta de clientes e republica RPCs pública/interna na versão final.
-15. `20260212210000_harden_and_align_legacy_drift.sql` — remove políticas legadas permissivas, normaliza FK com `ON DELETE CASCADE` e alinha colunas legadas não destrutivas em `clients`.
+
+1. `20260203100000_add_client_addresses.sql` — tabela `client_addresses` +
+   backfill + `appointments.client_address_id`.
+2. `20260203101000_add_client_contacts.sql` — tabelas
+   `client_phones`/`client_emails` + `clients.extra_data`, `clients.avatar_url`,
+   `clients.clinical_history`, `clients.anamnese_url`.
+3. `20260203102000_add_buffers_and_price_override.sql` — buffers em
+   `settings/services` + `appointments.price_override`.
+4. `20260203103000_update_internal_appointment_rpc.sql` — RPC
+   `create_internal_appointment` com endereço do cliente, buffers e override de
+   preço.
+5. `20260203104000_add_client_health_items.sql` — tabela `client_health_items`
+   (alergias/condições).
+6. `20260203105000_add_client_avatars_bucket.sql` — bucket `client-avatars` +
+   policies.
+7. `20260209090000_add_signal_percentage_to_settings.sql` — configura percentual
+   de sinal no `settings`.
+8. `20260209091000_add_public_base_url_to_settings.sql` — configura URL pública
+   do estúdio no `settings`.
+9. `20260210230000_update_availability_blocks_types.sql` — adiciona
+   `block_type` + `is_full_day` em `availability_blocks`.
+10. `20260211120000_backfill_client_phones.sql` — backfill de `clients.phone`
+    para `client_phones` (sem duplicar).
+11. `20260212100000_displacement_fee_rules.sql` — adiciona
+    `appointments.displacement_fee`/`displacement_distance_km`, remove
+    `services.home_visit_fee` e recria RPCs
+    `create_public_appointment`/`create_internal_appointment` com taxa de
+    deslocamento.
+12. `20260212113000_normalize_client_phone_uniqueness.sql` — normaliza telefone,
+    deduplica clientes por tenant+telefone, atualiza FKs e cria índice único por
+    telefone normalizado.
+13. `20260212191500_set_signal_percentage_for_testing.sql` — define
+    `settings.signal_percentage = 1` para testes controlados de pagamento em
+    ambiente real.
+14. `20260212203000_reconcile_remote_schema_and_rpcs.sql` — reconcilia drift
+    remoto (constraints/FK `business_hours`), reaplica deduplicação robusta de
+    clientes e republica RPCs pública/interna na versão final.
+15. `20260212210000_harden_and_align_legacy_drift.sql` — remove políticas
+    legadas permissivas, normaliza FK com `ON DELETE CASCADE` e alinha colunas
+    legadas não destrutivas em `clients`.
 
 ## 4) Commits (hash + objetivo)
+
 - `e1b8aa3` — docs(ui): add agenda v1 html specs
 - `bf71ac9` — chore: update repo config
 - `add7e08` — chore: update pnpm lockfile
@@ -159,9 +286,11 @@ Resumo do ciclo final:
 - `9bcfda8` — chore(agenda): fix week header typing
 - `e5669e6` — docs(report): execution report
 - `1a5fcaa` — chore(package): update pnpm version to 10.28.2
-- `7210b88` — Refactor code structure for improved readability and maintainability
+- `7210b88` — Refactor code structure for improved readability and
+  maintainability
 - `0472d09` — feat: add new client list and details UI with responsive design
-- `86699f8` — feat: adicionar novo documento de design para a nova aparência da UI
+- `86699f8` — feat: adicionar novo documento de design para a nova aparência da
+  UI
 - `6542a34` — ui-system(v1): tokens, fonts, componentes canonicos e docs
 - `eff58db` — agenda(ui): aderencia ao HTML/PDF + busca real
 - `30702d0` — agendamento-interno(ui): form alinhado ao HTML
@@ -249,7 +378,8 @@ Resumo do ciclo final:
 - `5000b42` — docs(ui): layout 3-partes e debug
 - `abecd1d` — docs(report): registrar commit de layout
 - `8bf85e4` — feat(ui): financeiro, mensagens e fab
-- `5a38fd1` — fix(ui): ajusta comportamento de scroll horizontal no componente MobileAgenda
+- `5a38fd1` — fix(ui): ajusta comportamento de scroll horizontal no componente
+  MobileAgenda
 - `9f71cca` — fix(agenda): busca cliente e horarios
 - `3d8056f` — fix(agenda): horario brasil e grade meia-hora
 - `2d61bbb` — fix(ui): buffers e toasts
@@ -260,8 +390,10 @@ Resumo do ciclo final:
 - `0301836` — fix(build): guard buffers and time parsing
 - `4be823e` — docs(report): atualiza resumo e commits recentes
 - `dd3a559` — fix(build): null-safe buffers in availability
-- `0d988b2` — fix(agenda): ajusta altura das horas na agenda para melhor visualização
-- `da2b77f` — fix(agenda): aumenta a altura das horas na agenda para melhor visualização
+- `0d988b2` — fix(agenda): ajusta altura das horas na agenda para melhor
+  visualização
+- `da2b77f` — fix(agenda): aumenta a altura das horas na agenda para melhor
+  visualização
 - `1ed83b7` — fix(ui): ajustar classes e agenda
 - `c6f268c` — chore: align node/pnpm versions and deps
 - `af03117` — docs: add next/turbo and migration commands
@@ -366,6 +498,7 @@ Resumo do ciclo final:
 - `89fb043` — Fix availability manager errors and update manual
 
 ## 5) Arquivos/pastas principais alterados
+
 - `apps/web/app/(dashboard)/clientes/*` (lista, novo, detalhe)
 - `apps/web/app/(dashboard)/novo/*` (form de agendamento interno)
 - `apps/web/components/mobile-agenda.tsx`
@@ -398,12 +531,14 @@ Resumo do ciclo final:
 - `MANUAL_RAPIDO.md`
 
 ## 6) Como rodar migrations localmente
+
 ```powershell
 pnpm supabase start
 pnpm supabase migration up
 ```
 
 ## 7) Como aplicar migrations no remoto (sem apagar dados)
+
 ```powershell
 pnpm supabase login
 pnpm supabase link --project-ref <seu_project_ref>
@@ -411,73 +546,135 @@ pnpm supabase db push
 ```
 
 ## 8) Como testar manualmente (roteiro rápido)
+
 - Agenda DIA: linha vermelha move e posiciona; trocar tabs; clicar em “Hoje”.
-- Agenda DIA: cards alinhados à grade de 30 min (60px), layout elástico (pequeno/médio/grande) e buffers em efeito sanduíche.
+- Agenda DIA: cards alinhados à grade de 30 min (60px), layout elástico
+  (pequeno/médio/grande) e buffers em efeito sanduíche.
 - Agenda: abrir modal de busca (ícone) e validar resultados em tempo real.
 - Agenda: buffers pré/pós respeitam o tempo total e a grade de meia hora.
-- /novo: header, voltar para o dia de origem, domicílio (modal), override de preço e buffers.
+- /novo: header, voltar para o dia de origem, domicílio (modal), override de
+  preço e buffers.
 - /clientes: header colapsa, índice A–Z, filtros VIP/Atenção/Novos.
-- /clientes/novo: importar contato, múltiplos telefones, saúde estruturada, salvar.
+- /clientes/novo: importar contato, múltiplos telefones, saúde estruturada,
+  salvar.
 - /clientes/[id]: header colapsa, avatar, telefones/endereço, tags e histórico.
 - /financeiro e /mensagens: telas base em “em dev” e navegação inferior.
 
 ## 9) Decisão de arquitetura — Layout em 3 partes (Header / Content / Navigation)
-- **Padrão:** toda tela segue Header + Content + Navigation, com `AppShell` controlando o frame e `ModulePage` entregando o layout interno.
-- **Scroll único:** o container `data-shell-scroll` é o único scroll vertical; BottomNav fica fora dele (grid row) para permanecer fixa sem “zonas mortas”.
-- **FAB/overlays:** elementos flutuantes (ex.: FAB) ficam em overlay controlado, com posição relativa ao `--nav-height`.
-- **Objetivo:** layout previsível, modular e pronto para animações de header colapsável.
+
+- **Padrão:** toda tela segue Header + Content + Navigation, com `AppShell`
+  controlando o frame e `ModulePage` entregando o layout interno.
+- **Scroll único:** o container `data-shell-scroll` é o único scroll vertical;
+  BottomNav fica fora dele (grid row) para permanecer fixa sem “zonas mortas”.
+- **FAB/overlays:** elementos flutuantes (ex.: FAB) ficam em overlay controlado,
+  com posição relativa ao `--nav-height`.
+- **Objetivo:** layout previsível, modular e pronto para animações de header
+  colapsável.
 
 ## 10) Debug — investigação de scroll/touch (detalhamento)
-- **Sintomas:** metade inferior com scroll/clique ruim; “zonas mortas” em touch e atraso no gesto.
-- **Hipóteses testadas:** pointer-capture indevido em touch; overlays invisíveis; múltiplos containers de scroll competindo.
-- **Ferramentas:** `DebugPointerOverlay`, outlines de hitbox, inspeção de overlays e containers (AppShell + agenda).
-- **Resultado:** padronização do scroll em um único container + layout 3-partes + FAB isolado em overlay sem capturar toque.
+
+- **Sintomas:** metade inferior com scroll/clique ruim; “zonas mortas” em touch
+  e atraso no gesto.
+- **Hipóteses testadas:** pointer-capture indevido em touch; overlays
+  invisíveis; múltiplos containers de scroll competindo.
+- **Ferramentas:** `DebugPointerOverlay`, outlines de hitbox, inspeção de
+  overlays e containers (AppShell + agenda).
+- **Resultado:** padronização do scroll em um único container + layout
+  3-partes + FAB isolado em overlay sem capturar toque.
 
 ## 11) Testes e validações (execução)
+
 Comandos executados na raiz:
+
 - `pnpm lint` ✅
 - `pnpm check-types` ✅
 - `pnpm build` ✅
-- `pnpm test` — **não existe script** no repo.
-Última rodada:
+- `pnpm test` — **não existe script** no repo. Última rodada:
 - `pnpm lint` ✅
 - `pnpm build` ✅
 
 ## 12) Pendências / próximos passos
-- Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real em produção.
-- Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste adicional).
-- Configurar `GOOGLE_MAPS_API_KEY` nas variáveis de ambiente da Vercel (produção).
-- Configurar `MERCADOPAGO_WEBHOOK_SECRET` em Preview/Production e validar eventos `payment`/`order` no painel do Mercado Pago.
+
+- Validar bucket `client-avatars` no Supabase (policies aplicadas) e upload real
+  em produção.
+- Revisar visual do atendimento para aderir ao HTML final (se necessário ajuste
+  adicional).
+- Configurar `GOOGLE_MAPS_API_KEY` nas variáveis de ambiente da Vercel
+  (produção).
+- Configurar `MERCADOPAGO_WEBHOOK_SECRET` em Preview/Production e validar
+  eventos `payment`/`order` no painel do Mercado Pago.
 
 ## 13) Gestão de Disponibilidade Inteligente (novo módulo)
-- **Posicionamento:** Gestão de Agenda foi incorporada diretamente na visão **Mês** da Agenda (sem rota própria), removendo `/bloqueios` e concentrando tudo no card do calendário.
-- **Calendário reutilizável:** componente `MonthCalendar` virou peça única (Agenda + Gestão), com header/actions, dots por tipo e swipe horizontal entre meses.
-- **Destaques do dia:** dia atual usa círculo transparente com borda verde; dia selecionado fica preenchido em verde com texto branco.
-- **Legenda e detalhes:** legenda voltou ao formato de pill (chip) e fica dentro do card; detalhes do dia selecionado aparecem no mesmo card.
-- **Indicadores visuais no mês:** dots para atendimentos (verde), domicílio (roxo), plantão (vermelho), parcial (âmbar) e demais tipos.
-- **Gerador de escala (plantão):** botão de varinha abre modal; escolha do mês + “Bloquear dias ímpares/pares”.
-- **Escala sem duplicidade:** se já houver plantão no mês, modal avisa e solicita apagar antes de gerar nova escala.
-- **Limpeza inteligente:** ao gerar escala, remove apenas `shift` do mês, preservando bloqueios pessoais/administrativos/vacation.
-- **Novo bloqueio (horário):** ação saiu do card e passou para o FAB como **Bloquear horário**.
-- **Data editável:** modal abre com a data da visão atual (dia ou data selecionada) e permite alterar; título do modal acompanha a data escolhida no input.
-- **Modal de bloqueio:** bottom sheet com motivo (ícones), toggle Dia Inteiro, horários quando parcial e campo de título.
-- **Estética consistente:** modais de bloqueio/escala seguem o mesmo padrão visual do modal de agendamento (tipografia, seções, sombras, botões).
-- **Conflitos controlados:** bloqueios sobrepostos são impedidos; se houver agendamentos no intervalo, sistema pede confirmação e mantém atendimentos.
-- **Tipos de bloqueio:** `shift`, `personal`, `vacation`, `administrative` com cores/ícones consistentes (plantão vermelho, parcial âmbar).
-- **Day/Week view:** plantão aparece como tag no topo com ícone de hospital; bloqueios parciais são cards com borda âmbar.
-- **Agendamento interno:** bloqueios não impedem agendar; apenas avisam no formulário (plantão ou bloqueio parcial).
-- **Agendamento online:** bloqueios continuam removendo horários da disponibilidade pública.
-- **Disponibilidade:** cálculo de slots considera bloqueios via `availability.ts` (start/end time) e respeita buffers.
-- **Estrutura de dados:** `availability_blocks` com `block_type` + `is_full_day` e backfill para registros antigos.
-- **Fluxo público humanizado:** agendamento online em 4 etapas (WhatsApp → seleção → revisão → pagamento Pix) com UI guiada, carrossel de datas e ticket de confirmação.
-- **Pagamento Pix integrado (MP):** criação de pagamento via API `v1/payments` com idempotência, retorno de `ticket_url`, `qr_code` e `qr_code_base64` para exibição/uso no checkout público.
-- **Env do MP:** integração usa `MERCADOPAGO_ACCESS_TOKEN` (obrigatório) e `MERCADOPAGO_WEBHOOK_URL` (opcional).
-- **Webhook MP:** rota pública `/api/mercadopago/webhook` consulta o pagamento no MP e atualiza `appointment_payments` + `appointments.payment_status`.
-- **Webhook MP (hardening):** valida assinatura via HMAC SHA-256 com comparação em tempo constante, trata `payment` e `order`, e recalcula status financeiro por agregado de pagamentos `paid`.
-- **Taxa de deslocamento automática:** API interna `/api/displacement-fee` usa Google Maps (Routes API) e aplica regra urbana/rodoviária; UI pública exibe taxa calculada e distância.
-- **Fallback operacional de deslocamento:** se Google Maps falhar, a API retorna taxa mínima provisória (R$ 15,00) para não quebrar o fluxo público.
-- **Taxa no fluxo interno:** taxa de deslocamento vira recomendação editável no formulário interno (pode alterar ou zerar).
-- **Taxa por serviço removida:** `services.home_visit_fee` removido de UI, repository e migration; preço de domicílio passa a vir do cálculo por endereço.
-- **Tailwind v4 (ajustes canônicos):** normalização aplicada na tela pública de agendamento (`booking-flow`) para classes sugeridas pelo IntelliSense.
-- **Voucher sobreposto:** visual final em overlay sobre tela escurecida (sem card sólido externo), com ações de baixar imagem e compartilhar.
-- **Reconciliação de banco concluída:** validação final com `pnpm supabase db diff --schema public` e `pnpm supabase db diff --linked --schema public` retornando *No schema changes found*.
+
+- **Posicionamento:** Gestão de Agenda foi incorporada diretamente na visão
+  **Mês** da Agenda (sem rota própria), removendo `/bloqueios` e concentrando
+  tudo no card do calendário.
+- **Calendário reutilizável:** componente `MonthCalendar` virou peça única
+  (Agenda + Gestão), com header/actions, dots por tipo e swipe horizontal entre
+  meses.
+- **Destaques do dia:** dia atual usa círculo transparente com borda verde; dia
+  selecionado fica preenchido em verde com texto branco.
+- **Legenda e detalhes:** legenda voltou ao formato de pill (chip) e fica dentro
+  do card; detalhes do dia selecionado aparecem no mesmo card.
+- **Indicadores visuais no mês:** dots para atendimentos (verde), domicílio
+  (roxo), plantão (vermelho), parcial (âmbar) e demais tipos.
+- **Gerador de escala (plantão):** botão de varinha abre modal; escolha do mês +
+  “Bloquear dias ímpares/pares”.
+- **Escala sem duplicidade:** se já houver plantão no mês, modal avisa e
+  solicita apagar antes de gerar nova escala.
+- **Limpeza inteligente:** ao gerar escala, remove apenas `shift` do mês,
+  preservando bloqueios pessoais/administrativos/vacation.
+- **Novo bloqueio (horário):** ação saiu do card e passou para o FAB como
+  **Bloquear horário**.
+- **Data editável:** modal abre com a data da visão atual (dia ou data
+  selecionada) e permite alterar; título do modal acompanha a data escolhida no
+  input.
+- **Modal de bloqueio:** bottom sheet com motivo (ícones), toggle Dia Inteiro,
+  horários quando parcial e campo de título.
+- **Estética consistente:** modais de bloqueio/escala seguem o mesmo padrão
+  visual do modal de agendamento (tipografia, seções, sombras, botões).
+- **Conflitos controlados:** bloqueios sobrepostos são impedidos; se houver
+  agendamentos no intervalo, sistema pede confirmação e mantém atendimentos.
+- **Tipos de bloqueio:** `shift`, `personal`, `vacation`, `administrative` com
+  cores/ícones consistentes (plantão vermelho, parcial âmbar).
+- **Day/Week view:** plantão aparece como tag no topo com ícone de hospital;
+  bloqueios parciais são cards com borda âmbar.
+- **Agendamento interno:** bloqueios não impedem agendar; apenas avisam no
+  formulário (plantão ou bloqueio parcial).
+- **Agendamento online:** bloqueios continuam removendo horários da
+  disponibilidade pública.
+- **Disponibilidade:** cálculo de slots considera bloqueios via
+  `availability.ts` (start/end time) e respeita buffers.
+- **Estrutura de dados:** `availability_blocks` com `block_type` + `is_full_day`
+  e backfill para registros antigos.
+- **Fluxo público humanizado:** agendamento online em 4 etapas (WhatsApp →
+  seleção → revisão → pagamento Pix) com UI guiada, carrossel de datas e ticket
+  de confirmação.
+- **Pagamento Pix integrado (MP):** criação de pagamento via API `v1/payments`
+  com idempotência, retorno de `ticket_url`, `qr_code` e `qr_code_base64` para
+  exibição/uso no checkout público.
+- **Env do MP:** integração usa `MERCADOPAGO_ACCESS_TOKEN` (obrigatório) e
+  `MERCADOPAGO_WEBHOOK_URL` (opcional).
+- **Webhook MP:** rota pública `/api/mercadopago/webhook` consulta o pagamento
+  no MP e atualiza `appointment_payments` + `appointments.payment_status`.
+- **Webhook MP (hardening):** valida assinatura via HMAC SHA-256 com comparação
+  em tempo constante, trata `payment` e `order`, e recalcula status financeiro
+  por agregado de pagamentos `paid`.
+- **Taxa de deslocamento automática:** API interna `/api/displacement-fee` usa
+  Google Maps (Routes API) e aplica regra urbana/rodoviária; UI pública exibe
+  taxa calculada e distância.
+- **Fallback operacional de deslocamento:** se Google Maps falhar, a API retorna
+  taxa mínima provisória (R$ 15,00) para não quebrar o fluxo público.
+- **Taxa no fluxo interno:** taxa de deslocamento vira recomendação editável no
+  formulário interno (pode alterar ou zerar).
+- **Taxa por serviço removida:** `services.home_visit_fee` removido de UI,
+  repository e migration; preço de domicílio passa a vir do cálculo por
+  endereço.
+- **Tailwind v4 (ajustes canônicos):** normalização aplicada na tela pública de
+  agendamento (`booking-flow`) para classes sugeridas pelo IntelliSense.
+- **Voucher sobreposto:** visual final em overlay sobre tela escurecida (sem
+  card sólido externo), com ações de baixar imagem e compartilhar.
+- **Reconciliação de banco concluída:** validação final com
+  `pnpm supabase db diff --schema public` e
+  `pnpm supabase db diff --linked --schema public` retornando _No schema changes
+  found_.

@@ -1,7 +1,9 @@
 # POST_EXECUTION_REPORT
 
-> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
-> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+> **Status documental:** Histórico/legado. Use apenas para contexto e
+> rastreabilidade. **Nao canonico:** Para comportamento atual do sistema, valide
+> `codigo + migrations + env real` e docs ativos (`README.md`,
+> `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
 
 Data: 2026-01-30  
 Branch: `feat/master-plan-enterprise`  
@@ -12,72 +14,89 @@ Escopo: execução completa do plano MASTER_PLAN_ENTERPRISE (V2)
 ## 1) Sumário Executivo (G0…G8)
 
 - G0: baseline/CI/scripts concluídos e documentados.
-- G1: correções P0 no código (observacoes_gerais + status canônico + revalidatePath).
-- G2A–G2E: migrations críticas aplicadas (service_id, tenant_id UUID, status constraint, índices, RLS/RPC).
+- G1: correções P0 no código (observacoes_gerais + status canônico +
+  revalidatePath).
+- G2A–G2E: migrations críticas aplicadas (service_id, tenant_id UUID, status
+  constraint, índices, RLS/RPC).
 - G3: padronização de erro + validação Zod em actions.
 - G4: modularização por domínio (repositories/actions) e /app como composição.
 - G5: route groups `(dashboard)` e `(public)`, AppShell unificado no layout.
 - G6: disponibilidade unificada + RPC com lock para evitar double booking.
 - G7: caixa baseado em ledger (`transactions`) com reconciliação.
-- G8: estrutura de notificações com `notification_jobs` + templates e jobs automáticos.
+- G8: estrutura de notificações com `notification_jobs` + templates e jobs
+  automáticos.
 
 ---
 
 ## 2) Mudanças por Grupo/Commit
 
 ### G0
-- `.nvmrc`, `engines`, scripts `lint/check-types/build/format`, CI GitHub Actions.
+
+- `.nvmrc`, `engines`, scripts `lint/check-types/build/format`, CI GitHub
+  Actions.
 - README com pré-requisitos, `supabase:types` script.
 - Plano MASTER atualizado para V2.
 
 ### G1
+
 - `clients.notes` → `observacoes_gerais`.
 - Status `done` → `completed` (compat temporária removida posteriormente).
 - Fixes de `revalidatePath` e tratamento de erro nas actions críticas.
 
 ### G2A
+
 - Migration `service_id` em appointments + backfill.
 - Types regenerados.
 
 ### G2B
+
 - `tenant_id` TEXT → UUID + FK (settings/availability_blocks/transactions).
 - Policies ajustadas, types regenerados.
 
 ### G2C
+
 - Backfill status + constraint (canônico com `pending`).
 - Remoção de compat para `done`.
 
 ### G2D
+
 - Índices core para consultas por tenant e período.
 
 ### G2E
+
 - RLS habilitado para `appointments`/`clients`.
 - RPC `create_public_appointment` + policies públicas/admin.
 
 ### G3
+
 - `AppError`, `mapSupabaseError`, `ActionResult`.
 - Zod schemas (clients/services/appointments) aplicados em actions.
 
 ### G4
+
 - `src/modules/*` (appointments/clients/services/finance/settings).
 - /app sem acesso direto ao Supabase (repositories centralizados).
 
 ### G5
+
 - Route groups `(dashboard)` / `(public)`.
 - AppShell centralizado no layout do dashboard.
 - Ajustes de imports e revalidações.
 
 ### G6
+
 - RPC `create_internal_appointment` com lock (`pg_advisory_xact_lock`).
 - `create_public_appointment` atualizado com lock.
 - Fluxo interno usa slots unificados e RPC.
 
 ### G7
+
 - `/caixa` lê `transactions` como fonte da verdade.
 - Reconciliação com appointments concluídos e alertas de divergência.
 - Transação criada ao finalizar atendimento (admin e rápido).
 
 ### G8
+
 - Tabelas `notification_jobs` + `notification_templates`.
 - Jobs criados em criação/cancelamento/lembrete de agendamento.
 
@@ -113,7 +132,8 @@ Backfills e constraints:
 
 Types:
 
-- `apps/web/lib/supabase/types.ts` regenerado após G6 e G8 (via `pnpm supabase:types`).
+- `apps/web/lib/supabase/types.ts` regenerado após G6 e G8 (via
+  `pnpm supabase:types`).
 
 ---
 
@@ -121,21 +141,26 @@ Types:
 
 Policies:
 
-- Admin por tenant (service role) em `services`, `settings`, `availability_blocks`, `transactions`, `clients`, `appointments`.
+- Admin por tenant (service role) em `services`, `settings`,
+  `availability_blocks`, `transactions`, `clients`, `appointments`.
 - Público: leitura mínima (services/business_hours) + escrita via RPC.
 
 RPCs:
 
-- `create_public_appointment(tenant_slug, service_id, start_time, client_name, client_phone, is_home_visit)`  
-  - valida tenant/service  
-  - aplica buffers  
-  - **lock** `pg_advisory_xact_lock`  
-  - bloqueia colisões/blocks  
+- `create_public_appointment(`
+  `tenant_slug, service_id, start_time, client_name,`
+  `client_phone, is_home_visit)`
+  - valida tenant/service
+  - aplica buffers
+  - **lock** `pg_advisory_xact_lock`
+  - bloqueia colisões/blocks
   - grava appointment e retorna ID
 
-- `create_internal_appointment(p_tenant_id, service_id, start_time, client_name, client_phone, is_home_visit)`  
-  - mesma regra de buffers  
-  - **lock** `pg_advisory_xact_lock`  
+- `create_internal_appointment(`
+  `p_tenant_id, service_id, start_time, client_name,`
+  `client_phone, is_home_visit)`
+  - mesma regra de buffers
+  - **lock** `pg_advisory_xact_lock`
   - grava appointment com `total_duration_minutes`
 
 ---
@@ -144,7 +169,7 @@ RPCs:
 
 Estrutura final:
 
-```
+```text
 apps/web/src/modules/
   appointments/
     actions.ts
@@ -191,13 +216,15 @@ Regra aplicada:
 
 ## 9) Pendências
 
-1. **Warning no build**:  
-   - Mensagem: *Invalid file path: IO Error failed to query metadata of symlink ... .next/dev/cache/turbopack*  
-   - Impacto: baixo (cache dev).  
-   - Próximo passo: limpar `.next` se persistir, ou ajustar ignore de symlinks no ambiente.
+1. **Warning no build**:
+   - Mensagem: _Invalid file path: IO Error failed to query metadata of symlink
+     ... .next/dev/cache/turbopack_
+   - Impacto: baixo (cache dev).
+   - Próximo passo: limpar `.next` se persistir, ou ajustar ignore de symlinks
+     no ambiente.
 
-2. **Templates de notificação vazios**:  
-   - Estrutura criada, mas templates não seedados.  
+2. **Templates de notificação vazios**:
+   - Estrutura criada, mas templates não seedados.
    - Próximo passo: criar seed com templates base (confirm/cancel/reminder).
 
 ---

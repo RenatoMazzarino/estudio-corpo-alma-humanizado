@@ -2,7 +2,8 @@
 
 Data: 2026-03-03  
 Branch: `main`  
-Escopo: validacao tecnica completa disponivel no repo + atualizacao dos documentos canônicos de orientação
+Escopo: validacao tecnica completa disponivel no repo + atualizacao dos
+documentos canônicos de orientação
 
 ## 1) Bateria de testes/validacoes executada
 
@@ -13,7 +14,8 @@ Escopo: validacao tecnica completa disponivel no repo + atualizacao dos document
 3. `pnpm --filter web check-types` ✅
 4. `pnpm --filter web test:unit` ✅
 5. `pnpm --filter web test:smoke` ✅
-6. `pnpm --filter web exec playwright test --config playwright.config.ts --project=chromium` ✅
+6. `pnpm --filter web exec playwright test --config playwright.config.ts --project=chromium`
+   ✅
 7. `pnpm --filter web build` ✅
 
 ## Monorepo (root / turbo)
@@ -30,7 +32,8 @@ Escopo: validacao tecnica completa disponivel no repo + atualizacao dos document
    - agenda/helpers
    - formatação/normalização compartilhada
 2. Smoke E2E atual cobre rota pública legal com Playwright.
-3. Fluxos end-to-end autenticados e integrações externas (Meta/MP/Spotify com credenciais reais) ainda dependem de validação manual em ambiente integrado.
+3. Fluxos end-to-end autenticados e integrações externas (Meta/MP/Spotify com
+   credenciais reais) ainda dependem de validação manual em ambiente integrado.
 
 ## 3) Documentos canônicos atualizados neste ciclo
 
@@ -52,18 +55,24 @@ Escopo: validacao tecnica completa disponivel no repo + atualizacao dos document
 1. Atualização da matriz de docs para versão de referência 2026-03-03.
 2. Alinhamento de variáveis WhatsApp:
    - remoção de `WHATSAPP_AUTOMATION_MODE`/allowlist legados
-   - inclusão de `WHATSAPP_AUTOMATION_GLOBAL_ENABLED` e `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
+   - inclusão de `WHATSAPP_AUTOMATION_GLOBAL_ENABLED` e
+     `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`
    - templates/idioma descritos como canônicos no banco (`settings` por tenant).
 3. Alinhamento de referências de modularização:
-   - foco em `appointment-form.composition.tsx` (não mais `appointment-form.screen.tsx` como hotspot principal).
-4. Atualização de runbooks de teste com sequência completa (web + turbo) e transparência de cobertura.
-5. Atualização de integrações para estado atual de Realtime/Edge e fronteiras operacionais.
+   - foco em `appointment-form.composition.tsx` (não mais
+     `appointment-form.screen.tsx` como hotspot principal).
+4. Atualização de runbooks de teste com sequência completa (web + turbo) e
+   transparência de cobertura.
+5. Atualização de integrações para estado atual de Realtime/Edge e fronteiras
+   operacionais.
 
 ## 5) Limites objetivos da garantia
 
 1. A suíte automatizada do repo está verde e consistente.
-2. Isso garante estabilidade técnica no que está coberto por lint/type/tests/build.
-3. Garantia operacional de “100% de todos os fluxos reais” exige validação manual integrada com:
+2. Isso garante estabilidade técnica no que está coberto por
+   lint/type/tests/build.
+3. Garantia operacional de “100% de todos os fluxos reais” exige validação
+   manual integrada com:
    - credenciais reais de provedores externos
    - dados reais de staging/prod
    - cenários de negócio completos no dashboard autenticado

@@ -1,19 +1,20 @@
 # AGENTS Governance
 
-Status: active
-Owner: engenharia de plataforma
-Ultima revisao: 2026-03-10
+Status: active Owner: engenharia de plataforma Ultima revisao: 2026-03-10
 
 ## Objetivo
 
-Definir como escrever, revisar e manter `AGENTS.md` e `AGENTS.override.md` com padrao de producao.
+Definir como escrever, revisar e manter `AGENTS.md` e `AGENTS.override.md` com
+padrao de producao.
 
 ## Principios
 
 1. Regra global no `AGENTS.md` da raiz.
-2. Regra local em `AGENTS.override.md` apenas quando ha risco/complexidade especifica do caminho.
+2. Regra local em `AGENTS.override.md` apenas quando ha risco/complexidade
+   especifica do caminho.
 3. Evitar duplicacao textual extensa entre overrides.
-4. Priorizar clareza operacional: o arquivo deve dizer o que aplicar, o que nao aplicar e como validar.
+4. Priorizar clareza operacional: o arquivo deve dizer o que aplicar, o que nao
+   aplicar e como validar.
 
 ## Estrutura minima recomendada para override
 
@@ -28,7 +29,8 @@ Definir como escrever, revisar e manter `AGENTS.md` e `AGENTS.override.md` com p
 
 ## Quando criar um novo override
 
-Crie `AGENTS.override.md` novo quando as tres condicoes abaixo forem verdadeiras:
+Crie `AGENTS.override.md` novo quando as tres condicoes abaixo forem
+verdadeiras:
 
 1. O caminho tem responsabilidade propria de negocio/operacao.
 2. O risco de regressao local nao e coberto bem pelo global.

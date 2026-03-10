@@ -8,12 +8,14 @@ Use este checklist em todo PR/bloco de refatoração.
 ## 1) Escopo
 
 1. O bloco tem foco único e objetivo claro?
-2. O PR evita misturar refatoração estrutural com mudança funcional não planejada?
+2. O PR evita misturar refatoração estrutural com mudança funcional não
+   planejada?
 3. Em caso de mudança funcional, ela está descrita com motivo e impacto?
 
 ## 2) Arquitetura
 
-1. A responsabilidade foi movida para a camada correta (`ui/hooks/actions/application/domain/infrastructure`)?
+1. A responsabilidade foi movida para a camada correta
+   (`ui/hooks/actions/application/domain/infrastructure`)?
 2. O componente visual ficou sem regra de negócio crítica?
 3. Houve redução de acoplamento e/ou de duplicação?
 4. Não houve introdução de import relativo profundo (`../../../../../..`)?
@@ -46,4 +48,3 @@ Use este checklist em todo PR/bloco de refatoração.
 1. Documentação canônica impactada foi atualizada?
 2. Runbook operacional foi atualizado (quando necessário)?
 3. Mudanças de API/contrato foram descritas de forma objetiva?
-

@@ -9,12 +9,14 @@ This repository uses three Vercel environments:
 Environment intent:
 
 1. Development
-   - Local workflow via `vercel dev` and `vercel pull --environment=development`.
+   - Local workflow via `vercel dev` and
+     `vercel pull --environment=development`.
    - Use `WHATSAPP_PROFILE=dev_sandbox` (simulado + destinatário fixo de teste).
 2. Preview
    - Deployments from non-main branches.
    - Used for staging validation before production.
-   - Use `WHATSAPP_PROFILE=preview_real_test` para envio real controlado (destino fixo de teste).
+   - Use `WHATSAPP_PROFILE=preview_real_test` para envio real controlado
+     (destino fixo de teste).
 3. Production
    - Deployments from `main`.
    - Use `WHATSAPP_PROFILE=prod_real` (envio real para cliente).
@@ -29,7 +31,9 @@ Profile-first strategy (recommended):
 2. Controle de destinatário via:
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=test_recipient` (fixo)
    - `WHATSAPP_AUTOMATION_RECIPIENT_MODE=customer` (real)
-3. Não usar variáveis legadas de modo/roteamento (`WHATSAPP_AUTOMATION_PROFILE`, `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`, `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`).
+3. Não usar variáveis legadas de modo/roteamento (`WHATSAPP_AUTOMATION_PROFILE`,
+   `WHATSAPP_AUTOMATION_GLOBAL_ENABLED`, `WHATSAPP_AUTOMATION_FORCE_DRY_RUN`,
+   `WHATSAPP_AUTOMATION_META_FORCE_TEST_RECIPIENT`).
 
 Push notifications (OneSignal):
 
@@ -54,7 +58,8 @@ Feature flags e dispatcher:
 2. Padrão recomendado:
    - `development` e `preview`: `on`
    - `production`: `canary` com `FF_CANARY_PERCENT` progressivo
-3. O `EVENT_DISPATCHER_SECRET` deve ser diferente por ambiente e nunca versionado.
+3. O `EVENT_DISPATCHER_SECRET` deve ser diferente por ambiente e nunca
+   versionado.
 
 Files in this folder are templates (no secrets):
 

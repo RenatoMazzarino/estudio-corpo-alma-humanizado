@@ -4,7 +4,8 @@ Data de referência: 2026-02-25
 
 ## Objetivo
 
-Evitar perda de notificação de pagamento por erro de URL/domínio, autenticação indevida no endpoint ou assinatura inválida.
+Evitar perda de notificação de pagamento por erro de URL/domínio, autenticação
+indevida no endpoint ou assinatura inválida.
 
 ## Escopo de integração (obrigatório)
 
@@ -28,18 +29,23 @@ Evitar perda de notificação de pagamento por erro de URL/domínio, autenticaç
 ## Configuração no painel Mercado Pago (produção)
 
 1. URL de callback:
+
 - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
 
-2. Eventos que devem ficar selecionados:
+1. Eventos que devem ficar selecionados:
+
 - `Pagamentos`
 - `Order (Mercado Pago)`
 
-3. Eventos que devem ficar desmarcados neste projeto:
-- categorias não utilizadas (fraude, reclamações, planos/assinaturas, Point, delivery etc.) para reduzir ruído
+1. Eventos que devem ficar desmarcados neste projeto:
+
+- categorias não utilizadas (fraude, reclamações, planos/assinaturas, Point,
+  delivery etc.) para reduzir ruído
 
 ## Regras operacionais obrigatórias
 
-1. O endpoint webhook deve ser público (server-to-server), sem autenticação extra.
+1. O endpoint webhook deve ser público (server-to-server), sem autenticação
+   extra.
 2. A validação de assinatura `x-signature` no backend deve permanecer ativa.
 3. Sempre validar domínio/commit corretos do deploy antes de testar.
 
@@ -82,6 +88,6 @@ O endpoint aceita `GET` para teste operacional:
 5. Configurar `MERCADOPAGO_WEBHOOK_SECRET` na Vercel Production
 6. Simular `payment` e `order`
 7. Verificar atualização em:
+
 - `appointment_payments`
 - `appointments.payment_status`
-

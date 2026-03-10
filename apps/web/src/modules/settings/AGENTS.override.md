@@ -10,9 +10,11 @@ Escopo: configuracoes operacionais do sistema e preferencias do estudio.
 ## Regras
 
 1. Parametro sensivel nao pode ser salvo em configuracao funcional de usuario.
-2. Mudanca de configuracao com impacto externo deve ter validacao de consistencia.
+2. Mudanca de configuracao com impacto externo deve ter validacao de
+   consistencia.
 3. Nao criar fallback oculto para configuracao ausente em fluxo critico.
-4. Toda config operacional deve ter estado explicito (ativo/inativo) quando aplicavel.
+4. Toda config operacional deve ter estado explicito (ativo/inativo) quando
+   aplicavel.
 
 ## Aplica / Nao aplica
 
@@ -34,11 +36,14 @@ Escopo: configuracoes operacionais do sistema e preferencias do estudio.
 ## Regra de maturidade (V1 final de producao)
 
 1. Este escopo nao aceita entrega em mentalidade MVP ou "so para funcionar".
-2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao, observabilidade e manutencao previsivel.
-3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou acoplamento oculto.
+2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao,
+   observabilidade e manutencao previsivel.
+3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou
+   acoplamento oculto.
 4. Solucoes devem incluir:
    - tratamento de erro explicito
    - contratos claros de entrada/saida
    - testes proporcionais ao risco
    - documentacao operacional quando houver impacto de runtime
-5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade estrutural e registrar tradeoff.
+5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade
+   estrutural e registrar tradeoff.

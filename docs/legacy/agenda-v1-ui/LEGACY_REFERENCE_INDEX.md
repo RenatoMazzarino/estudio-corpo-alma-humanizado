@@ -1,29 +1,36 @@
 # Legacy Reference Index — Agenda V1 UI Branch
 
-> **Status documental:** Indice canonico do bloco legado `agenda-v1-ui` (nao canônico para comportamento atual do produto).
-> **Uso correto:** Este arquivo e a referencia para localizar artefatos historicos; para decisoes novas, use docs ativos e o codigo atual.
+> **Status documental:** Indice canonico do bloco legado `agenda-v1-ui` (nao
+> canônico para comportamento atual do produto). **Uso correto:** Este arquivo e
+> a referencia para localizar artefatos historicos; para decisoes novas, use
+> docs ativos e o codigo atual.
 
-Este índice consolida os artefatos de referência usados na branch `agenda-v1-ui` e que agora ficam arquivados como legado.
+Este índice consolida os artefatos de referência usados na branch `agenda-v1-ui`
+e que agora ficam arquivados como legado.
 
 ## 1) Referências visuais HTML/HTM (por conteúdo)
 
-- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela Agenda.htm`
-: Protótipo completo de Agenda (dia/semana/mês), cards, FAB e header mobile.
-- `docs/legacy/agenda-v1-ui/ui-decisions/prancha-de-calendario.html`
-: Prancha comparativa de decisões de calendário e comportamento de navegação entre datas.
-- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Fomulário Agendamento Interno.htm`
-: Referência visual/UX do formulário interno de novo agendamento.
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela Agenda.htm` :
+  Protótipo completo de Agenda (dia/semana/mês), cards, FAB e header mobile.
+- `docs/legacy/agenda-v1-ui/ui-decisions/prancha-de-calendario.html` : Prancha
+  comparativa de decisões de calendário e comportamento de navegação entre
+  datas.
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Fomulário`
+  `Agendamento Interno.htm`: Referência visual/UX do formulário interno de
+  novo agendamento.
 - `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Atendimento.htm`
-: Referência de etapas do módulo de atendimento.
-- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Novo Cliente.htm`
-: Referência de UI para cadastro de cliente.
-- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Telas de Lista de Clientes e Detalhes de Clientes.htm`
-: Referência de lista e detalhe de clientes (hierarquia visual, densidade e componentes).
+  : Referência de etapas do módulo de atendimento.
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Tela de Novo`
+  `Cliente.htm`: Referência de UI para cadastro de cliente.
+- `docs/legacy/agenda-v1-ui/ui-decisions/Visão da Nova Telas de Lista de`
+  `Clientes e Detalhes de Clientes.htm`: Referência de lista e detalhe de
+  clientes (hierarquia visual, densidade e componentes).
 
 ## 2) Referências visuais complementares
 
-- `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo & Alma Humanizado.pdf`
-: Base visual de tipografia, espaçamento, identidade e consistência.
+- `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo`
+  `& Alma Humanizado.pdf`
+  : Base visual de tipografia, espaçamento, identidade e consistência.
 
 ## 3) Planos e decisões funcionais da branch
 
@@ -44,24 +51,24 @@ Este índice consolida os artefatos de referência usados na branch `agenda-v1-u
 
 ## 5) Diagnóstico técnico legado (análise por conteúdo)
 
-- `docs/legacy/agenda-v1-ui/diagnostics/AUDIT_REPORT.md`
-: Auditoria inicial de arquitetura, riscos funcionais e prioridades P0/P1.
-- `docs/legacy/agenda-v1-ui/diagnostics/AUDIT_LOGS.md`
-: Logs operacionais de execução de comandos em ambiente de auditoria.
-- `docs/legacy/agenda-v1-ui/diagnostics/DB_CODE_DIFF.md`
-: Mapa de uso código↔banco com divergências de colunas e semântica.
-- `docs/legacy/agenda-v1-ui/diagnostics/DB_SCHEMA_REPORT.md`
-: Snapshot descritivo do schema em fase inicial do projeto.
-- `docs/legacy/agenda-v1-ui/diagnostics/MIGRATION_PLAN.md`
-: Plano legado de migrações incrementais.
-- `docs/legacy/agenda-v1-ui/diagnostics/ARCHITECTURE_TARGET.md`
-: Visão-alvo de arquitetura modular para evolução do repo.
-- `docs/legacy/agenda-v1-ui/diagnostics/REFACTOR_PLAN.md`
-: Plano de refatoração faseado (higiene, modularização, DB e UI).
-- `docs/legacy/agenda-v1-ui/diagnostics/ROUTE_MAP.md`
-: Mapa de rotas e handlers da fase anterior de app/router.
-- `docs/legacy/agenda-v1-ui/diagnostics/REPO_INVENTORY.md`
-: Inventário técnico de estrutura e stack da fase Agenda V1.
+- `docs/legacy/agenda-v1-ui/diagnostics/AUDIT_REPORT.md` : Auditoria inicial de
+  arquitetura, riscos funcionais e prioridades P0/P1.
+- `docs/legacy/agenda-v1-ui/diagnostics/AUDIT_LOGS.md` : Logs operacionais de
+  execução de comandos em ambiente de auditoria.
+- `docs/legacy/agenda-v1-ui/diagnostics/DB_CODE_DIFF.md` : Mapa de uso
+  código↔banco com divergências de colunas e semântica.
+- `docs/legacy/agenda-v1-ui/diagnostics/DB_SCHEMA_REPORT.md` : Snapshot
+  descritivo do schema em fase inicial do projeto.
+- `docs/legacy/agenda-v1-ui/diagnostics/MIGRATION_PLAN.md` : Plano legado de
+  migrações incrementais.
+- `docs/legacy/agenda-v1-ui/diagnostics/ARCHITECTURE_TARGET.md` : Visão-alvo de
+  arquitetura modular para evolução do repo.
+- `docs/legacy/agenda-v1-ui/diagnostics/REFACTOR_PLAN.md` : Plano de refatoração
+  faseado (higiene, modularização, DB e UI).
+- `docs/legacy/agenda-v1-ui/diagnostics/ROUTE_MAP.md` : Mapa de rotas e handlers
+  da fase anterior de app/router.
+- `docs/legacy/agenda-v1-ui/diagnostics/REPO_INVENTORY.md` : Inventário técnico
+  de estrutura e stack da fase Agenda V1.
 
 ## 6) Status
 

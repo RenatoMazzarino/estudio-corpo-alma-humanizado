@@ -25,6 +25,7 @@ pnpm build
 ```
 
 Observacao:
+
 - `test:smoke` usa Playwright.
 - se o navegador nao estiver instalado localmente, rode:
 
@@ -59,9 +60,12 @@ pnpm --filter web exec playwright install chromium
 
 ## 4.1) Cobertura atual da suíte (transparência)
 
-1. `test:unit` cobre regras/helpers críticos (pagamento, automação, agenda, formatadores).
-2. `test:smoke` cobre páginas legais e fluxo público essencial de checkout/comprovante/voucher (`@smoke`).
-3. Fluxos E2E completos com autenticação e integrações externas (MP/Meta/Spotify) ainda dependem de validação manual guiada por ambiente.
+1. `test:unit` cobre regras/helpers críticos (pagamento, automação, agenda,
+   formatadores).
+2. `test:smoke` cobre páginas legais e fluxo público essencial de
+   checkout/comprovante/voucher (`@smoke`).
+3. Fluxos E2E completos com autenticação e integrações externas
+   (MP/Meta/Spotify) ainda dependem de validação manual guiada por ambiente.
 
 ## 5) Gate de PR
 
@@ -81,19 +85,25 @@ Nunca publicar alteracao de fluxo critico sem:
 
 ```powershell
 curl -H "Authorization: Bearer <EVENT_DISPATCHER_SECRET>" https://dev.public.corpoealmahumanizado.com.br/api/internal/events/dispatch
-curl -X POST -H "Authorization: Bearer <EVENT_DISPATCHER_SECRET>" -H "Content-Type: application/json" -d "{\"limit\":20}" https://dev.public.corpoealmahumanizado.com.br/api/internal/events/dispatch
+curl -X POST `
+  -H "Authorization: Bearer <EVENT_DISPATCHER_SECRET>" `
+  -H "Content-Type: application/json" `
+  -d "{\"limit\":20}" `
+  https://dev.public.corpoealmahumanizado.com.br/api/internal/events/dispatch
 ```
 
-2. Processar cron dispatcher (preview):
+1. Processar cron dispatcher (preview):
 
 ```powershell
 curl -H "Authorization: Bearer <CRON_SECRET>" https://dev.public.corpoealmahumanizado.com.br/api/cron/event-dispatcher
 ```
 
-3. Validar módulo Mensagens:
+1. Validar módulo Mensagens:
+
 - fila/status/templates atualizando automaticamente sem recarregar manual.
 
-4. Validar Configurações > Push:
+1. Validar Configurações > Push:
+
 - preferências carregam e persistem por evento.
 - assinaturas ativas aparecem no card (`/api/push/subscriptions`).
 - botão `Enviar push de teste` retorna sucesso e entrega notificação.

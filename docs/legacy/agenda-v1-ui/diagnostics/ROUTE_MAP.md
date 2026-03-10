@@ -1,24 +1,83 @@
 # ROUTE_MAP
 
-> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
-> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+> **Status documental:** Historico/legado. Use apenas para contexto.
+> **Nao canonico:** para estado atual, valide `codigo + migrations + env real`
+> e docs ativas (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`,
+> `docs/apis/API_GUIDE.md`).
 
-Fonte: `apps/web/app` (Next.js App Router)
+Fonte: `apps/web/app` (Next.js App Router).
 
 ## Rotas
 
-| Rota | Page | Layout(s) | Componentes principais | Server Actions / Data Ops |
-| --- | --- | --- | --- | --- |
-| `/` | `apps/web/app/page.tsx` | `apps/web/app/layout.tsx` | `apps/web/components/mobile-agenda.tsx` (usa `ShiftManager`, `AppointmentDetailsModal`) | Supabase: `appointments`, `availability_blocks`. Actions indiretas: `finishAppointment` (`apps/web/app/admin/atendimento/actions.ts`), `createShiftBlocks`/`clearMonthBlocks` (`apps/web/app/admin/escala/actions.ts`). |
-| `/menu` | `apps/web/app/menu/page.tsx` | `apps/web/app/layout.tsx` | — | Sem actions. |
-| `/catalogo` | `apps/web/app/catalogo/page.tsx` | `apps/web/app/layout.tsx` | `apps/web/app/catalogo/catalogo-view.tsx`, `apps/web/components/service-form.tsx` | Supabase: `services`. Action: `upsertService` (`apps/web/app/actions.ts`). |
-| `/caixa` | `apps/web/app/caixa/page.tsx` | `apps/web/app/layout.tsx` | — | Supabase: `appointments` (status + intervalos). |
-| `/clientes` | `apps/web/app/clientes/page.tsx` | `apps/web/app/layout.tsx` | — | Supabase: `clients` (search). |
-| `/clientes/novo` | `apps/web/app/clientes/novo/page.tsx` | `apps/web/app/layout.tsx` | `apps/web/components/app-shell.tsx` | Action: `createClientAction` (`apps/web/app/clientes/novo/actions.ts`). |
-| `/clientes/[id]` | `apps/web/app/clientes/[id]/page.tsx` | `apps/web/app/layout.tsx` | `apps/web/components/app-shell.tsx`, `apps/web/app/clientes/[id]/notes-section.tsx` | Supabase: `clients`, `appointments`. Action: `updateClientNotes` (`apps/web/app/clientes/[id]/actions.ts`). |
-| `/novo` | `apps/web/app/novo/page.tsx` | `apps/web/app/layout.tsx` | `apps/web/components/app-shell.tsx`, `apps/web/app/novo/appointment-form.tsx` | Supabase: `services`. Action: `createAppointment` (`apps/web/app/novo/appointment-actions.ts`). |
-| `/agendar/[slug]` | `apps/web/app/agendar/[slug]/page.tsx` | `apps/web/app/layout.tsx` | `apps/web/app/agendar/[slug]/booking-flow.tsx` | Supabase: `tenants`, `services`, `settings`, `business_hours`, `appointments`, `availability_blocks`, `clients`. Actions: `getAvailableSlots` (`availability.ts`), `submitPublicAppointment` (`public-actions.ts`). |
+### `/`
+
+- Page: `apps/web/app/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Componentes: `mobile-agenda.tsx`, `ShiftManager`, `AppointmentDetailsModal`
+- Dados: Supabase `appointments` e `availability_blocks`
+- Actions indiretas: `finishAppointment`, `createShiftBlocks`,
+  `clearMonthBlocks`
+
+### `/menu`
+
+- Page: `apps/web/app/menu/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Sem actions.
+
+### `/catalogo`
+
+- Page: `apps/web/app/catalogo/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Componentes: `catalogo-view.tsx`, `service-form.tsx`
+- Dados: Supabase `services`
+- Action: `upsertService`
+
+### `/caixa`
+
+- Page: `apps/web/app/caixa/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Dados: Supabase `appointments` (status e intervalos)
+
+### `/clientes`
+
+- Page: `apps/web/app/clientes/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Dados: Supabase `clients` (busca)
+
+### `/clientes/novo`
+
+- Page: `apps/web/app/clientes/novo/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Componentes: `app-shell.tsx`
+- Action: `createClientAction`
+
+### `/clientes/[id]`
+
+- Page: `apps/web/app/clientes/[id]/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Componentes: `app-shell.tsx`, `notes-section.tsx`
+- Dados: Supabase `clients` e `appointments`
+- Action: `updateClientNotes`
+
+### `/novo`
+
+- Page: `apps/web/app/novo/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Componentes: `app-shell.tsx`, `appointment-form.tsx`
+- Dados: Supabase `services`
+- Action: `createAppointment`
+
+### `/agendar/[slug]`
+
+- Page: `apps/web/app/agendar/[slug]/page.tsx`
+- Layout: `apps/web/app/layout.tsx`
+- Componentes: `booking-flow.tsx`
+- Dados: `tenants`, `services`, `settings`, `business_hours`,
+  `appointments`, `availability_blocks`, `clients`
+- Actions: `getAvailableSlots` e `submitPublicAppointment`
 
 ## Notas
-- Não existem páginas em `/admin/*` (apenas actions em `apps/web/app/admin/...`).
-- Componentes `AppointmentCard`, `AdminCalendar` e `DesktopCalendar` estão no repo, mas não são referenciados por nenhuma rota atualmente.
+
+- Nao existem paginas em `/admin/*` (somente actions em `apps/web/app/admin/*`).
+- `AppointmentCard`, `AdminCalendar` e `DesktopCalendar` existem no repo, mas
+  nao estao referenciados por rotas atuais.

@@ -13,11 +13,15 @@ Implementar um fluxo completo de agendamento interno com:
 
 ## Principios (decisoes ja alinhadas)
 
-1. Se a opcao for `cobrar agora`, o agendamento e criado no inicio do fluxo de cobranca.
-2. Se a cobranca nao for concluida, o agendamento permanece criado com status financeiro pendente.
-3. Pagamento em dinheiro (cobrar agora) registra pagamento imediatamente no valor configurado.
+1. Se a opcao for `cobrar agora`, o agendamento e criado no inicio do fluxo de
+   cobranca.
+2. Se a cobranca nao for concluida, o agendamento permanece criado com status
+   financeiro pendente.
+3. Pagamento em dinheiro (cobrar agora) registra pagamento imediatamente no
+   valor configurado.
 4. Fluxo manual de WhatsApp deve continuar existindo como fallback.
-5. Automacao e envio manual devem respeitar o momento correto (confirmacao do agendamento vs confirmacao do pagamento).
+5. Automacao e envio manual devem respeitar o momento correto (confirmacao do
+   agendamento vs confirmacao do pagamento).
 
 ## Decisoes fechadas (consolidadas no chat)
 
@@ -28,9 +32,12 @@ Implementar um fluxo completo de agendamento interno com:
 - Desconto aceita:
   - valor em `R$`
   - percentual `%`
-- Seletor de desconto deve usar seletor unico (`R$` / `%`) no mesmo padrao do checkout.
-- Motivo de desconto nao ganha campo dedicado nesta etapa (usar observacoes do agendamento, se necessario).
-- Regra de preservacao financeira: manter o combinado da Jana (nao recalcular automaticamente depois).
+- Seletor de desconto deve usar seletor unico (`R$` / `%`) no mesmo padrao do
+  checkout.
+- Motivo de desconto nao ganha campo dedicado nesta etapa (usar observacoes do
+  agendamento, se necessario).
+- Regra de preservacao financeira: manter o combinado da Jana (nao recalcular
+  automaticamente depois).
 
 ### Cobranca no agendamento (`Cobrar agora`)
 
@@ -46,16 +53,19 @@ Implementar um fluxo completo de agendamento interno com:
   - tentar novamente
   - cobrar de outra forma
   - cobrar no atendimento
-- Se usuario decidir `cobrar no atendimento` apos falha, o agendamento segue fluxo padrao (incluindo mensagens).
+- Se usuario decidir `cobrar no atendimento` apos falha, o agendamento segue
+  fluxo padrao (incluindo mensagens).
 
 ### Mensagens (manual + automacao)
 
 - Envio manual e automacao sao independentes (um nao anula o outro).
-- Antes de tentar qualquer envio de WhatsApp, validar se ha dados minimos necessarios (ex.: numero).
+- Antes de tentar qualquer envio de WhatsApp, validar se ha dados minimos
+  necessarios (ex.: numero).
 - Se nao houver numero de WhatsApp cadastrado:
   - nao tentar envio
   - registrar como nao enviado por falta de numero
-- Se `Cobrar no atendimento`: automacao/manual seguem gatilhos do fluxo padrao de agendamento.
+- Se `Cobrar no atendimento`: automacao/manual seguem gatilhos do fluxo padrao
+  de agendamento.
 - Se `Cobrar agora`: gatilhos de aviso ocorrem apos confirmacao do pagamento.
 
 ### Conteudo das mensagens
@@ -97,11 +107,13 @@ Implementar um fluxo completo de agendamento interno com:
 
 - Portal do cliente com login/senha/OTP
 - Reestruturacao total da RPC `create_public_appointment`
-- Refatoracao completa dos templates Meta (submissao/aprovacao final) sem validacao em piloto
+- Refatoracao completa dos templates Meta (submissao/aprovacao final) sem
+  validacao em piloto
 
 ## Estado atual relevante (base)
 
-- O repo ja cria/agrega checkout de atendimento (`appointment_checkout`, `appointment_checkout_items`)
+- O repo ja cria/agrega checkout de atendimento (`appointment_checkout`,
+  `appointment_checkout_items`)
 - O repo ja suporta desconto no checkout do atendimento
 - O repo ja suporta pagamentos via PIX/Point/registro manual
 - O repo ja tem automacao WhatsApp e fallback manual
@@ -223,17 +235,20 @@ Se `Cobrar agora`:
 #### Se `Cobrar no atendimento`
 
 - automacao: pode disparar na confirmacao do agendamento
-- manual fallback: pergunta "enviar aviso manual?" logo apos confirmar agendamento
+- manual fallback: pergunta "enviar aviso manual?" logo apos confirmar
+  agendamento
 
 #### Se `Cobrar agora`
 
 - automacao: dispara somente apos pagamento confirmado
-- manual fallback: pergunta "enviar aviso manual?" somente apos pagamento confirmado
+- manual fallback: pergunta "enviar aviso manual?" somente apos pagamento
+  confirmado
 
 Se pagamento foi iniciado e nao concluido:
 
 - nao enviar fluxo de "agendamento pago"
-- opcional: mensagem especifica de agendamento criado com pagamento pendente (decidir)
+- opcional: mensagem especifica de agendamento criado com pagamento pendente
+  (decidir)
 
 ## Regras de mensagens (novo comportamento)
 
@@ -316,7 +331,8 @@ Saida:
 
 Status desta fase:
 
-- `Concluida` (UI + seed de checkout com itens extras/desconto `%`/`R$`, mantendo `Cobrar agora` bloqueado para Fase 2)
+- `Concluida` (UI + seed de checkout com itens extras/desconto `%`/`R$`,
+  mantendo `Cobrar agora` bloqueado para Fase 2)
 
 ### Fase 2 - Cobrar agora: Dinheiro (baixo risco)
 
@@ -332,7 +348,8 @@ Saida:
 Status desta fase:
 
 - `Concluida`
-- Implementada no `/novo` com criacao sem redirect + pagamento em dinheiro no fluxo embutido de checkout.
+- Implementada no `/novo` com criacao sem redirect + pagamento em dinheiro no
+  fluxo embutido de checkout.
 
 ### Fase 3 - Cobrar agora: PIX
 
@@ -349,7 +366,8 @@ Saida:
 Status desta fase:
 
 - `Concluida`
-- Reaproveita fluxo de PIX MP do checkout do atendimento em modo embutido no bottom sheet do `/novo`.
+- Reaproveita fluxo de PIX MP do checkout do atendimento em modo embutido no
+  bottom sheet do `/novo`.
 
 ### Fase 4 - Cobrar agora: Cartao / Point
 
@@ -364,7 +382,8 @@ Saida:
 Status desta fase:
 
 - `Concluida`
-- Reaproveita fluxo Point/cartao do checkout do atendimento em modo embutido no bottom sheet do `/novo`.
+- Reaproveita fluxo Point/cartao do checkout do atendimento em modo embutido no
+  bottom sheet do `/novo`.
 
 ### Fase 5 - Templates e textos (interno + Meta)
 
@@ -444,5 +463,7 @@ Mitigacao:
 
 ## Decisoes em aberto (apos fechamento da Fase 1)
 
-- Nenhuma decisao bloqueante para Fases 1-4 (implementacao funcional concluida no piloto DEV).
-- Pendencias remanescentes concentram-se em refinamentos de mensagens/template Meta e ajustes finos de UX operacional.
+- Nenhuma decisao bloqueante para Fases 1-4 (implementacao funcional concluida
+  no piloto DEV).
+- Pendencias remanescentes concentram-se em refinamentos de mensagens/template
+  Meta e ajustes finos de UX operacional.

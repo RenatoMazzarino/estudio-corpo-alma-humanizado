@@ -6,9 +6,11 @@ Ultima revisao: 2026-03-10
 
 ## O que e este runbook
 
-Runbook e um guia operacional passo a passo para executar uma rotina sem ambiguidade.
+Runbook e um guia operacional passo a passo para executar uma rotina sem
+ambiguidade.
 
-Este runbook cobre como operar Vercel no VS Code sem travar painel em `Loading...`.
+Este runbook cobre como operar Vercel no VS Code sem travar painel em
+`Loading...`.
 
 ## Escopo
 
@@ -19,7 +21,8 @@ Este runbook cobre como operar Vercel no VS Code sem travar painel em `Loading..
 ## Regra principal (obrigatoria)
 
 1. Manter **uma unica extensao Vercel ativa por vez**.
-2. Motivo: extensoes diferentes podem registrar a mesma view (`vercel-deployments`) e gerar conflito.
+2. Motivo: extensoes diferentes podem registrar a mesma view
+   (`vercel-deployments`) e gerar conflito.
 
 Padrao deste repo:
 
@@ -28,8 +31,10 @@ Padrao deste repo:
 
 ## Quando usar cada extensao
 
-1. `Vercel Project Manager` (AaronDill): foco em Deployments + Environment Variables + link/deploy rapido.
-2. `VSCode Vercel` (frenco): foco em Deployments + Projects + Files/Checks de deployment.
+1. `Vercel Project Manager` (AaronDill): foco em Deployments + Environment
+   Variables + link/deploy rapido.
+2. `VSCode Vercel` (frenco): foco em Deployments + Projects + Files/Checks de
+   deployment.
 
 Se precisar usar a `frenco`, desative a `AaronDill` antes.
 
@@ -42,7 +47,8 @@ Se precisar usar a `frenco`, desative a `AaronDill` antes.
 3. Conferir conta:
    - `pnpm exec vercel whoami`
 4. Link do repo ao projeto correto:
-   - `pnpm exec vercel link --project estudio-corpo-alma-humanizado-web --scope renato-mazzarinos-projects`
+   - `pnpm exec vercel link --project estudio-corpo-alma-humanizado-web`
+   - `--scope renato-mazzarinos-projects`
 
 ## Operacao diaria
 
@@ -61,7 +67,8 @@ Se precisar usar a `frenco`, desative a `AaronDill` antes.
 2. Deixar apenas uma ativa.
 3. Rodar `Developer: Reload Window` no VS Code.
 4. Conferir se o workspace esta linkado:
-   - arquivo `.vercel/project.json` deve apontar para `estudio-corpo-alma-humanizado-web`.
+   - arquivo `.vercel/project.json` deve apontar para
+     `estudio-corpo-alma-humanizado-web`.
 
 ### Sintoma: "The vercel CLI is required"
 
@@ -77,7 +84,8 @@ Se precisar usar a `frenco`, desative a `AaronDill` antes.
 
 ## Evidencia tecnica do conflito (historico)
 
-Log do VS Code registrou conflito de view id duplicada (`vercel-deployments`) quando duas extensoes estavam ativas.
+Log do VS Code registrou conflito de view id duplicada (`vercel-deployments`)
+quando duas extensoes estavam ativas.
 
 ## Definition of Done deste runbook
 

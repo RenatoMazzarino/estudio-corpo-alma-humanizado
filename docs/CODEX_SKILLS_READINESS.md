@@ -1,22 +1,28 @@
 # Codex Skills Readiness
 
-Este documento explica quais habilidades de Codex estao preparadas neste ambiente e como validar rapidamente.
+Este documento explica quais habilidades de Codex estao preparadas neste
+ambiente e como validar rapidamente.
 
 ## Padrao OpenAI (estrutura e configuracao)
 
 Links oficiais (Codex Agent Skills):
 
-1. Visao geral Codex (modo agente): https://developers.openai.com/codex
-2. Estrutura e funcionamento de skills: https://developers.openai.com/codex/skills
-3. Criacao de skill (seccao ancora): https://developers.openai.com/codex/skills#create-a-skill
-4. Configuracao basica do Codex: https://developers.openai.com/codex/config-basic
-5. Referencia de configuracao (`skills.config`): https://developers.openai.com/codex/config-reference
+1. Visao geral Codex (modo agente): <https://developers.openai.com/codex>
+2. Estrutura e funcionamento de skills:
+   <https://developers.openai.com/codex/skills>
+3. Criacao de skill (seccao ancora):
+   <https://developers.openai.com/codex/skills#create-a-skill>
+4. Configuracao basica do Codex:
+   <https://developers.openai.com/codex/config-basic>
+5. Referencia de configuracao (`skills.config`):
+   <https://developers.openai.com/codex/config-reference>
 
 Resumo aplicado neste repo:
 
 1. Skills de repositorio ficam em `.agents/skills`
 2. Cada skill possui `SKILL.md` com `name` e `description`
-3. `agents/openai.yaml` e opcional, mas recomendado para metadados de UI/policy/dependencias
+3. `agents/openai.yaml` e opcional, mas recomendado para metadados de
+   UI/policy/dependencias
 4. Instrucoes globais do agente em `AGENTS.md`
 5. Config de projeto do Codex em `.codex/config.toml`
 6. Overrides locais em `AGENTS.override.md` por area critica
@@ -35,7 +41,8 @@ Resumo aplicado neste repo:
 10. Vercel Deploy
 11. Yeet
 
-Qualquer skill fora dessa lista deve ser tratada como "nao instalada" neste ambiente, ate nova confirmacao.
+Qualquer skill fora dessa lista deve ser tratada como "nao instalada" neste
+ambiente, ate nova confirmacao.
 
 ## Skills versionadas no repo (.agents/skills)
 
@@ -81,7 +88,8 @@ O script valida:
 3. Vercel CLI no workspace (`pnpm exec vercel --version`)
 4. Playwright CLI wrapper e pacote Playwright em `apps/web`
 5. Configuracoes do Codex (`js_repl`, MCP Vercel e MCP Playwright)
-6. Autenticacao GitHub para skills via `GH_TOKEN` (carregado do Git Credential Manager)
+6. Autenticacao GitHub para skills via `GH_TOKEN` (carregado do Git Credential
+   Manager)
 
 ## Bootstrap de autenticacao GitHub para skills
 
@@ -96,6 +104,9 @@ Esse fluxo nao escreve token no repo e usa o Git Credential Manager local.
 
 ## Notas praticas
 
-1. Se `gh auth status` mostrar falta de scope `read:org`, PRs e checks podem funcionar, mas alguns cenarios de organizacao podem falhar.
-2. Se `vercel` nao estiver no PATH da sessao atual, use `pnpm exec vercel ...` no repo.
-3. Se `Playwright Interactive` estiver habilitado no config (`js_repl = true`), reinicie a sessao do Codex para a lista de tools refletir a mudanca.
+1. Se `gh auth status` mostrar falta de scope `read:org`, PRs e checks podem
+   funcionar, mas alguns cenarios de organizacao podem falhar.
+2. Se `vercel` nao estiver no PATH da sessao atual, use `pnpm exec vercel ...`
+   no repo.
+3. Se `Playwright Interactive` estiver habilitado no config (`js_repl = true`),
+   reinicie a sessao do Codex para a lista de tools refletir a mudanca.

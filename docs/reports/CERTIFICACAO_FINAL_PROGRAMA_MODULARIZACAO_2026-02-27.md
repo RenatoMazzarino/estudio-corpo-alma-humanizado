@@ -6,4 +6,5 @@ Este documento foi consolidado e substituído pela versão mais recente:
 
 Motivo:
 
-1. Atualização do fechamento E2E do programa com novo snapshot de hotspots, validação técnica final e status operacional.
+1. Atualização do fechamento E2E do programa com novo snapshot de hotspots,
+   validação técnica final e status operacional.

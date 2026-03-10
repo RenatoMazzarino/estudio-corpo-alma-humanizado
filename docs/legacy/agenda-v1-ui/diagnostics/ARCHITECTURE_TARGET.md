@@ -1,18 +1,26 @@
 # ARCHITECTURE_TARGET
 
-> **Status documental:** Histórico/legado. Use apenas para contexto e rastreabilidade.
-> **Nao canonico:** Para comportamento atual do sistema, valide `codigo + migrations + env real` e docs ativos (`README.md`, `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
+> **Status documental:** Histórico/legado. Use apenas para contexto e
+> rastreabilidade. **Nao canonico:** Para comportamento atual do sistema, valide
+> `codigo + migrations + env real` e docs ativos (`README.md`,
+> `MANUAL_RAPIDO.md`, `docs/integrations/*`, `docs/apis/API_GUIDE.md`).
 
 ## Princípios
-- **Domínios claros**: módulos por domínio (Agendamentos, Clientes, Serviços, Financeiro, Auth, Notificações, Configurações).
-- **Dados consistentes**: schema e types sincronizados (migrations → types → código).
-- **Server-first**: queries e regras de negócio no servidor; client só para UI/UX.
-- **Validação sistemática**: entradas sempre validadas (Zod) antes de tocar no DB.
-- **Erro padronizado**: erros retornam `AppError` com código e mensagem amigável.
+
+- **Domínios claros**: módulos por domínio (Agendamentos, Clientes, Serviços,
+  Financeiro, Auth, Notificações, Configurações).
+- **Dados consistentes**: schema e types sincronizados (migrations → types →
+  código).
+- **Server-first**: queries e regras de negócio no servidor; client só para
+  UI/UX.
+- **Validação sistemática**: entradas sempre validadas (Zod) antes de tocar no
+  DB.
+- **Erro padronizado**: erros retornam `AppError` com código e mensagem
+  amigável.
 
 ## Estrutura de pastas (proposta)
 
-```
+```text
 apps/web/
   app/
     (dashboard)/
@@ -51,34 +59,43 @@ apps/web/
 ```
 
 ## Regras de localização
+
 - **Server actions** ficam em `src/modules/<domain>/actions.ts`.
-- **Queries** e **repositories** ficam em `src/modules/<domain>/repository.ts` e `queries.ts`.
+- **Queries** e **repositories** ficam em `src/modules/<domain>/repository.ts` e
+  `queries.ts`.
 - **Componentes** de domínio em `src/modules/<domain>/components/`.
 - **Componentes compartilhados** em `src/shared/ui/`.
-- **Helpers de Supabase** em `src/shared/lib/supabase` com `createServerClient`/`createBrowserClient`.
+- **Helpers de Supabase** em `src/shared/lib/supabase` com
+  `createServerClient`/`createBrowserClient`.
 
 ## Naming
-- `kebab-case` para arquivos. 
+
+- `kebab-case` para arquivos.
 - `PascalCase` para componentes.
 - Actions: `create-appointment.action.ts` ou `actions.ts` por domínio.
 - Zod schemas: `appointments.schema.ts`.
 
 ## Tratamento de erros
+
 - Centralizar em `src/shared/errors`.
 - Função `mapSupabaseError(err)` → `AppError`.
 - Actions retornam `{ ok: false, error }` ao invés de `throw` em fluxo de UI.
 
 ## Validação (Zod)
+
 - Para cada ação: `inputSchema.parse(formData)`.
-- Para dados de rota pública (`/agendar`), aplicar validação + rate limit simples.
+- Para dados de rota pública (`/agendar`), aplicar validação + rate limit
+  simples.
 
 ## Supabase
+
 - `createClient` centralizado e com helpers de `getTenantId()`.
 - **Tenant** resolvido por:
   - sessão/auth (no backoffice),
   - slug (em rotas públicas).
 
 ## Padrões de UI
+
 - Tokens em `globals.css` (cores, radius, spacing).
 - Componentes base (Button, Card, Input, Modal) no `shared/ui`.
 - Layouts por rota: `app/(dashboard)` e `app/(public)`.

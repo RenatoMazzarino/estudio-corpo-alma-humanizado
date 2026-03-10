@@ -5,10 +5,13 @@ Escopo: `apps/web` (modularizacao + hardening em blocos na `main`)
 
 ## 1. Limites Arquiteturais Obrigatorios
 
-1. `app/*` fica como camada de entrega (rota, auth, composição de tela e delegação).
-2. Regra de dominio deve viver em `src/modules/*` (`domain`, `application`, `infrastructure`).
+1. `app/*` fica como camada de entrega (rota, auth, composição de tela e
+   delegação).
+2. Regra de dominio deve viver em `src/modules/*` (`domain`, `application`,
+   `infrastructure`).
 3. Server actions em `app/*` devem ser finas e delegar para módulos.
-4. UI complexa deve ficar em componentes dedicados (`components/*`), sem regra de persistência.
+4. UI complexa deve ficar em componentes dedicados (`components/*`), sem regra
+   de persistência.
 5. Utilitários transversais devem ser centralizados em `src/shared/*`.
 6. Endpoints internos sensíveis devem exigir `Authorization: Bearer`.
 
@@ -28,14 +31,17 @@ Executar sempre nesta ordem:
 1. Confirmar `git status` limpo e commits em blocos lógicos.
 2. Confirmar `DEV_PASSWORD_LOGIN_ENABLED=false` em produção.
 3. Confirmar `WHATSAPP_AUTOMATION_PROCESSOR_SECRET` definido e válido.
-4. Confirmar segredo de captcha do agendamento online (`BOOKING_LOOKUP_CAPTCHA_SECRET`).
-5. Validar se piloto WhatsApp continua em número de teste (`WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`) ou produção real.
+4. Confirmar segredo de captcha do agendamento online
+   (`BOOKING_LOOKUP_CAPTCHA_SECRET`).
+5. Validar se piloto WhatsApp continua em número de teste
+   (`WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`) ou produção real.
 6. Smoke manual mínimo:
-  - agendamento interno
-  - cobrança no atendimento
-  - cobrança imediata (pix/cartão/dinheiro/cortesia)
-  - envio manual e automação WhatsApp coexistindo
-  - agendamento online (cliente existente e novo)
+
+- agendamento interno
+- cobrança no atendimento
+- cobrança imediata (pix/cartão/dinheiro/cortesia)
+- envio manual e automação WhatsApp coexistindo
+- agendamento online (cliente existente e novo)
 
 ## 4. Procedimento de Rollback
 
@@ -48,7 +54,11 @@ Executar sempre nesta ordem:
 
 Atualizado em 2026-03-03:
 
-1. `app/(dashboard)/novo/appointment-form.composition.tsx` ainda é o maior hotspot ativo de composição de tela.
-2. `app/(dashboard)/novo/hooks/use-appointment-confirmation-flow.ts` segue concentrando muitas decisões de fluxo de cobrança.
-3. `app/(public)/agendar/[slug]/hooks/use-public-booking-flow-controller-deps.ts` ainda é o principal ponto de orquestração no agendamento público.
-4. `app/(dashboard)/atendimento/[id]/components/use-attendance-payment-modal-controller.ts` ainda comporta redução adicional de efeitos/estado.
+1. `app/(dashboard)/novo/appointment-form.composition.tsx` ainda é o maior
+   hotspot ativo de composição de tela.
+2. `app/(dashboard)/novo/hooks/use-appointment-confirmation-flow.ts` segue
+   concentrando muitas decisões de fluxo de cobrança.
+3. `app/(public)/agendar/[slug]/hooks/use-public-booking-flow-controller-deps.ts`
+   ainda é o principal ponto de orquestração no agendamento público.
+4. `app/(dashboard)/atendimento/[id]/components/use-attendance-payment-modal-controller.ts`
+   ainda comporta redução adicional de efeitos/estado.

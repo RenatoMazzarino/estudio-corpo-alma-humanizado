@@ -1,8 +1,6 @@
 # AGENTS.override.md (docs)
 
-Escopo: `docs/*`.
-Owner: engenharia de plataforma
-Ultima revisao: 2026-03-10
+Escopo: `docs/*`. Owner: engenharia de plataforma Ultima revisao: 2026-03-10
 
 ## Objetivo
 
@@ -18,7 +16,8 @@ Ultima revisao: 2026-03-10
 2. Em mudancas de API/integracao/regra de negocio, atualizar docs afetadas.
 3. Preservar consistencia com `docs/DOCUMENTATION_CANONICAL_MATRIX.md`.
 4. Nao incluir segredos em docs.
-5. Documento ativo deve declarar status no topo (`active`, `reference` ou `legacy`) quando fizer sentido.
+5. Documento ativo deve declarar status no topo (`active`, `reference` ou
+   `legacy`) quando fizer sentido.
 
 ## Arquivos de alto impacto
 
@@ -32,7 +31,8 @@ Ultima revisao: 2026-03-10
 
 1. Documento novo deve entrar no indice (`docs/README.md`) quando ativo.
 2. Documento novo deve ser classificado na matriz canonica quando relevante.
-3. Mudanca de comportamento em runtime deve refletir exemplos e passos operacionais.
+3. Mudanca de comportamento em runtime deve refletir exemplos e passos
+   operacionais.
 4. Documento de plano deve ter:
    - fases
    - criterio de validacao
@@ -41,12 +41,14 @@ Ultima revisao: 2026-03-10
 ## Regra de maturidade (V1 final de producao)
 
 1. Este escopo nao aceita entrega em mentalidade MVP ou "so para funcionar".
-2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao, observabilidade e manutencao previsivel.
-3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou acoplamento oculto.
+2. Toda mudanca deve mirar padrao de producao: robustez, modularizacao,
+   observabilidade e manutencao previsivel.
+3. Nao introduzir gambiarra, duplicacao oportunista, fallback sem governanca ou
+   acoplamento oculto.
 4. Solucoes devem incluir:
    - tratamento de erro explicito
    - contratos claros de entrada/saida
    - testes proporcionais ao risco
    - documentacao operacional quando houver impacto de runtime
-5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade estrutural e registrar tradeoff.
-
+5. Em conflito entre velocidade e qualidade estrutural, priorizar qualidade
+   estrutural e registrar tradeoff.

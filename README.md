@@ -6,7 +6,8 @@
 - pnpm 10.29.1 (via `corepack enable`).
 - Turbo 2.8.3 (devDependency no root).
 - Docker + Supabase CLI 2.75.0 (instalado via `pnpm install`).
-- `SUPABASE_SERVICE_ROLE_KEY` para operações administrativas server-side (RLS habilitado).
+- `SUPABASE_SERVICE_ROLE_KEY` para operações administrativas server-side (RLS
+  habilitado).
 - VS Code: use o TypeScript do workspace (evita erro de JSX).
 
 ## Setup rápido
@@ -30,25 +31,33 @@ pnpm install
 pnpm dev
 ```
 
-Se alternar entre WSL e Windows, apague `node_modules` e `.next` antes de reinstalar:
+Se alternar entre WSL e Windows, apague `node_modules` e `.next` antes de
+reinstalar:
 
 ```powershell
-Remove-Item -Recurse -Force node_modules, apps/web/node_modules, packages/ui/node_modules, packages/eslint-config/node_modules, packages/typescript-config/node_modules, apps/web/.next
+Remove-Item -Recurse -Force `
+  node_modules, apps/web/node_modules, packages/ui/node_modules, `
+  packages/eslint-config/node_modules, `
+  packages/typescript-config/node_modules, apps/web/.next
 pnpm install
 ```
 
-> O `pnpm dev` usa o Turbo local (sem necessidade de instalação global).
-> Se aparecer aviso de Turbo global, rode `pnpm install` novamente no Windows para recriar os binários locais.
-
-> Em WSL, garanta que o `pnpm` esteja usando o Node Linux (corepack). Isso evita binários nativos incompatíveis (ex.: lightningcss).
+> O `pnpm dev` usa o Turbo local (sem necessidade de instalação global). Se
+> aparecer aviso de Turbo global, rode `pnpm install` novamente no Windows para
+> recriar os binários locais.
+> Em WSL, garanta que o `pnpm` esteja usando o Node Linux (corepack). Isso evita
+> binários nativos incompatíveis (ex.: lightningcss).
 
 ---
 
 ## Padrão de layout (UI)
 
 - Todas as telas seguem 3 partes: **Header / Content / Navigation**.
-- `AppShell` controla frame + scroll único; `ModulePage` organiza header e conteúdo.
-- Decisão documentada em `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md` e `docs/ui-system/README.md`.
+- `AppShell` controla frame + scroll único; `ModulePage` organiza header e
+  conteúdo.
+- Decisão documentada em
+  `docs/legacy/agenda-v1-ui/ui-decisions/REPORT_EXECUCAO_NOVA_APARENCIA_V1_PRODUCAO.md`
+  e `docs/ui-system/README.md`.
 
 ## Scripts úteis
 
@@ -69,21 +78,27 @@ pnpm build
 - API interna do app: `docs/apis/API_GUIDE.md`
 
 Integrações ativas no produto:
+
 - Supabase (dados, RPCs e autenticação server-side)
 - Google Maps Platform (endereços e taxa de deslocamento)
 - Mercado Pago Checkout Transparente (Pix/cartão + webhook)
-- WhatsApp (manual + automação via Meta Cloud API, webhook, cron e painel `Mensagens`)
+- WhatsApp (manual + automação via Meta Cloud API, webhook, cron e painel
+  `Mensagens`)
 - Spotify (OAuth + estado/controle de player no módulo de atendimento)
 
 WhatsApp (estado atual):
-- `appointment_created` usa biblioteca oficial de 12 templates com seleção automática por cenário (local, financeiro e intro Flora).
-- regra de intro: primeira automação `com_flora`, depois `sem_oi_flora`, com reapresentação após 180 dias sem automação.
+
+- `appointment_created` usa biblioteca oficial de 12 templates com seleção
+  automática por cenário (local, financeiro e intro Flora).
+- regra de intro: primeira automação `com_flora`, depois `sem_oi_flora`, com
+  reapresentação após 180 dias sem automação.
 
 ## Documentação
 
 - Índice de docs: `docs/README.md`
 - Matriz canônica de documentação: `docs/DOCUMENTATION_CANONICAL_MATRIX.md`
-- Arquivo legado da fase Agenda V1 UI: `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
+- Arquivo legado da fase Agenda V1 UI:
+  `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
 - Prontidão de skills Codex: `docs/CODEX_SKILLS_READINESS.md`
 
 ## Codex Skills (check rápido)
@@ -94,9 +109,11 @@ powershell -ExecutionPolicy Bypass -File scripts/codex/check-skills-readiness.ps
 ```
 
 Skill de repositorio (repo-first):
+
 - `.agents/skills/estudio-repo-context`
 
 Arquivos de agente no repositorio:
+
 - `AGENTS.md` (instrucoes globais)
 - `.codex/config.toml` (config de projeto do Codex)
 - `apps/web/AGENTS.override.md` (regras locais do app web)
@@ -105,6 +122,7 @@ Arquivos de agente no repositorio:
 - `docs/engineering/AGENTS_PRECEDENCE_MAP.md` (heranca por caminho)
 
 Referencias oficiais OpenAI:
+
 - `https://developers.openai.com/codex`
 - `https://developers.openai.com/codex/skills`
 - `https://developers.openai.com/codex/config-basic`
@@ -127,8 +145,10 @@ Fluxo recomendado:
 Padrão profile-first (WhatsApp):
 
 1. `WHATSAPP_PROFILE` define o comportamento-base por ambiente.
-2. `WHATSAPP_AUTOMATION_RECIPIENT_MODE` define se envia para `test_recipient` (fixo) ou `customer` (cliente real).
-3. Variáveis legadas de modo/roteamento foram descontinuadas e não devem ser usadas.
+2. `WHATSAPP_AUTOMATION_RECIPIENT_MODE` define se envia para `test_recipient`
+   (fixo) ou `customer` (cliente real).
+3. Variáveis legadas de modo/roteamento foram descontinuadas e não devem ser
+   usadas.
 
 Comandos:
 
@@ -142,7 +162,8 @@ pnpm vercel:deploy:prod
 VS Code (Vercel):
 
 1. Recomendado usar somente `aarondill.vercel-project-manager-vscode`.
-2. Evite manter duas extensoes Vercel ativas ao mesmo tempo para nao gerar conflito de views e painel preso em `Loading...`.
+2. Evite manter duas extensoes Vercel ativas ao mesmo tempo para nao gerar
+   conflito de views e painel preso em `Loading...`.
 3. Runbook oficial: `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`.
 
 Templates versionados de env:
@@ -157,4 +178,5 @@ Se o painel de testes mostrar apenas Playwright, falta a extensão do Vitest.
 
 1. Instale a extensão `vitest.explorer`.
 2. Recarregue o VS Code.
-3. Rode `pnpm --filter web test:unit` para confirmar discovery dos testes unitários.
+3. Rode `pnpm --filter web test:unit` para confirmar discovery dos testes
+   unitários.

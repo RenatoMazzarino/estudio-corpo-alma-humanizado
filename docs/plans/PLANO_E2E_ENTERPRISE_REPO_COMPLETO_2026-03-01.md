@@ -10,13 +10,18 @@ Atualizacao de auditoria aplicada neste arquivo: 2026-03-01
 Fechamento de execucao aplicado: 2026-03-02
 
 Nota de leitura:
+
 1. Este arquivo mistura estado final e trilha histórica de execução.
-2. Seções de "Registro de Execução" preservam contexto temporal e podem citar caminhos/flags já removidos no estado atual.
-3. Para estado operacional vigente, priorize as seções de status executivo e snapshots atualizados deste próprio plano + relatórios de certificação/validação mais recentes.
+2. Seções de "Registro de Execução" preservam contexto temporal e podem citar
+   caminhos/flags já removidos no estado atual.
+3. Para estado operacional vigente, priorize as seções de status executivo e
+   snapshots atualizados deste próprio plano + relatórios de
+   certificação/validação mais recentes.
 
 ## 0) Fechamento do Programa (2026-03-02)
 
-1. Programa E2E encerrado com hardening ativo e modularizacao aplicada nos fluxos criticos.
+1. Programa E2E encerrado com hardening ativo e modularizacao aplicada nos
+   fluxos criticos.
 2. Validacao tecnica final executada com sucesso:
    - `pnpm --filter web lint`
    - `pnpm --filter web lint:architecture`
@@ -26,12 +31,17 @@ Nota de leitura:
    - `pnpm --filter web build`
 3. Estrutura final e status de certificacao consolidados em:
    - `docs/reports/CERTIFICACAO_FINAL_PROGRAMA_MODULARIZACAO_2026-03-02.md`
-4. O repositorio segue com melhoria continua como rotina, mas sem pendencia bloqueante para operacao.
+4. O repositorio segue com melhoria continua como rotina, mas sem pendencia
+   bloqueante para operacao.
 5. Fechamento final adicional aplicado no mesmo dia:
-   - removidos fallbacks legados de tenant fixo (`DEFAULT_TENANT_ID`/`FIXED_TENANT_ID`) do codigo de runtime;
-   - automacao WhatsApp movida para configuracao canônica por tenant no banco (templates/idioma/local e flag de habilitacao);
-   - removido fallback cruzado de segredos na seguranca de lookup publico (captcha agora usa segredo dedicado);
-   - migrations de realtime e configuracao canônica de WhatsApp aplicadas em local e remoto.
+   - removidos fallbacks legados de tenant fixo
+     (`DEFAULT_TENANT_ID`/`FIXED_TENANT_ID`) do codigo de runtime;
+   - automacao WhatsApp movida para configuracao canônica por tenant no banco
+     (templates/idioma/local e flag de habilitacao);
+   - removido fallback cruzado de segredos na seguranca de lookup publico
+     (captcha agora usa segredo dedicado);
+   - migrations de realtime e configuracao canônica de WhatsApp aplicadas em
+     local e remoto.
 
 ## 1) Objetivo em linguagem simples
 
@@ -42,16 +52,20 @@ Este plano existe para deixar o sistema:
 3. Mais seguro em producao.
 4. Mais previsivel para evoluir funcionalidades novas.
 
-Em resumo: sair de "arquivos muito grandes e misturados" para "pecas menores, com dono claro e reutilizacao real".
+Em resumo: sair de "arquivos muito grandes e misturados" para "pecas menores,
+com dono claro e reutilizacao real".
 
 ## 2) Resultado final esperado
 
 Ao final do programa:
 
-1. Cada fluxo critico (agendamento, pagamento, WhatsApp, agenda) tera caminho unico de backend.
-2. A interface continua com a mesma aparencia (sem redesign forçado durante refatoracao).
+1. Cada fluxo critico (agendamento, pagamento, WhatsApp, agenda) tera caminho
+   unico de backend.
+2. A interface continua com a mesma aparencia (sem redesign forçado durante
+   refatoracao).
 3. Mudancas pequenas vao tocar poucos arquivos, com menos risco de regressao.
-4. Testes minimos automatizados vao cobrir o que mais impacta receita e operacao.
+4. Testes minimos automatizados vao cobrir o que mais impacta receita e
+   operacao.
 5. Documentacao operacional ficara sincronizada com o codigo.
 
 ## 3) Fotografia real do repo hoje (hotspots atuais)
@@ -62,18 +76,30 @@ Maiores arquivos de codigo versionado no `apps/web`:
 
 1. `apps/web/lib/supabase/types.ts` - 1785 linhas (gerado por tipagem do banco)
 2. `apps/web/app/(dashboard)/novo/appointment-form.composition.tsx` - 990 linhas
-3. `apps/web/app/(dashboard)/novo/hooks/use-appointment-confirmation-flow.ts` - 643 linhas
-4. `apps/web/app/(public)/agendar/[slug]/hooks/use-public-booking-flow-controller-deps.ts` - 529 linhas
-5. `apps/web/app/(dashboard)/atendimento/[id]/components/use-attendance-payment-modal-controller.ts` - 515 linhas
-6. `apps/web/app/(public)/agendar/[slug]/hooks/use-public-booking-identity.ts` - 512 linhas
-7. `apps/web/app/(dashboard)/novo/components/appointment-confirmation-sheet.tsx` - 510 linhas
+3. `apps/web/app/(dashboard)/novo/hooks/use-appointment-confirmation-flow.ts` -
+   643 linhas
+4. `apps/web/app/(public)/agendar/[slug]/hooks/`
+   `use-public-booking-flow-controller-deps.ts` -
+   529 linhas
+5. `apps/web/app/(dashboard)/atendimento/[id]/components/`
+   `use-attendance-payment-modal-controller.ts` -
+   515 linhas
+6. `apps/web/app/(public)/agendar/[slug]/hooks/use-public-booking-identity.ts` -
+   512 linhas
+7. `apps/web/app/(dashboard)/novo/components/`
+   `appointment-confirmation-sheet.tsx` -
+   510 linhas
 8. `apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx` - 496 linhas
 9. `apps/web/components/agenda/appointment-details-active-view.tsx` - 466 linhas
-10. `apps/web/app/(public)/agendar/[slug]/public-actions/clients.ts` - 464 linhas
+10. `apps/web/app/(public)/agendar/[slug]/public-actions/clients.ts` - 464
+    linhas
 
 Observacao importante:
-1. `apps/web/lib/supabase/types.ts` continua fora do alvo de modularizacao manual por ser arquivo gerado.
-2. Os hotspots acima estao abaixo do patamar inicial do programa e seguem sem bloqueio tecnico de operacao.
+
+1. `apps/web/lib/supabase/types.ts` continua fora do alvo de modularizacao
+   manual por ser arquivo gerado.
+2. Os hotspots acima estao abaixo do patamar inicial do programa e seguem sem
+   bloqueio tecnico de operacao.
 
 ## 3.1) Achados de convergencia confirmados (auditoria adicional)
 
@@ -89,13 +115,16 @@ Observacao importante:
    - `use-mobile-agenda-search-effect.ts`
    - `use-mobile-agenda-day-navigation.ts`
    - `use-mobile-agenda-derived-data.ts`
-4. Realtime esta ativo em fluxos operacionais (agenda/atendimento) com refresh direcionado.
-5. Edge Functions estao versionadas no repo e publicadas para fluxos assincronos criticos.
+4. Realtime esta ativo em fluxos operacionais (agenda/atendimento) com refresh
+   direcionado.
+5. Edge Functions estao versionadas no repo e publicadas para fluxos assincronos
+   criticos.
 6. Persistem pontos de concentracao media (nao bloqueantes) em:
    - `appointment-form.composition.tsx`
    - `use-appointment-confirmation-flow.ts`
    - `use-public-booking-flow-controller-deps.ts`
-7. CI segue com gate tecnico ativo para `lint`, `check-types`, `build`, `test:unit` e `test:smoke`.
+7. CI segue com gate tecnico ativo para `lint`, `check-types`, `build`,
+   `test:unit` e `test:smoke`.
 
 ## 3.2) Diagnostico de variaveis de ambiente (env)
 
@@ -111,9 +140,11 @@ Inventario atual no codigo `apps/web`:
 3. Ja existe padrao por prefixo (isso e normal em sistema enterprise).
 4. Ponto de melhoria real:
    - existem alias/fallbacks em alguns fluxos que aumentam confusao operacional.
-   - exemplo de fallback sensivel: captcha reaproveitando secrets de outras finalidades.
+   - exemplo de fallback sensivel: captcha reaproveitando secrets de outras
+     finalidades.
 5. Gap de governanca:
-   - nao existe ainda um schema unico tipado de env obrigatorias/opcionais por ambiente.
+   - nao existe ainda um schema unico tipado de env obrigatorias/opcionais por
+     ambiente.
    - sem esse schema, o risco e detectar erro de configuracao apenas em runtime.
 
 ## 3.3) O que faz sentido ficar em variavel e o que nao faz
@@ -125,8 +156,10 @@ Regra enterprise adotada para este plano:
    - credencial de provedor externo
    - parametro de infraestrutura/deploy
    - feature flag operacional de ambiente (com baixo volume)
-2. Configuracao de negocio nao deve ficar em env quando muda por tenant ou por operacao diaria.
-3. Quanto maior a chance de crescer em quantidade (ex.: varios templates), menos sentido usar env.
+2. Configuracao de negocio nao deve ficar em env quando muda por tenant ou por
+   operacao diaria.
+3. Quanto maior a chance de crescer em quantidade (ex.: varios templates), menos
+   sentido usar env.
 
 Classificacao dos pontos que voce citou:
 
@@ -140,14 +173,17 @@ Classificacao dos pontos que voce citou:
    - motivo: pode variar por tenant/campanha sem redeploy
 3. Timezone do sistema:
    - estado atual: `APP_TIMEZONE` em env
-   - alvo recomendado: manter fallback global em env e preparar override por tenant em banco (quando necessario)
+   - alvo recomendado: manter fallback global em env e preparar override por
+     tenant em banco (quando necessario)
 4. Captcha secret:
    - estado atual: env com fallback em cadeia
    - alvo: env dedicado unico (sem fallback para outros segredos)
    - motivo: segredo de seguranca deve ter finalidade unica
 
 Conclusao objetiva:
-- sua percepcao esta correta: para templates/language, env nao escala e vira bagunca.
+
+- sua percepcao esta correta: para templates/language, env nao escala e vira
+  bagunca.
 - para segredos (captcha/token/webhook), env continua sendo o caminho correto.
 
 ## 3.4) Achados adicionais de convergencia (varredura repo inteiro)
@@ -176,7 +212,8 @@ Recomendacao canonica para separar produto e marketing:
 
 1. Dominio raiz (`corpoealmahumanizado.com.br`) aponta para site institucional.
 2. Sistema fica em subdominio dedicado:
-   - producao: `app.corpoealmahumanizado.com.br` (ou manter `public...` se preferir continuidade)
+   - producao: `app.corpoealmahumanizado.com.br` (ou manter `public...` se
+     preferir continuidade)
    - homolog/dev: `dev.app.corpoealmahumanizado.com.br` (ou padrao equivalente)
 3. Beneficios:
    - operacao e deploy desacoplados
@@ -205,20 +242,24 @@ Edge Functions (analise de onde faz sentido):
    - validacao de identidade online (captcha + guard) quando quiser isolar risco
 3. Baixo potencial / nao recomendado agora:
    - mover todo agendamento online para Edge de uma vez
-   - motivo: alto risco de regressao e pouco ganho imediato frente ao custo de migracao
+   - motivo: alto risco de regressao e pouco ganho imediato frente ao custo de
+     migracao
 
 Decisao tecnica recomendada:
 
 1. Nao migrar "tudo de agendamento online" para Edge agora.
 2. Migrar primeiro partes assicronas e de integracao externa.
-3. Manter criacao de agendamento no caminho atual (app + RPC) enquanto convergimos backend.
+3. Manter criacao de agendamento no caminho atual (app + RPC) enquanto
+   convergimos backend.
 
 ## 3.7) Auditoria detalhada de espelhamento DB local x remoto
 
 Metodologia aplicada:
 
-1. Comparacao de migrations aplicadas (`supabase migration list` local x remoto).
-2. Dump completo do schema `public` local e remoto (`supabase db dump --local/--linked --schema public`).
+1. Comparacao de migrations aplicadas (`supabase migration list` local x
+   remoto).
+2. Dump completo do schema `public` local e remoto
+   (`supabase db dump --local/--linked --schema public`).
 3. Diff textual de schema dump local x remoto.
 
 Resultado:
@@ -226,18 +267,24 @@ Resultado:
 1. Migrations: espelhadas 1:1 (sem drift de versionamento).
 2. Schema `public`: estrutura funcional equivalente.
 3. Diferencas detectadas no diff:
-   - tabela `public.clients` com ordem fisica diferente das colunas `notes` e `birth_date`.
-   - nao houve diferenca de tipo, nulabilidade, constraints ou existencia de coluna.
+   - tabela `public.clients` com ordem fisica diferente das colunas `notes` e
+     `birth_date`.
+   - nao houve diferenca de tipo, nulabilidade, constraints ou existencia de
+     coluna.
 4. Diff de schema completo (fora de `public`) apontou:
-   - extensoes presentes no remoto e ausentes no local: `hypopg` e `index_advisor`.
+   - extensoes presentes no remoto e ausentes no local: `hypopg` e
+     `index_advisor`.
    - diferencas residuais de espaco/quebra de linha sem impacto funcional.
 
 Conclusao:
 
 1. Local e remoto estao espelhados no que impacta comportamento/contrato.
-2. Existe apenas diferenca de ordem fisica de coluna em `clients` (nao funcional).
-3. Existe diferenca de extensoes auxiliares (`hypopg`/`index_advisor`) que deve ser alinhada para espelhamento 100%.
-4. Este item deve ser registrado como drift cosmetico/infra ate a consolidacao final.
+2. Existe apenas diferenca de ordem fisica de coluna em `clients` (nao
+   funcional).
+3. Existe diferenca de extensoes auxiliares (`hypopg`/`index_advisor`) que deve
+   ser alinhada para espelhamento 100%.
+4. Este item deve ser registrado como drift cosmetico/infra ate a consolidacao
+   final.
 
 ## 4) Glossario sem "deves"
 
@@ -282,6 +329,7 @@ Cada fluxo critico passara a ter pecas separadas:
 4. Camada de banco/integracoes: grava em banco e chama APIs externas.
 
 Direcao unica:
+
 - Tela chama regra.
 - Regra chama banco/integracao.
 - Banco/integracao nao conhece tela.
@@ -293,21 +341,29 @@ Isso evita dependencia cruzada e reduz efeito cascata de bugs.
 ## Fase A - Fundacao, guardrails e seguranca
 
 Objetivo:
+
 - travar padrao para o repo nao voltar ao modelo "arquivo monstro misturado".
 
 Entregas:
+
 1. Reforcar convencoes e checklist tecnico.
 2. Fechar endpoints internos sensiveis com validacao de segredo.
 3. Garantir regras de arquitetura no lint.
-4. Revisar `next.config` para headers de seguranca (sem quebrar comportamento atual).
+4. Revisar `next.config` para headers de seguranca (sem quebrar comportamento
+   atual).
 5. Subir gate de qualidade no CI para incluir teste unitario obrigatorio.
-6. Definir regra de smoke automatizado para fluxos criticos em janela controlada.
-7. Criar governanca canonica de env (nome, dono, ambiente, obrigatoriedade e seguranca).
-8. Implementar validacao de env no boot (falha rapida quando faltar variavel obrigatoria).
+6. Definir regra de smoke automatizado para fluxos criticos em janela
+   controlada.
+7. Criar governanca canonica de env (nome, dono, ambiente, obrigatoriedade e
+   seguranca).
+8. Implementar validacao de env no boot (falha rapida quando faltar variavel
+   obrigatoria).
 9. Eliminar fallback cruzado de segredo (cada segredo com finalidade unica).
-10. Adicionar gate de tipagem/arquitetura para reduzir `as unknown as` em caminhos de producao.
+10. Adicionar gate de tipagem/arquitetura para reduzir `as unknown as` em
+    caminhos de producao.
 
 Arquivos foco:
+
 1. `docs/engineering/MODULARIZATION_CONVENTIONS.md`
 2. `docs/engineering/PR_CHECKLIST_REFACTOR.md`
 3. `.github/workflows/ci.yml`
@@ -319,17 +375,23 @@ Arquivos foco:
 ## Fase B - Base compartilhada unica
 
 Objetivo:
+
 - parar de repetir normalizacao e formatacao em varios lugares.
 
 Entregas:
+
 1. Biblioteca unica para CPF/telefone/CEP/moeda/data.
 2. Migracao dos consumidores para essa biblioteca.
 3. Remocao de duplicacoes locais.
-4. Remover helper paralelo em fluxo publico quando duplicar regra de `src/shared`.
-5. Remover normalizacao local em `actions.helpers` quando ja existir funcao canonica.
-6. Unificar leitura de env publica e privada via modulos centrais (sem leitura solta espalhada).
+4. Remover helper paralelo em fluxo publico quando duplicar regra de
+   `src/shared`.
+5. Remover normalizacao local em `actions.helpers` quando ja existir funcao
+   canonica.
+6. Unificar leitura de env publica e privada via modulos centrais (sem leitura
+   solta espalhada).
 
 Arquivos foco:
+
 1. `apps/web/src/shared/*`
 2. `apps/web/app/(dashboard)/novo/*`
 3. `apps/web/app/(public)/agendar/[slug]/*`
@@ -338,14 +400,17 @@ Arquivos foco:
 ## Fase C - Fluxo interno de novo agendamento
 
 Objetivo:
+
 - modularizar o maior hotspot do repo sem mudar visual.
 
 Entregas:
+
 1. Quebra de `appointment-form.composition.tsx` por etapas/sections.
 2. Separacao de controle de estado, regra e UI.
 3. Reuso do fluxo financeiro em caminho unico de backend.
 
 Arquivos foco:
+
 1. `apps/web/app/(dashboard)/novo/appointment-form.composition.tsx`
 2. `apps/web/app/(dashboard)/novo/appointment-actions.ts`
 3. `apps/web/app/(dashboard)/novo/components/*`
@@ -355,16 +420,21 @@ Arquivos foco:
 ## Fase D - Fluxo publico de agendamento online
 
 Objetivo:
+
 - deixar o fluxo online modular, rapido e previsivel.
 
 Entregas:
+
 1. Separar identidade, servico, data/hora, local, pagamento e sucesso.
-2. Centralizar regra de disponibilidade por mes/dia (evitar recargas desnecessarias).
+2. Centralizar regra de disponibilidade por mes/dia (evitar recargas
+   desnecessarias).
 3. Manter o fluxo de seguranca ja definido para identidade.
-4. Fazer o wrapper publico usar motor unico de disponibilidade, sem duplicar filtro em cadeia.
+4. Fazer o wrapper publico usar motor unico de disponibilidade, sem duplicar
+   filtro em cadeia.
 5. Preparar contrato para eventos de status em tempo real sem quebrar UX atual.
 
 Arquivos foco:
+
 1. `apps/web/app/(public)/agendar/[slug]/booking-flow*`
 2. `apps/web/app/(public)/agendar/[slug]/public-actions/*`
 3. `apps/web/src/modules/appointments/public-booking*`
@@ -372,18 +442,23 @@ Arquivos foco:
 ## Fase E - Atendimento + checkout + pagamentos
 
 Objetivo:
+
 - garantir caminho unico e consistente para status financeiro.
 
 Entregas:
+
 1. Divisao da camada de atendimento em servicos menores.
 2. Modal de checkout com controller separado e UI pura.
 3. Recalculo de status financeiro consistente em todos os gatilhos.
 4. Fechar duplicidades entre fluxo interno e publico de pagamento.
-5. Consolidar webhook MP como "entrada de evento" e mover regra financeira para servico unico.
-6. Garantir funcao unica de formatacao de moeda em telas de comprovante, agenda e checkout.
+5. Consolidar webhook MP como "entrada de evento" e mover regra financeira para
+   servico unico.
+6. Garantir funcao unica de formatacao de moeda em telas de comprovante, agenda
+   e checkout.
 7. Publicar eventos de status financeiro para consumo Realtime.
 
 Arquivos foco:
+
 1. `apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx`
 2. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`
 3. `apps/web/app/(dashboard)/atendimento/[id]/components/*`
@@ -393,10 +468,13 @@ Arquivos foco:
 ## Fase F - WhatsApp automacao + manual coexistente
 
 Objetivo:
+
 - separar pipeline de automacao sem interferir no envio manual.
 
 Entregas:
-1. Pipeline dividido por etapas: fila, processador, envio, webhook status, webhook inbound.
+
+1. Pipeline dividido por etapas: fila, processador, envio, webhook status,
+   webhook inbound.
 2. Contratos internos claros para mensagens e templates.
 3. Logs operacionais mais claros para diagnostico.
 4. Migrar configuracao de templates/language de env para banco.
@@ -406,6 +484,7 @@ Entregas:
 8. Publicar eventos de status de mensagens para consumo Realtime no painel.
 
 Arquivos foco:
+
 1. `apps/web/src/modules/notifications/whatsapp-*`
 2. `apps/web/app/api/whatsapp/*`
 3. `apps/web/app/api/internal/notifications/whatsapp/*`
@@ -415,16 +494,20 @@ Arquivos foco:
 ## Fase G - Agenda, detalhes e configuracoes
 
 Objetivo:
+
 - reduzir acoplamento da agenda e telas administrativas.
 
 Entregas:
+
 1. Modularizacao de `mobile-agenda.screen.tsx`.
 2. Modularizacao de `appointment-details-sheet.tsx`.
 3. Quebra de `availability-manager.tsx` e `settings-form.tsx` por secoes.
 4. Reducao de complexidade em `mensagens/page.tsx` e `clientes/novo/page.tsx`.
-5. Retirar consulta direta de banco nas telas e delegar para camada de modulo/repository.
+5. Retirar consulta direta de banco nas telas e delegar para camada de
+   modulo/repository.
 
 Arquivos foco:
+
 1. `apps/web/components/mobile-agenda.screen.tsx`
 2. `apps/web/components/agenda/appointment-details-sheet.tsx`
 3. `apps/web/components/availability-manager.tsx`
@@ -435,14 +518,17 @@ Arquivos foco:
 ## Fase H - Certificacao final e fechamento operacional
 
 Objetivo:
+
 - declarar o programa como pronto para operacao continua.
 
 Entregas:
+
 1. Auditoria final tecnica e funcional.
 2. Atualizacao final de runbooks e docs canonicos.
 3. Checklist de envs criticas e riscos residuais.
 4. Relatorio final de pronto para producao.
-5. Matriz de decisao "adotar ou nao" para Realtime/Edge, com criterio tecnico e custo operacional.
+5. Matriz de decisao "adotar ou nao" para Realtime/Edge, com criterio tecnico e
+   custo operacional.
 6. Certificacao de env:
    - sem variavel "zumbi" (declarada mas nao usada)
    - sem variavel usada fora da matriz canonica
@@ -455,19 +541,25 @@ Entregas:
 9. Certificacao Realtime:
    - fluxos de status atualizando sem polling pesado onde aplicavel
 10. Certificacao de testes:
-   - CI com unit + smoke obrigatorios em PR
-   - matriz de testes por dominio publicada e validada
+
+- CI com unit + smoke obrigatorios em PR
+- matriz de testes por dominio publicada e validada
 
 ## 7.1) Pacote de correcoes obrigatorias adicionado por esta auditoria
 
-1. Unificar funcoes de CPF/telefone/email em `src/shared` e remover duplicacoes locais.
+1. Unificar funcoes de CPF/telefone/email em `src/shared` e remover duplicacoes
+   locais.
 2. Unificar formatadores de moeda para agenda, comprovante e checkout.
-3. Convergir disponibilidade para um unico motor e manter wrappers apenas para regra de contexto (interno/publico).
-4. Encapsular regra de webhook MP em servico unico para evitar comportamento divergente.
+3. Convergir disponibilidade para um unico motor e manter wrappers apenas para
+   regra de contexto (interno/publico).
+4. Encapsular regra de webhook MP em servico unico para evitar comportamento
+   divergente.
 5. Eliminar acesso direto a Supabase em tela quando existir camada de modulo.
 6. Evoluir CI para travar qualidade com teste unitario obrigatorio.
-7. Definir e documentar criterio formal para Realtime/Edge (nao obrigatorio, decisao guiada por ganho real).
-8. Criar camada unica de leitura/validacao de env e descontinuar aliases desnecessarios.
+7. Definir e documentar criterio formal para Realtime/Edge (nao obrigatorio,
+   decisao guiada por ganho real).
+8. Criar camada unica de leitura/validacao de env e descontinuar aliases
+   desnecessarios.
 9. Separar explicitamente variaveis:
    - publicas (`NEXT_PUBLIC_*`)
    - privadas de servidor
@@ -475,10 +567,14 @@ Entregas:
 10. Remover crescimento linear de env por template:
     - templates/language passam a ser configuracao em banco
     - env fica apenas com credencial e segredos do provider
-11. Reduzir `as unknown as` em caminhos de producao para limite residual auditavel.
-12. Consolidar `normalizeClient` e `formatCurrency` em modulos unicos reutilizados.
-13. Criar trilha de migracao do `FIXED_TENANT_ID` para tenant resolvido por contexto de sessao.
-14. Adotar Realtime em fluxos de status operacionais (pagamento, mensagens, agenda/atendimento).
+11. Reduzir `as unknown as` em caminhos de producao para limite residual
+    auditavel.
+12. Consolidar `normalizeClient` e `formatCurrency` em modulos unicos
+    reutilizados.
+13. Criar trilha de migracao do `FIXED_TENANT_ID` para tenant resolvido por
+    contexto de sessao.
+14. Adotar Realtime em fluxos de status operacionais (pagamento, mensagens,
+    agenda/atendimento).
 15. Implantar gate obrigatorio de testes em PR (unit + smoke).
 
 ## 7.2) Matriz de migracao env -> banco (templates e automacao)
@@ -503,7 +599,9 @@ Manter em env:
 ## 7.3) Trilha de tenant dinamico sem perda de dados (obrigatoria)
 
 Objetivo:
-- migrar de tenant fixo para tenant dinamico preservando 100% dos dados atuais da Jana/estudio.
+
+- migrar de tenant fixo para tenant dinamico preservando 100% dos dados atuais
+  da Jana/estudio.
 
 Passos:
 
@@ -513,8 +611,10 @@ Passos:
 2. Fase de compatibilidade:
    - resolver tenant por sessao/contexto
    - manter fallback temporario para tenant atual somente durante transicao
-   - remover defaults fixos de `tenant_id` no schema para evitar gravacao acidental no tenant da Jana
-   - remover politicas RLS hardcoded com UUID fixo e trocar por politicas orientadas a contexto
+   - remover defaults fixos de `tenant_id` no schema para evitar gravacao
+     acidental no tenant da Jana
+   - remover politicas RLS hardcoded com UUID fixo e trocar por politicas
+     orientadas a contexto
 3. Fase de convergencia:
    - remover dependencias de `FIXED_TENANT_ID` do app/modulos
    - manter migrations historicas intactas (sem apagar historico de dados)
@@ -524,12 +624,14 @@ Passos:
    - validar backups e rollback antes de corte final
 
 Garantia de preservacao:
+
 - nenhuma estrategia do plano permite descarte de dados existentes.
 - migracao e de "chave de acesso/contexto", nao de apagar/recriar base.
 
 ## 7.4) Normalizacao de campos com semantica duplicada (DB)
 
 Objetivo:
+
 - eliminar campos que representam a mesma informacao com nomes diferentes.
 
 Lista inicial identificada:
@@ -545,38 +647,49 @@ Lista de possiveis duplicidades semanticas (avaliacao dirigida):
 3. `public.clients.address_*`/`endereco_completo` vs `public.client_addresses.*`
 
 Decisao de negocio:
-1. manter caminho unico para telefone/email/endereco com suporte a multiplos por cliente.
+
+1. manter caminho unico para telefone/email/endereco com suporte a multiplos por
+   cliente.
 2. canonico: `client_phones`, `client_emails`, `client_addresses`.
-3. `clients.phone`, `clients.email`, `clients.endereco_completo`, `clients.address_*` viram legado de transicao e serao removidos ao final da trilha de migracao.
+3. `clients.phone`, `clients.email`, `clients.endereco_completo`,
+   `clients.address_*` viram legado de transicao e serao removidos ao final da
+   trilha de migracao.
 
 Resultado da auditoria de dados no remoto (base real):
+
 1. `clients`: 15 registros.
 2. `client_phones`: 8 registros (8 clientes distintos).
 3. `client_emails`: 3 registros (3 clientes distintos).
 4. `client_addresses`: 2 registros (2 clientes distintos).
 5. lacunas de migracao detectadas:
-   - telefone: 5 clientes com `clients.phone` sem registro correspondente em `client_phones`.
+   - telefone: 5 clientes com `clients.phone` sem registro correspondente em
+     `client_phones`.
    - email: 0 lacunas.
    - endereco: 0 lacunas.
 
 Uso atual no codigo (confirmado):
+
 1. tabelas canonicas ja sao usadas em escrita/leitura:
    - `apps/web/src/modules/clients/repository.ts`
    - `apps/web/app/(public)/agendar/[slug]/public-actions/clients.ts`
    - `apps/web/src/modules/appointments/actions/create-internal-booking.ts`
-2. colunas legadas em `clients` ainda sao amplamente usadas em busca e composicao de tela:
+2. colunas legadas em `clients` ainda sao amplamente usadas em busca e
+   composicao de tela:
    - `apps/web/src/modules/appointments/repository.ts`
    - `apps/web/app/(dashboard)/novo/appointment-form.composition.tsx`
    - `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
 3. conclusao tecnica:
-   - nao pode remover legado em um unico passo; precisa migracao por fases com troca progressiva de leitura.
+   - nao pode remover legado em um unico passo; precisa migracao por fases com
+     troca progressiva de leitura.
 
 Diretriz de execucao:
+
 1. preencher primeiro as lacunas para tabelas canonicas.
 2. trocar leitura/escrita da aplicacao para caminho canonico unico.
 3. remover colunas legadas apenas depois de validar equivalencia local/remoto.
 
 Arquivos foco:
+
 1. `docs/reports/*`
 2. `docs/runbooks/*`
 3. `docs/plans/*`
@@ -592,17 +705,21 @@ Arquivos foco:
 ## 9) Riscos do programa e como controlar
 
 1. Risco: regressao em fluxo de receita (pagamento/status).  
-   Controle: testes de smoke obrigatorios por bloco + recalc de status sempre validado.
+   Controle: testes de smoke obrigatorios por bloco + recalc de status sempre
+   validado.
 2. Risco: drift de documentacao.  
    Controle: atualizar doc canonica no mesmo bloco de codigo.
 3. Risco: refatorar demais de uma vez.  
    Controle: blocos pequenos, deploy sob seu comando.
 4. Risco: misturar regra nova com refatoracao estrutural.  
    Controle: freeze parcial de features durante fases criticas.
-5. Risco: manter duas implementacoes do mesmo fluxo (ex.: pagamento/disponibilidade).  
+5. Risco: manter duas implementacoes do mesmo fluxo (ex.:
+   pagamento/disponibilidade).  
    Controle: contrato unico de backend + checklist de convergencia por modulo.
-6. Risco: adotar Realtime/Edge sem necessidade real e aumentar custo operacional.  
-   Controle: adotar apenas por criterio de ganho (latencia/evento/escala), com piloto controlado.
+6. Risco: adotar Realtime/Edge sem necessidade real e aumentar custo
+   operacional.  
+   Controle: adotar apenas por criterio de ganho (latencia/evento/escala), com
+   piloto controlado.
 
 ## 10) Cronograma operacional sugerido
 
@@ -648,7 +765,8 @@ Cobertura minima por dominio (incremental):
 1. pagamentos: unit de regras + smoke de fluxo principal
 2. agendamento interno: unit de validacao/calculo + smoke de criacao
 3. agendamento online: smoke de jornada principal
-4. whatsapp: unit de parser/mapeador + smoke de endpoint/webhook em ambiente controlado
+4. whatsapp: unit de parser/mapeador + smoke de endpoint/webhook em ambiente
+   controlado
 
 ## 12) Decisoes e pendencias
 
@@ -667,35 +785,58 @@ Cobertura minima por dominio (incremental):
    - decidido: configurar por tenant no banco.
    - regra operacional atual: sistema deve operar em horario do Brasil.
 9. Dominio:
-   - decidido: reservar dominio raiz para site institucional e sistema em subdominio dedicado.
+   - decidido: reservar dominio raiz para site institucional e sistema em
+     subdominio dedicado.
 10. Realtime:
-   - decidido: adotar em todos os fluxos de status onde fizer sentido operacional.
-11. Testes em PR:
-   - decidido: unit + smoke como obrigatorios na esteira.
-12. Edge Functions:
-   - decidido: iniciar por webhooks + fila WhatsApp + cron (nao migrar agendamento online inteiro agora).
-13. Tenant dinamico:
-   - decidido: implementar completo preservando dados e usuarios atuais da Jana/estudio.
-14. Campo de nascimento canonico:
-   - decidido: manter `birth_date` e descontinuar `data_nascimento`.
-15. Contato/endereco canonico:
-   - decidido: manter apenas caminho canonico por tabelas `client_phones`, `client_emails`, `client_addresses`.
-16. Variaveis de ambiente:
-   - decidido: aplicar formato final, limpar aliases desnecessarios e atualizar `.env.local` e `.vercel/env-import`.
-   - decidido: remover arquivos temporarios de env em `.vercel` quando nao forem mais necessarios.
+
+- decidido: adotar em todos os fluxos de status onde fizer sentido operacional.
+
+1. Testes em PR:
+
+- decidido: unit + smoke como obrigatorios na esteira.
+
+1. Edge Functions:
+
+- decidido: iniciar por webhooks + fila WhatsApp + cron (nao migrar agendamento
+  online inteiro agora).
+
+1. Tenant dinamico:
+
+- decidido: implementar completo preservando dados e usuarios atuais da
+  Jana/estudio.
+
+1. Campo de nascimento canonico:
+
+- decidido: manter `birth_date` e descontinuar `data_nascimento`.
+
+1. Contato/endereco canonico:
+
+- decidido: manter apenas caminho canonico por tabelas `client_phones`,
+  `client_emails`, `client_addresses`.
+
+1. Variaveis de ambiente:
+
+- decidido: aplicar formato final, limpar aliases desnecessarios e atualizar
+  `.env.local` e `.vercel/env-import`.
+- decidido: remover arquivos temporarios de env em `.vercel` quando nao forem
+  mais necessarios.
 
 ## 12.2) Decisoes pendentes (precisam da sua resposta antes da migration de limpeza)
 
 1. Nenhuma pendencia funcional bloqueante nesta etapa.
-2. Pendencias remanescentes passam a ser apenas de execucao tecnica por fases (sem nova decisao de negocio).
+2. Pendencias remanescentes passam a ser apenas de execucao tecnica por fases
+   (sem nova decisao de negocio).
 
 ## 12.3) Decisoes ja tomadas, mas ainda sem execucao concluida
 
 Atualizacao 2026-03-03:
 
 1. Nao ha decisao de negocio pendente sem execucao tecnica.
-2. Itens deste bloco foram executados no ciclo 2026-03-02/2026-03-03 e validados por `lint`, `lint:architecture`, `check-types`, `test:unit`, `test:smoke` e `build`.
-3. O que permanece aberto daqui em diante e melhoria continua de granularidade (otimizacao incremental), nao pendencia bloqueante do programa.
+2. Itens deste bloco foram executados no ciclo 2026-03-02/2026-03-03 e validados
+   por `lint`, `lint:architecture`, `check-types`, `test:unit`, `test:smoke` e
+   `build`.
+3. O que permanece aberto daqui em diante e melhoria continua de granularidade
+   (otimizacao incremental), nao pendencia bloqueante do programa.
 
 ## 12.4) Regras enterprise para variaveis (novas)
 
@@ -705,14 +846,17 @@ Atualizacao 2026-03-03:
    - classificacao de risco (publica, interna, segredo)
    - ambientes onde e obrigatoria (dev/preview/prod)
 2. Proibido reutilizar segredo de uma finalidade em outra.
-3. Toda variavel nova entra primeiro na matriz canonica de env e depois no codigo.
+3. Toda variavel nova entra primeiro na matriz canonica de env e depois no
+   codigo.
 4. Toda variavel removida exige limpeza de:
    - codigo
    - CI/turbo
    - docs/runbooks
    - painel de ambiente
-5. Proibido criar duas variaveis por template de mensagem quando a quantidade puder crescer.
-6. Configuracao de conteudo operacional (templates, idioma padrao, textos de aviso) deve viver no banco e nao em env.
+5. Proibido criar duas variaveis por template de mensagem quando a quantidade
+   puder crescer.
+6. Configuracao de conteudo operacional (templates, idioma padrao, textos de
+   aviso) deve viver no banco e nao em env.
 
 ## 13) Referencias canonicas deste plano
 
@@ -744,31 +888,38 @@ Regra operacional deste programa:
 1. Migration aplicada em local e remoto:
    - `supabase/migrations/20260302015802_enterprise_tenant_dynamic_clients_canonicalization.sql`
 2. Entregas desta migration:
-   - adiciona colunas de configuracao operacional por tenant em `settings` (timezone, flags e templates de automacao);
+   - adiciona colunas de configuracao operacional por tenant em `settings`
+     (timezone, flags e templates de automacao);
    - faz backfill de `clients.birth_date` a partir de `clients.data_nascimento`;
-   - migra dados legados para tabelas canonicas `client_phones`, `client_emails`, `client_addresses`;
+   - migra dados legados para tabelas canonicas `client_phones`,
+     `client_emails`, `client_addresses`;
    - remove defaults hardcoded de `tenant_id`;
    - ajusta policy com hardcode de tenant para condicao por role apropriada.
 
 ### 15.2 Tenant dinamico (execucao parcial avancada)
 
-1. `apps/web/lib/tenant-context.ts` passou a suportar fallback de tenant por env:
+1. `apps/web/lib/tenant-context.ts` passou a suportar fallback de tenant por
+   env:
    - `DEFAULT_TENANT_ID`
    - `NEXT_PUBLIC_DEFAULT_TENANT_ID`
 2. Páginas principais do dashboard passaram a usar tenant da sessao autenticada.
-3. Acoes principais de dashboard (clientes/servicos/configuracoes/bloqueios/novo) passaram a usar `tenantId` da sessao.
+3. Acoes principais de dashboard
+   (clientes/servicos/configuracoes/bloqueios/novo) passaram a usar `tenantId`
+   da sessao.
 4. Fluxo de atendimento teve propagacao de `tenantId` nos modulos de:
    - comunicacao;
    - checkout financeiro;
    - pagamento;
    - timer;
    - checklist/evolucao.
-5. Operacoes de ciclo de agendamento/admin tambem foram preparadas para receber tenant por parametro.
+5. Operacoes de ciclo de agendamento/admin tambem foram preparadas para receber
+   tenant por parametro.
 
 ### 15.3 Canonicalizacao de clientes
 
 1. Validacao e persistencia migradas para `birth_date`.
-2. Fallback de leitura de `data_nascimento` mantido nas actions para transicao sem quebra.
+2. Fallback de leitura de `data_nascimento` mantido nas actions para transicao
+   sem quebra.
 
 ### 15.4 Tooling
 
@@ -789,25 +940,31 @@ Regra operacional deste programa:
 
 1. Realtime ativado em fluxos operacionais:
    - agenda (`apps/web/components/mobile-agenda.screen.tsx`)
-   - atendimento (`apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx`)
+   - atendimento
+     (`apps/web/app/(dashboard)/atendimento/[id]/attendance-page.tsx`)
 2. Criação de borda Edge para integrações assíncronas:
    - `supabase/functions/whatsapp-automation-processor/index.ts`
    - `supabase/functions/whatsapp-meta-webhook/index.ts`
    - `supabase/functions/mercadopago-webhook-proxy/index.ts`
    - `supabase/functions/README.md`
-3. Templates e idioma da automação WhatsApp com resolução por tenant via `settings`:
-   - novo módulo `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
-   - consumo aplicado em `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
+3. Templates e idioma da automação WhatsApp com resolução por tenant via
+   `settings`:
+   - novo módulo
+     `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
+   - consumo aplicado em
+     `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
 4. Convergência de configuração de ambiente:
    - `apps/web/src/shared/env/server-env.ts`
    - `apps/web/src/shared/env/public-env.ts`
-   - uso consolidado em `apps/web/lib/supabase/client.ts`, `apps/web/lib/supabase/server.ts`, `apps/web/lib/supabase/service.ts`
+   - uso consolidado em `apps/web/lib/supabase/client.ts`,
+     `apps/web/lib/supabase/server.ts`, `apps/web/lib/supabase/service.ts`
 
 ### 15.7 Fechamento estrutural final (2026-03-02)
 
 1. Tenant fallback legado removido do runtime:
    - `apps/web/lib/tenant-context.ts` removido.
-   - `apps/web/src/modules/auth/dashboard-access.ts` sem bootstrap por tenant fixo.
+   - `apps/web/src/modules/auth/dashboard-access.ts` sem bootstrap por tenant
+     fixo.
 2. Migração total de templates/idioma/local da automação WhatsApp para banco:
    - `apps/web/src/modules/notifications/tenant-whatsapp-settings.ts`
    - `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`

@@ -1,12 +1,15 @@
 # `apps/web` — App Web (Next.js App Router)
 
-Aplicação principal do projeto (dashboard interno + fluxos públicos + APIs do App Router).
+Aplicação principal do projeto (dashboard interno + fluxos públicos + APIs do
+App Router).
 
 ## Escopo
 
-- Dashboard interno do estúdio (agenda, clientes, atendimento, caixa, mensagens, configurações)
+- Dashboard interno do estúdio (agenda, clientes, atendimento, caixa, mensagens,
+  configurações)
 - Fluxos públicos (`/agendar/[slug]`, voucher, comprovantes, páginas legais)
-- APIs internas em `app/api/*` (pagamentos, WhatsApp/Meta, cron, Spotify, utilidades)
+- APIs internas em `app/api/*` (pagamentos, WhatsApp/Meta, cron, Spotify,
+  utilidades)
 - Auth do dashboard via Supabase (Google OAuth + fallback DEV opcional)
 
 ## Stack (app)
@@ -31,15 +34,19 @@ pnpm --filter web build
 
 ## Auth do Dashboard (resumo)
 
-- Login principal: Google OAuth via Supabase (`/auth/login` -> `/auth/google` -> `/auth/callback`)
+- Login principal: Google OAuth via Supabase (`/auth/login` -> `/auth/google` ->
+  `/auth/callback`)
 - Logout: `/auth/logout`
-- Fallback DEV/local (opcional): `/auth/dev-login` quando `DEV_PASSWORD_LOGIN_ENABLED=true`
+- Fallback DEV/local (opcional): `/auth/dev-login` quando
+  `DEV_PASSWORD_LOGIN_ENABLED=true`
 - Controle de acesso por tabela `dashboard_access_users`
 
 ### Sessão / persistência
 
-- O app usa `apps/web/proxy.ts` (Next 16 Proxy) para refresh de sessão/cookies do Supabase SSR durante navegação.
-- Isso reduz reautenticação frequente no painel, principalmente em uso mobile/PWA.
+- O app usa `apps/web/proxy.ts` (Next 16 Proxy) para refresh de sessão/cookies
+  do Supabase SSR durante navegação.
+- Isso reduz reautenticação frequente no painel, principalmente em uso
+  mobile/PWA.
 
 ## Layout/UI (padrão)
 
@@ -55,10 +62,13 @@ pnpm --filter web build
 
 ## Integrações (ver docs)
 
-- Mercado Pago (Orders API + webhook): `docs/integrations/INTEGRATIONS_TECNICO.md`
-- WhatsApp/Meta automação + webhook + cron: `docs/integrations/INTEGRATIONS_TECNICO.md`
+- Mercado Pago (Orders API + webhook):
+  `docs/integrations/INTEGRATIONS_TECNICO.md`
+- WhatsApp/Meta automação + webhook + cron:
+  `docs/integrations/INTEGRATIONS_TECNICO.md`
 - Spotify (OAuth + player): `docs/integrations/INTEGRATIONS_TECNICO.md`
 
 ## Observação
 
-Para setup do monorepo, versões, comandos globais e operação local (Windows), use o `README.md` da raiz e `MANUAL_RAPIDO.md`.
+Para setup do monorepo, versões, comandos globais e operação local (Windows),
+use o `README.md` da raiz e `MANUAL_RAPIDO.md`.

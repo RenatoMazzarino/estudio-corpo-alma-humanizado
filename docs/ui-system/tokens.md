@@ -3,9 +3,11 @@
 Origem: Auditoria Visual PDF + HTMLs.
 
 Arquivo de referência real:
+
 - `apps/web/app/globals.css`
 
 Tokens principais:
+
 - `--color-studio-bg` (paper) `#FAF9F6`
 - `--color-studio-green` `#5D6E56`
 - `--color-studio-green-dark` `#495744`
@@ -22,9 +24,11 @@ Tokens principais:
 - `--color-dom-strong` `#8F7483`
 
 Sombras:
+
 - `--shadow-soft` (cards/headers)
 - `--shadow-float` (FAB/overlays)
 
 Fontes:
+
 - `--font-sans` = Lato
 - `--font-serif` = Playfair Display

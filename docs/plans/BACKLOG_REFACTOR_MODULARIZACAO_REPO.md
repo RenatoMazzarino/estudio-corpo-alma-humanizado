@@ -3,9 +3,11 @@
 Status: ativo  
 Versao: 2026-02-27  
 Escopo: repositorio completo (nao apenas commits recentes)  
-Consolidacao: este documento unifica o backlog de modularizacao + a auditoria de producao de `docs/reports/AUDITORIA_MAIN_PROD_2026-02-27.md`.
+Consolidacao: este documento unifica o backlog de modularizacao + a auditoria de
+producao de `docs/reports/AUDITORIA_MAIN_PROD_2026-02-27.md`.
 
 Nota de leitura (2026-03-03):
+
 1. Este backlog preserva snapshots históricos de execução.
 2. Para estado técnico atual (hotspots, validação e fechamento), priorize:
    - `docs/plans/PLANO_E2E_ENTERPRISE_REPO_COMPLETO_2026-03-01.md`
@@ -16,26 +18,41 @@ Nota de leitura (2026-03-03):
 
 Blocos ja executados na `main` (com gate completo em cada bloco):
 
-1. extração de etapas/modais do fluxo público de agendamento (`booking-flow`) para componentes dedicados;
-2. extração de hook de localização/endereço do agendamento público (`use-public-booking-location`);
+1. extração de etapas/modais do fluxo público de agendamento (`booking-flow`)
+   para componentes dedicados;
+2. extração de hook de localização/endereço do agendamento público
+   (`use-public-booking-location`);
 3. extração do client de transporte Meta (`whatsapp-meta-client`);
 4. extração de processadores de webhook Meta em módulos separados:
-  - `whatsapp-webhook-status.ts`
-  - `whatsapp-webhook-inbound.ts`
-5. extração de módulos Mercado Pago:
-  - `mercadopago-access-token.ts`
-  - `mercadopago-point-devices.ts`
-6. extração de helpers do `mobile-agenda` para arquivo dedicado testável.
-7. extração de operações administrativas do domínio de agendamentos para `src/modules/appointments/admin-operations.ts`;
-8. extração de ações de cronômetro de atendimento para `src/modules/attendance/timer-actions.ts`;
-9. extração dos dialogs do `appointment-details-sheet` para componentes dedicados;
-10. extração de painéis do `attendance-payment-modal`:
-  - `attendance-payment-composition-panel.tsx`
-  - `attendance-payment-success-panel.tsx`
-11. extração da seção de visão diária da agenda mobile para `mobile-agenda-day-section.tsx`;
-12. extração da etapa financeira do agendamento interno para `appointment-finance-step.tsx`.
-13. extração de ações de comunicação de atendimento para `src/modules/attendance/communication-actions.ts`;
-14. extração de ações de ciclo de vida de agendamento para `src/modules/appointments/lifecycle-operations.ts`.
+
+- `whatsapp-webhook-status.ts`
+- `whatsapp-webhook-inbound.ts`
+
+1. extração de módulos Mercado Pago:
+
+- `mercadopago-access-token.ts`
+- `mercadopago-point-devices.ts`
+
+1. extração de helpers do `mobile-agenda` para arquivo dedicado testável.
+2. extração de operações administrativas do domínio de agendamentos para
+   `src/modules/appointments/admin-operations.ts`;
+3. extração de ações de cronômetro de atendimento para
+   `src/modules/attendance/timer-actions.ts`;
+4. extração dos dialogs do `appointment-details-sheet` para componentes
+   dedicados;
+5. extração de painéis do `attendance-payment-modal`:
+
+- `attendance-payment-composition-panel.tsx`
+- `attendance-payment-success-panel.tsx`
+
+1. extração da seção de visão diária da agenda mobile para
+   `mobile-agenda-day-section.tsx`;
+2. extração da etapa financeira do agendamento interno para
+   `appointment-finance-step.tsx`.
+3. extração de ações de comunicação de atendimento para
+   `src/modules/attendance/communication-actions.ts`;
+4. extração de ações de ciclo de vida de agendamento para
+   `src/modules/appointments/lifecycle-operations.ts`.
 
 Snapshot atual de hotspots (linhas):
 
@@ -45,18 +62,22 @@ Snapshot atual de hotspots (linhas):
 4. `apps/web/components/agenda/appointment-details-sheet.tsx`: `1118`
 5. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1068`
 6. `apps/web/src/modules/appointments/actions.ts`: `947`
-7. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`: `1006`
+7. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`:
+   `1006`
 8. `apps/web/src/modules/notifications/whatsapp-automation.ts`: `920`
 9. `apps/web/src/modules/payments/mercadopago-orders.ts`: `920`
 
 ## 1) Objetivo de negocio e engenharia
 
-Transformar o repo para padrao enterprise, com modularizacao real por responsabilidade, previsibilidade de mudancas e menor risco de regressao em producao.
+Transformar o repo para padrao enterprise, com modularizacao real por
+responsabilidade, previsibilidade de mudancas e menor risco de regressao em
+producao.
 
 Nao e apenas quebrar arquivo grande em varios pequenos. O alvo e:
 
 1. Fronteiras de modulo claras.
-2. Fluxos previsiveis de dados (UI -> aplicacao -> dominio -> persistencia/adapters).
+2. Fluxos previsiveis de dados (UI -> aplicacao -> dominio ->
+   persistencia/adapters).
 3. Menos acoplamento e menos duplicacao de regra.
 4. Evolucao segura sem big-bang.
 5. Base tecnica que passe auditoria de engenharia de empresa grande.
@@ -85,7 +106,8 @@ Hotspots de tamanho (linhas):
 6. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`: `1414`
 7. `apps/web/src/modules/appointments/actions.ts`: `1313`
 8. `apps/web/components/agenda/appointment-details-sheet.tsx`: `1285`
-9. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`: `1230`
+9. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`:
+   `1230`
 
 Distribuicao de linhas por area (app):
 
@@ -100,18 +122,24 @@ Distribuicao de linhas por area (app):
 Evidencias:
 
 1. `apps/web/app/(dashboard)/novo/appointment-form.tsx`
+
 - 4260 linhas
 - 43 `useState`, 17 `useEffect`, 24 `useMemo`, 7 `useCallback`
-- mistura: formulario, regras de negocio, estado de pagamento, disponibilidade, criacao de cliente, modal, toasts
+- mistura: formulario, regras de negocio, estado de pagamento, disponibilidade,
+  criacao de cliente, modal, toasts
 
-2. `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
+1. `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
+
 - 3105 linhas
 - 34 `useState`, 17 `useEffect`
-- mistura: identificacao, seguranca anti-enumeracao, disponibilidade, endereco, pagamento, voucher
+- mistura: identificacao, seguranca anti-enumeracao, disponibilidade, endereco,
+  pagamento, voucher
 
-3. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`
+1. `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`
+
 - 1230 linhas
-- fluxo de checkout + regras de desconto + UX de pagamento + acoes de pos-pagamento no mesmo componente
+- fluxo de checkout + regras de desconto + UX de pagamento + acoes de
+  pos-pagamento no mesmo componente
 
 Impacto:
 
@@ -124,24 +152,31 @@ Impacto:
 Evidencias:
 
 1. `apps/web/app/(dashboard)/atendimento/[id]/actions.ts`
+
 - 1414 linhas
 - 29 `export async function`
 - 21 chamadas `createServiceClient`
 - mistura: sessao, checkout, pagamentos, mensagens, IA, status financeiro
 
-2. `apps/web/src/modules/appointments/actions.ts`
+1. `apps/web/src/modules/appointments/actions.ts`
+
 - 1313 linhas
 - 10 `export async function`
 - 58 leituras de `formData.get(...)`
-- mistura: validacao, composicao de fluxo, persistencia, integracoes e notificacoes
+- mistura: validacao, composicao de fluxo, persistencia, integracoes e
+  notificacoes
 
-3. `apps/web/src/modules/notifications/whatsapp-automation.ts`
+1. `apps/web/src/modules/notifications/whatsapp-automation.ts`
+
 - 1625 linhas
-- queue + envio + template + webhook status + webhook inbound + retries + poller local
+- queue + envio + template + webhook status + webhook inbound + retries + poller
+  local
 
-4. `apps/web/src/modules/payments/mercadopago-orders.ts`
+1. `apps/web/src/modules/payments/mercadopago-orders.ts`
+
 - 1424 linhas
-- regras de valor, idempotencia, adaptacao de payload, polling, normalizacao de status, operacoes pix/card/point
+- regras de valor, idempotencia, adaptacao de payload, polling, normalizacao de
+  status, operacoes pix/card/point
 
 Impacto:
 
@@ -153,26 +188,32 @@ Impacto:
 
 Observacoes:
 
-1. Parte da logica de dominio ainda esta na camada `app/*` (acoes/rotas) em vez de ficar concentrada em `src/modules/*`.
+1. Parte da logica de dominio ainda esta na camada `app/*` (acoes/rotas) em vez
+   de ficar concentrada em `src/modules/*`.
 2. Existem pontos com cast amplo (`as unknown as`) em fluxos criticos.
-3. Regras de normalizacao (CPF/CEP/telefone) aparecem repetidas em varios lugares.
+3. Regras de normalizacao (CPF/CEP/telefone) aparecem repetidas em varios
+   lugares.
 
 Evidencias de duplicacao:
 
 1. `formatCpf` em:
-  - `apps/web/app/(dashboard)/novo/appointment-form.tsx`
-  - `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
-  - `apps/web/app/(dashboard)/clientes/novo/page.tsx`
-2. `normalizeCpfDigits` em:
-  - `apps/web/app/(dashboard)/novo/appointment-form.tsx`
-  - `apps/web/app/(dashboard)/novo/appointment-actions.ts`
-  - `apps/web/src/modules/clients/repository.ts`
+
+- `apps/web/app/(dashboard)/novo/appointment-form.tsx`
+- `apps/web/app/(public)/agendar/[slug]/booking-flow.tsx`
+- `apps/web/app/(dashboard)/clientes/novo/page.tsx`
+
+1. `normalizeCpfDigits` em:
+
+- `apps/web/app/(dashboard)/novo/appointment-form.tsx`
+- `apps/web/app/(dashboard)/novo/appointment-actions.ts`
+- `apps/web/src/modules/clients/repository.ts`
 
 ## 3.4 Acoplamento de imports e navegacao estrutural
 
 Sinal de acoplamento por caminho relativo profundo:
 
-- diversos imports com `../../../../` e `../../../../../` em `app/*` e `src/modules/*`.
+- diversos imports com `../../../../` e `../../../../../` em `app/*` e
+  `src/modules/*`.
 
 Impacto:
 
@@ -193,14 +234,16 @@ Pendencias de decisao:
 
 Observacao:
 
-1. endpoint interno `/api/internal/notifications/whatsapp/process` ja exige `Authorization: Bearer`.
+1. endpoint interno `/api/internal/notifications/whatsapp/process` ja exige
+   `Authorization: Bearer`.
 
 ## 3.6 Governanca documental
 
 Situacao:
 
 1. base ativa melhorou, mas ainda coexistem docs legados extensos.
-2. falta rotina formal de “doc drift control” para manter plano, codigo e operacao sincronizados.
+2. falta rotina formal de “doc drift control” para manter plano, codigo e
+   operacao sincronizados.
 
 ## 4) Arquitetura alvo (padrao enterprise)
 
@@ -214,31 +257,34 @@ Situacao:
 
 ## 4.2 Estrutura alvo por feature (padrao)
 
-Para cada feature critica (ex.: internal-booking, attendance-checkout, public-booking, payments-mp, whatsapp-automation):
+Para cada feature critica (ex.: internal-booking, attendance-checkout,
+public-booking, payments-mp, whatsapp-automation):
 
 1. `domain/`  
-  regras, tipos de negocio, calculos
+   regras, tipos de negocio, calculos
 2. `application/`  
-  casos de uso e orquestracao
+   casos de uso e orquestracao
 3. `infrastructure/`  
-  adapters externos (Supabase, MP, Meta)
+   adapters externos (Supabase, MP, Meta)
 4. `ui/`  
-  componentes visuais puros
+   componentes visuais puros
 5. `hooks/`  
-  estado/efeitos de tela
+   estado/efeitos de tela
 6. `actions/`  
-  server actions finas que delegam ao application
+   server actions finas que delegam ao application
 
 ## 4.3 Guardrails tecnicos obrigatorios
 
 1. Limites de arquivo (soft cap):
-  - UI componente: 350 linhas
-  - hook: 250 linhas
-  - action/orquestrador: 450 linhas
-  - excecao apenas com ADR curto no PR
-2. Sem regra de negocio critica em componente visual.
-3. Sem `as unknown as` em fluxo financeiro sem justificativa e teste.
-4. Regras de formatacao/normalizacao centralizadas em `src/shared`.
+
+- UI componente: 350 linhas
+- hook: 250 linhas
+- action/orquestrador: 450 linhas
+- excecao apenas com ADR curto no PR
+
+1. Sem regra de negocio critica em componente visual.
+2. Sem `as unknown as` em fluxo financeiro sem justificativa e teste.
+3. Regras de formatacao/normalizacao centralizadas em `src/shared`.
 
 ## 5) Plano de correcao detalhado e completo
 
@@ -250,7 +296,8 @@ Tarefas:
 
 1. Definir guideline de modularizacao e naming.
 2. Criar checklist de PR arquitetural.
-3. Adicionar lint rule de fronteira (ou script de verificacao de imports proibidos).
+3. Adicionar lint rule de fronteira (ou script de verificacao de imports
+   proibidos).
 4. Padronizar path aliases para reduzir `../../../../`.
 
 Saida:
@@ -368,7 +415,8 @@ Quebra sugerida:
 
 ## Fase 7 - Refatoracao de agenda e detalhes
 
-Objetivo: reduzir acoplamento entre visualizacao da agenda e detalhes operacionais.
+Objetivo: reduzir acoplamento entre visualizacao da agenda e detalhes
+operacionais.
 
 Escopo:
 
@@ -429,14 +477,19 @@ Obrigatorio em cada bloco:
 ## 8) Decisoes que ainda dependem de voce
 
 1. Privacidade do passo “Quem e voce” no agendamento online:
-  - manter UX atual
-  - ou resposta neutra para reduzir enumeracao
-2. Proteger `GET /api/internal/notifications/whatsapp/process` com bearer:
-  - sim
-  - nao
-3. Limite de rigidez para tamanho de arquivo:
-  - aplicar como regra bloqueante
-  - aplicar como alerta de arquitetura
+
+- manter UX atual
+- ou resposta neutra para reduzir enumeracao
+
+1. Proteger `GET /api/internal/notifications/whatsapp/process` com bearer:
+
+- sim
+- nao
+
+1. Limite de rigidez para tamanho de arquivo:
+
+- aplicar como regra bloqueante
+- aplicar como alerta de arquitetura
 
 ## 9) Riscos e mitigacao
 
@@ -451,7 +504,8 @@ Mitigacao:
 1. refatoracao por fatias pequenas
 2. manter contrato de I/O estavel por fase
 3. teste de smoke apos cada bloco
-4. nao misturar refatoracao estrutural com mudanca de regra de negocio no mesmo PR
+4. nao misturar refatoracao estrutural com mudanca de regra de negocio no mesmo
+   PR
 
 ## 10) Proximo passo recomendado de execucao
 

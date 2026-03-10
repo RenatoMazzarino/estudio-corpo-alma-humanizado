@@ -3,22 +3,26 @@
 Data de referência: 2026-02-25  
 Escopo: `apps/web` + banco Supabase + integrações externas
 
-Este documento é técnico (arquitetura, endpoints, variáveis, segurança e comportamento atual).  
-Para operação do dia a dia e checklists de painel, usar `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`.
+Este documento é técnico (arquitetura, endpoints, variáveis, segurança e
+comportamento atual).  
+Para operação do dia a dia e checklists de painel, usar
+`docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`.
 
 ## Regra de leitura (fonte de verdade)
 
 1. Código atual (`apps/web`, `supabase/migrations`)
-2. Configuração real de ambiente/deploy (Vercel, Supabase, Meta, Mercado Pago, Spotify)
+2. Configuração real de ambiente/deploy (Vercel, Supabase, Meta, Mercado Pago,
+   Spotify)
 3. Este documento
 
 Em conflito com o código, o código vence.
 
 ## 1) Supabase (dados + auth do dashboard)
 
-### Uso atual
+### Uso atual (Supabase)
 
-- Persistência principal do produto (agenda, clientes, atendimento, pagamentos, settings, notificações).
+- Persistência principal do produto (agenda, clientes, atendimento, pagamentos,
+  settings, notificações).
 - Auth do dashboard via Supabase (Google OAuth + fallback DEV opcional).
 - Controle de acesso por tabela `dashboard_access_users`.
 - Reconciliação de pagamentos Mercado Pago e logs/eventos de automação WhatsApp.
@@ -27,9 +31,10 @@ Em conflito com o código, o código vence.
 
 - Rotas de login/logout/callback em `apps/web/app/auth/*`
 - Guards de dashboard em `apps/web/src/modules/auth/*`
-- Refresh de sessão SSR via `apps/web/proxy.ts` (Next 16 Proxy), reduzindo re-login frequente
+- Refresh de sessão SSR via `apps/web/proxy.ts` (Next 16 Proxy), reduzindo
+  re-login frequente
 
-### Arquivos-chave
+### Arquivos-chave (Supabase)
 
 - `apps/web/lib/supabase/*.ts`
 - `apps/web/src/modules/**/repository.ts`
@@ -37,7 +42,7 @@ Em conflito com o código, o código vence.
 - `apps/web/proxy.ts`
 - `supabase/migrations/*.sql`
 
-### Variáveis necessárias
+### Variáveis necessárias (Supabase)
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -47,7 +52,7 @@ Em conflito com o código, o código vence.
 
 ## 2) Google Maps Platform (endereços / deslocamento)
 
-### Uso atual
+### Uso atual (Google Maps)
 
 - Busca de endereço por texto:
   - `GET /api/address-search`
@@ -56,7 +61,7 @@ Em conflito com o código, o código vence.
 - Distância/taxa de deslocamento:
   - `POST /api/displacement-fee`
 
-### Arquivos-chave
+### Arquivos-chave (Google Maps)
 
 - `apps/web/app/api/address-search/route.ts`
 - `apps/web/app/api/address-details/route.ts`
@@ -67,16 +72,18 @@ Em conflito com o código, o código vence.
 ### APIs GCP requeridas
 
 - Places API (Autocomplete / Place Details) - obrigatória
-- Routes API e/ou Distance Matrix (conforme estratégia/fallback do módulo de deslocamento)
+- Routes API e/ou Distance Matrix (conforme estratégia/fallback do módulo de
+  deslocamento)
 
-### Variáveis necessárias
+### Variáveis necessárias (Google Maps)
 
 - `GOOGLE_MAPS_API_KEY`
 - `DISPLACEMENT_ORIGIN_ADDRESS` (opcional; fallback/default em código)
 
 ### Failover implementado
 
-- Em falha do Google, `/api/displacement-fee` retorna taxa mínima provisória (`source: "fallback_minimum"`) para não quebrar o fluxo público.
+- Em falha do Google, `/api/displacement-fee` retorna taxa mínima provisória
+  (`source: "fallback_minimum"`) para não quebrar o fluxo público.
 
 ---
 
@@ -87,9 +94,10 @@ Em conflito com o código, o código vence.
 - Modelo oficial do projeto: `Checkout Transparente`
 - Implementação adotada: `Orders API` + webhook interno
 - `Checkout Pro` está fora de escopo e não deve ser usado neste repo
-- Quando a doc do MP citar `Checkout API (Orders)`, neste projeto isso representa o fluxo do checkout transparente
+- Quando a doc do MP citar `Checkout API (Orders)`, neste projeto isso
+  representa o fluxo do checkout transparente
 
-### Uso atual
+### Uso atual (Mercado Pago)
 
 - Criação de cobrança (Pix/cartão) no fluxo público e atendimento
 - Reconciliação assíncrona por webhook:
@@ -103,16 +111,17 @@ Em conflito com o código, o código vence.
 ### Estratégia de atualização de status (atual)
 
 - Fonte principal de confirmação: webhook Mercado Pago (`payment`/`order`)
-- O fluxo Pix também pode usar sincronização complementar por consulta à Orders API no checkout/modal para reduzir atraso visual de atualização de status
+- O fluxo Pix também pode usar sincronização complementar por consulta à Orders
+  API no checkout/modal para reduzir atraso visual de atualização de status
 
-### Arquivos-chave
+### Arquivos-chave (Mercado Pago)
 
 - `apps/web/app/api/mercadopago/webhook/route.ts`
 - `apps/web/app/(public)/agendar/[slug]/public-actions/payments.ts`
 - `apps/web/src/modules/payments/mercadopago-orders.ts`
 - `apps/web/app/(dashboard)/atendimento/[id]/components/attendance-payment-modal.tsx`
 
-### Variáveis necessárias
+### Variáveis necessárias (Mercado Pago)
 
 - `MERCADOPAGO_ACCESS_TOKEN`
 - `MERCADOPAGO_PUBLIC_KEY`
@@ -138,17 +147,20 @@ Em conflito com o código, o código vence.
 
 - A automação **coexiste** com o fluxo manual (não substitui o manual).
 - O envio manual por WhatsApp continua disponível.
-- A automação opera por fila + processador + webhook + painel operacional `Mensagens`.
+- A automação opera por fila + processador + webhook + painel operacional
+  `Mensagens`.
 
 ### Funcionalidades implementadas (repo atual)
 
 - Fila de jobs de automação (`notification_jobs`)
-- Outbox de eventos e dispatcher (`notification_event_outbox`, `notification_dispatch_logs`, `notification_dead_letter_queue`)
+- Outbox de eventos e dispatcher (`notification_event_outbox`,
+  `notification_dispatch_logs`, `notification_dead_letter_queue`)
 - Processador de jobs de WhatsApp
 - Meta Cloud API como provider (`meta_cloud`)
 - Webhook Meta:
   - `GET /api/whatsapp/meta/webhook` (verify)
-  - `POST /api/whatsapp/meta/webhook` (events `messages` + status/qualidade/categoria de template)
+  - `POST /api/whatsapp/meta/webhook` (events `messages` +
+    status/qualidade/categoria de template)
 - Status reais no painel:
   - `sent`, `delivered`, `read`, `failed`
 - Cron endpoint para lembretes 24h:
@@ -156,7 +168,8 @@ Em conflito com o código, o código vence.
 - Cron endpoint para dispatcher de eventos:
   - `GET /api/cron/event-dispatcher` (Bearer `CRON_SECRET`)
 - Endpoint interno de processamento:
-  - `GET|POST /api/internal/notifications/whatsapp/process` (Bearer `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`)
+  - `GET|POST /api/internal/notifications/whatsapp/process` (Bearer
+    `WHATSAPP_AUTOMATION_PROCESSOR_SECRET`)
 - Endpoint interno de dispatcher:
   - `GET|POST /api/internal/events/dispatch` (Bearer `EVENT_DISPATCHER_SECRET`)
 
@@ -187,14 +200,17 @@ Em conflito com o código, o código vence.
 
 - `appointment_created` (template)
 - `appointment_reminder` (template, processado por cron/scheduler)
-- `appointment_canceled` (mensagem livre/session, apenas com janela 24h aberta e checkbox marcado no cancelamento)
+- `appointment_canceled` (mensagem livre/session, apenas com janela 24h aberta e
+  checkbox marcado no cancelamento)
 
 ### Regras importantes de operação (atuais)
 
 - Pode rodar em modo seguro (teste) com destinatário forçado:
   - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
-- Em DEV e até em PROD (piloto), é válido manter envio apontado para número de teste
-- O template de `appointment_created` agora é escolhido por regra de negócio com base em:
+- Em DEV e até em PROD (piloto), é válido manter envio apontado para número de
+  teste
+- O template de `appointment_created` agora é escolhido por regra de negócio com
+  base em:
   - local do atendimento (`is_home_visit`)
   - estado financeiro do agendamento (total vs pago)
   - preferência de intro (`com_flora`/`sem_oi_flora`)
@@ -202,12 +218,14 @@ Em conflito com o código, o código vence.
   - primeira automação para a cliente: `com_flora`
   - após apresentação prévia: `sem_oi_flora`
   - reapresenta `com_flora` após 180 dias sem automação enviada
-- Se a variante preferida estiver `in_review`, o sistema tenta fallback para a variante oposta do mesmo cenário.
-- Se não houver template ativo para aquele cenário, o envio falha com erro explícito e auditável.
+- Se a variante preferida estiver `in_review`, o sistema tenta fallback para a
+  variante oposta do mesmo cenário.
+- Se não houver template ativo para aquele cenário, o envio falha com erro
+  explícito e auditável.
 - Janela 24h (regra atual) para cancelamento automático:
   - inferida por inbound correlacionado ao agendamento nas últimas 24h
 
-### Arquivos-chave
+### Arquivos-chave (WhatsApp)
 
 - `apps/web/src/modules/notifications/automation-config.ts`
 - `apps/web/src/modules/notifications/whatsapp-automation-runtime.ts`
@@ -238,15 +256,20 @@ Em conflito com o código, o código vence.
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_TEST_RECIPIENT`
 - `WHATSAPP_AUTOMATION_META_API_VERSION`
-- `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline para considerar histórico da regra de intro Flora)
+- `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` (opcional; baseline para considerar
+  histórico da regra de intro Flora)
 
 Semântica do baseline:
-- histórico de automação anterior ao timestamp informado em `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` não é considerado.
-- isso permite "reset lógico" da apresentação da Flora sem apagar dados históricos do banco.
+
+- histórico de automação anterior ao timestamp informado em
+  `WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE` não é considerado.
+- isso permite "reset lógico" da apresentação da Flora sem apagar dados
+  históricos do banco.
 
 #### Templates e canal por ambiente (canônico no banco)
 
 Campos legados de template em `settings` (mantidos por compatibilidade):
+
 - `whatsapp_template_created_name`
 - `whatsapp_template_created_language`
 - `whatsapp_template_reminder_name`
@@ -255,16 +278,24 @@ Campos legados de template em `settings` (mantidos por compatibilidade):
 - `whatsapp_studio_location_line`
 
 Observação importante:
-- `appointment_created` e `appointment_reminder` são selecionados por regra de negócio + catálogo.
-- os campos `whatsapp_template_*` em `settings` funcionam como fallback operacional, não como orquestrador principal da seleção.
+
+- `appointment_created` e `appointment_reminder` são selecionados por regra de
+  negócio + catálogo.
+- os campos `whatsapp_template_*` em `settings` funcionam como fallback
+  operacional, não como orquestrador principal da seleção.
 
 Canal oficial por ambiente:
+
 - tabela `whatsapp_environment_channels`
-- define perfil ativo por ambiente, política de destino, remetente e allowlist de templates.
+- define perfil ativo por ambiente, política de destino, remetente e allowlist
+  de templates.
 
 Catálogo oficial de templates:
-- tabela `notification_templates` (sincronizada pela biblioteca local + eventos webhook da Meta).
-- campos de status/qualidade/categoria (`status`, `quality`, `category`, `language_code`, `provider_template_id`).
+
+- tabela `notification_templates` (sincronizada pela biblioteca local + eventos
+  webhook da Meta).
+- campos de status/qualidade/categoria (`status`, `quality`, `category`,
+  `language_code`, `provider_template_id`).
 - a seleção de template no envio usa esse catálogo como estado principal.
 
 #### Webhook / assinatura
@@ -287,6 +318,7 @@ Catálogo oficial de templates:
 - `ONESIGNAL_REST_API_KEY`
 
 Observação:
+
 - Não usamos templates pré-cadastrados de OneSignal neste projeto.
 - O payload push é montado no backend com base no evento de domínio.
 - Endpoint de validação operacional disponível em sessão de dashboard:
@@ -295,15 +327,17 @@ Observação:
 
 #### Localização (fallback de operação)
 
-- `DISPLACEMENT_ORIGIN_ADDRESS` (fallback de linha de estúdio quando setting não estiver preenchida)
+- `DISPLACEMENT_ORIGIN_ADDRESS` (fallback de linha de estúdio quando setting não
+  estiver preenchida)
 
 ---
 
 ## 5) Spotify (OAuth + estado/controle de player)
 
-### Uso atual
+### Uso atual (Spotify)
 
-- Integração no dashboard (configurações / atendimento) para conectar conta Spotify
+- Integração no dashboard (configurações / atendimento) para conectar conta
+  Spotify
 - Consulta de estado do player e controle (`play`, `pause`, `next`, `previous`)
 - Persistência de tokens/estado nas settings do tenant da sessão atual
 
@@ -319,7 +353,7 @@ Observação:
 - Sessão/autorização do dashboard
 - Guard de origem same-origin para requests interativos
 
-### Variáveis necessárias
+### Variáveis necessárias (Spotify)
 
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
@@ -329,7 +363,7 @@ Observação:
 
 - `NEXT_PUBLIC_ATTENDANCE_SPOTIFY_PLAYLIST_URL`
 
-### Arquivos-chave
+### Arquivos-chave (Spotify)
 
 - `apps/web/src/modules/integrations/spotify/server.ts`
 - `apps/web/src/modules/integrations/spotify/http-guards.ts`
@@ -355,6 +389,7 @@ Observação:
   - `https://public.corpoealmahumanizado.com.br/api/mercadopago/webhook`
 
 Regras:
+
 - endpoint público (server-to-server)
 - sem autenticação extra
 - assinatura HMAC ativa
@@ -363,41 +398,50 @@ Regras:
 
 - Callback configurado no app:
   - `GET|POST /api/whatsapp/meta/webhook`
-- Recomendado validar assinatura (`WHATSAPP_AUTOMATION_META_APP_SECRET`) nos ambientes ativos
+- Recomendado validar assinatura (`WHATSAPP_AUTOMATION_META_APP_SECRET`) nos
+  ambientes ativos
 
 ### Cron / scheduler (WhatsApp reminder 24h)
 
 - Vercel Hobby: cron frequente não é suficiente para o lembrete 24h
 - Solução atual:
   - endpoint no app (`/api/cron/whatsapp-reminders`)
-  - scheduler via GitHub Actions (`.github/workflows/whatsapp-reminders-cron.yml`) a cada 5 minutos
+  - scheduler via GitHub Actions
+    (`.github/workflows/whatsapp-reminders-cron.yml`) a cada 5 minutos
 
 GitHub Actions (estado atual):
+
 - Job DEV ativo no cron
 - Job PROD protegido por variável `WHATSAPP_CRON_ENABLE_PROD == 'true'`
-- Autenticação por Bearer secret (`WHATSAPP_CRON_DEV_SECRET` / `WHATSAPP_CRON_PROD_SECRET`)
-- O workflow também dispara o endpoint `/api/cron/event-dispatcher` em DEV/PROD para processar o outbox.
+- Autenticação por Bearer secret (`WHATSAPP_CRON_DEV_SECRET` /
+  `WHATSAPP_CRON_PROD_SECRET`)
+- O workflow também dispara o endpoint `/api/cron/event-dispatcher` em DEV/PROD
+  para processar o outbox.
 
 ---
 
 ## 7) Checklist técnico de go-live (integrações)
 
 1. Qualidade
+
 ```powershell
 pnpm lint
 pnpm build
 ```
 
-2. Banco
+1. Banco
+
 - Migrations aplicadas no ambiente alvo
 
-3. Mercado Pago
+1. Mercado Pago
+
 - `MERCADOPAGO_ACCESS_TOKEN` live no ambiente correto
 - `MERCADOPAGO_WEBHOOK_SECRET` configurado
 - Webhook configurado no painel MP com eventos `payment` + `order`
 - Healthcheck `GET /api/mercadopago/webhook` retornando `200`
 
-4. WhatsApp/Meta (piloto/produção)
+1. WhatsApp/Meta (piloto/produção)
+
 - `WHATSAPP_AUTOMATION_META_ACCESS_TOKEN`
 - `WHATSAPP_AUTOMATION_META_PHONE_NUMBER_ID`
 - `WHATSAPP_AUTOMATION_META_WEBHOOK_VERIFY_TOKEN`
@@ -411,7 +455,8 @@ pnpm build
   - `message_template_components_update`
 - `CRON_SECRET` configurado (se reminders automáticos ligados)
 
-5. Spotify (se habilitado)
+1. Spotify (se habilitado)
+
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
 - `SPOTIFY_REDIRECT_URI` conferido (ou callback dinâmica validada)

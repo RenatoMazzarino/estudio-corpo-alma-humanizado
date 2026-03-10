@@ -4,7 +4,8 @@ Data de referência: 2026-03-10
 
 ## Objetivo
 
-Eliminar o cenário de "várias flags espalhadas" para alternar ambientes de automação WhatsApp.
+Eliminar o cenário de "várias flags espalhadas" para alternar ambientes de
+automação WhatsApp.
 
 O padrão oficial passa a ser:
 
@@ -30,7 +31,8 @@ O padrão oficial passa a ser:
    - ideal para homologação controlada
 2. `customer`
    - envia para telefone real da cliente
-   - usa `client_phones` (prioriza `is_whatsapp`, depois `is_primary`) e fallback em `clients.phone`
+   - usa `client_phones` (prioriza `is_whatsapp`, depois `is_primary`) e
+     fallback em `clients.phone`
 
 ## Configuração recomendada por ambiente
 
@@ -46,7 +48,8 @@ O padrão oficial passa a ser:
 
 ## Política de legados
 
-As chaves antigas de modo/roteamento foram descontinuadas e não devem ser usadas.
+As chaves antigas de modo/roteamento foram descontinuadas e não devem ser
+usadas.
 
 ## Auditoria operacional
 
