@@ -14,11 +14,7 @@ interface AppointmentDetailsActiveViewProps {
   mapsHref: string | null;
   attendanceCode: string | null;
   attendanceCodeHint: string | null;
-  createdMessageSent: boolean;
-  createdMessageLabel: string;
   createdAutomationStatusLabel: string;
-  reminderMessageSent: boolean;
-  reminderMessageLabel: string;
   reminderAutomationStatusLabel: string;
   isConfirmed: boolean;
   confirmedText: string;
@@ -42,9 +38,6 @@ interface AppointmentDetailsActiveViewProps {
   paymentMethod: PaymentMethod;
   internalNotes: string;
   onSelectPaymentMethod: (method: PaymentMethod) => void;
-  onSendCreatedMessage: () => void;
-  onSendReminder: () => void;
-  onConfirmClient: () => void;
   onOpenCancelDialog: () => void;
   onSendPaymentCharge: () => void;
   onRecordSignalPayment: () => void;
@@ -64,11 +57,7 @@ export function AppointmentDetailsActiveView({
   mapsHref,
   attendanceCode,
   attendanceCodeHint,
-  createdMessageSent,
-  createdMessageLabel,
   createdAutomationStatusLabel,
-  reminderMessageSent,
-  reminderMessageLabel,
   reminderAutomationStatusLabel,
   isConfirmed,
   confirmedText,
@@ -87,9 +76,6 @@ export function AppointmentDetailsActiveView({
   paymentMethod,
   internalNotes,
   onSelectPaymentMethod,
-  onSendCreatedMessage,
-  onSendReminder,
-  onConfirmClient,
   onOpenCancelDialog,
   onSendPaymentCharge,
   onRecordSignalPayment,
@@ -170,46 +156,28 @@ export function AppointmentDetailsActiveView({
         </div>
 
         <div className="bg-white rounded-2xl border border-line px-4 py-2 shadow-sm">
-          <div className="flex items-center justify-between gap-3 py-3 border-b border-line">
+          <div className="flex items-center gap-3 py-3 border-b border-line">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
                 <Bell className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-studio-text">Aviso de Agendamento</p>
-                <p className="text-[10px] text-muted">{createdMessageLabel}</p>
+                <p className="text-xs font-bold text-studio-text">Aviso de Agendamento (Automático)</p>
                 <p className="text-[10px] text-muted">{createdAutomationStatusLabel}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onSendCreatedMessage}
-              disabled={actionPending}
-              className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-            >
-              {createdMessageSent ? "Reenviar" : "Enviar"}
-            </button>
           </div>
 
-          <div className="flex items-center justify-between gap-3 py-3 border-b border-line">
+          <div className="flex items-center gap-3 py-3 border-b border-line">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-studio-text">Lembrete 24h</p>
-                <p className="text-[10px] text-muted">{reminderMessageLabel}</p>
+                <p className="text-xs font-bold text-studio-text">Lembrete 24h (Automático)</p>
                 <p className="text-[10px] text-muted">{reminderAutomationStatusLabel}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onSendReminder}
-              disabled={actionPending}
-              className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-            >
-              {reminderMessageSent ? "Reenviar" : "Enviar"}
-            </button>
           </div>
 
           <div className="flex items-center justify-between gap-3 py-3">
@@ -225,16 +193,6 @@ export function AppointmentDetailsActiveView({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!isConfirmed && (
-                <button
-                  type="button"
-                  onClick={onConfirmClient}
-                  disabled={actionPending}
-                  className="px-3 py-1.5 border border-studio-green text-studio-green rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-                >
-                  Confirmar
-                </button>
-              )}
               <button
                 type="button"
                 onClick={onOpenCancelDialog}

@@ -2,7 +2,8 @@ import { META_TEMPLATE_PUBLIC_SAMPLE_CODE } from "../../shared/meta-template-dem
 
 export type WhatsAppTemplateLibraryGroup =
   | "appointment_notice_variations"
-  | "appointment_reminder_confirmation_24h";
+  | "appointment_reminder_confirmation_24h"
+  | "appointment_confirmation_reply";
 export type WhatsAppTemplateStatus = "active" | "in_review";
 
 export type WhatsAppTemplateVariableDefinition = {
@@ -38,6 +39,7 @@ export type WhatsAppTemplateDefinition = {
   locale: "pt_BR";
   group: WhatsAppTemplateLibraryGroup;
   name: string;
+  headerText?: string;
   body: string;
   footer: string;
   variables: WhatsAppTemplateVariableDefinition[];
@@ -47,6 +49,7 @@ export type WhatsAppTemplateDefinition = {
 
 const RECEIPT_URL_BASE = "https://public.corpoealmahumanizado.com.br/comprovante/pagamento/";
 const PAYMENT_URL_BASE = "https://public.corpoealmahumanizado.com.br/pagamento/";
+const VOUCHER_URL_BASE = "https://public.corpoealmahumanizado.com.br/voucher/";
 const FOOTER_AUTO_MESSAGE = "Mensagem automática. Não é necessário confirmar.";
 const STATUS_ACTIVE_LABEL = "CRIADO E JÁ ATIVO" as const;
 const STATUS_IN_REVIEW_LABEL = "CRIADO E EM ANÁLISE" as const;
@@ -67,8 +70,17 @@ const PAY_NOW_BUTTON: WhatsAppTemplateButtonDefinition = {
   sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
 };
 
+const VOUCHER_BUTTON: WhatsAppTemplateButtonDefinition = {
+  type: "url_dynamic",
+  buttonText: "VER VOUCHER",
+  urlBase: VOUCHER_URL_BASE,
+  variableName: "voucher_public_id",
+  sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
+};
+
 const RECEIPT_META_TEST_URL = `${RECEIPT_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
 const PAYMENT_META_TEST_URL = `${PAYMENT_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
+const VOUCHER_META_TEST_URL = `${VOUCHER_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
 const REMINDER_META_TEST_URL = "https://public.corpoealmahumanizado.com.br/mensagens";
 const REMINDER_CONFIRMATION_BUTTONS = [
   { id: "confirmar", text: "CONFIRMAR" },
@@ -814,9 +826,66 @@ _Até breve._`,
     },
   ];
 
+export const WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_CONFIRMATION_REPLY: WhatsAppTemplateDefinition[] =
+  [
+    {
+      provider: "meta",
+      status: "active",
+      statusLabel: STATUS_ACTIVE_LABEL,
+      locale: "pt_BR",
+      group: "appointment_confirmation_reply",
+      name: "resposta_confirmacao_estudio",
+      headerText: "Presença Confirmada!",
+      body: `Combinado *{{1}}*, a Jana já preparou tudo com muito carinho e te aguarda amanhã no Estúdio.
+
+Abaixo deixei o seu *Voucher de Atendimento*. Nele você encontra o resumo completo com o seu horário e os cuidados que foram reservados para você.
+
+Até amanhã!👋`,
+      footer: "Mensagem automática. Por favor, não é preciso responder.",
+      variables: [
+        { index: 1, key: "client_name", description: "Nome da cliente", example: "Maria" },
+        {
+          index: 2,
+          key: "voucher_public_id",
+          description: "Identificador público para abrir o voucher do atendimento",
+          example: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
+        },
+      ],
+      button: VOUCHER_BUTTON,
+      metaTestUrl: VOUCHER_META_TEST_URL,
+    },
+    {
+      provider: "meta",
+      status: "in_review",
+      statusLabel: STATUS_IN_REVIEW_LABEL,
+      locale: "pt_BR",
+      group: "appointment_confirmation_reply",
+      name: "resposta_confirmacao_domicilio",
+      headerText: "Presença Confirmada!",
+      body: `Combinado *{{1}}*, a Jana já preparou tudo com muito carinho para o seu momento de cuidado amanhã, no seu endereço.
+
+Abaixo deixei o seu *Voucher de Atendimento*. Nele você encontra o resumo completo com o seu horário e os cuidados que foram reservados para você.
+
+Até amanhã!👋`,
+      footer: "Mensagem automática. Por favor, não é preciso responder.",
+      variables: [
+        { index: 1, key: "client_name", description: "Nome da cliente", example: "Maria" },
+        {
+          index: 2,
+          key: "voucher_public_id",
+          description: "Identificador público para abrir o voucher do atendimento",
+          example: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
+        },
+      ],
+      button: VOUCHER_BUTTON,
+      metaTestUrl: VOUCHER_META_TEST_URL,
+    },
+  ];
+
 export const WHATSAPP_TEMPLATE_LIBRARY: WhatsAppTemplateDefinition[] = [
   ...WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_NOTICE_VARIATIONS,
   ...WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_REMINDER_CONFIRMATION_24H,
+  ...WHATSAPP_TEMPLATE_LIBRARY_APPOINTMENT_CONFIRMATION_REPLY,
 ];
 
 const templateLibraryByName = new Map(

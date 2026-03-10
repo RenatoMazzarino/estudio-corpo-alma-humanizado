@@ -175,8 +175,6 @@ export async function createAppointmentForImmediateCharge(formData: FormData): P
   const payload = cloneFormData(formData);
   payload.set("response_mode", "json");
   payload.set("defer_lifecycle_notifications", "1");
-  payload.set("skip_manual_created_message", "1");
-  payload.set("send_created_message", "");
 
   try {
     const result = await createAppointmentImpl(payload, tenantId);
@@ -313,19 +311,6 @@ export async function finalizeCreatedAppointmentNotifications(input: {
     startTimeIso: input.startTimeIso,
     source: "admin_create_after_payment",
   }, tenantId);
-}
-
-export async function recordManualCreatedMessage(input: {
-  appointmentId: string;
-  message: string;
-}) {
-  await requireDashboardAccessForServerAction();
-  return sendMessage({
-    appointmentId: input.appointmentId,
-    type: "created_confirmation",
-    channel: "whatsapp",
-    payload: { message: input.message },
-  });
 }
 
 export async function recordManualPaymentReceiptMessage(input: {

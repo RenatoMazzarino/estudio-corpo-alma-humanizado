@@ -20,7 +20,7 @@ interface UseAppointmentChargePaymentFlowParams {
   chargeBookingState: ChargeBookingState | null;
   chargeNowMethodDraft: ChargeNowMethodDraft | null;
   chargeNowDraftAmount: number;
-  confirmationSheetStep: "review" | "creating_charge" | "charge_payment" | "charge_manual_prompt";
+  confirmationSheetStep: "review" | "creating_charge" | "charge_payment";
   chargePixPayment: BookingPixPaymentData | null;
   chargePointPayment: BookingPointPaymentData | null;
   chargePointAttempt: number;

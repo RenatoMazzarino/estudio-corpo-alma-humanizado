@@ -1,5 +1,4 @@
 import type { CheckoutItem, CheckoutRow, PaymentRow } from "../../../lib/attendance/attendance-types";
-import type { AutoMessageTemplates } from "../../../src/shared/auto-messages.types";
 
 export interface Service {
   id: string;
@@ -51,7 +50,6 @@ export interface AppointmentFormProps {
   safeDate: string;
   initialAppointment?: InitialAppointment | null;
   returnTo?: string;
-  messageTemplates: AutoMessageTemplates;
   signalPercentage: number;
   pointEnabled: boolean;
   pointTerminalName: string;
@@ -92,7 +90,7 @@ export type FinanceDraftItemType = "service" | "fee" | "addon" | "adjustment";
 export type CollectionTimingDraft = "at_attendance" | "charge_now";
 export type ChargeNowAmountMode = "full" | "signal";
 export type ChargeNowMethodDraft = "cash" | "pix_mp" | "card" | "waiver";
-export type BookingConfirmationStep = "review" | "creating_charge" | "charge_payment" | "charge_manual_prompt";
+export type BookingConfirmationStep = "review" | "creating_charge" | "charge_payment";
 export type ChargePaymentStatus = "paid" | "pending" | "failed";
 
 export interface FinanceDraftItem {

@@ -1,5 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { insertAttendanceEvent } from "../../../lib/attendance/attendance-repository";
 import { createServiceClient } from "../../../lib/supabase/service";
 import type { Json } from "../../../lib/supabase/types";
@@ -107,34 +106,6 @@ export async function cancelPreConfirmationOperation(payload: {
   return ok({ appointmentId: parsed.data.appointmentId });
 }
 
-export async function sendReminder24hOperation(payload: {
-  appointmentId: string;
-  message?: string | null;
-}, tenantId: string): Promise<ActionResult<{ appointmentId: string }>> {
-  const parsed = appointmentIdSchema.extend({ message: z.string().optional().nullable() }).safeParse(payload);
-  if (!parsed.success) {
-    return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
-  }
-
-  await insertMessageLogOperation({
-    appointmentId: parsed.data.appointmentId,
-    type: "reminder_24h",
-    status: "sent_manual",
-    sentAt: new Date().toISOString(),
-    payload: parsed.data.message ? { message: parsed.data.message } : null,
-    tenantId,
-  });
-
-  await insertAttendanceEvent({
-    tenantId,
-    appointmentId: parsed.data.appointmentId,
-    eventType: "reminder_24h_sent",
-  });
-
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
-  return ok({ appointmentId: parsed.data.appointmentId });
-}
-
 export async function sendMessageOperation(payload: {
   appointmentId: string;
   type: "created_confirmation" | "reminder_24h" | "post_survey" | "payment_charge" | "payment_receipt";
@@ -144,6 +115,16 @@ export async function sendMessageOperation(payload: {
   const parsed = sendMessageSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  if (parsed.data.type === "created_confirmation" || parsed.data.type === "reminder_24h") {
+    return fail(
+      new AppError(
+        "Aviso de agendamento e lembrete 24h são enviados apenas pela automação.",
+        "VALIDATION_ERROR",
+        400
+      )
+    );
   }
 
   const messagePayload = (parsed.data.payload ??

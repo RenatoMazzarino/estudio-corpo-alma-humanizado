@@ -10,7 +10,6 @@ import { listClients } from "../../../src/modules/clients/repository";
 import { getAppointmentById } from "../../../src/modules/appointments/repository";
 import { getSettings, listPixPaymentKeys } from "../../../src/modules/settings/repository";
 import { BRAZIL_TIME_ZONE } from "../../../src/shared/timezone";
-import { getAutoMessageTemplates } from "../../../src/shared/auto-messages";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../../src/shared/config";
 import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
@@ -96,7 +95,6 @@ export default async function NewAppointment(props: PageProps) {
         displacementDistanceKm: appointment.displacement_distance_km ?? null,
       }
     : null;
-  const messageTemplates = getAutoMessageTemplates();
   const settings = settingsResult.data;
   const pixKeys = pixKeysResult.data ?? [];
   const activePixKey = pixKeys.find((item) => item.is_active) ?? pixKeys[0] ?? null;
@@ -129,7 +127,6 @@ export default async function NewAppointment(props: PageProps) {
           safeDate={safeDate}
           initialAppointment={initialAppointment}
           returnTo={returnTo}
-          messageTemplates={messageTemplates}
           signalPercentage={settings?.signal_percentage ?? 30}
           pointEnabled={settings?.mp_point_enabled ?? false}
           pointTerminalName={settings?.mp_point_terminal_name ?? ""}

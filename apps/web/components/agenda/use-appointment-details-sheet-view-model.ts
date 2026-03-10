@@ -7,7 +7,6 @@ import { formatCurrencyBRL } from "../../src/shared/currency";
 import { feedbackById, type UserFeedback } from "../../src/shared/feedback/user-feedback";
 import { buildAppointmentPaymentPath, buildAppointmentReceiptPath } from "../../src/shared/public-links";
 import {
-  formatSentLabel,
   getAutomationStatusLabel,
   getInitials,
   getStatusInfo,
@@ -73,8 +72,6 @@ export function useAppointmentDetailsSheetViewModel({
     : appointmentAddress.length > 0;
   const addressLine = appointmentAddress || clientAddress;
 
-  const createdMessage = messageByType(messages, "created_confirmation");
-  const reminderMessage = messageByType(messages, "reminder_24h");
   const createdAutoMessage = messageByRawType(messages, "auto_appointment_created");
   const reminderAutoMessage = messageByRawType(messages, "auto_appointment_reminder");
   const paymentChargeMessage = messageByType(messages, "payment_charge");
@@ -261,8 +258,6 @@ export function useAppointmentDetailsSheetViewModel({
   return {
     appointment,
     attendance,
-    createdMessage,
-    reminderMessage,
     createdAutoMessage,
     reminderAutoMessage,
     paymentReceiptMessage,
@@ -303,9 +298,7 @@ export function useAppointmentDetailsSheetViewModel({
     paymentDateLabel,
     attendanceCodeHint,
     formatCurrency,
-    formatSentLabel,
     getAutomationStatusLabel,
-    isMessageSent,
     openWhatsappWithMessage,
     buildSignalChargeMessage,
     buildSignalReceiptMessage,

@@ -6,8 +6,8 @@ import {
 import { META_TEMPLATE_PUBLIC_SAMPLE_CODE } from "../../shared/meta-template-demo";
 
 describe("whatsapp-template-library", () => {
-  it("mantém os 16 templates oficiais de aviso/agendamento + lembrete 24h", () => {
-    expect(WHATSAPP_TEMPLATE_LIBRARY).toHaveLength(16);
+  it("mantém os 18 templates oficiais (aviso + lembrete 24h + resposta de confirmação)", () => {
+    expect(WHATSAPP_TEMPLATE_LIBRARY).toHaveLength(18);
     expect(WHATSAPP_TEMPLATE_LIBRARY.map((template) => template.name)).toEqual([
       "aviso_agendamento_no_estudio_com_sinal_pago_com_flora",
       "aviso_agendamento_no_estudio_com_sinal_pago_sem_oi_flora",
@@ -25,6 +25,8 @@ describe("whatsapp-template-library", () => {
       "lembrete_confirmacao_24h_estudio_saldo_pendente",
       "lembrete_confirmacao_24h_domicilio_pago_integral",
       "lembrete_confirmacao_24h_domicilio_saldo_pendente",
+      "resposta_confirmacao_estudio",
+      "resposta_confirmacao_domicilio",
     ]);
   });
 
@@ -32,13 +34,14 @@ describe("whatsapp-template-library", () => {
     const active = WHATSAPP_TEMPLATE_LIBRARY.filter((template) => template.status === "active");
     const inReview = WHATSAPP_TEMPLATE_LIBRARY.filter((template) => template.status === "in_review");
 
-    expect(active).toHaveLength(13);
-    expect(inReview).toHaveLength(3);
+    expect(active).toHaveLength(14);
+    expect(inReview).toHaveLength(4);
     expect(inReview.map((template) => template.name).sort()).toEqual(
       [
         "aviso_agendamento_domicilio_pagamento_no_atendimento_com_flora",
         "aviso_agendamento_domicilio_pagamento_no_atendimento_sem_oi_flora",
         "aviso_agendamento_domicilio_sinal_pago_com_flora",
+        "resposta_confirmacao_domicilio",
       ].sort()
     );
     expect(
@@ -56,6 +59,9 @@ describe("whatsapp-template-library", () => {
     );
     const reminderTemplate = getWhatsAppTemplateFromLibrary(
       "lembrete_confirmacao_24h_estudio_saldo_pendente"
+    );
+    const confirmationTemplate = getWhatsAppTemplateFromLibrary(
+      "resposta_confirmacao_estudio"
     );
 
     expect(receiptTemplate?.button).toEqual(
@@ -84,5 +90,13 @@ describe("whatsapp-template-library", () => {
         ? reminderTemplate.button.buttons.map((item) => item.text)
         : []
     ).toEqual(["CONFIRMAR", "REAGENDAR", "FALAR COM A JANA"]);
+    expect(confirmationTemplate?.button).toEqual(
+      expect.objectContaining({
+        type: "url_dynamic",
+        buttonText: "VER VOUCHER",
+        urlBase: "https://public.corpoealmahumanizado.com.br/voucher/",
+        sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
+      })
+    );
   });
 });

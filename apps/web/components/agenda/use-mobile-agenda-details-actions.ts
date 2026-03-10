@@ -3,16 +3,14 @@ import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { cancelAppointment } from "../../app/actions";
 import {
-  confirmPre,
   recordPayment,
   saveEvolution,
   sendMessage,
-  sendReminder24h,
   structureEvolutionFromAudio,
 } from "../../app/(dashboard)/atendimento/[id]/actions";
 import { buildAppointmentReceiptPath } from "../../src/shared/public-links";
 import { feedbackById, feedbackFromError } from "../../src/shared/feedback/user-feedback";
-import type { AttendanceOverview, MessageType } from "../../lib/attendance/attendance-types";
+import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
 import { buildAgendaMessage, resolvePublicBaseUrl, toWhatsappLink } from "./mobile-agenda-messages";
 
 interface UseMobileAgendaDetailsActionsParams {
@@ -45,36 +43,6 @@ export function useMobileAgendaDetailsActions({
     window.open(url, "_blank");
     return true;
   }, []);
-
-  const handleSendMessage = useCallback(
-    async (type: MessageType) => {
-      if (!detailsData) return;
-      const phone = detailsData.appointment.clients?.phone ?? null;
-      if (!phone) {
-        showToast(feedbackById("whatsapp_missing_phone"));
-        return;
-      }
-      setDetailsActionPending(true);
-      const message = buildAgendaMessage(type, detailsData.appointment, publicBaseUrl);
-      openWhatsapp(phone, message);
-      const result = await sendMessage({
-        appointmentId: detailsData.appointment.id,
-        type,
-        channel: "whatsapp",
-        payload: { message },
-      });
-      if (!result?.ok) {
-        showToast(feedbackFromError(result?.error, "whatsapp"));
-        setDetailsActionPending(false);
-        return;
-      }
-      showToast(feedbackById("message_recorded"));
-      await refreshAttendanceDetails(detailsData.appointment.id);
-      router.refresh();
-      setDetailsActionPending(false);
-    },
-    [detailsData, openWhatsapp, publicBaseUrl, refreshAttendanceDetails, router, setDetailsActionPending, showToast]
-  );
 
   const handleSendPaymentCharge = useCallback(async () => {
     if (!detailsData) return;
@@ -155,35 +123,6 @@ export function useMobileAgendaDetailsActions({
     [detailsData, openWhatsapp, publicBaseUrl, refreshAttendanceDetails, router, setDetailsActionPending, showToast]
   );
 
-  const handleSendReminder = useCallback(async () => {
-    if (!detailsData) return;
-    const phone = detailsData.appointment.clients?.phone ?? null;
-    if (!phone) {
-      showToast(feedbackById("whatsapp_missing_phone"));
-      return;
-    }
-    setDetailsActionPending(true);
-    const checkoutTotal = Number(detailsData.checkout?.total ?? detailsData.appointment.price ?? 0);
-    const paidAmount = (detailsData.payments ?? [])
-      .filter((payment) => payment.status === "paid")
-      .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
-    const message = buildAgendaMessage("reminder_24h", detailsData.appointment, publicBaseUrl, {
-      checkoutTotal,
-      paidAmount,
-    });
-    openWhatsapp(phone, message);
-    const result = await sendReminder24h({ appointmentId: detailsData.appointment.id, message });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "whatsapp"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(feedbackById("reminder_recorded"));
-    await refreshAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  }, [detailsData, openWhatsapp, publicBaseUrl, refreshAttendanceDetails, router, setDetailsActionPending, showToast]);
-
   const handleSendSurvey = useCallback(async () => {
     if (!detailsData) return;
     const phone = detailsData.appointment.clients?.phone ?? null;
@@ -213,21 +152,6 @@ export function useMobileAgendaDetailsActions({
     router.refresh();
     setDetailsActionPending(false);
   }, [detailsData, openWhatsapp, publicBaseUrl, refreshAttendanceDetails, router, setDetailsActionPending, showToast]);
-
-  const handleConfirmClient = useCallback(async () => {
-    if (!detailsData) return;
-    setDetailsActionPending(true);
-    const result = await confirmPre({ appointmentId: detailsData.appointment.id, channel: "manual" });
-    if (!result.ok) {
-      showToast(feedbackFromError(result.error, "attendance"));
-      setDetailsActionPending(false);
-      return;
-    }
-    showToast(feedbackById("client_confirmed"));
-    await refreshAttendanceDetails(detailsData.appointment.id);
-    router.refresh();
-    setDetailsActionPending(false);
-  }, [detailsData, refreshAttendanceDetails, router, setDetailsActionPending, showToast]);
 
   const handleCancelAppointment = useCallback(
     async (options?: { notifyClient?: boolean }) => {
@@ -342,12 +266,9 @@ export function useMobileAgendaDetailsActions({
   }, [closeDetails, detailsData, router, selectedDate, view]);
 
   return {
-    handleSendMessage,
     handleSendPaymentCharge,
     handleSendPaymentReceipt,
-    handleSendReminder,
     handleSendSurvey,
-    handleConfirmClient,
     handleCancelAppointment,
     handleRecordPayment,
     handleSaveEvolutionFromDetails,

@@ -9,6 +9,11 @@ import {
   type MetaWebhookInboundMessage,
 } from "./whatsapp-automation.helpers";
 import type { NotificationJobRow } from "./repository";
+import type {
+  InboundCustomerReplyAction,
+  InboundReplyDeliveryResult,
+  InboundReplyStatusUpdateResult,
+} from "./whatsapp-automation-appointments";
 
 type InboundDeps = {
   findNotificationJobByProviderMessageId: (
@@ -22,14 +27,12 @@ type InboundDeps = {
     status: "pending" | "sent" | "failed";
     payload: Json;
   }) => Promise<{ error: unknown }>;
-  sendMetaCloudTextMessage: (params: {
-    to: string;
-    text: string;
-  }) => Promise<{
-    providerMessageId: string | null;
-    deliveredAt: string;
-    payload: Record<string, unknown> | null;
-  }>;
+  sendInboundActionReply: (params: {
+    job: NotificationJobRow;
+    action: InboundCustomerReplyAction;
+    customerWaId: string;
+    voucherLink: string;
+  }) => Promise<InboundReplyDeliveryResult>;
   logAppointmentAutomationMessage: (params: {
     tenantId: string;
     appointmentId: string | null;
@@ -43,10 +46,11 @@ type InboundDeps = {
     appointmentId: string;
     webhookOrigin?: string;
   }) => Promise<string>;
-  buildButtonReplyAutoMessage: (params: {
-    action: "confirm" | "reschedule" | "talk_to_jana";
-    voucherLink: string;
-  }) => string;
+  applyAppointmentStatusFromInboundReply: (params: {
+    tenantId: string;
+    appointmentId: string;
+    action: InboundCustomerReplyAction;
+  }) => Promise<InboundReplyStatusUpdateResult>;
 };
 
 export async function processMetaCloudWebhookInboundMessages(
@@ -133,8 +137,17 @@ export async function processMetaCloudWebhookInboundMessages(
           appointmentId: job.appointment_id,
           webhookOrigin: params.webhookOrigin,
         });
-        const replyText = deps.buildButtonReplyAutoMessage({ action, voucherLink });
-        const outbound = await deps.sendMetaCloudTextMessage({ to: customerWaId, text: replyText });
+        const outbound = await deps.sendInboundActionReply({
+          job,
+          action,
+          customerWaId,
+          voucherLink,
+        });
+        const appointmentStatusUpdate = await deps.applyAppointmentStatusFromInboundReply({
+          tenantId: job.tenant_id,
+          appointmentId: job.appointment_id,
+          action,
+        });
         const nowIso = new Date().toISOString();
 
         const nextInboundEvents = [
@@ -147,6 +160,9 @@ export async function processMetaCloudWebhookInboundMessages(
             selection,
             action,
             reply_provider_message_id: outbound.providerMessageId,
+            reply_delivery_mode: outbound.deliveryMode,
+            reply_template_name: outbound.templateName,
+            appointment_status_update: appointmentStatusUpdate,
           },
         ].slice(-20);
 
@@ -174,14 +190,15 @@ export async function processMetaCloudWebhookInboundMessages(
           appointmentId: job.appointment_id,
           type: "auto_appointment_reply_inbound",
           status: "received_auto_reply",
-          payload: {
+          payload: ({
             source_job_id: job.id,
             parent_provider_message_id: parentProviderMessageId,
             inbound_message_id: inboundMessageId || null,
             from: customerWaId,
             selection,
             action,
-          } as Json,
+            appointment_status_update: appointmentStatusUpdate,
+          } as unknown) as Json,
         });
 
         await deps.logAppointmentAutomationMessage({
@@ -194,15 +211,19 @@ export async function processMetaCloudWebhookInboundMessages(
                 ? "auto_appointment_reply_reschedule"
                 : "auto_appointment_reply_talk_to_jana",
           status: "sent_auto_reply",
-          payload: {
+          payload: ({
             source_job_id: job.id,
             action,
             to: customerWaId,
-            message: replyText,
+            message: outbound.replyText,
             voucher_link: action === "confirm" ? voucherLink : null,
             provider_message_id: outbound.providerMessageId,
             provider_response: outbound.payload ?? null,
-          } as Json,
+            delivery_mode: outbound.deliveryMode,
+            template_name: outbound.templateName,
+            template_language: outbound.templateLanguage,
+            appointment_status_update: appointmentStatusUpdate,
+          } as unknown) as Json,
           sentAt: outbound.deliveredAt,
         });
 

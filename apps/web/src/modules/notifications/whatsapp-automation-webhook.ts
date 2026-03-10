@@ -8,10 +8,10 @@ import {
   updateNotificationJobStatus,
 } from "./repository";
 import {
+  applyAppointmentStatusFromInboundReply,
   buildAppointmentVoucherLink,
-  buildButtonReplyAutoMessage,
+  sendMetaCloudInboundActionReply,
 } from "./whatsapp-automation-appointments";
-import { sendMetaCloudTextMessage } from "./whatsapp-meta-client";
 import { logAppointmentAutomationMessage } from "./whatsapp-automation-logging";
 import { syncNotificationTemplateCatalogFromMetaWebhook } from "./whatsapp-template-catalog";
 
@@ -32,10 +32,10 @@ export async function processMetaCloudWebhookEvents(
     {
       findNotificationJobByProviderMessageId,
       updateNotificationJobStatus,
-      sendMetaCloudTextMessage,
+      sendInboundActionReply: sendMetaCloudInboundActionReply,
       logAppointmentAutomationMessage,
       buildAppointmentVoucherLink,
-      buildButtonReplyAutoMessage,
+      applyAppointmentStatusFromInboundReply,
     }
   );
   const nonMessageFields = summarizeMetaWebhookNonMessageFields(payload);

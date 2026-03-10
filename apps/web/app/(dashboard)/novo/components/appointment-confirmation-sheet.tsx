@@ -67,9 +67,8 @@ type AppointmentConfirmationSheetProps = {
   onVerifyChargeCardNowAction: () => void | Promise<void>;
   onSwitchChargeToAttendanceAction: () => void | Promise<void>;
   onClearChargeFlowErrorAction: () => void;
-  onResolveDeferredManualPromptAction: (shouldSendMessage: boolean) => void | Promise<void>;
   onBeginImmediateChargeAction: () => void | Promise<void>;
-  onScheduleAction: (shouldSendMessage: boolean) => void;
+  onScheduleAction: () => void;
 };
 
 export function AppointmentConfirmationSheet({
@@ -116,7 +115,6 @@ export function AppointmentConfirmationSheet({
   onVerifyChargeCardNowAction,
   onSwitchChargeToAttendanceAction,
   onClearChargeFlowErrorAction,
-  onResolveDeferredManualPromptAction,
   onBeginImmediateChargeAction,
   onScheduleAction,
 }: AppointmentConfirmationSheetProps) {
@@ -128,16 +126,12 @@ export function AppointmentConfirmationSheet({
       ? "Criando agendamento..."
       : step === "charge_payment"
         ? "Pagamento do agendamento"
-        : step === "charge_manual_prompt"
-          ? "Aviso manual do agendamento"
-          : "Revisar dados antes de criar";
+        : "Revisar dados antes de criar";
   const headerDescription =
     step === "creating_charge"
       ? "Estamos criando o agendamento e preparando o checkout."
       : step === "charge_payment"
         ? "Finalize a cobrança agora ou jogue para pagar no atendimento."
-        : step === "charge_manual_prompt"
-          ? "Escolha se deseja enviar o aviso manual de agendamento agora."
           : "Confira os dados do agendamento antes de confirmar.";
 
   return createPortal(
@@ -314,31 +308,6 @@ export function AppointmentConfirmationSheet({
               )}
             </div>
           </div>
-        ) : step === "charge_manual_prompt" && chargeBookingState ? (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-              <p className="text-xs font-semibold text-studio-text">
-                Agendamento criado{chargeBookingState.appointmentPaymentStatus === "paid" ? " e pagamento confirmado" : ""}.
-              </p>
-              <p className="mt-1 text-xs text-muted">Agora você pode decidir se quer enviar o aviso manual pelo WhatsApp.</p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => void onResolveDeferredManualPromptAction(true)}
-                className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10"
-              >
-                Enviar aviso manual
-              </button>
-              <button
-                type="button"
-                onClick={() => void onResolveDeferredManualPromptAction(false)}
-                className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text"
-              >
-                Não enviar aviso manual
-              </button>
-            </div>
-          </div>
         ) : (
           <div className="space-y-4">
             <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
@@ -486,17 +455,10 @@ export function AppointmentConfirmationSheet({
                 <>
                   <button
                     type="button"
-                    onClick={() => onScheduleAction(true)}
+                    onClick={onScheduleAction}
                     className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10"
                   >
-                    {isCourtesyDraft ? "Agendar cortesia e avisar" : "Agendar e avisar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onScheduleAction(false)}
-                    className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text"
-                  >
-                    {isCourtesyDraft ? "Agendar cortesia sem enviar" : "Agendar sem enviar"}
+                    {isCourtesyDraft ? "Confirmar e agendar cortesia" : "Confirmar e agendar"}
                   </button>
                 </>
               )}

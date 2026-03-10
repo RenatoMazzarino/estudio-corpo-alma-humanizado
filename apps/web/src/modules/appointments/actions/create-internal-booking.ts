@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
-import { insertAttendanceEvent } from "../../../../lib/attendance/attendance-repository";
 import { computeTotals } from "../../../../lib/attendance/attendance-domain";
 import { createServiceClient } from "../../../../lib/supabase/service";
 import { AppError } from "../../../shared/errors/AppError";
@@ -35,7 +34,6 @@ export async function createAppointmentImpl(
 ): Promise<void | { appointmentId: string; date: string; startTimeIso: string }> {
   const responseMode = ((formData.get("response_mode") as string | null) || "").trim() === "json" ? "json" : "redirect";
   const deferLifecycleNotifications = formData.get("defer_lifecycle_notifications") === "1";
-  const skipManualCreatedMessage = formData.get("skip_manual_created_message") === "1";
   const clientId = (formData.get("clientId") as string | null) || null;
   const clientName = formData.get("clientName") as string | null;
   const clientPhone = (formData.get("clientPhone") as string | null) || null;
@@ -68,8 +66,6 @@ export async function createAppointmentImpl(
   const financeExtraItems = parseInitialFinanceExtraItems(
     (formData.get("finance_extra_items_json") as string | null) || null
   );
-  const sendCreatedMessage = !skipManualCreatedMessage && formData.get("send_created_message") === "1";
-  const sendCreatedMessageText = (formData.get("send_created_message_text") as string | null) || null;
   const isCourtesyAppointment = formData.get("is_courtesy") === "on";
   const rawClientCpf = ((formData.get("client_cpf") as string | null) || "").trim() || null;
   const clientCpf = normalizeCpfDigits(rawClientCpf);
@@ -389,25 +385,6 @@ export async function createAppointmentImpl(
         appointmentId,
         startTimeIso: startDateTime.toISOString(),
         source: "admin_create",
-      });
-    }
-
-    if (sendCreatedMessage) {
-      const supabase = createServiceClient();
-      await supabase.from("appointment_messages").insert({
-        appointment_id: appointmentId,
-        tenant_id: tenantId,
-        type: "created_confirmation",
-        status: "sent_manual",
-        sent_at: new Date().toISOString(),
-        payload: sendCreatedMessageText ? { message: sendCreatedMessageText } : null,
-      });
-
-      await insertAttendanceEvent({
-        tenantId,
-        appointmentId,
-        eventType: "message_sent",
-        payload: { type: "created_confirmation", channel: "manual" },
       });
     }
   }

@@ -27,12 +27,9 @@ interface AppointmentDetailsSheetProps {
   messageTemplates: AutoMessageTemplates;
   onCloseAction: () => void;
   onStartSessionAction: () => void;
-  onSendCreatedMessageAction: () => void;
-  onSendReminderAction: () => void;
   onSendSurveyAction: () => void;
   onSendPaymentChargeAction: () => void;
   onSendPaymentReceiptAction: (paymentId: string | null) => void;
-  onConfirmClientAction: () => void;
   onCancelAppointmentAction: (options?: { notifyClient?: boolean }) => void;
   onRecordPaymentAction?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
   onSaveEvolutionAction?: (text: string) => Promise<{ ok: boolean }>;
@@ -51,12 +48,9 @@ export function AppointmentDetailsSheet({
   messageTemplates,
   onCloseAction,
   onStartSessionAction,
-  onSendCreatedMessageAction,
-  onSendReminderAction,
   onSendSurveyAction,
   onSendPaymentChargeAction,
   onSendPaymentReceiptAction,
-  onConfirmClientAction,
   onCancelAppointmentAction,
   onRecordPaymentAction,
   onSaveEvolutionAction,
@@ -95,8 +89,6 @@ export function AppointmentDetailsSheet({
 
   const {
     appointment,
-    createdMessage,
-    reminderMessage,
     createdAutoMessage,
     reminderAutoMessage,
     clientName,
@@ -135,9 +127,7 @@ export function AppointmentDetailsSheet({
     paymentDateLabel,
     attendanceCodeHint,
     formatCurrency,
-    formatSentLabel,
     getAutomationStatusLabel,
-    isMessageSent,
     openWhatsappWithMessage,
     buildSignalChargeMessage,
     buildSignalReceiptMessage,
@@ -276,19 +266,7 @@ export function AppointmentDetailsSheet({
                 mapsHref={mapsHref}
                 attendanceCode={attendanceCode}
                 attendanceCodeHint={attendanceCodeHint}
-                createdMessageSent={isMessageSent(createdMessage?.status)}
-                createdMessageLabel={
-                  isMessageSent(createdMessage?.status)
-                    ? formatSentLabel(createdMessage?.sent_at ?? null)
-                    : "Pendente de envio"
-                }
                 createdAutomationStatusLabel={getAutomationStatusLabel(createdAutoMessage)}
-                reminderMessageSent={isMessageSent(reminderMessage?.status)}
-                reminderMessageLabel={
-                  isMessageSent(reminderMessage?.status)
-                    ? formatSentLabel(reminderMessage?.sent_at ?? null)
-                    : "Pendente de envio"
-                }
                 reminderAutomationStatusLabel={getAutomationStatusLabel(reminderAutoMessage)}
                 isConfirmed={isConfirmed}
                 confirmedText={confirmedText}
@@ -307,9 +285,6 @@ export function AppointmentDetailsSheet({
                 paymentMethod={paymentMethod}
                 internalNotes={appointment?.internal_notes ?? ""}
                 onSelectPaymentMethod={setPaymentMethod}
-                onSendCreatedMessage={onSendCreatedMessageAction}
-                onSendReminder={onSendReminderAction}
-                onConfirmClient={onConfirmClientAction}
                 onOpenCancelDialog={() => setCancelDialogOpen(true)}
                 onSendPaymentCharge={onSendPaymentChargeAction}
                 onRecordSignalPayment={() =>

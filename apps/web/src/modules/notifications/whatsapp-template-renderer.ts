@@ -41,7 +41,11 @@ export function renderWhatsAppTemplateAsText(params: RenderTemplateAsTextParams)
     return value;
   });
 
-  const lines = [body.trim()];
+  const lines: string[] = [];
+  if (template.headerText?.trim()) {
+    lines.push(template.headerText.trim());
+  }
+  lines.push(body.trim());
 
   if (params.includeFooter !== false && template.footer.trim()) {
     lines.push(template.footer.trim());

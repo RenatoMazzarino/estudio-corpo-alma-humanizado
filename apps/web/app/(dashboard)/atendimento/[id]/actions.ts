@@ -17,7 +17,6 @@ import {
   recordMessageStatusImpl,
   recordSurveyAnswerImpl,
   sendMessageImpl,
-  sendReminder24hImpl,
   sendSurveyImpl,
 } from "./actions/communication";
 import {
@@ -57,11 +56,6 @@ export async function confirmPre(payload: { appointmentId: string; channel?: str
 export async function cancelPreConfirmation(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {
   const { tenantId } = await requireDashboardAccessForServerAction();
   return cancelPreConfirmationImpl(payload, tenantId);
-}
-
-export async function sendReminder24h(payload: { appointmentId: string; message?: string | null }): Promise<ActionResult<{ appointmentId: string }>> {
-  const { tenantId } = await requireDashboardAccessForServerAction();
-  return sendReminder24hImpl(payload, tenantId);
 }
 
 export async function sendMessage(payload: {

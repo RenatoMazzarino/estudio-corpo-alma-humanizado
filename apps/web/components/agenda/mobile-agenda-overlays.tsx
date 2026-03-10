@@ -47,12 +47,9 @@ type MobileAgendaOverlaysProps = {
   messageTemplates: AutoMessageTemplates;
   onCloseDetailsAction: () => void;
   onStartSessionAction: () => void;
-  onSendCreatedMessageAction: () => void;
-  onSendReminderAction: () => void;
   onSendSurveyAction: () => void;
   onSendPaymentChargeAction: () => void;
   onSendPaymentReceiptAction: (paymentId: string | null) => void;
-  onConfirmClientAction: () => void;
   onCancelAppointmentAction: () => void;
   onRecordPaymentAction: (payload: {
     type: "signal" | "full";
@@ -96,12 +93,9 @@ export function MobileAgendaOverlays({
   messageTemplates,
   onCloseDetailsAction,
   onStartSessionAction,
-  onSendCreatedMessageAction,
-  onSendReminderAction,
   onSendSurveyAction,
   onSendPaymentChargeAction,
   onSendPaymentReceiptAction,
-  onConfirmClientAction,
   onCancelAppointmentAction,
   onRecordPaymentAction,
   onSaveEvolutionAction,
@@ -149,12 +143,9 @@ export function MobileAgendaOverlays({
         messageTemplates={messageTemplates}
         onCloseAction={onCloseDetailsAction}
         onStartSessionAction={onStartSessionAction}
-        onSendCreatedMessageAction={onSendCreatedMessageAction}
-        onSendReminderAction={onSendReminderAction}
         onSendSurveyAction={onSendSurveyAction}
         onSendPaymentChargeAction={onSendPaymentChargeAction}
         onSendPaymentReceiptAction={onSendPaymentReceiptAction}
-        onConfirmClientAction={onConfirmClientAction}
         onCancelAppointmentAction={onCancelAppointmentAction}
         onRecordPaymentAction={onRecordPaymentAction}
         onSaveEvolutionAction={onSaveEvolutionAction}

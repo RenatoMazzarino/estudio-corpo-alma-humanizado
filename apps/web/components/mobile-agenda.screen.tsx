@@ -141,12 +141,9 @@ export function MobileAgenda(props: MobileAgendaProps) {
           controller.setDetailsActionPending(false);
         }}
         onStartSessionAction={controller.handleOpenAttendance}
-        onSendCreatedMessageAction={() => controller.handleSendMessage("created_confirmation")}
-        onSendReminderAction={controller.handleSendReminder}
         onSendSurveyAction={controller.handleSendSurvey}
         onSendPaymentChargeAction={controller.handleSendPaymentCharge}
         onSendPaymentReceiptAction={controller.handleSendPaymentReceipt}
-        onConfirmClientAction={controller.handleConfirmClient}
         onCancelAppointmentAction={controller.handleCancelAppointment}
         onRecordPaymentAction={controller.handleRecordPayment}
         onSaveEvolutionAction={controller.handleSaveEvolutionFromDetails}

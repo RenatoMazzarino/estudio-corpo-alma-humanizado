@@ -6,10 +6,8 @@ import {
   finalizeCreatedAppointmentNotifications,
   getBookingChargeContext,
   recordBookingChargePayment,
-  recordManualCreatedMessage,
 } from "../appointment-actions";
 import { useAppointmentChargePaymentFlow } from "./use-appointment-charge-payment-flow";
-import { buildCreatedMessage } from "../appointment-form.helpers";
 import type {
   BookingConfirmationStep,
   BookingPixPaymentData,
@@ -26,20 +24,10 @@ import { getRemainingSeconds } from "../../../../src/shared/datetime";
 
 type Params = {
   formRef: MutableRefObject<HTMLFormElement | null>;
-  sendMessageInputRef: MutableRefObject<HTMLInputElement | null>;
-  sendMessageTextInputRef: MutableRefObject<HTMLInputElement | null>;
   clientCpfInputRef: MutableRefObject<HTMLInputElement | null>;
   router: { push: (href: string) => void };
   safeDate: string;
   selectedDate: string;
-  selectedTime: string;
-  selectedServiceName: string;
-  scheduleTotal: number;
-  effectiveDisplacementFee: number;
-  isHomeVisit: boolean;
-  addressLabel: string;
-  clientMessageFirstName: string;
-  messageTemplate: string;
   resolvedClientPhone: string;
   clientPhone: string;
   clientPublicFullNamePreview: string;
@@ -84,20 +72,10 @@ type Params = {
 
 export function useAppointmentConfirmationFlow({
   formRef,
-  sendMessageInputRef,
-  sendMessageTextInputRef,
   clientCpfInputRef,
   router,
   safeDate,
   selectedDate,
-  selectedTime,
-  selectedServiceName,
-  scheduleTotal,
-  effectiveDisplacementFee,
-  isHomeVisit,
-  addressLabel,
-  clientMessageFirstName,
-  messageTemplate,
   resolvedClientPhone,
   clientPhone,
   clientPublicFullNamePreview,
@@ -155,60 +133,6 @@ export function useAppointmentConfirmationFlow({
     [clientPhone, resolvedClientPhone, showToast]
   );
 
-  const buildCreatedMessageText = useCallback(
-    () => {
-      const checkoutTotal = Number(chargeBookingState?.checkout?.total ?? scheduleTotal ?? 0);
-      const paidAmount = (chargeBookingState?.payments ?? [])
-        .filter((payment) => payment.status === "paid")
-        .reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
-      const latestPaidPayment = [...(chargeBookingState?.payments ?? [])]
-        .filter((payment) => payment.status === "paid")
-        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
-      const receiptPublicId =
-        latestPaidPayment?.provider_ref?.trim() || latestPaidPayment?.id?.trim() || null;
-      const paymentLinkPublicId =
-        chargeBookingState?.attendanceCode?.trim() || chargeBookingState?.appointmentId || null;
-
-      return (
-      buildCreatedMessage({
-        clientName: clientMessageFirstName,
-        date: selectedDate,
-        time: selectedTime,
-        serviceName: selectedServiceName,
-        isHomeVisit,
-        totalAmount: checkoutTotal,
-        displacementFee: isHomeVisit ? effectiveDisplacementFee : 0,
-        paidAmount,
-        paymentStatus: chargeBookingState?.appointmentPaymentStatus ?? null,
-        receiptPublicId,
-        paymentLinkPublicId,
-        locationLine: isHomeVisit
-          ? addressLabel
-            ? `No endereço informado: ${addressLabel}`
-            : "Atendimento domiciliar (endereço a confirmar)"
-          : "No estúdio",
-        template: messageTemplate,
-      })
-      );
-    },
-    [
-      addressLabel,
-      chargeBookingState?.appointmentId,
-      chargeBookingState?.appointmentPaymentStatus,
-      chargeBookingState?.attendanceCode,
-      chargeBookingState?.checkout?.total,
-      chargeBookingState?.payments,
-      clientMessageFirstName,
-      effectiveDisplacementFee,
-      isHomeVisit,
-      messageTemplate,
-      scheduleTotal,
-      selectedDate,
-      selectedServiceName,
-      selectedTime,
-    ]
-  );
-
   const buildAgendaDayReturnUrl = useCallback(
     (appointmentId?: string | null) => {
       const dateParam = selectedDate || safeDate;
@@ -221,6 +145,16 @@ export function useAppointmentConfirmationFlow({
       return `/?${params.toString()}`;
     },
     [safeDate, selectedDate]
+  );
+
+  const finalizeChargeFlow = useCallback(
+    (appointmentId: string) => {
+      setIsSendPromptOpen(false);
+      setConfirmationSheetStep("review");
+      setChargeFlowError(null);
+      router.push(buildAgendaDayReturnUrl(appointmentId));
+    },
+    [buildAgendaDayReturnUrl, router, setChargeFlowError, setConfirmationSheetStep, setIsSendPromptOpen]
   );
 
   const refreshChargeBookingState = useCallback(
@@ -270,17 +204,17 @@ export function useAppointmentConfirmationFlow({
   }, [chargeBookingState, chargeNotificationsDispatched, setChargeNotificationsDispatched, showToast]);
 
   const handleChargePaymentResolved = useCallback(async () => {
+    if (!chargeBookingState) return;
     await ensureChargeNotificationsDispatched();
     setChargePixPayment(null);
     setChargePointPayment(null);
-    setChargeFlowError(null);
-    setConfirmationSheetStep("charge_manual_prompt");
+    finalizeChargeFlow(chargeBookingState.appointmentId);
   }, [
+    chargeBookingState,
     ensureChargeNotificationsDispatched,
-    setChargeFlowError,
+    finalizeChargeFlow,
     setChargePixPayment,
     setChargePointPayment,
-    setConfirmationSheetStep,
   ]);
 
   const showToastAction = useCallback(
@@ -420,8 +354,7 @@ export function useAppointmentConfirmationFlow({
         }
         await refreshChargeBookingState(nextState.appointmentId);
         await ensureChargeNotificationsDispatched();
-        setChargeFlowError(null);
-        setConfirmationSheetStep("charge_manual_prompt");
+        finalizeChargeFlow(nextState.appointmentId);
         return;
       }
 
@@ -465,8 +398,7 @@ export function useAppointmentConfirmationFlow({
           await refreshChargeBookingState(nextState.appointmentId);
           setChargePointPayment(null);
           await ensureChargeNotificationsDispatched();
-          setChargeFlowError(null);
-          setConfirmationSheetStep("charge_manual_prompt");
+          finalizeChargeFlow(nextState.appointmentId);
         }
         return;
       }
@@ -496,6 +428,7 @@ export function useAppointmentConfirmationFlow({
     setChargeBookingState,
     setChargeNotificationsDispatched,
     chargeNowDraftAmount,
+    finalizeChargeFlow,
     refreshChargeBookingState,
     ensureChargeNotificationsDispatched,
     clientPublicFullNamePreview,
@@ -513,52 +446,20 @@ export function useAppointmentConfirmationFlow({
       await ensureChargeNotificationsDispatched();
       setChargePixPayment(null);
       setChargePointPayment(null);
-      setConfirmationSheetStep("charge_manual_prompt");
+      finalizeChargeFlow(chargeBookingState.appointmentId);
     } finally {
       setFinishingChargeFlow(false);
     }
   }, [
     chargeBookingState,
     ensureChargeNotificationsDispatched,
+    finalizeChargeFlow,
     setChargePixPayment,
     setChargePointPayment,
-    setConfirmationSheetStep,
     setFinishingChargeFlow,
   ]);
 
-  const handleResolveDeferredManualPrompt = useCallback(
-    async (shouldSendMessage: boolean) => {
-      if (!chargeBookingState) return;
-      if (shouldSendMessage) {
-        const messageText = buildCreatedMessageText();
-        const opened = openWhatsappFromForm(messageText);
-        if (opened) {
-          await recordManualCreatedMessage({
-            appointmentId: chargeBookingState.appointmentId,
-            message: messageText,
-          });
-        }
-      }
-      setIsSendPromptOpen(false);
-      setConfirmationSheetStep("review");
-      router.push(buildAgendaDayReturnUrl(chargeBookingState.appointmentId));
-    },
-    [
-      buildAgendaDayReturnUrl,
-      buildCreatedMessageText,
-      chargeBookingState,
-      openWhatsappFromForm,
-      router,
-      setConfirmationSheetStep,
-      setIsSendPromptOpen,
-    ]
-  );
-
   const handleConfirmationSheetClose = useCallback(() => {
-    if (confirmationSheetStep === "charge_manual_prompt" && chargeBookingState) {
-      void handleResolveDeferredManualPrompt(false);
-      return;
-    }
     if (confirmationSheetStep === "charge_payment" && chargeBookingState) {
       void handleSwitchChargeToAttendance();
       return;
@@ -569,58 +470,28 @@ export function useAppointmentConfirmationFlow({
   }, [
     chargeBookingState,
     confirmationSheetStep,
-    handleResolveDeferredManualPrompt,
     handleSwitchChargeToAttendance,
     setChargeFlowError,
     setConfirmationSheetStep,
     setIsSendPromptOpen,
   ]);
 
-  const handleSchedule = useCallback(
-    (shouldSendMessage: boolean) => {
-      if (duplicateCpfClient) {
-        showToast({
-          title: "CPF já cadastrado",
-          message: `O CPF informado já pertence ao cliente ${duplicateCpfClient.name}. Escolha vincular ao cliente existente ou informe outro CPF.`,
-          tone: "warning",
-          durationMs: 3200,
-        });
-        clientCpfInputRef.current?.focus();
-        return;
-      }
+  const handleSchedule = useCallback(() => {
+    if (duplicateCpfClient) {
+      showToast({
+        title: "CPF já cadastrado",
+        message: `O CPF informado já pertence ao cliente ${duplicateCpfClient.name}. Escolha vincular ao cliente existente ou informe outro CPF.`,
+        tone: "warning",
+        durationMs: 3200,
+      });
+      clientCpfInputRef.current?.focus();
+      return;
+    }
 
-      if (!formRef.current) return;
-      let shouldRecord = shouldSendMessage;
-      let messageText = "";
-      if (shouldSendMessage) {
-        messageText = buildCreatedMessageText();
-        const opened = openWhatsappFromForm(messageText);
-        if (!opened) {
-          shouldRecord = false;
-          messageText = "";
-        }
-      }
-      if (sendMessageInputRef.current) {
-        sendMessageInputRef.current.value = shouldRecord ? "1" : "";
-      }
-      if (sendMessageTextInputRef.current) {
-        sendMessageTextInputRef.current.value = messageText;
-      }
-      setIsSendPromptOpen(false);
-      formRef.current.requestSubmit();
-    },
-    [
-      buildCreatedMessageText,
-      clientCpfInputRef,
-      duplicateCpfClient,
-      formRef,
-      openWhatsappFromForm,
-      sendMessageInputRef,
-      sendMessageTextInputRef,
-      setIsSendPromptOpen,
-      showToast,
-    ]
-  );
+    if (!formRef.current) return;
+    setIsSendPromptOpen(false);
+    formRef.current.requestSubmit();
+  }, [clientCpfInputRef, duplicateCpfClient, formRef, setIsSendPromptOpen, showToast]);
 
   const handleOpenConfirmationPrompt = useCallback(() => {
     if (!formRef.current) return;
@@ -676,7 +547,6 @@ export function useAppointmentConfirmationFlow({
     handleVerifyChargeCardNow,
     handleBeginImmediateCharge,
     handleSwitchChargeToAttendance,
-    handleResolveDeferredManualPrompt,
     handleConfirmationSheetClose,
     handleSchedule,
     handleOpenConfirmationPrompt,

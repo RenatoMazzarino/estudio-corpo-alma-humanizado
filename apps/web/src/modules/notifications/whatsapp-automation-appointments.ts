@@ -24,6 +24,10 @@ import {
   resolveReminderTemplateSelection,
 } from "./whatsapp-reminder-template-rules";
 import {
+  type ConfirmationReplyTemplateStatus,
+  resolveConfirmationReplyTemplateSelection,
+} from "./whatsapp-confirmation-reply-template-rules";
+import {
   assertMetaCloudConfigBase,
   getMetaCloudTemplateImageHeader,
   resolveMetaCloudOutboundRecipient,
@@ -36,6 +40,7 @@ import { getWhatsAppTemplateFromLibrary } from "./whatsapp-template-library";
 import { WHATSAPP_AUTOMATION_FLORA_HISTORY_SINCE } from "./automation-config";
 import type { WhatsAppDispatchPolicy } from "./whatsapp-environment-channel";
 import { getNotificationTemplateStatusMap } from "./whatsapp-template-catalog";
+import { renderWhatsAppTemplateAsText } from "./whatsapp-template-renderer";
 
 export interface DeliveryResult {
   providerMessageId: string | null;
@@ -47,6 +52,29 @@ export interface DeliveryResult {
   recipient?: string | null;
   providerName?: string | null;
   providerResponse?: Record<string, unknown> | null;
+}
+
+export type InboundCustomerReplyAction =
+  | "confirm"
+  | "reschedule"
+  | "talk_to_jana";
+
+export interface InboundReplyDeliveryResult {
+  providerMessageId: string | null;
+  deliveredAt: string;
+  payload: Record<string, unknown> | null;
+  deliveryMode: string;
+  replyText: string;
+  templateName: string | null;
+  templateLanguage: string | null;
+  recipient: string | null;
+}
+
+export interface InboundReplyStatusUpdateResult {
+  previousStatus: string | null;
+  nextStatus: string | null;
+  statusChanged: boolean;
+  attendanceUpdated: boolean;
 }
 
 interface AppointmentTemplateContext {
@@ -367,6 +395,28 @@ function buildReminderTemplateVariableMap(context: AppointmentTemplateContext) {
     time_label: context.timeLabel || "--:--",
     home_address_line: context.homeAddressLine || "Endereço informado no agendamento",
     total_due: formatMoneyForTemplate(context.remainingAmount > 0 ? context.remainingAmount : context.totalAmount),
+  } as const;
+}
+
+function extractVoucherPublicIdFromVoucherLink(voucherLink: string) {
+  const raw = voucherLink.trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    return segments[segments.length - 1] ?? "";
+  } catch {
+    return raw.split("/").filter(Boolean).at(-1) ?? "";
+  }
+}
+
+function buildConfirmationReplyTemplateVariableMap(params: {
+  clientName: string;
+  voucherLink: string;
+}) {
+  return {
+    client_name: params.clientName || "Cliente",
+    voucher_public_id: extractVoucherPublicIdFromVoucherLink(params.voucherLink),
   } as const;
 }
 
@@ -733,6 +783,265 @@ export function buildButtonReplyAutoMessage(params: {
     default:
       return "Recebemos sua resposta. Obrigada! 🌿";
   }
+}
+
+function isConfirmationTemplateUnavailableError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  return message.includes(
+    "Nenhum template ativo disponível para resposta de confirmação."
+  );
+}
+
+export async function sendMetaCloudInboundActionReply(params: {
+  job: NotificationJobRow;
+  action: InboundCustomerReplyAction;
+  customerWaId: string;
+  voucherLink: string;
+}): Promise<InboundReplyDeliveryResult> {
+  if (params.action !== "confirm") {
+    const replyText = buildButtonReplyAutoMessage({
+      action: params.action,
+      voucherLink: params.voucherLink,
+    });
+    const outbound = await sendMetaCloudTextMessage({
+      to: params.customerWaId,
+      text: replyText,
+    });
+    return {
+      providerMessageId: outbound.providerMessageId,
+      deliveredAt: outbound.deliveredAt,
+      payload: outbound.payload ?? null,
+      deliveryMode: "meta_cloud_session_auto_reply",
+      replyText,
+      templateName: null,
+      templateLanguage: null,
+      recipient: outbound.recipient ?? null,
+    };
+  }
+
+  assertMetaCloudConfigBase();
+
+  const tenantSettings = await getTenantWhatsAppSettings(params.job.tenant_id);
+  const templateLanguage = (
+    tenantSettings.reminderTemplateLanguage || "pt_BR"
+  ).trim();
+  const context = await loadAppointmentTemplateContext(params.job, {
+    studioLocationLine: tenantSettings.studioLocationLine,
+  });
+  const to = resolveMetaCloudOutboundRecipient(params.customerWaId);
+  const templateStatusMap = await getNotificationTemplateStatusMap(
+    params.job.tenant_id
+  );
+  const resolveTemplateStatus = (
+    templateName: string
+  ): ConfirmationReplyTemplateStatus => {
+    const fromCatalog = templateStatusMap.get(templateName);
+    if (fromCatalog) return fromCatalog;
+    const fromLibrary = getWhatsAppTemplateFromLibrary(templateName);
+    return fromLibrary?.status ?? "missing";
+  };
+
+  try {
+    const selection = resolveConfirmationReplyTemplateSelection({
+      isHomeVisit: context.isHomeVisit,
+      resolveTemplateStatus,
+    });
+    const variableMap = buildConfirmationReplyTemplateVariableMap({
+      clientName: context.clientName,
+      voucherLink: params.voucherLink,
+    });
+    const components = buildTemplateComponents(selection.templateName, variableMap);
+    const requestBody = {
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name: selection.templateName,
+        language: {
+          code: templateLanguage,
+        },
+        components,
+      },
+    };
+    const { payload, providerMessageId } = await sendMetaCloudMessage(requestBody);
+    const replyText = renderWhatsAppTemplateAsText({
+      templateName: selection.templateName,
+      variableMap,
+    });
+
+    return {
+      providerMessageId,
+      deliveredAt: new Date().toISOString(),
+      payload,
+      deliveryMode: "meta_cloud_template_auto_reply_confirm",
+      replyText,
+      templateName: selection.templateName,
+      templateLanguage,
+      recipient: to,
+    };
+  } catch (error) {
+    if (!isConfirmationTemplateUnavailableError(error)) {
+      throw error;
+    }
+
+    const replyText = buildButtonReplyAutoMessage({
+      action: params.action,
+      voucherLink: params.voucherLink,
+    });
+    const outbound = await sendMetaCloudTextMessage({
+      to: params.customerWaId,
+      text: replyText,
+    });
+    return {
+      providerMessageId: outbound.providerMessageId,
+      deliveredAt: outbound.deliveredAt,
+      payload: outbound.payload ?? null,
+      deliveryMode: "meta_cloud_session_auto_reply_confirm_fallback",
+      replyText,
+      templateName: null,
+      templateLanguage: null,
+      recipient: outbound.recipient ?? null,
+    };
+  }
+}
+
+const APPOINTMENT_STATUS_TERMINAL = new Set([
+  "completed",
+  "canceled_by_client",
+  "canceled_by_studio",
+  "no_show",
+]);
+
+export async function applyAppointmentStatusFromInboundReply(params: {
+  tenantId: string;
+  appointmentId: string;
+  action: InboundCustomerReplyAction;
+}): Promise<InboundReplyStatusUpdateResult> {
+  const supabase = createServiceClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: appointmentRow, error: appointmentLookupError } = await supabase
+    .from("appointments")
+    .select("status")
+    .eq("tenant_id", params.tenantId)
+    .eq("id", params.appointmentId)
+    .maybeSingle();
+
+  if (appointmentLookupError) {
+    throw new Error(
+      `Falha ao carregar status do agendamento para resposta inbound: ${appointmentLookupError.message}`
+    );
+  }
+
+  const previousStatusRaw =
+    typeof appointmentRow?.status === "string"
+      ? appointmentRow.status.trim().toLowerCase()
+      : null;
+  const previousStatus = previousStatusRaw || "pending";
+
+  let requestedStatus: string | null = null;
+  if (params.action === "confirm") {
+    if (!APPOINTMENT_STATUS_TERMINAL.has(previousStatus) && previousStatus !== "in_progress") {
+      requestedStatus = "confirmed";
+    }
+  } else if (params.action === "reschedule") {
+    if (!APPOINTMENT_STATUS_TERMINAL.has(previousStatus)) {
+      requestedStatus = "pending";
+    }
+  }
+
+  let statusChanged = false;
+  let nextStatus = previousStatus;
+  if (requestedStatus && requestedStatus !== previousStatus) {
+    const { error: updateStatusError } = await supabase
+      .from("appointments")
+      .update({
+        status: requestedStatus,
+      })
+      .eq("tenant_id", params.tenantId)
+      .eq("id", params.appointmentId);
+    if (updateStatusError) {
+      throw new Error(
+        `Falha ao atualizar status do agendamento via resposta inbound: ${updateStatusError.message}`
+      );
+    }
+    statusChanged = true;
+    nextStatus = requestedStatus;
+  }
+
+  let attendanceUpdated = false;
+  if (params.action === "confirm") {
+    const { error: upsertAttendanceError } = await supabase
+      .from("appointment_attendances")
+      .upsert(
+        {
+          appointment_id: params.appointmentId,
+          tenant_id: params.tenantId,
+          confirmed_at: nowIso,
+          updated_at: nowIso,
+        },
+        { onConflict: "appointment_id" }
+      );
+    if (upsertAttendanceError) {
+      throw new Error(
+        `Falha ao registrar confirmação do atendimento via inbound: ${upsertAttendanceError.message}`
+      );
+    }
+    attendanceUpdated = true;
+  } else if (params.action === "reschedule") {
+    const { error: resetAttendanceError } = await supabase
+      .from("appointment_attendances")
+      .update({
+        confirmed_at: null,
+        updated_at: nowIso,
+      })
+      .eq("tenant_id", params.tenantId)
+      .eq("appointment_id", params.appointmentId);
+    if (resetAttendanceError) {
+      throw new Error(
+        `Falha ao resetar confirmação para reagendamento via inbound: ${resetAttendanceError.message}`
+      );
+    }
+    attendanceUpdated = true;
+  }
+
+  const eventType =
+    params.action === "confirm"
+      ? "pre_confirmed"
+      : params.action === "reschedule"
+        ? "pre_reschedule_requested"
+        : "pre_talk_to_jana_requested";
+  const { error: insertEventError } = await supabase.from("appointment_events").insert({
+    tenant_id: params.tenantId,
+    appointment_id: params.appointmentId,
+    event_type: eventType,
+    payload: {
+      source: "whatsapp_auto_reply",
+      action: params.action,
+      previous_status: previousStatusRaw,
+      next_status: nextStatus,
+      status_changed: statusChanged,
+      attendance_updated: attendanceUpdated,
+    },
+  });
+  if (insertEventError) {
+    console.error(
+      "[whatsapp-automation] Falha ao registrar evento de status inbound:",
+      insertEventError
+    );
+  }
+
+  return {
+    previousStatus: previousStatusRaw,
+    nextStatus,
+    statusChanged,
+    attendanceUpdated,
+  };
 }
 
 function buildCanceledAppointmentSessionMessage(context: AppointmentTemplateContext) {

@@ -52,7 +52,6 @@ export function AppointmentForm({
   safeDate,
   initialAppointment,
   returnTo,
-  messageTemplates,
   signalPercentage,
   pointEnabled,
   pointTerminalName,
@@ -61,8 +60,6 @@ export function AppointmentForm({
   const router = useRouter();
   const isEditing = Boolean(initialAppointment);
   const formRef = useRef<HTMLFormElement | null>(null);
-  const sendMessageInputRef = useRef<HTMLInputElement | null>(null);
-  const sendMessageTextInputRef = useRef<HTMLInputElement | null>(null);
   const clientPhoneInputRef = useRef<HTMLInputElement | null>(null);
   const clientCpfInputRef = useRef<HTMLInputElement | null>(null);
   const clientCreateFirstNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -455,7 +452,6 @@ export function AppointmentForm({
     resolvedClientPhone,
     clientDisplayPreviewLabel,
     clientPublicFullNamePreview,
-    clientMessageFirstName,
     clientDraftInternalPreview,
     clientDraftPublicPreview,
     canHomeVisit,
@@ -532,26 +528,15 @@ export function AppointmentForm({
     handleVerifyChargeCardNow,
     handleBeginImmediateCharge,
     handleSwitchChargeToAttendance,
-    handleResolveDeferredManualPrompt,
     handleConfirmationSheetClose,
     handleSchedule,
     handleOpenConfirmationPrompt,
   } = useAppointmentConfirmationFlow({
     formRef,
-    sendMessageInputRef,
-    sendMessageTextInputRef,
     clientCpfInputRef,
     router,
     safeDate,
     selectedDate,
-    selectedTime,
-    selectedServiceName: selectedService?.name ?? "",
-    scheduleTotal,
-    effectiveDisplacementFee,
-    isHomeVisit,
-    addressLabel,
-    clientMessageFirstName,
-    messageTemplate: messageTemplates.created_confirmation,
     resolvedClientPhone,
     clientPhone,
     clientPublicFullNamePreview,
@@ -628,10 +613,6 @@ export function AppointmentForm({
         effectiveDisplacementFee={effectiveDisplacementFee}
         displacementDistanceKm={displacementEstimate?.distanceKm ?? null}
       />
-      {!isEditing && <input ref={sendMessageInputRef} type="hidden" name="send_created_message" value="" />}
-      {!isEditing && (
-        <input ref={sendMessageTextInputRef} type="hidden" name="send_created_message_text" value="" />
-      )}
       <AppointmentFormSections
         clientStepProps={{
           sectionCardClass,
@@ -969,7 +950,6 @@ export function AppointmentForm({
             onVerifyChargeCardNowAction: handleVerifyChargeCardNow,
             onSwitchChargeToAttendanceAction: handleSwitchChargeToAttendance,
             onClearChargeFlowErrorAction: () => setChargeFlowError(null),
-            onResolveDeferredManualPromptAction: handleResolveDeferredManualPrompt,
             onBeginImmediateChargeAction: handleBeginImmediateCharge,
             onScheduleAction: handleSchedule,
           },

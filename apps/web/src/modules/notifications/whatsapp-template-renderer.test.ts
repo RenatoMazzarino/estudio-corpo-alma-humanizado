@@ -47,4 +47,18 @@ describe("whatsapp-template-renderer", () => {
     expect(text).toContain("Total a pagar no dia");
     expect(text).toContain("Opções de resposta: CONFIRMAR | REAGENDAR | FALAR COM A JANA");
   });
+
+  it("renderiza cabeçalho textual para template de resposta de confirmação", () => {
+    const text = renderWhatsAppTemplateAsText({
+      templateName: "resposta_confirmacao_estudio",
+      variableMap: {
+        client_name: "Renata",
+        voucher_public_id: "voucher-123",
+      },
+    });
+
+    expect(text).toContain("Presença Confirmada!");
+    expect(text).toContain("Combinado *Renata*");
+    expect(text).toContain("VER VOUCHER: https://public.corpoealmahumanizado.com.br/voucher/voucher-123");
+  });
 });

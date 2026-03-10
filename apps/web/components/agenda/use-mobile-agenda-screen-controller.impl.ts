@@ -293,12 +293,9 @@ export function useMobileAgendaScreenController({
   }, [appointments, detailsData?.appointment]);
 
   const {
-    handleSendMessage,
     handleSendPaymentCharge,
     handleSendPaymentReceipt,
-    handleSendReminder,
     handleSendSurvey,
-    handleConfirmClient,
     handleCancelAppointment,
     handleRecordPayment,
     handleSaveEvolutionFromDetails,
@@ -369,12 +366,9 @@ export function useMobileAgendaScreenController({
     messageTemplates,
     closeDetails,
     handleOpenAttendance,
-    handleSendMessage,
-    handleSendReminder,
     handleSendSurvey,
     handleSendPaymentCharge,
     handleSendPaymentReceipt,
-    handleConfirmClient,
     handleCancelAppointment,
     handleRecordPayment,
     handleSaveEvolutionFromDetails,

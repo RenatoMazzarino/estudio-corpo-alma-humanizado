@@ -15,7 +15,6 @@ import {
   insertMessageLogOperation,
   recordMessageStatusOperation,
   sendMessageOperation,
-  sendReminder24hOperation,
 } from "../../../../../src/modules/attendance/communication-actions";
 
 export async function getAttendanceImpl(appointmentId: string, tenantId: string) {
@@ -34,13 +33,6 @@ export async function cancelPreConfirmationImpl(
   tenantId: string
 ): Promise<ActionResult<{ appointmentId: string }>> {
   return cancelPreConfirmationOperation(payload, tenantId);
-}
-
-export async function sendReminder24hImpl(
-  payload: { appointmentId: string; message?: string | null },
-  tenantId: string
-): Promise<ActionResult<{ appointmentId: string }>> {
-  return sendReminder24hOperation(payload, tenantId);
 }
 
 export async function sendMessageImpl(payload: {

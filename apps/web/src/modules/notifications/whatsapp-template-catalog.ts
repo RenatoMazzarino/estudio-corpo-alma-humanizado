@@ -205,6 +205,7 @@ export async function syncNotificationTemplateCatalogFromLibrary(tenantId: strin
     source: "local_library",
     last_synced_at: nowIso,
     metadata: {
+      header_text: template.headerText ?? null,
       footer: template.footer,
       status_label: template.statusLabel,
       button: template.button,
