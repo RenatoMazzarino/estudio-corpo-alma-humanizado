@@ -3,15 +3,15 @@
 type NewClientExtraDataSectionProps = {
   profession: string;
   referralSource: string;
-  onChangeProfession: (value: string) => void;
-  onChangeReferralSource: (value: string) => void;
+  onChangeProfessionAction: (value: string) => void;
+  onChangeReferralSourceAction: (value: string) => void;
 };
 
 export function NewClientExtraDataSection({
   profession,
   referralSource,
-  onChangeProfession,
-  onChangeReferralSource,
+  onChangeProfessionAction,
+  onChangeReferralSourceAction,
 }: NewClientExtraDataSectionProps) {
   return (
     <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
@@ -22,14 +22,14 @@ export function NewClientExtraDataSection({
       <input
         name="profissao"
         value={profession}
-        onChange={(event) => onChangeProfession(event.target.value)}
+        onChange={(event) => onChangeProfessionAction(event.target.value)}
         placeholder="Profissão"
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
       />
       <input
         name="como_conheceu"
         value={referralSource}
-        onChange={(event) => onChangeReferralSource(event.target.value)}
+        onChange={(event) => onChangeReferralSourceAction(event.target.value)}
         placeholder="Como conheceu?"
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
       />

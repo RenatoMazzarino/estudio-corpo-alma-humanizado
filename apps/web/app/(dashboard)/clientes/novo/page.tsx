@@ -374,18 +374,18 @@ export default function NewClientPage() {
           <NewClientContactChannelsSection
             phones={phones}
             emails={emails}
-            createId={createId}
-            onChangePhones={setPhones}
-            onChangeEmails={setEmails}
-            onSetPhonePrimary={handlePhonePrimary}
-            onSetPhoneWhatsapp={handlePhoneWhatsapp}
-            onSetEmailPrimary={handleEmailPrimary}
+            createIdAction={createId}
+            onChangePhonesAction={setPhones}
+            onChangeEmailsAction={setEmails}
+            onSetPhonePrimaryAction={handlePhonePrimary}
+            onSetPhoneWhatsappAction={handlePhoneWhatsapp}
+            onSetEmailPrimaryAction={handleEmailPrimary}
           />
           <NewClientAddressSection
             address={address}
             cepStatus={cepStatus}
-            onChangeAddress={setAddress}
-            onLookupCep={() => void handleCepLookup()}
+            onChangeAddressAction={setAddress}
+            onLookupCepAction={() => void handleCepLookup()}
           />
           <NewClientHealthSection
             allergyTags={allergyTags}
@@ -396,47 +396,47 @@ export default function NewClientPage() {
             preferencesNotes={preferencesNotes}
             clinicalHistory={clinicalHistory}
             anamneseUrl={anamneseUrl}
-            onAddAllergyTag={() => handleAddTag(allergyInput, setAllergyTags, () => setAllergyInput(""))}
-            onRemoveAllergyTag={(tag) =>
+            onAddAllergyTagAction={() => handleAddTag(allergyInput, setAllergyTags, () => setAllergyInput(""))}
+            onRemoveAllergyTagAction={(tag) =>
               setAllergyTags((prev) => prev.filter((item) => item !== tag))
             }
-            onChangeAllergyInput={setAllergyInput}
-            onAddConditionTag={() =>
+            onChangeAllergyInputAction={setAllergyInput}
+            onAddConditionTagAction={() =>
               handleAddTag(conditionInput, setConditionTags, () => setConditionInput(""))
             }
-            onRemoveConditionTag={(tag) =>
+            onRemoveConditionTagAction={(tag) =>
               setConditionTags((prev) => prev.filter((item) => item !== tag))
             }
-            onChangeConditionInput={setConditionInput}
-            onChangeContraindications={setContraindications}
-            onChangePreferencesNotes={setPreferencesNotes}
-            onChangeClinicalHistory={setClinicalHistory}
-            onChangeAnamneseUrl={setAnamneseUrl}
+            onChangeConditionInputAction={setConditionInput}
+            onChangeContraindicationsAction={setContraindications}
+            onChangePreferencesNotesAction={setPreferencesNotes}
+            onChangeClinicalHistoryAction={setClinicalHistory}
+            onChangeAnamneseUrlAction={setAnamneseUrl}
           />
           <NewClientPreferencesSection
             isVip={isVip}
             needsAttention={needsAttention}
             marketingOptIn={marketingOptIn}
-            onChangeIsVip={setIsVip}
-            onChangeNeedsAttention={setNeedsAttention}
-            onChangeMarketingOptIn={setMarketingOptIn}
+            onChangeIsVipAction={setIsVip}
+            onChangeNeedsAttentionAction={setNeedsAttention}
+            onChangeMarketingOptInAction={setMarketingOptIn}
           />
           <NewClientMinorSection
             isMinor={isMinor}
             guardianName={guardianName}
             guardianPhone={guardianPhone}
             guardianCpf={guardianCpf}
-            onChangeIsMinor={setIsMinor}
-            onChangeGuardianName={setGuardianName}
-            onChangeGuardianPhone={setGuardianPhone}
-            onChangeGuardianCpf={setGuardianCpf}
+            onChangeIsMinorAction={setIsMinor}
+            onChangeGuardianNameAction={setGuardianName}
+            onChangeGuardianPhoneAction={setGuardianPhone}
+            onChangeGuardianCpfAction={setGuardianCpf}
           />
-          <NewClientNotesSection notes={observacoesGerais} onChangeNotes={setObservacoesGerais} />
+          <NewClientNotesSection notes={observacoesGerais} onChangeNotesAction={setObservacoesGerais} />
           <NewClientExtraDataSection
             profession={profissao}
             referralSource={comoConheceu}
-            onChangeProfession={setProfissao}
-            onChangeReferralSource={setComoConheceu}
+            onChangeProfessionAction={setProfissao}
+            onChangeReferralSourceAction={setComoConheceu}
           />
 
           <button

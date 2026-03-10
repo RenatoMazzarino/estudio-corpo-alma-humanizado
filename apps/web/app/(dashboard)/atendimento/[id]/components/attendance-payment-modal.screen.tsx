@@ -125,15 +125,15 @@ export function AttendancePaymentModal(
                 pointPayment={controller.pointPayment}
                 busy={controller.busy}
                 errorText={controller.errorText}
-                onSetMethod={controller.setMethod}
-                onSetCashAmount={controller.setCashAmount}
-                onCreatePix={() => void controller.handleCreatePix()}
-                onCopyPix={() => void controller.handleCopyPix()}
-                onCopyPixKey={() => void controller.handleCopyPixKey()}
-                onRegisterCash={() => void controller.handleRegisterCash()}
-                onRegisterPixKey={() => void controller.handleRegisterPixKey()}
-                onPointCharge={(cardMode) => void controller.handlePointCharge(cardMode)}
-                onWaiveAsCourtesy={() => void controller.handleWaiveAsCourtesy()}
+                onSetMethodAction={controller.setMethod}
+                onSetCashAmountAction={controller.setCashAmount}
+                onCreatePixAction={() => void controller.handleCreatePix()}
+                onCopyPixAction={() => void controller.handleCopyPix()}
+                onCopyPixKeyAction={() => void controller.handleCopyPixKey()}
+                onRegisterCashAction={() => void controller.handleRegisterCash()}
+                onRegisterPixKeyAction={() => void controller.handleRegisterPixKey()}
+                onPointChargeAction={(cardMode) => void controller.handlePointCharge(cardMode)}
+                onWaiveAsCourtesyAction={() => void controller.handleWaiveAsCourtesy()}
               />
             </>
           )}

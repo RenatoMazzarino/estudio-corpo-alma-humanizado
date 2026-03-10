@@ -7,23 +7,23 @@ import type { EmailEntry, PhoneEntry } from "./new-client.types";
 type NewClientContactChannelsSectionProps = {
   phones: PhoneEntry[];
   emails: EmailEntry[];
-  createId: () => string;
-  onChangePhones: (next: PhoneEntry[]) => void;
-  onChangeEmails: (next: EmailEntry[]) => void;
-  onSetPhonePrimary: (id: string) => void;
-  onSetPhoneWhatsapp: (id: string) => void;
-  onSetEmailPrimary: (id: string) => void;
+  createIdAction: () => string;
+  onChangePhonesAction: (next: PhoneEntry[]) => void;
+  onChangeEmailsAction: (next: EmailEntry[]) => void;
+  onSetPhonePrimaryAction: (id: string) => void;
+  onSetPhoneWhatsappAction: (id: string) => void;
+  onSetEmailPrimaryAction: (id: string) => void;
 };
 
 export function NewClientContactChannelsSection({
   phones,
   emails,
-  createId,
-  onChangePhones,
-  onChangeEmails,
-  onSetPhonePrimary,
-  onSetPhoneWhatsapp,
-  onSetEmailPrimary,
+  createIdAction,
+  onChangePhonesAction,
+  onChangeEmailsAction,
+  onSetPhonePrimaryAction,
+  onSetPhoneWhatsappAction,
+  onSetEmailPrimaryAction,
 }: NewClientContactChannelsSectionProps) {
   return (
     <>
@@ -36,7 +36,7 @@ export function NewClientContactChannelsSection({
           <button
             type="button"
             onClick={() =>
-              onChangePhones([...phones, { id: createId(), label: "Outro", number: "", isPrimary: false, isWhatsapp: false }])
+              onChangePhonesAction([...phones, { id: createIdAction(), label: "Outro", number: "", isPrimary: false, isWhatsapp: false }])
             }
             className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
             aria-label="Adicionar telefone"
@@ -52,7 +52,7 @@ export function NewClientContactChannelsSection({
               <input
                 value={phone.number}
                 onChange={(event) =>
-                  onChangePhones(
+                  onChangePhonesAction(
                     phones.map((item) =>
                       item.id === phone.id ? { ...item, number: formatBrazilPhone(event.target.value) } : item
                     )
@@ -64,7 +64,7 @@ export function NewClientContactChannelsSection({
               />
               <button
                 type="button"
-                onClick={() => onChangePhones(phones.filter((item) => item.id !== phone.id))}
+                onClick={() => onChangePhonesAction(phones.filter((item) => item.id !== phone.id))}
                 className="text-muted hover:text-danger"
               >
                 <Trash2 className="w-4 h-4" />
@@ -74,7 +74,7 @@ export function NewClientContactChannelsSection({
               <input
                 value={phone.label}
                 onChange={(event) =>
-                  onChangePhones(
+                  onChangePhonesAction(
                     phones.map((item) => (item.id === phone.id ? { ...item, label: event.target.value } : item))
                   )
                 }
@@ -83,7 +83,7 @@ export function NewClientContactChannelsSection({
               />
               <button
                 type="button"
-                onClick={() => onSetPhonePrimary(phone.id)}
+                onClick={() => onSetPhonePrimaryAction(phone.id)}
                 className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border ${
                   phone.isPrimary ? "bg-studio-green text-white border-studio-green" : "bg-white text-muted border-line"
                 }`}
@@ -92,7 +92,7 @@ export function NewClientContactChannelsSection({
               </button>
               <button
                 type="button"
-                onClick={() => onSetPhoneWhatsapp(phone.id)}
+                onClick={() => onSetPhoneWhatsappAction(phone.id)}
                 className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border ${
                   phone.isWhatsapp ? "bg-studio-green text-white border-studio-green" : "bg-white text-muted border-line"
                 }`}
@@ -112,7 +112,7 @@ export function NewClientContactChannelsSection({
           </div>
           <button
             type="button"
-            onClick={() => onChangeEmails([...emails, { id: createId(), label: "Outro", email: "", isPrimary: false }])}
+            onClick={() => onChangeEmailsAction([...emails, { id: createIdAction(), label: "Outro", email: "", isPrimary: false }])}
             className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
             aria-label="Adicionar email"
           >
@@ -127,7 +127,7 @@ export function NewClientContactChannelsSection({
               <input
                 value={email.email}
                 onChange={(event) =>
-                  onChangeEmails(
+                  onChangeEmailsAction(
                     emails.map((item) => (item.id === email.id ? { ...item, email: event.target.value } : item))
                   )
                 }
@@ -136,7 +136,7 @@ export function NewClientContactChannelsSection({
               />
               <button
                 type="button"
-                onClick={() => onChangeEmails(emails.filter((item) => item.id !== email.id))}
+                onClick={() => onChangeEmailsAction(emails.filter((item) => item.id !== email.id))}
                 className="text-muted hover:text-danger"
               >
                 <Trash2 className="w-4 h-4" />
@@ -146,7 +146,7 @@ export function NewClientContactChannelsSection({
               <input
                 value={email.label}
                 onChange={(event) =>
-                  onChangeEmails(
+                  onChangeEmailsAction(
                     emails.map((item) => (item.id === email.id ? { ...item, label: event.target.value } : item))
                   )
                 }
@@ -155,7 +155,7 @@ export function NewClientContactChannelsSection({
               />
               <button
                 type="button"
-                onClick={() => onSetEmailPrimary(email.id)}
+                onClick={() => onSetEmailPrimaryAction(email.id)}
                 className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border ${
                   email.isPrimary ? "bg-studio-green text-white border-studio-green" : "bg-white text-muted border-line"
                 }`}

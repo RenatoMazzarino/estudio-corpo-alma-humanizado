@@ -3,15 +3,15 @@
 type AttendanceChecklistSettingsCardProps = {
   enabled: boolean;
   itemsText: string;
-  onEnabledChange: (value: boolean) => void;
-  onItemsTextChange: (value: string) => void;
+  onEnabledChangeAction: (value: boolean) => void;
+  onItemsTextChangeAction: (value: string) => void;
 };
 
 export function AttendanceChecklistSettingsCard({
   enabled,
   itemsText,
-  onEnabledChange,
-  onItemsTextChange,
+  onEnabledChangeAction,
+  onItemsTextChangeAction,
 }: AttendanceChecklistSettingsCardProps) {
   return (
     <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
@@ -22,7 +22,7 @@ export function AttendanceChecklistSettingsCard({
             type="checkbox"
             name="attendance_checklist_enabled"
             checked={enabled}
-            onChange={(event) => onEnabledChange(event.target.checked)}
+            onChange={(event) => onEnabledChangeAction(event.target.checked)}
           />
           Exibir no atendimento
         </label>
@@ -33,7 +33,7 @@ export function AttendanceChecklistSettingsCard({
         <textarea
           name="attendance_checklist_items"
           value={itemsText}
-          onChange={(event) => onItemsTextChange(event.target.value)}
+          onChange={(event) => onItemsTextChangeAction(event.target.value)}
           readOnly={!enabled}
           rows={5}
           className={`mt-1 w-full border border-stone-200 rounded-xl py-2 px-3 text-sm ${

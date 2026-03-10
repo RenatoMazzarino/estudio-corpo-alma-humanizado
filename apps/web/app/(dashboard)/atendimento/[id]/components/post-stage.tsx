@@ -15,9 +15,9 @@ interface PostStageProps {
   post: PostRow | null;
   messages: AppointmentMessage[];
   kpiLabel: string;
-  onSavePost: (payload: { postNotes?: string | null; followUpDueAt?: string | null; followUpNote?: string | null }) => void;
-  onSendSurvey: () => void;
-  onRecordSurvey: (score: number) => void;
+  onSavePostAction: (payload: { postNotes?: string | null; followUpDueAt?: string | null; followUpNote?: string | null }) => void;
+  onSendSurveyAction: () => void;
+  onRecordSurveyAction: (score: number) => void;
 }
 
 export function PostStage({
@@ -25,9 +25,9 @@ export function PostStage({
   post,
   messages,
   kpiLabel,
-  onSavePost,
-  onSendSurvey,
-  onRecordSurvey,
+  onSavePostAction,
+  onSendSurveyAction,
+  onRecordSurveyAction,
 }: PostStageProps) {
   const [postNotes, setPostNotes] = useState(post?.post_notes ?? "");
   const [followUpNote, setFollowUpNote] = useState(post?.follow_up_note ?? "");
@@ -103,7 +103,7 @@ export function PostStage({
           <div className="mt-3 flex items-center justify-between gap-3">
             <p className="text-[11px] font-bold text-muted">Status: {messageStatusLabel(surveyMessage?.status ?? null)}</p>
             <button
-              onClick={onSendSurvey}
+              onClick={onSendSurveyAction}
               className="px-3 py-2 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs border border-studio-green/10 hover:bg-white transition"
             >
               Enviar
@@ -126,7 +126,7 @@ export function PostStage({
               className="w-20 px-3 py-2 rounded-xl border border-line text-sm"
             />
             <button
-              onClick={() => onRecordSurvey(surveyScore)}
+              onClick={() => onRecordSurveyAction(surveyScore)}
               className="px-3 py-2 rounded-xl bg-studio-green text-white text-xs font-bold"
             >
               Registrar
@@ -187,7 +187,7 @@ export function PostStage({
 
         <button
           onClick={() =>
-            onSavePost({
+            onSavePostAction({
               postNotes,
               followUpNote,
               followUpDueAt: followUpDate ? new Date(followUpDate).toISOString() : null,

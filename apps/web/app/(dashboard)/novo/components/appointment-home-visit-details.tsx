@@ -19,11 +19,11 @@ type AppointmentHomeVisitDetailsProps = {
   displacementEstimate: DisplacementEstimate | null;
   displacementError: string | null;
   manualDisplacementFee: string;
-  onManualDisplacementFeeChange: (value: string) => void;
-  onZeroDisplacementFee: () => void;
-  onSelectExistingAddress: (id: string) => void;
-  onOpenAddressCreateModal: () => void;
-  onShowAddressSelectionList: (value: boolean) => void;
+  onManualDisplacementFeeChangeAction: (value: string) => void;
+  onZeroDisplacementFeeAction: () => void;
+  onSelectExistingAddressAction: (id: string) => void;
+  onOpenAddressCreateModalAction: () => void;
+  onShowAddressSelectionListAction: (value: boolean) => void;
 };
 
 export function AppointmentHomeVisitDetails({
@@ -40,11 +40,11 @@ export function AppointmentHomeVisitDetails({
   displacementEstimate,
   displacementError,
   manualDisplacementFee,
-  onManualDisplacementFeeChange,
-  onZeroDisplacementFee,
-  onSelectExistingAddress,
-  onOpenAddressCreateModal,
-  onShowAddressSelectionList,
+  onManualDisplacementFeeChangeAction,
+  onZeroDisplacementFeeAction,
+  onSelectExistingAddressAction,
+  onOpenAddressCreateModalAction,
+  onShowAddressSelectionListAction,
 }: AppointmentHomeVisitDetailsProps) {
   return (
     <div
@@ -92,7 +92,7 @@ export function AppointmentHomeVisitDetails({
                         <GoogleMapsAddressButton query={addressMapsQuery} />
                         <button
                           type="button"
-                          onClick={() => onSelectExistingAddress(address.id)}
+                          onClick={() => onSelectExistingAddressAction(address.id)}
                           className={`px-3 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border ${
                             isSelected
                               ? "bg-dom/15 border-dom/40 text-dom-strong"
@@ -109,7 +109,7 @@ export function AppointmentHomeVisitDetails({
             </div>
             <button
               type="button"
-              onClick={onOpenAddressCreateModal}
+              onClick={onOpenAddressCreateModalAction}
               className="mt-3 w-full py-3 rounded-2xl border border-dom/35 bg-white text-[11px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/15 transition"
             >
               Cadastrar novo endereço
@@ -144,7 +144,7 @@ export function AppointmentHomeVisitDetails({
               {clientAddresses.length > 1 && (
                 <button
                   type="button"
-                  onClick={() => onShowAddressSelectionList(true)}
+                  onClick={() => onShowAddressSelectionListAction(true)}
                   className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
                 >
                   Trocar endereço
@@ -152,7 +152,7 @@ export function AppointmentHomeVisitDetails({
               )}
               <button
                 type="button"
-                onClick={onOpenAddressCreateModal}
+                onClick={onOpenAddressCreateModalAction}
                 className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
               >
                 Cadastrar novo endereço
@@ -172,7 +172,7 @@ export function AppointmentHomeVisitDetails({
               <GoogleMapsAddressButton query={mapsQuery} />
               <button
                 type="button"
-                onClick={onOpenAddressCreateModal}
+                onClick={onOpenAddressCreateModalAction}
                 className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
               >
                 Trocar endereço
@@ -180,7 +180,7 @@ export function AppointmentHomeVisitDetails({
               {clientAddresses.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => onShowAddressSelectionList(true)}
+                  onClick={() => onShowAddressSelectionListAction(true)}
                   className="px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wide bg-white border border-dom/35 text-dom-strong hover:bg-dom/25 transition"
                 >
                   Usar cadastrado
@@ -201,7 +201,7 @@ export function AppointmentHomeVisitDetails({
             </p>
             <button
               type="button"
-              onClick={onOpenAddressCreateModal}
+              onClick={onOpenAddressCreateModalAction}
               className="w-full h-12 rounded-2xl bg-white border border-dom/35 text-dom-strong font-extrabold text-xs uppercase tracking-wide hover:bg-dom/15"
             >
               Cadastrar endereço
@@ -235,14 +235,14 @@ export function AppointmentHomeVisitDetails({
                   type="text"
                   inputMode="decimal"
                   value={manualDisplacementFee}
-                  onChange={(event) => onManualDisplacementFeeChange(event.target.value)}
+                  onChange={(event) => onManualDisplacementFeeChangeAction(event.target.value)}
                   placeholder={displacementEstimate?.fee.toFixed(2).replace(".", ",") ?? "0,00"}
                   className="w-full pl-9 pr-3 py-3 rounded-xl bg-stone-50 border border-stone-100 focus:outline-none focus:ring-1 focus:ring-studio-green focus:border-studio-green text-sm text-gray-700 font-medium"
                 />
               </div>
               <button
                 type="button"
-                onClick={onZeroDisplacementFee}
+                onClick={onZeroDisplacementFeeAction}
                 className="px-3 py-3 rounded-xl border border-dom/45 bg-white text-[10px] font-extrabold uppercase tracking-wide text-dom-strong hover:bg-dom/25"
               >
                 Zerar

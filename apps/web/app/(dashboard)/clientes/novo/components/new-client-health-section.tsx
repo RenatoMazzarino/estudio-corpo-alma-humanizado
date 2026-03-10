@@ -9,16 +9,16 @@ type NewClientHealthSectionProps = {
   preferencesNotes: string;
   clinicalHistory: string;
   anamneseUrl: string;
-  onAddAllergyTag: () => void;
-  onRemoveAllergyTag: (tag: string) => void;
-  onChangeAllergyInput: (value: string) => void;
-  onAddConditionTag: () => void;
-  onRemoveConditionTag: (tag: string) => void;
-  onChangeConditionInput: (value: string) => void;
-  onChangeContraindications: (value: string) => void;
-  onChangePreferencesNotes: (value: string) => void;
-  onChangeClinicalHistory: (value: string) => void;
-  onChangeAnamneseUrl: (value: string) => void;
+  onAddAllergyTagAction: () => void;
+  onRemoveAllergyTagAction: (tag: string) => void;
+  onChangeAllergyInputAction: (value: string) => void;
+  onAddConditionTagAction: () => void;
+  onRemoveConditionTagAction: (tag: string) => void;
+  onChangeConditionInputAction: (value: string) => void;
+  onChangeContraindicationsAction: (value: string) => void;
+  onChangePreferencesNotesAction: (value: string) => void;
+  onChangeClinicalHistoryAction: (value: string) => void;
+  onChangeAnamneseUrlAction: (value: string) => void;
 };
 
 export function NewClientHealthSection({
@@ -30,16 +30,16 @@ export function NewClientHealthSection({
   preferencesNotes,
   clinicalHistory,
   anamneseUrl,
-  onAddAllergyTag,
-  onRemoveAllergyTag,
-  onChangeAllergyInput,
-  onAddConditionTag,
-  onRemoveConditionTag,
-  onChangeConditionInput,
-  onChangeContraindications,
-  onChangePreferencesNotes,
-  onChangeClinicalHistory,
-  onChangeAnamneseUrl,
+  onAddAllergyTagAction,
+  onRemoveAllergyTagAction,
+  onChangeAllergyInputAction,
+  onAddConditionTagAction,
+  onRemoveConditionTagAction,
+  onChangeConditionInputAction,
+  onChangeContraindicationsAction,
+  onChangePreferencesNotesAction,
+  onChangeClinicalHistoryAction,
+  onChangeAnamneseUrlAction,
 }: NewClientHealthSectionProps) {
   return (
     <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
@@ -55,7 +55,7 @@ export function NewClientHealthSection({
             <button
               key={tag}
               type="button"
-              onClick={() => onRemoveAllergyTag(tag)}
+              onClick={() => onRemoveAllergyTagAction(tag)}
               className="px-3 py-1 rounded-full bg-red-50 text-red-600 text-[11px] font-extrabold border border-red-100"
             >
               {tag}
@@ -64,11 +64,11 @@ export function NewClientHealthSection({
         </div>
         <input
           value={allergyInput}
-          onChange={(event) => onChangeAllergyInput(event.target.value)}
+          onChange={(event) => onChangeAllergyInputAction(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              onAddAllergyTag();
+              onAddAllergyTagAction();
             }
           }}
           placeholder="Adicionar alergia e pressione Enter"
@@ -83,7 +83,7 @@ export function NewClientHealthSection({
             <button
               key={tag}
               type="button"
-              onClick={() => onRemoveConditionTag(tag)}
+              onClick={() => onRemoveConditionTagAction(tag)}
               className="px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-[11px] font-extrabold border border-orange-100"
             >
               {tag}
@@ -92,11 +92,11 @@ export function NewClientHealthSection({
         </div>
         <input
           value={conditionInput}
-          onChange={(event) => onChangeConditionInput(event.target.value)}
+          onChange={(event) => onChangeConditionInputAction(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              onAddConditionTag();
+              onAddConditionTagAction();
             }
           }}
           placeholder="Adicionar condição e pressione Enter"
@@ -107,7 +107,7 @@ export function NewClientHealthSection({
       <textarea
         name="contraindications"
         value={contraindications}
-        onChange={(event) => onChangeContraindications(event.target.value)}
+        onChange={(event) => onChangeContraindicationsAction(event.target.value)}
         placeholder="Contraindicações"
         rows={3}
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
@@ -116,7 +116,7 @@ export function NewClientHealthSection({
       <textarea
         name="preferences_notes"
         value={preferencesNotes}
-        onChange={(event) => onChangePreferencesNotes(event.target.value)}
+        onChange={(event) => onChangePreferencesNotesAction(event.target.value)}
         placeholder="Preferências"
         rows={3}
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
@@ -125,7 +125,7 @@ export function NewClientHealthSection({
       <textarea
         name="clinical_history"
         value={clinicalHistory}
-        onChange={(event) => onChangeClinicalHistory(event.target.value)}
+        onChange={(event) => onChangeClinicalHistoryAction(event.target.value)}
         placeholder="Histórico clínico / anamnese"
         rows={3}
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
@@ -134,7 +134,7 @@ export function NewClientHealthSection({
       <input
         name="anamnese_url"
         value={anamneseUrl}
-        onChange={(event) => onChangeAnamneseUrl(event.target.value)}
+        onChange={(event) => onChangeAnamneseUrlAction(event.target.value)}
         placeholder="Link da anamnese (opcional)"
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
       />

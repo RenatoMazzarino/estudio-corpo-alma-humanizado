@@ -10,29 +10,29 @@ type MobileAgendaWeekSectionProps = {
   visible: boolean;
   selectedDate: Date;
   weekDays: Date[];
-  getDayData: (day: Date) => {
+  getDayDataAction: (day: Date) => {
     dayAppointments: Appointment[];
     dayBlocks: AvailabilityBlock[];
     items: DayItem[];
   };
-  onChangeSelectedDate: (date: Date) => void;
-  onOpenDay: (day: Date) => void;
+  onChangeSelectedDateAction: (date: Date) => void;
+  onOpenDayAction: (day: Date) => void;
 };
 
 export function MobileAgendaWeekSection({
   visible,
   selectedDate,
   weekDays,
-  getDayData,
-  onChangeSelectedDate,
-  onOpenDay,
+  getDayDataAction,
+  onChangeSelectedDateAction,
+  onOpenDayAction,
 }: MobileAgendaWeekSectionProps) {
   return (
     <section className={`${visible ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}>
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
-          onClick={() => onChangeSelectedDate(addDays(selectedDate, -7))}
+          onClick={() => onChangeSelectedDateAction(addDays(selectedDate, -7))}
           className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -52,7 +52,7 @@ export function MobileAgendaWeekSection({
         </div>
         <button
           type="button"
-          onClick={() => onChangeSelectedDate(addDays(selectedDate, 7))}
+          onClick={() => onChangeSelectedDateAction(addDays(selectedDate, 7))}
           className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
         >
           <ChevronRight className="w-4 h-4" />
@@ -60,7 +60,7 @@ export function MobileAgendaWeekSection({
       </div>
       <div className="grid grid-cols-1 gap-4">
         {weekDays.map((day) => {
-          const { dayAppointments, dayBlocks } = getDayData(day);
+          const { dayAppointments, dayBlocks } = getDayDataAction(day);
           const hasAppointments = dayAppointments.length > 0;
           const hasShiftBlock = dayBlocks.some((block) => (block.block_type ?? "") === "shift" && block.is_full_day);
           const partialBlocks = dayBlocks.filter(
@@ -73,7 +73,7 @@ export function MobileAgendaWeekSection({
               <button
                 key={day.toISOString()}
                 type="button"
-                onClick={() => onOpenDay(day)}
+                onClick={() => onOpenDayAction(day)}
                 className="bg-white p-4 rounded-3xl border-l-4 border-studio-green shadow-soft text-left active:scale-[0.99] transition"
               >
                 <div className="flex justify-between border-b border-line pb-2 mb-2">

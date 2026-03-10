@@ -11,16 +11,16 @@ interface ServiceFormProps {
   service?: Service;
   defaultBufferBefore?: number | null;
   defaultBufferAfter?: number | null;
-  onSuccess?: () => void;
-  onCancel?: () => void; // Novo botão cancelar
+  onSuccessAction?: () => void;
+  onCancelAction?: () => void; // Novo botão cancelar
 }
 
 export function ServiceForm({
   service,
   defaultBufferBefore,
   defaultBufferAfter,
-  onSuccess,
-  onCancel,
+  onSuccessAction,
+  onCancelAction,
 }: ServiceFormProps) {
   const [acceptsHomeVisit, setAcceptsHomeVisit] = useState(service?.accepts_home_visit ?? false);
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ export function ServiceForm({
           })
         );
         setLoading(false);
-        if (onSuccess) onSuccess();
+        if (onSuccessAction) onSuccessAction();
       }}
       className="flex flex-col h-full bg-white"
     >
@@ -52,8 +52,8 @@ export function ServiceForm({
 
       <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
         <div className="flex items-center gap-2">
-            {onCancel && (
-            <button type="button" onClick={onCancel} className="p-1 -ml-2 text-stone-500 hover:text-stone-800 rounded-full hover:bg-stone-100 transition">
+            {onCancelAction && (
+            <button type="button" onClick={onCancelAction} className="p-1 -ml-2 text-stone-500 hover:text-stone-800 rounded-full hover:bg-stone-100 transition">
                 <ChevronLeft size={24} />
             </button>
             )}

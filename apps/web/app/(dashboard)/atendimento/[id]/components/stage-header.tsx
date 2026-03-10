@@ -7,18 +7,18 @@ interface StageHeaderProps {
   kicker: string;
   title: string;
   subtitle?: string;
-  onBack?: () => void;
-  onMinimize?: () => void;
+  onBackAction?: () => void;
+  onMinimizeAction?: () => void;
   rightAction?: ReactNode;
 }
 
-export function StageHeader({ kicker, title, subtitle, onBack, onMinimize, rightAction }: StageHeaderProps) {
+export function StageHeader({ kicker, title, subtitle, onBackAction, onMinimizeAction, rightAction }: StageHeaderProps) {
   return (
     <header className="px-6 pb-5 bg-white rounded-b-3xl shadow-soft z-30 sticky top-0 safe-top safe-top-8">
       <div className="flex items-start justify-between gap-3">
-        {onBack ? (
+        {onBackAction ? (
           <button
-            onClick={onBack}
+            onClick={onBackAction}
             className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-soft"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -34,9 +34,9 @@ export function StageHeader({ kicker, title, subtitle, onBack, onMinimize, right
         </div>
 
         {rightAction ??
-          (onMinimize ? (
+          (onMinimizeAction ? (
             <button
-              onClick={onMinimize}
+              onClick={onMinimizeAction}
               className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-soft"
               title="Minimizar"
             >

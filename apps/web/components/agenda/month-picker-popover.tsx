@@ -8,9 +8,9 @@ type MonthPickerPopoverProps = {
   monthLabels: string[];
   currentMonthYear: number;
   currentMonthIndex: number;
-  onPrevYear: () => void;
-  onNextYear: () => void;
-  onSelectMonth: (monthIndex: number) => void;
+  onPrevYearAction: () => void;
+  onNextYearAction: () => void;
+  onSelectMonthAction: (monthIndex: number) => void;
 };
 
 export function MonthPickerPopover({
@@ -19,9 +19,9 @@ export function MonthPickerPopover({
   monthLabels,
   currentMonthYear,
   currentMonthIndex,
-  onPrevYear,
-  onNextYear,
-  onSelectMonth,
+  onPrevYearAction,
+  onNextYearAction,
+  onSelectMonthAction,
 }: MonthPickerPopoverProps) {
   if (!open) return null;
 
@@ -30,7 +30,7 @@ export function MonthPickerPopover({
       <div className="flex items-center justify-between mb-3">
         <button
           type="button"
-          onClick={onPrevYear}
+          onClick={onPrevYearAction}
           className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -38,7 +38,7 @@ export function MonthPickerPopover({
         <div className="text-sm font-extrabold text-studio-text">{monthPickerYear}</div>
         <button
           type="button"
-          onClick={onNextYear}
+          onClick={onNextYearAction}
           className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
         >
           <ChevronRight className="w-4 h-4" />
@@ -51,7 +51,7 @@ export function MonthPickerPopover({
             <button
               key={`${label}-${index}`}
               type="button"
-              onClick={() => onSelectMonth(index)}
+              onClick={() => onSelectMonthAction(index)}
               className={`py-2 rounded-xl text-xs font-extrabold transition ${
                 isActive
                   ? "bg-studio-green text-white shadow-soft"

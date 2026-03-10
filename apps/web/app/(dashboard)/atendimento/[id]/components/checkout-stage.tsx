@@ -12,10 +12,10 @@ interface CheckoutStageProps {
   checkout: CheckoutRow | null;
   items: CheckoutItem[];
   payments: PaymentRow[];
-  onSaveItems: (items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>) => void;
-  onSetDiscount: (type: "value" | "pct" | null, value: number | null, reason?: string) => void;
-  onRecordPayment: (method: PaymentRow["method"], amount: number) => void;
-  onConfirmCheckout: () => void;
+  onSaveItemsAction: (items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>) => void;
+  onSetDiscountAction: (type: "value" | "pct" | null, value: number | null, reason?: string) => void;
+  onRecordPaymentAction: (method: PaymentRow["method"], amount: number) => void;
+  onConfirmCheckoutAction: () => void;
 }
 
 const paymentLabels: Record<PaymentRow["method"], string> = {
@@ -30,10 +30,10 @@ export function CheckoutStage({
   checkout,
   items,
   payments,
-  onSaveItems,
-  onSetDiscount,
-  onRecordPayment,
-  onConfirmCheckout,
+  onSaveItemsAction,
+  onSetDiscountAction,
+  onRecordPaymentAction,
+  onConfirmCheckoutAction,
 }: CheckoutStageProps) {
   const router = useRouter();
   const [draftItems, setDraftItems] = useState(
@@ -103,11 +103,11 @@ export function CheckoutStage({
     if (!hasChange) return;
 
     const timeout = window.setTimeout(() => {
-      onSetDiscount(nextType, normalizedValue > 0 ? normalizedValue : null, nextReason || undefined);
+      onSetDiscountAction(nextType, normalizedValue > 0 ? normalizedValue : null, nextReason || undefined);
     }, 350);
 
     return () => window.clearTimeout(timeout);
-  }, [checkout?.discount_reason, checkout?.discount_type, checkout?.discount_value, discountReason, discountType, discountValue, isLocked, onSetDiscount]);
+  }, [checkout?.discount_reason, checkout?.discount_type, checkout?.discount_value, discountReason, discountType, discountValue, isLocked, onSetDiscountAction]);
 
   return (
     <div className="space-y-5">
@@ -185,7 +185,7 @@ export function CheckoutStage({
 
           <div className="mt-3 flex gap-2">
             <button
-              onClick={() => onSaveItems(draftItems)}
+              onClick={() => onSaveItemsAction(draftItems)}
               disabled={isLocked}
               className={`px-3 py-2 rounded-xl text-xs font-bold ${
                 isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
@@ -300,7 +300,7 @@ export function CheckoutStage({
               disabled={isLocked}
             />
             <button
-              onClick={() => onRecordPayment(paymentMethod, Math.min(paymentAmount, remainingTotal))}
+              onClick={() => onRecordPaymentAction(paymentMethod, Math.min(paymentAmount, remainingTotal))}
               disabled={isLocked}
               className={`px-4 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-wide shadow-soft active:scale-[0.99] transition ${
                 isLocked ? "bg-studio-light text-muted cursor-not-allowed" : "bg-studio-green text-white"
@@ -322,7 +322,7 @@ export function CheckoutStage({
           )}
 
           <button
-            onClick={onConfirmCheckout}
+            onClick={onConfirmCheckoutAction}
             disabled={isLocked}
             className={`mt-4 w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold shadow-lg shadow-green-200 active:scale-95 transition flex items-center justify-center gap-2 text-xs tracking-wide uppercase ${
               isLocked ? "opacity-60 cursor-not-allowed" : ""

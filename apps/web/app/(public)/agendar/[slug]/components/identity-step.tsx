@@ -11,38 +11,38 @@ type IdentityStepProps = {
   clientLookupStatus: ClientLookupStatus;
   phoneInputRef: RefObject<HTMLInputElement | null>;
   clientPhone: string;
-  onPhoneChange: (value: string) => void;
+  onPhoneChangeAction: (value: string) => void;
   isPhoneValid: boolean;
   hasSuggestedClient: boolean;
   clientCpf: string;
-  onClientCpfChange: (value: string) => void;
+  onClientCpfChangeAction: (value: string) => void;
   identityCaptchaPrompt: string | null;
   identityCaptchaAnswer: string;
-  onCaptchaAnswerChange: (value: string) => void;
+  onCaptchaAnswerChangeAction: (value: string) => void;
   identityGuardNotice: string | null;
-  onVerifyExistingClientCpf: () => void;
+  onVerifyExistingClientCpfAction: () => void;
   isCpfValid: boolean;
   isVerifyingClientCpf: boolean;
   identityCpfAttempts: number;
   suggestedClientInitials: string;
   suggestedClientPublicName: string;
   identityWelcomeCountdown: number | null;
-  onGoServiceNow: () => void;
+  onGoServiceNowAction: () => void;
   isEmailValid: boolean;
   clientEmail: string;
-  onClientEmailChange: (value: string) => void;
-  onSwitchAccount: () => void;
+  onClientEmailChangeAction: (value: string) => void;
+  onSwitchAccountAction: () => void;
   suggestedClientFirstName: string;
   clientFirstName: string;
-  onClientFirstNameChange: (value: string) => void;
+  onClientFirstNameChangeAction: (value: string) => void;
   clientLastName: string;
-  onClientLastNameChange: (value: string) => void;
+  onClientLastNameChangeAction: (value: string) => void;
   acceptPrivacyPolicy: boolean;
-  onAcceptPrivacyPolicyChange: (checked: boolean) => void;
+  onAcceptPrivacyPolicyChangeAction: (checked: boolean) => void;
   acceptTermsOfService: boolean;
-  onAcceptTermsOfServiceChange: (checked: boolean) => void;
+  onAcceptTermsOfServiceChangeAction: (checked: boolean) => void;
   acceptCommunicationConsent: boolean;
-  onAcceptCommunicationConsentChange: (checked: boolean) => void;
+  onAcceptCommunicationConsentChangeAction: (checked: boolean) => void;
 };
 
 export function IdentityStep({
@@ -50,38 +50,38 @@ export function IdentityStep({
   clientLookupStatus,
   phoneInputRef,
   clientPhone,
-  onPhoneChange,
+  onPhoneChangeAction,
   isPhoneValid,
   hasSuggestedClient,
   clientCpf,
-  onClientCpfChange,
+  onClientCpfChangeAction,
   identityCaptchaPrompt,
   identityCaptchaAnswer,
-  onCaptchaAnswerChange,
+  onCaptchaAnswerChangeAction,
   identityGuardNotice,
-  onVerifyExistingClientCpf,
+  onVerifyExistingClientCpfAction,
   isCpfValid,
   isVerifyingClientCpf,
   identityCpfAttempts,
   suggestedClientInitials,
   suggestedClientPublicName,
   identityWelcomeCountdown,
-  onGoServiceNow,
+  onGoServiceNowAction,
   isEmailValid,
   clientEmail,
-  onClientEmailChange,
-  onSwitchAccount,
+  onClientEmailChangeAction,
+  onSwitchAccountAction,
   suggestedClientFirstName,
   clientFirstName,
-  onClientFirstNameChange,
+  onClientFirstNameChangeAction,
   clientLastName,
-  onClientLastNameChange,
+  onClientLastNameChangeAction,
   acceptPrivacyPolicy,
-  onAcceptPrivacyPolicyChange,
+  onAcceptPrivacyPolicyChangeAction,
   acceptTermsOfService,
-  onAcceptTermsOfServiceChange,
+  onAcceptTermsOfServiceChangeAction,
   acceptCommunicationConsent,
-  onAcceptCommunicationConsentChange,
+  onAcceptCommunicationConsentChangeAction,
 }: IdentityStepProps) {
   return (
     <section className="no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500 flex flex-1 flex-col overflow-y-auto px-6 pb-24 pt-3">
@@ -104,7 +104,7 @@ export function IdentityStep({
                 className="w-full bg-transparent text-lg font-bold text-studio-text placeholder:text-gray-300 outline-none"
                 placeholder="(00) 00000-0000"
                 value={clientPhone}
-                onChange={(event) => onPhoneChange(event.target.value)}
+                onChange={(event) => onPhoneChangeAction(event.target.value)}
               />
             </div>
             <p className="mt-2 text-[11px] text-gray-500">Digite seu WhatsApp para localizar seu cadastro e continuar o agendamento.</p>
@@ -126,7 +126,7 @@ export function IdentityStep({
                 className="w-full bg-transparent text-lg font-bold text-studio-text placeholder:text-gray-300 outline-none"
                 placeholder="000.000.000-00"
                 value={clientCpf}
-                onChange={(event) => onClientCpfChange(event.target.value)}
+                onChange={(event) => onClientCpfChangeAction(event.target.value)}
               />
               <p className="mt-2 text-[11px] text-gray-500">Encontramos um cadastro com este WhatsApp. Informe seu CPF para confirmar.</p>
             </div>
@@ -141,7 +141,7 @@ export function IdentityStep({
                   className="mt-3 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-center text-base font-semibold text-studio-text outline-none focus:border-studio-green"
                   placeholder="Resposta"
                   value={identityCaptchaAnswer}
-                  onChange={(event) => onCaptchaAnswerChange(event.target.value)}
+                  onChange={(event) => onCaptchaAnswerChangeAction(event.target.value)}
                 />
               </div>
             )}
@@ -152,7 +152,7 @@ export function IdentityStep({
 
             <button
               type="button"
-              onClick={onVerifyExistingClientCpf}
+              onClick={onVerifyExistingClientCpfAction}
               disabled={!isCpfValid || isVerifyingClientCpf || (!!identityCaptchaPrompt && identityCaptchaAnswer.trim().length === 0)}
               className="w-full rounded-2xl bg-studio-green-dark px-4 py-3 text-sm font-bold uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -195,7 +195,7 @@ export function IdentityStep({
               <div className="mt-3 flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={onGoServiceNow}
+                  onClick={onGoServiceNowAction}
                   className="w-full rounded-2xl bg-studio-green-dark px-4 py-3 text-sm font-bold uppercase tracking-widest text-white"
                 >
                   Ir agora
@@ -212,7 +212,7 @@ export function IdentityStep({
                   className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
                   placeholder="voce@exemplo.com"
                   value={clientEmail}
-                  onChange={(event) => onClientEmailChange(event.target.value)}
+                  onChange={(event) => onClientEmailChangeAction(event.target.value)}
                 />
                 <p className="mt-2 text-center text-xs text-gray-500">Seu cadastro não tem email válido. Precisamos dele para concluir o agendamento.</p>
               </div>
@@ -221,7 +221,7 @@ export function IdentityStep({
             <div className="text-center">
               <button
                 type="button"
-                onClick={onSwitchAccount}
+                onClick={onSwitchAccountAction}
                 className="text-xs font-bold text-gray-400 underline decoration-dotted underline-offset-2 transition hover:text-studio-text"
               >
                 Não é {suggestedClientFirstName}? Trocar conta
@@ -245,7 +245,7 @@ export function IdentityStep({
                 className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
                 placeholder="Ex: Maria"
                 value={clientFirstName}
-                onChange={(event) => onClientFirstNameChange(event.target.value)}
+                onChange={(event) => onClientFirstNameChangeAction(event.target.value)}
               />
             </div>
             <div>
@@ -256,7 +256,7 @@ export function IdentityStep({
                 className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
                 placeholder="Ex: Silva Souza"
                 value={clientLastName}
-                onChange={(event) => onClientLastNameChange(event.target.value)}
+                onChange={(event) => onClientLastNameChangeAction(event.target.value)}
               />
             </div>
             <div>
@@ -268,7 +268,7 @@ export function IdentityStep({
                 className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
                 placeholder="(00) 00000-0000"
                 value={clientPhone}
-                onChange={(event) => onPhoneChange(event.target.value)}
+                onChange={(event) => onPhoneChangeAction(event.target.value)}
               />
             </div>
             <div>
@@ -279,7 +279,7 @@ export function IdentityStep({
                 className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
                 placeholder="voce@exemplo.com"
                 value={clientEmail}
-                onChange={(event) => onClientEmailChange(event.target.value)}
+                onChange={(event) => onClientEmailChangeAction(event.target.value)}
               />
               {clientEmail && !isEmailValid && (
                 <p className="mt-2 text-center text-xs text-red-500">Informe um email válido para confirmar o agendamento.</p>
@@ -294,7 +294,7 @@ export function IdentityStep({
                 className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-base font-semibold text-studio-text outline-none transition focus:border-studio-green"
                 placeholder="000.000.000-00"
                 value={clientCpf}
-                onChange={(event) => onClientCpfChange(event.target.value)}
+                onChange={(event) => onClientCpfChangeAction(event.target.value)}
               />
               {clientCpf && !isCpfValid && (
                 <p className="mt-2 text-center text-xs text-red-500">Informe um CPF válido com 11 números.</p>
@@ -307,7 +307,7 @@ export function IdentityStep({
                 <input
                   type="checkbox"
                   checked={acceptPrivacyPolicy}
-                  onChange={(event) => onAcceptPrivacyPolicyChange(event.target.checked)}
+                  onChange={(event) => onAcceptPrivacyPolicyChangeAction(event.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
                 />
                 <span>
@@ -322,7 +322,7 @@ export function IdentityStep({
                 <input
                   type="checkbox"
                   checked={acceptTermsOfService}
-                  onChange={(event) => onAcceptTermsOfServiceChange(event.target.checked)}
+                  onChange={(event) => onAcceptTermsOfServiceChangeAction(event.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
                 />
                 <span>
@@ -337,7 +337,7 @@ export function IdentityStep({
                 <input
                   type="checkbox"
                   checked={acceptCommunicationConsent}
-                  onChange={(event) => onAcceptCommunicationConsentChange(event.target.checked)}
+                  onChange={(event) => onAcceptCommunicationConsentChangeAction(event.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
                 />
                 <span>Autorizo comunicações sobre agendamento por WhatsApp e email.</span>

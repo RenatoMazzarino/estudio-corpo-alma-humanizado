@@ -35,8 +35,8 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
       <MonthCalendar
         currentMonth={controller.currentMonthDate}
         selectedDate={controller.selectedDate}
-        onChangeMonth={controller.handleMonthChange}
-        onSelectDay={controller.setSelectedDate}
+        onChangeMonthAction={controller.handleMonthChange}
+        onSelectDayAction={controller.setSelectedDate}
         headerActions={
           <div className="flex items-center gap-2">
             <button
@@ -49,12 +49,12 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
             </button>
           </div>
         }
-        getDayTone={(day) => {
+        getDayToneAction={(day) => {
           const key = format(day, "yyyy-MM-dd");
           const dayBlocks = controller.blocksByDate.get(key) ?? [];
           return dayBlocks.some((block) => (block.block_type ?? "personal") === "shift") ? "shift" : "none";
         }}
-        getDayDots={(day) => {
+        getDayDotsAction={(day) => {
           const key = format(day, "yyyy-MM-dd");
           const dayBlocks = controller.blocksByDate.get(key) ?? [];
           const dayAppointments = controller.appointmentsByDate.get(key) ?? [];
@@ -159,22 +159,22 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         blockTitle={controller.blockTitle}
         loading={controller.loading}
         pendingBlockConfirm={controller.pendingBlockConfirm}
-        onClose={() => controller.setIsModalOpen(false)}
+        onCloseAction={() => controller.setIsModalOpen(false)}
         onDragStart={controller.handleBlockDragStart}
         onDragMove={controller.handleBlockDragMove}
         onDragEnd={controller.handleBlockDragEnd}
-        onSelectBlockType={controller.setBlockType}
-        onChangeBlockDate={controller.setBlockDate}
-        onToggleBlockFullDay={() => controller.setBlockFullDay((prev) => !prev)}
-        onChangeBlockStart={controller.setBlockStart}
-        onChangeBlockEnd={controller.setBlockEnd}
-        onChangeBlockTitle={controller.setBlockTitle}
-        onDismissPendingBlockConfirm={() => controller.setPendingBlockConfirm(null)}
-        onConfirmPendingBlock={(payload) => {
+        onSelectBlockTypeAction={controller.setBlockType}
+        onChangeBlockDateAction={controller.setBlockDate}
+        onToggleBlockFullDayAction={() => controller.setBlockFullDay((prev) => !prev)}
+        onChangeBlockStartAction={controller.setBlockStart}
+        onChangeBlockEndAction={controller.setBlockEnd}
+        onChangeBlockTitleAction={controller.setBlockTitle}
+        onDismissPendingBlockConfirmAction={() => controller.setPendingBlockConfirm(null)}
+        onConfirmPendingBlockAction={(payload) => {
           controller.setPendingBlockConfirm(null);
           controller.handleCreateBlock(true, { ...payload, force: true });
         }}
-        onSubmit={() => controller.handleCreateBlock()}
+        onSubmitAction={() => controller.handleCreateBlock()}
       />
 
       <AvailabilityScaleSheet
@@ -189,19 +189,19 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         scaleHasShiftBlocks={controller.scaleHasShiftBlocks}
         loading={controller.loading}
         pendingScaleConfirm={controller.pendingScaleConfirm}
-        onClose={() => controller.setIsScaleModalOpen(false)}
+        onCloseAction={() => controller.setIsScaleModalOpen(false)}
         onDragStart={controller.handleScaleDragStart}
         onDragMove={controller.handleScaleDragMove}
         onDragEnd={controller.handleScaleDragEnd}
-        onChangeScaleMonth={controller.setScaleMonth}
-        onSelectScaleType={controller.setScaleType}
-        onClearScale={controller.handleClearScale}
-        onDismissPendingScaleConfirm={() => controller.setPendingScaleConfirm(null)}
-        onConfirmPendingScale={(type, month) => {
+        onChangeScaleMonthAction={controller.setScaleMonth}
+        onSelectScaleTypeAction={controller.setScaleType}
+        onClearScaleAction={controller.handleClearScale}
+        onDismissPendingScaleConfirmAction={() => controller.setPendingScaleConfirm(null)}
+        onConfirmPendingScaleAction={(type, month) => {
           controller.setPendingScaleConfirm(null);
           controller.runCreateScale(type, month, true);
         }}
-        onApplyScale={(type, month) => controller.runCreateScale(type, month)}
+        onApplyScaleAction={(type, month) => controller.runCreateScale(type, month)}
       />
     </div>
   );

@@ -39,16 +39,16 @@ type AppointmentClientStepProps = {
   duplicateCpfClient: DuplicateCpfClient;
   clientPhoneInputRef: RefObject<HTMLInputElement | null>;
   clientCpfInputRef: RefObject<HTMLInputElement | null>;
-  onFocusClient: () => void;
-  onBlurClient: () => void;
-  onChangeClientName: (value: string) => void;
-  onClearSelectedClient: () => void;
-  onSelectClient: (client: ClientLite) => void;
-  onCreateNewClientFromName: () => void;
-  onChangeClientPhone: (value: string) => void;
-  onChangeClientCpf: (value: string) => void;
-  onLinkExistingClientByCpf: () => void;
-  onChangeCpfAfterConflict: () => void;
+  onFocusClientAction: () => void;
+  onBlurClientAction: () => void;
+  onChangeClientNameAction: (value: string) => void;
+  onClearSelectedClientAction: () => void;
+  onSelectClientAction: (client: ClientLite) => void;
+  onCreateNewClientFromNameAction: () => void;
+  onChangeClientPhoneAction: (value: string) => void;
+  onChangeClientCpfAction: (value: string) => void;
+  onLinkExistingClientByCpfAction: () => void;
+  onChangeCpfAfterConflictAction: () => void;
 };
 
 export function AppointmentClientStep({
@@ -74,16 +74,16 @@ export function AppointmentClientStep({
   duplicateCpfClient,
   clientPhoneInputRef,
   clientCpfInputRef,
-  onFocusClient,
-  onBlurClient,
-  onChangeClientName,
-  onClearSelectedClient,
-  onSelectClient,
-  onCreateNewClientFromName,
-  onChangeClientPhone,
-  onChangeClientCpf,
-  onLinkExistingClientByCpf,
-  onChangeCpfAfterConflict,
+  onFocusClientAction,
+  onBlurClientAction,
+  onChangeClientNameAction,
+  onClearSelectedClientAction,
+  onSelectClientAction,
+  onCreateNewClientFromNameAction,
+  onChangeClientPhoneAction,
+  onChangeClientCpfAction,
+  onLinkExistingClientByCpfAction,
+  onChangeCpfAfterConflictAction,
 }: AppointmentClientStepProps) {
   return (
     <section className={sectionCardClass}>
@@ -104,16 +104,16 @@ export function AppointmentClientStep({
               value={clientName}
               autoComplete="off"
               readOnly={isClientReadOnly}
-              onFocus={onFocusClient}
-              onBlur={onBlurClient}
-              onChange={(event) => onChangeClientName(event.target.value)}
+              onFocus={onFocusClientAction}
+              onBlur={onBlurClientAction}
+              onChange={(event) => onChangeClientNameAction(event.target.value)}
               className={`${inputWithIconClass} ${isClientReadOnly ? "pr-12 bg-stone-100 text-gray-600" : ""}`}
               required
             />
             {!isEditing && isClientReadOnly && (
               <button
                 type="button"
-                onClick={onClearSelectedClient}
+                onClick={onClearSelectedClientAction}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white border border-stone-200 text-gray-500 hover:text-red-500 hover:border-red-200 flex items-center justify-center"
                 aria-label="Limpar cliente selecionado"
                 title="Limpar cliente selecionado"
@@ -131,7 +131,7 @@ export function AppointmentClientStep({
                         key={client.id}
                         type="button"
                         onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => onSelectClient(client)}
+                        onClick={() => onSelectClientAction(client)}
                         className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 text-sm text-gray-700 flex items-center justify-between gap-3"
                       >
                         <span className="font-medium truncate">{client.name}</span>
@@ -153,7 +153,7 @@ export function AppointmentClientStep({
                     <button
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
-                      onClick={onCreateNewClientFromName}
+                      onClick={onCreateNewClientFromNameAction}
                       className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50"
                     >
                       <p className="text-[10px] font-extrabold uppercase tracking-widest text-studio-green">
@@ -191,7 +191,7 @@ export function AppointmentClientStep({
                   type="tel"
                   placeholder="(00) 00000-0000"
                   value={clientPhone}
-                  onChange={(event) => onChangeClientPhone(event.target.value)}
+                  onChange={(event) => onChangeClientPhoneAction(event.target.value)}
                   inputMode="numeric"
                   readOnly={isClientPhoneReadOnly}
                   className={`${inputWithIconClass} ${isClientPhoneReadOnly ? "bg-stone-100 text-gray-600" : ""}`}
@@ -219,7 +219,7 @@ export function AppointmentClientStep({
                   placeholder="000.000.000-00"
                   maxLength={14}
                   value={clientCpf}
-                  onChange={(event) => onChangeClientCpf(event.target.value)}
+                  onChange={(event) => onChangeClientCpfAction(event.target.value)}
                   readOnly={isExistingClientCpfLocked}
                   className={`${inputClass} ${isExistingClientCpfLocked ? "bg-stone-100 text-gray-600" : ""}`}
                 />
@@ -234,14 +234,14 @@ export function AppointmentClientStep({
                     <div className="mt-3 flex flex-col gap-2">
                       <button
                         type="button"
-                        onClick={onLinkExistingClientByCpf}
+                        onClick={onLinkExistingClientByCpfAction}
                         className="w-full h-10 rounded-xl bg-amber-600 text-white text-[11px] font-extrabold uppercase tracking-wide"
                       >
                         Vincular ao cliente existente
                       </button>
                       <button
                         type="button"
-                        onClick={onChangeCpfAfterConflict}
+                        onClick={onChangeCpfAfterConflictAction}
                         className="w-full h-10 rounded-xl border border-amber-300 bg-white text-amber-800 text-[11px] font-extrabold uppercase tracking-wide"
                       >
                         Informar novo CPF

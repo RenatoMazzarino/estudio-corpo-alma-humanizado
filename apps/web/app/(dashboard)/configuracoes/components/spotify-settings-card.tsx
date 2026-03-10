@@ -6,9 +6,9 @@ type SpotifySettingsCardProps = {
   connected: boolean;
   accountName: string;
   disconnecting: boolean;
-  onEnabledChange: (value: boolean) => void;
-  onPlaylistUrlChange: (value: string) => void;
-  onDisconnect: () => void;
+  onEnabledChangeAction: (value: boolean) => void;
+  onPlaylistUrlChangeAction: (value: string) => void;
+  onDisconnectAction: () => void;
 };
 
 export function SpotifySettingsCard({
@@ -17,9 +17,9 @@ export function SpotifySettingsCard({
   connected,
   accountName,
   disconnecting,
-  onEnabledChange,
-  onPlaylistUrlChange,
-  onDisconnect,
+  onEnabledChangeAction,
+  onPlaylistUrlChangeAction,
+  onDisconnectAction,
 }: SpotifySettingsCardProps) {
   return (
     <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
@@ -30,7 +30,7 @@ export function SpotifySettingsCard({
             type="checkbox"
             name="spotify_enabled"
             checked={enabled}
-            onChange={(event) => onEnabledChange(event.target.checked)}
+            onChange={(event) => onEnabledChangeAction(event.target.checked)}
           />
           Habilitado
         </label>
@@ -42,7 +42,7 @@ export function SpotifySettingsCard({
           type="text"
           name="spotify_playlist_url"
           value={playlistUrl}
-          onChange={(event) => onPlaylistUrlChange(event.target.value)}
+          onChange={(event) => onPlaylistUrlChangeAction(event.target.value)}
           placeholder="https://open.spotify.com/playlist/..."
           className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
         />
@@ -67,7 +67,7 @@ export function SpotifySettingsCard({
         </a>
         <button
           type="button"
-          onClick={onDisconnect}
+          onClick={onDisconnectAction}
           disabled={!connected || disconnecting}
           className="h-10 rounded-xl border border-stone-200 bg-white text-xs font-bold text-gray-700 disabled:opacity-50"
         >

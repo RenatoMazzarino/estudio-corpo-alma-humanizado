@@ -142,9 +142,9 @@ export function BookingFlow(props: BookingFlowProps) {
       <VoucherOverlay
         open={controller.isVoucherOpen}
         busy={controller.voucherBusy}
-        onClose={() => controller.setIsVoucherOpen(false)}
-        onDownload={controller.handleDownloadVoucher}
-        onShare={controller.handleShareVoucher}
+        onCloseAction={() => controller.setIsVoucherOpen(false)}
+        onDownloadAction={controller.handleDownloadVoucher}
+        onShareAction={controller.handleShareVoucher}
         voucherRef={controller.voucherRef}
         clientName={controller.resolvedClientFullName || controller.clientName}
         formattedDate={format(controller.selectedDateObj, "dd/MM/yyyy")}
@@ -160,9 +160,9 @@ export function BookingFlow(props: BookingFlowProps) {
         query={controller.addressSearchQuery}
         results={controller.addressSearchResults}
         loading={controller.addressSearchLoading}
-        onClose={controller.closeAddressSearchModal}
-        onQueryChange={controller.setAddressSearchQuery}
-        onSelectResult={controller.handleSelectAddressResult}
+        onCloseAction={controller.closeAddressSearchModal}
+        onQueryChangeAction={controller.setAddressSearchQuery}
+        onSelectResultAction={controller.handleSelectAddressResult}
       />
 
       <BookingFooter
@@ -170,8 +170,8 @@ export function BookingFlow(props: BookingFlowProps) {
         showNextButton={controller.showNextButton}
         isNextDisabled={controller.isNextDisabled}
         nextLabel={controller.nextLabel}
-        onBack={controller.handleBack}
-        onNext={controller.handleNext}
+        onBackAction={controller.handleBack}
+        onNextAction={controller.handleNext}
       />
 
       <Toast toast={controller.toast} />

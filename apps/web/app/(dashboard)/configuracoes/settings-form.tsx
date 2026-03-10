@@ -289,7 +289,7 @@ export function SettingsForm({
       <BusinessHoursForm
         businessHours={businessHours}
         dayLabels={dayLabels}
-        onSubmit={async (formData) => {
+        onSubmitAction={async (formData) => {
           const result = await saveBusinessHours(formData);
           if (!result.ok) {
             showToast(feedbackFromError(result.error, "generic"));
@@ -364,9 +364,9 @@ export function SettingsForm({
           connected={spotifyConnectedValue}
           accountName={spotifyAccountNameValue}
           disconnecting={spotifyDisconnecting}
-          onEnabledChange={setSpotifyEnabledValue}
-          onPlaylistUrlChange={setSpotifyPlaylistUrlValue}
-          onDisconnect={() => void handleDisconnectSpotify()}
+          onEnabledChangeAction={setSpotifyEnabledValue}
+          onPlaylistUrlChangeAction={setSpotifyPlaylistUrlValue}
+          onDisconnectAction={() => void handleDisconnectSpotify()}
         />
 
         <PixKeysSettingsCard
@@ -375,20 +375,20 @@ export function SettingsForm({
           keyValue={pixKeyInputValue}
           keyLabel={pixKeyLabelValue}
           saving={pixSaving}
-          onKeyTypeChange={setPixKeyTypeValue}
-          onKeyValueChange={setPixKeyInputValue}
-          onKeyLabelChange={setPixKeyLabelValue}
-          onAddKey={() => void handleAddPixKey()}
-          onActivateKey={(keyId) => void handleActivatePixKey(keyId)}
-          onRemoveKey={(keyId) => void handleRemovePixKey(keyId)}
-          formatPixTypeLabel={formatPixTypeLabel}
+          onKeyTypeChangeAction={setPixKeyTypeValue}
+          onKeyValueChangeAction={setPixKeyInputValue}
+          onKeyLabelChangeAction={setPixKeyLabelValue}
+          onAddKeyAction={() => void handleAddPixKey()}
+          onActivateKeyAction={(keyId) => void handleActivatePixKey(keyId)}
+          onRemoveKeyAction={(keyId) => void handleRemovePixKey(keyId)}
+          formatPixTypeLabelAction={formatPixTypeLabel}
         />
 
         <AttendanceChecklistSettingsCard
           enabled={attendanceChecklistEnabledValue}
           itemsText={attendanceChecklistItemsValue}
-          onEnabledChange={setAttendanceChecklistEnabledValue}
-          onItemsTextChange={setAttendanceChecklistItemsValue}
+          onEnabledChangeAction={setAttendanceChecklistEnabledValue}
+          onItemsTextChangeAction={setAttendanceChecklistItemsValue}
         />
 
         <input type="hidden" name="mp_point_terminal_id" value={pointTerminalIdValue} />
@@ -402,12 +402,12 @@ export function SettingsForm({
           terminalExternalId={pointTerminalExternalIdValue}
           loadingDevices={pointLoading}
           configuring={pointConfigLoading}
-          onEnabledChange={setPointEnabledValue}
-          onFetchDevices={() => void handleFetchPointDevices()}
-          onConfigure={() => void handleConfigurePoint()}
-          onSelectDevice={handleSelectPointDevice}
-          onTerminalIdChange={setPointTerminalIdValue}
-          onTerminalExternalIdChange={setPointTerminalExternalIdValue}
+          onEnabledChangeAction={setPointEnabledValue}
+          onFetchDevicesAction={() => void handleFetchPointDevices()}
+          onConfigureAction={() => void handleConfigurePoint()}
+          onSelectDeviceAction={handleSelectPointDevice}
+          onTerminalIdChangeAction={setPointTerminalIdValue}
+          onTerminalExternalIdChangeAction={setPointTerminalExternalIdValue}
         />
 
         <button className="w-full bg-studio-green text-white font-bold py-3 rounded-2xl">Salvar configurações</button>

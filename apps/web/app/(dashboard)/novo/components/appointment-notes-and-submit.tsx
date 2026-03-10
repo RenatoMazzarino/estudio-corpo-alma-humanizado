@@ -10,9 +10,9 @@ type AppointmentNotesAndSubmitProps = {
   labelClass: string;
   inputClass: string;
   internalNotes: string;
-  onChangeInternalNotes: (value: string) => void;
+  onChangeInternalNotesAction: (value: string) => void;
   canOpenConfirmation: boolean;
-  onOpenConfirmationPrompt: () => void;
+  onOpenConfirmationPromptAction: () => void;
 };
 
 export function AppointmentNotesAndSubmit({
@@ -23,9 +23,9 @@ export function AppointmentNotesAndSubmit({
   labelClass,
   inputClass,
   internalNotes,
-  onChangeInternalNotes,
+  onChangeInternalNotesAction,
   canOpenConfirmation,
-  onOpenConfirmationPrompt,
+  onOpenConfirmationPromptAction,
 }: AppointmentNotesAndSubmitProps) {
   return (
     <>
@@ -36,7 +36,7 @@ export function AppointmentNotesAndSubmit({
             name="internalNotes"
             rows={2}
             value={internalNotes}
-            onChange={(event) => onChangeInternalNotes(event.target.value)}
+            onChange={(event) => onChangeInternalNotesAction(event.target.value)}
             className={`${inputClass} resize-none`}
             placeholder="Ex: Cliente prefere pressão leve..."
           />
@@ -55,7 +55,7 @@ export function AppointmentNotesAndSubmit({
       ) : showSubmit ? (
         <button
           type="button"
-          onClick={onOpenConfirmationPrompt}
+          onClick={onOpenConfirmationPromptAction}
           disabled={!canOpenConfirmation}
           className={`w-full h-14 font-bold rounded-2xl text-sm uppercase tracking-wide transition-all flex items-center justify-center gap-2 mb-4 ${
             canOpenConfirmation

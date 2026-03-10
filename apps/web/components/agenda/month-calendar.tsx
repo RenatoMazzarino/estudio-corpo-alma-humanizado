@@ -27,11 +27,11 @@ type DayTone = "shift" | "none";
 interface MonthCalendarProps {
   currentMonth: Date;
   selectedDate?: Date | null;
-  onSelectDay?: (day: Date) => void;
-  onChangeMonth?: (nextMonth: Date) => void;
-  getDayDots?: (day: Date) => MonthCalendarDot[];
-  getDayTone?: (day: Date) => DayTone;
-  isDayDisabled?: (day: Date) => boolean;
+  onSelectDayAction?: (day: Date) => void;
+  onChangeMonthAction?: (nextMonth: Date) => void;
+  getDayDotsAction?: (day: Date) => MonthCalendarDot[];
+  getDayToneAction?: (day: Date) => DayTone;
+  isDayDisabledAction?: (day: Date) => boolean;
   className?: string;
   legend?: ReactNode;
   legendPlacement?: "top" | "bottom";
@@ -45,14 +45,14 @@ const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
 export function MonthCalendar({
   currentMonth,
   selectedDate,
-  onSelectDay,
-  onChangeMonth,
-  getDayDots,
+  onSelectDayAction,
+  onChangeMonthAction,
+  getDayDotsAction,
   className = "",
   legend,
   legendPlacement = "bottom",
-  getDayTone,
-  isDayDisabled,
+  getDayToneAction,
+  isDayDisabledAction,
   headerActions,
   footer,
   enableSwipe = true,
@@ -77,7 +77,7 @@ export function MonthCalendar({
     swipeStartRef.current = null;
     if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) return;
     const direction = deltaX < 0 ? 1 : -1;
-    onChangeMonth?.(addMonths(currentMonth, direction));
+    onChangeMonthAction?.(addMonths(currentMonth, direction));
   };
 
   const handlePointerCancel = () => {
@@ -103,14 +103,14 @@ export function MonthCalendar({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => onChangeMonth?.(addMonths(currentMonth, -1))}
+              onClick={() => onChangeMonthAction?.(addMonths(currentMonth, -1))}
               className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               type="button"
-              onClick={() => onChangeMonth?.(addMonths(currentMonth, 1))}
+              onClick={() => onChangeMonthAction?.(addMonths(currentMonth, 1))}
               className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
             >
               <ChevronRight className="w-4 h-4" />
@@ -134,9 +134,9 @@ export function MonthCalendar({
           const isCurrent = isSameMonth(day, currentMonth);
           const isDayToday = isToday(day);
           const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
-          const dots = getDayDots?.(day) ?? [];
-          const tone = getDayTone?.(day) ?? "none";
-          const disabled = isDayDisabled?.(day) ?? false;
+          const dots = getDayDotsAction?.(day) ?? [];
+          const tone = getDayToneAction?.(day) ?? "none";
+          const disabled = isDayDisabledAction?.(day) ?? false;
           const toneClass =
             tone === "shift" && !isSelected && !isDayToday ? "bg-dom/20 text-dom-strong" : "";
           const todayClass = isDayToday && !isSelected ? "border border-studio-green text-studio-green" : "";
@@ -146,7 +146,7 @@ export function MonthCalendar({
             <button
               key={day.toISOString()}
               type="button"
-              onClick={disabled ? undefined : () => onSelectDay?.(day)}
+              onClick={disabled ? undefined : () => onSelectDayAction?.(day)}
               disabled={disabled}
               className={`relative flex flex-col items-center ${
                 disabled ? "opacity-40 cursor-not-allowed" : ""

@@ -2,10 +2,10 @@
 
 type NewClientNotesSectionProps = {
   notes: string;
-  onChangeNotes: (value: string) => void;
+  onChangeNotesAction: (value: string) => void;
 };
 
-export function NewClientNotesSection({ notes, onChangeNotes }: NewClientNotesSectionProps) {
+export function NewClientNotesSection({ notes, onChangeNotesAction }: NewClientNotesSectionProps) {
   return (
     <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
       <div>
@@ -15,7 +15,7 @@ export function NewClientNotesSection({ notes, onChangeNotes }: NewClientNotesSe
       <textarea
         name="observacoes_gerais"
         value={notes}
-        onChange={(event) => onChangeNotes(event.target.value)}
+        onChange={(event) => onChangeNotesAction(event.target.value)}
         placeholder="Observações internas do cliente"
         rows={3}
         className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"

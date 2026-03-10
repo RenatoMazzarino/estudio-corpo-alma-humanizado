@@ -8,11 +8,11 @@ type SuccessStepProps = {
   selectedTime: string;
   serviceName: string;
   protocol: string;
-  onOpenVoucher: () => void;
-  onReset: () => void;
+  onOpenVoucherAction: () => void;
+  onResetAction: () => void;
 };
 
-export function SuccessStep({ date, selectedTime, serviceName, protocol, onOpenVoucher, onReset }: SuccessStepProps) {
+export function SuccessStep({ date, selectedTime, serviceName, protocol, onOpenVoucherAction, onResetAction }: SuccessStepProps) {
   return (
     <section className="animate-in zoom-in duration-500 flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-3 text-center">
       <div className="mb-6 flex h-24 w-24 animate-bounce items-center justify-center rounded-full bg-green-100 text-studio-green">
@@ -40,21 +40,21 @@ export function SuccessStep({ date, selectedTime, serviceName, protocol, onOpenV
 
       <button
         type="button"
-        onClick={onOpenVoucher}
+        onClick={onOpenVoucherAction}
         className="mb-3 h-14 w-full rounded-2xl border border-stone-100 bg-white text-xs font-bold uppercase tracking-widest text-studio-text transition-colors hover:bg-stone-50"
       >
         Ver voucher
       </button>
       <button
         type="button"
-        onClick={onReset}
+        onClick={onResetAction}
         className="mb-4 h-14 w-full rounded-2xl border border-stone-100 bg-white text-xs font-bold uppercase tracking-widest text-studio-text transition-colors hover:bg-stone-50"
       >
         Novo Agendamento
       </button>
       <button
         type="button"
-        onClick={onReset}
+        onClick={onResetAction}
         className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-studio-green"
       >
         Voltar ao Início

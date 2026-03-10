@@ -58,18 +58,18 @@ type AppointmentConfirmationSheetProps = {
   chargeNowAmountError: string | null;
   creatingChargeBooking: boolean;
   isCourtesyDraft: boolean;
-  formatCountdown: (seconds: number) => string;
-  onClose: () => void;
-  onCreateChargePixNow: (attempt: number) => void | Promise<void>;
-  onCopyChargePixCode: () => void | Promise<void>;
-  onSendChargePixViaWhatsapp: () => void;
-  onStartChargeCard: (mode: "debit" | "credit") => void | Promise<void>;
-  onVerifyChargeCardNow: () => void | Promise<void>;
-  onSwitchChargeToAttendance: () => void | Promise<void>;
-  onClearChargeFlowError: () => void;
-  onResolveDeferredManualPrompt: (shouldSendMessage: boolean) => void | Promise<void>;
-  onBeginImmediateCharge: () => void | Promise<void>;
-  onSchedule: (shouldSendMessage: boolean) => void;
+  formatCountdownAction: (seconds: number) => string;
+  onCloseAction: () => void;
+  onCreateChargePixNowAction: (attempt: number) => void | Promise<void>;
+  onCopyChargePixCodeAction: () => void | Promise<void>;
+  onSendChargePixViaWhatsappAction: () => void;
+  onStartChargeCardAction: (mode: "debit" | "credit") => void | Promise<void>;
+  onVerifyChargeCardNowAction: () => void | Promise<void>;
+  onSwitchChargeToAttendanceAction: () => void | Promise<void>;
+  onClearChargeFlowErrorAction: () => void;
+  onResolveDeferredManualPromptAction: (shouldSendMessage: boolean) => void | Promise<void>;
+  onBeginImmediateChargeAction: () => void | Promise<void>;
+  onScheduleAction: (shouldSendMessage: boolean) => void;
 };
 
 export function AppointmentConfirmationSheet({
@@ -107,18 +107,18 @@ export function AppointmentConfirmationSheet({
   chargeNowAmountError,
   creatingChargeBooking,
   isCourtesyDraft,
-  formatCountdown,
-  onClose,
-  onCreateChargePixNow,
-  onCopyChargePixCode,
-  onSendChargePixViaWhatsapp,
-  onStartChargeCard,
-  onVerifyChargeCardNow,
-  onSwitchChargeToAttendance,
-  onClearChargeFlowError,
-  onResolveDeferredManualPrompt,
-  onBeginImmediateCharge,
-  onSchedule,
+  formatCountdownAction,
+  onCloseAction,
+  onCreateChargePixNowAction,
+  onCopyChargePixCodeAction,
+  onSendChargePixViaWhatsappAction,
+  onStartChargeCardAction,
+  onVerifyChargeCardNowAction,
+  onSwitchChargeToAttendanceAction,
+  onClearChargeFlowErrorAction,
+  onResolveDeferredManualPromptAction,
+  onBeginImmediateChargeAction,
+  onScheduleAction,
 }: AppointmentConfirmationSheetProps) {
   if (!portalTarget || !open) return null;
 
@@ -151,7 +151,7 @@ export function AppointmentConfirmationSheet({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-studio-light text-studio-green"
           >
             <X className="h-4 w-4" />
@@ -185,7 +185,7 @@ export function AppointmentConfirmationSheet({
                 {!chargePixPayment ? (
                   <button
                     type="button"
-                    onClick={() => void onCreateChargePixNow(chargePixAttempt + 1)}
+                    onClick={() => void onCreateChargePixNowAction(chargePixAttempt + 1)}
                     disabled={runningChargeAction}
                     className="mt-3 h-11 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-70"
                   >
@@ -204,7 +204,7 @@ export function AppointmentConfirmationSheet({
                       />
                     )}
                     <p className="mt-3 text-center text-xs font-semibold text-studio-green">
-                      Tempo restante: {formatCountdown(chargePixRemainingSeconds)}
+                      Tempo restante: {formatCountdownAction(chargePixRemainingSeconds)}
                     </p>
                     <div className="mt-2 h-2 rounded-full bg-stone-200">
                       <div
@@ -218,7 +218,7 @@ export function AppointmentConfirmationSheet({
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => void onCopyChargePixCode()}
+                        onClick={() => void onCopyChargePixCodeAction()}
                         className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
                       >
                         <Copy className="h-3.5 w-3.5" />
@@ -226,7 +226,7 @@ export function AppointmentConfirmationSheet({
                       </button>
                       <button
                         type="button"
-                        onClick={onSendChargePixViaWhatsapp}
+                        onClick={onSendChargePixViaWhatsappAction}
                         className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
                       >
                         <Phone className="h-3.5 w-3.5" />
@@ -253,7 +253,7 @@ export function AppointmentConfirmationSheet({
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => void onStartChargeCard("debit")}
+                    onClick={() => void onStartChargeCardAction("debit")}
                     disabled={!pointEnabled || runningChargeAction}
                     className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
                   >
@@ -261,7 +261,7 @@ export function AppointmentConfirmationSheet({
                   </button>
                   <button
                     type="button"
-                    onClick={() => void onStartChargeCard("credit")}
+                    onClick={() => void onStartChargeCardAction("credit")}
                     disabled={!pointEnabled || runningChargeAction}
                     className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
                   >
@@ -276,7 +276,7 @@ export function AppointmentConfirmationSheet({
                     </p>
                     <button
                       type="button"
-                      onClick={() => void onVerifyChargeCardNow()}
+                      onClick={() => void onVerifyChargeCardNowAction()}
                       className="mt-2 h-9 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green"
                     >
                       Verificar agora
@@ -293,7 +293,7 @@ export function AppointmentConfirmationSheet({
             <div className={`grid gap-2 ${chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 ? "grid-cols-2" : "grid-cols-1"}`}>
               <button
                 type="button"
-                onClick={() => void onSwitchChargeToAttendance()}
+                onClick={() => void onSwitchChargeToAttendanceAction()}
                 disabled={finishingChargeFlow}
                 className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-70"
               >
@@ -303,8 +303,8 @@ export function AppointmentConfirmationSheet({
                 <button
                   type="button"
                   onClick={() => {
-                    onClearChargeFlowError();
-                    void onCreateChargePixNow(chargePixAttempt + 1);
+                    onClearChargeFlowErrorAction();
+                    void onCreateChargePixNowAction(chargePixAttempt + 1);
                   }}
                   disabled={runningChargeAction}
                   className="h-12 w-full rounded-2xl bg-studio-light text-xs font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-60"
@@ -325,14 +325,14 @@ export function AppointmentConfirmationSheet({
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => void onResolveDeferredManualPrompt(true)}
+                onClick={() => void onResolveDeferredManualPromptAction(true)}
                 className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10"
               >
                 Enviar aviso manual
               </button>
               <button
                 type="button"
-                onClick={() => void onResolveDeferredManualPrompt(false)}
+                onClick={() => void onResolveDeferredManualPromptAction(false)}
                 className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text"
               >
                 Não enviar aviso manual
@@ -463,7 +463,7 @@ export function AppointmentConfirmationSheet({
                 <>
                   <button
                     type="button"
-                    onClick={() => void onBeginImmediateCharge()}
+                    onClick={() => void onBeginImmediateChargeAction()}
                     disabled={
                       creatingChargeBooking ||
                       !isChargeNowMethodChosen ||
@@ -476,7 +476,7 @@ export function AppointmentConfirmationSheet({
                   </button>
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={onCloseAction}
                     className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text"
                   >
                     Cancelar
@@ -486,14 +486,14 @@ export function AppointmentConfirmationSheet({
                 <>
                   <button
                     type="button"
-                    onClick={() => onSchedule(true)}
+                    onClick={() => onScheduleAction(true)}
                     className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10"
                   >
                     {isCourtesyDraft ? "Agendar cortesia e avisar" : "Agendar e avisar"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => onSchedule(false)}
+                    onClick={() => onScheduleAction(false)}
                     className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text"
                   >
                     {isCourtesyDraft ? "Agendar cortesia sem enviar" : "Agendar sem enviar"}

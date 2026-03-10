@@ -6,7 +6,7 @@ import { ChevronRight, Loader2 } from "lucide-react";
 interface SlideConfirmButtonProps {
   label: string;
   hint: string;
-  onConfirm: () => Promise<void> | void;
+  onConfirmAction: () => Promise<void> | void;
   disabled?: boolean;
 }
 
@@ -21,7 +21,7 @@ function clamp(value: number, min: number, max: number) {
 export function SlideConfirmButton({
   label,
   hint,
-  onConfirm,
+  onConfirmAction,
   disabled = false,
 }: SlideConfirmButtonProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -93,7 +93,7 @@ export function SlideConfirmButton({
     setHandlePos(maxPos);
     setIsSubmitting(true);
     try {
-      await onConfirm();
+      await onConfirmAction();
     } finally {
       setIsSubmitting(false);
       setHandlePos(0);

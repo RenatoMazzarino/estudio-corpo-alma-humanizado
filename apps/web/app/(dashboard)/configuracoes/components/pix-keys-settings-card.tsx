@@ -8,13 +8,13 @@ type PixKeysSettingsCardProps = {
   keyValue: string;
   keyLabel: string;
   saving: boolean;
-  onKeyTypeChange: (value: PixKeyType) => void;
-  onKeyValueChange: (value: string) => void;
-  onKeyLabelChange: (value: string) => void;
-  onAddKey: () => void;
-  onActivateKey: (keyId: string) => void;
-  onRemoveKey: (keyId: string) => void;
-  formatPixTypeLabel: (type: PixKeyType) => string;
+  onKeyTypeChangeAction: (value: PixKeyType) => void;
+  onKeyValueChangeAction: (value: string) => void;
+  onKeyLabelChangeAction: (value: string) => void;
+  onAddKeyAction: () => void;
+  onActivateKeyAction: (keyId: string) => void;
+  onRemoveKeyAction: (keyId: string) => void;
+  formatPixTypeLabelAction: (type: PixKeyType) => string;
 };
 
 export function PixKeysSettingsCard({
@@ -23,13 +23,13 @@ export function PixKeysSettingsCard({
   keyValue,
   keyLabel,
   saving,
-  onKeyTypeChange,
-  onKeyValueChange,
-  onKeyLabelChange,
-  onAddKey,
-  onActivateKey,
-  onRemoveKey,
-  formatPixTypeLabel,
+  onKeyTypeChangeAction,
+  onKeyValueChangeAction,
+  onKeyLabelChangeAction,
+  onAddKeyAction,
+  onActivateKeyAction,
+  onRemoveKeyAction,
+  formatPixTypeLabelAction,
 }: PixKeysSettingsCardProps) {
   return (
     <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
@@ -43,7 +43,7 @@ export function PixKeysSettingsCard({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <select
           value={keyType}
-          onChange={(event) => onKeyTypeChange(event.target.value as PixKeyType)}
+          onChange={(event) => onKeyTypeChangeAction(event.target.value as PixKeyType)}
           className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
         >
           <option value="cnpj">CNPJ</option>
@@ -55,7 +55,7 @@ export function PixKeysSettingsCard({
         <input
           type="text"
           value={keyValue}
-          onChange={(event) => onKeyValueChange(event.target.value)}
+          onChange={(event) => onKeyValueChangeAction(event.target.value)}
           placeholder="Digite a chave"
           className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm sm:col-span-2"
         />
@@ -65,13 +65,13 @@ export function PixKeysSettingsCard({
         <input
           type="text"
           value={keyLabel}
-          onChange={(event) => onKeyLabelChange(event.target.value)}
+          onChange={(event) => onKeyLabelChangeAction(event.target.value)}
           placeholder="Rótulo (ex.: CNPJ principal)"
           className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
         />
         <button
           type="button"
-          onClick={onAddKey}
+          onClick={onAddKeyAction}
           disabled={saving}
           className="h-10 rounded-xl border border-studio-green bg-studio-green text-xs font-bold text-white disabled:opacity-60"
         >
@@ -93,10 +93,10 @@ export function PixKeysSettingsCard({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-studio-text truncate">
-                    {pixKey.label || `${formatPixTypeLabel(pixKey.keyType)} sem rótulo`}
+                    {pixKey.label || `${formatPixTypeLabelAction(pixKey.keyType)} sem rótulo`}
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    {formatPixTypeLabel(pixKey.keyType)}: {pixKey.keyValue}
+                    {formatPixTypeLabelAction(pixKey.keyType)}: {pixKey.keyValue}
                   </p>
                 </div>
                 {pixKey.isActive ? (
@@ -110,7 +110,7 @@ export function PixKeysSettingsCard({
                 {!pixKey.isActive ? (
                   <button
                     type="button"
-                    onClick={() => onActivateKey(pixKey.id)}
+                    onClick={() => onActivateKeyAction(pixKey.id)}
                     disabled={saving}
                     className="h-8 rounded-lg border border-studio-green px-3 text-[10px] font-bold uppercase tracking-wide text-studio-green disabled:opacity-60"
                   >
@@ -119,7 +119,7 @@ export function PixKeysSettingsCard({
                 ) : null}
                 <button
                   type="button"
-                  onClick={() => onRemoveKey(pixKey.id)}
+                  onClick={() => onRemoveKeyAction(pixKey.id)}
                   disabled={saving}
                   className="h-8 rounded-lg border border-stone-200 px-3 text-[10px] font-bold uppercase tracking-wide text-gray-600 disabled:opacity-60"
                 >

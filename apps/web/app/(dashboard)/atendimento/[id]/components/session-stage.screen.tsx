@@ -17,27 +17,27 @@ import { useSessionStageMedia } from "./use-session-stage-media";
 interface SessionStageProps {
   checklistEnabled: boolean;
   checklist: ChecklistItem[];
-  onToggleChecklist: (itemId: string, completed: boolean) => void;
+  onToggleChecklistAction: (itemId: string, completed: boolean) => void;
   hasSavedEvolution: boolean;
   clientHistory: ClientHistoryEntry[];
   evolutionText: string;
-  onChangeEvolutionText: (value: string) => void;
-  onTranscribeAudio: (payload: { audioBase64: string; mimeType: string }) => Promise<string | null>;
-  onStructureWithFlora: (transcript: string) => Promise<void>;
-  onSaveEvolution: () => Promise<boolean>;
+  onChangeEvolutionTextAction: (value: string) => void;
+  onTranscribeAudioAction: (payload: { audioBase64: string; mimeType: string }) => Promise<string | null>;
+  onStructureWithFloraAction: (transcript: string) => Promise<void>;
+  onSaveEvolutionAction: () => Promise<boolean>;
 }
 
 export function SessionStage({
   checklistEnabled,
   checklist,
-  onToggleChecklist,
+  onToggleChecklistAction,
   hasSavedEvolution,
   clientHistory,
   evolutionText,
-  onChangeEvolutionText,
-  onTranscribeAudio,
-  onStructureWithFlora,
-  onSaveEvolution,
+  onChangeEvolutionTextAction,
+  onTranscribeAudioAction,
+  onStructureWithFloraAction,
+  onSaveEvolutionAction,
 }: SessionStageProps) {
   const {
     isRecording,
@@ -69,10 +69,10 @@ export function SessionStage({
   } = useSessionStageMedia({
     hasSavedEvolution,
     evolutionText,
-    onChangeEvolutionText,
-    onTranscribeAudio,
-    onStructureWithFlora,
-    onSaveEvolution,
+    onChangeEvolutionText: onChangeEvolutionTextAction,
+    onTranscribeAudio: onTranscribeAudioAction,
+    onStructureWithFlora: onStructureWithFloraAction,
+    onSaveEvolution: onSaveEvolutionAction,
   });
 
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
@@ -310,7 +310,7 @@ export function SessionStage({
                         type="checkbox"
                         className="h-5 w-5 shrink-0 accent-studio-green"
                         checked={Boolean(item.completed_at)}
-                        onChange={(event) => onToggleChecklist(item.id, event.target.checked)}
+                        onChange={(event) => onToggleChecklistAction(item.id, event.target.checked)}
                       />
                       <span className="truncate text-sm font-bold text-studio-text">{item.label}</span>
                     </div>
@@ -396,7 +396,7 @@ export function SessionStage({
               placeholder={noteLocked ? "Clique no ícone de edição para atualizar a evolução." : "Descreva a evolução da sessão..."}
               value={evolutionText}
               onChange={(event) => {
-                if (!noteLocked) onChangeEvolutionText(event.target.value);
+                if (!noteLocked) onChangeEvolutionTextAction(event.target.value);
               }}
               readOnly={noteLocked}
             />
@@ -442,22 +442,22 @@ export function SessionStage({
 
       <SessionHistoryPanel
         open={isAgendaOpen}
-        onToggleOpen={() => setIsAgendaOpen((current) => !current)}
+        onToggleOpenAction={() => setIsAgendaOpen((current) => !current)}
         historyFilter={historyFilter}
-        onChangeFilter={setHistoryFilter}
+        onChangeFilterAction={setHistoryFilter}
         historyCounters={historyCounters}
         filteredHistory={filteredHistory}
         expandedHistoryId={expandedHistoryId}
-        onToggleHistoryAccordion={toggleHistoryAccordion}
-        onSelectHistory={setSelectedHistory}
+        onToggleHistoryAccordionAction={toggleHistoryAccordion}
+        onSelectHistoryAction={setSelectedHistory}
       />
 
       <SessionHistoryNotesModal
         selectedHistory={selectedHistory}
         portalTarget={portalTarget}
-        onClose={closeHistoryNotesModal}
-        onBackdropClick={handleHistoryNotesBackdropClick}
-        onBackdropKeyDown={handleHistoryNotesBackdropKeyDown}
+        onCloseAction={closeHistoryNotesModal}
+        onBackdropClickAction={handleHistoryNotesBackdropClick}
+        onBackdropKeyDownAction={handleHistoryNotesBackdropKeyDown}
       />
     </div>
   );

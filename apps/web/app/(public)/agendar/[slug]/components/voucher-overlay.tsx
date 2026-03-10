@@ -6,9 +6,9 @@ import { VoucherTicketCard } from "../../../../../components/voucher/voucher-tic
 interface VoucherOverlayProps {
   open: boolean;
   busy: boolean;
-  onClose: () => void;
-  onDownload: () => void;
-  onShare: () => void;
+  onCloseAction: () => void;
+  onDownloadAction: () => void;
+  onShareAction: () => void;
   voucherRef: RefObject<HTMLDivElement | null>;
   clientName: string;
   formattedDate: string;
@@ -22,9 +22,9 @@ interface VoucherOverlayProps {
 export function VoucherOverlay({
   open,
   busy,
-  onClose,
-  onDownload,
-  onShare,
+  onCloseAction,
+  onDownloadAction,
+  onShareAction,
   voucherRef,
   clientName,
   formattedDate,
@@ -67,13 +67,13 @@ export function VoucherOverlay({
       <div
         className="absolute inset-0 backdrop-blur-[1px]"
         style={{ backgroundColor: colors.overlayBackdrop }}
-        onClick={onClose}
+        onClick={onCloseAction}
       />
       <div className="relative z-10 w-full max-w-117">
         <div className="absolute right-2 top-2 z-20">
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="w-10 h-10 rounded-full bg-white/95 border border-stone-100 text-gray-400 flex items-center justify-center shadow-soft"
           >
             ✕
@@ -95,7 +95,7 @@ export function VoucherOverlay({
         <div className="mt-3 rounded-2xl border border-white/30 bg-white/95 p-3 flex gap-2 shadow-2xl">
           <button
             type="button"
-            onClick={onDownload}
+            onClick={onDownloadAction}
             disabled={busy}
             className="flex-1 h-11 rounded-2xl border border-stone-200 text-xs font-bold text-studio-text uppercase tracking-widest"
           >
@@ -103,7 +103,7 @@ export function VoucherOverlay({
           </button>
           <button
             type="button"
-            onClick={onShare}
+            onClick={onShareAction}
             disabled={busy}
             className="flex-1 h-11 rounded-2xl bg-studio-green text-white text-xs font-bold uppercase tracking-widest"
           >

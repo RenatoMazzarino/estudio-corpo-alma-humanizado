@@ -8,10 +8,10 @@ type ServiceStepProps = {
   label: string;
   services: Service[];
   selectedServiceId: string | null;
-  onSelectService: (service: Service) => void;
+  onSelectServiceAction: (service: Service) => void;
 };
 
-export function ServiceStep({ label, services, selectedServiceId, onSelectService }: ServiceStepProps) {
+export function ServiceStep({ label, services, selectedServiceId, onSelectServiceAction }: ServiceStepProps) {
   return (
     <section className="no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500 flex flex-1 flex-col overflow-y-auto px-6 pb-24 pt-3">
       <div className="mb-6">
@@ -27,7 +27,7 @@ export function ServiceStep({ label, services, selectedServiceId, onSelectServic
             <button
               key={service.id}
               type="button"
-              onClick={() => onSelectService(service)}
+              onClick={() => onSelectServiceAction(service)}
               className={`w-full rounded-3xl border bg-white p-5 text-left shadow-soft transition ${
                 selected ? "border-studio-green bg-stone-50" : "border-stone-100 hover:border-studio-green/40"
               }`}

@@ -9,13 +9,13 @@ import { StageStatusBadge } from "./stage-status";
 interface HubStageProps {
   appointment: AppointmentDetails;
   attendance: AttendanceRow;
-  onOpenStage: (stage: StageKey) => void;
-  onResumeSession: () => void;
+  onOpenStageAction: (stage: StageKey) => void;
+  onResumeSessionAction: () => void;
   timerLabel?: string | null;
   timerActive: boolean;
 }
 
-export function HubStage({ appointment, attendance, onOpenStage, onResumeSession, timerLabel, timerActive }: HubStageProps) {
+export function HubStage({ appointment, attendance, onOpenStageAction, onResumeSessionAction, timerLabel, timerActive }: HubStageProps) {
   const dateLabel = format(new Date(appointment.start_time), "dd MMM '•' HH:mm", { locale: ptBR });
   const locationLabel = appointment.is_home_visit ? "Domicílio" : "Estúdio";
 
@@ -70,7 +70,7 @@ export function HubStage({ appointment, attendance, onOpenStage, onResumeSession
             </div>
           </div>
           <button
-            onClick={onResumeSession}
+            onClick={onResumeSessionAction}
             className="px-4 h-11 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-soft active:scale-[0.99] transition flex items-center gap-2"
           >
             <ArrowRight className="w-4 h-4" /> Voltar
@@ -84,7 +84,7 @@ export function HubStage({ appointment, attendance, onOpenStage, onResumeSession
         return (
           <button
             key={card.key}
-            onClick={() => !isLocked && onOpenStage(card.key)}
+            onClick={() => !isLocked && onOpenStageAction(card.key)}
             className={`w-full text-left bg-white border border-line rounded-[26px] shadow-soft px-4 py-4 transition active:scale-[0.99] ${
               isLocked ? "opacity-60" : "hover:shadow-md"
             }`}

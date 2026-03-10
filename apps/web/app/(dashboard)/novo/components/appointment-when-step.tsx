@@ -87,9 +87,9 @@ export function AppointmentWhenStep({
           <MonthCalendar
             currentMonth={activeMonth}
             selectedDate={selectedDateObj}
-            onSelectDay={onSelectScheduleDay}
-            onChangeMonth={onChangeScheduleMonth}
-            isDayDisabled={isScheduleDayDisabled}
+            onSelectDayAction={onSelectScheduleDay}
+            onChangeMonthAction={onChangeScheduleMonth}
+            isDayDisabledAction={isScheduleDayDisabled}
             className="rounded-2xl shadow-none border border-stone-100 p-3"
             enableSwipe
           />

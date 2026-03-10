@@ -5,12 +5,12 @@ import type { BusinessHourItem } from "./settings-form.types";
 type BusinessHoursFormProps = {
   businessHours: BusinessHourItem[];
   dayLabels: string[];
-  onSubmit: (formData: FormData) => Promise<void>;
+  onSubmitAction: (formData: FormData) => Promise<void>;
 };
 
-export function BusinessHoursForm({ businessHours, dayLabels, onSubmit }: BusinessHoursFormProps) {
+export function BusinessHoursForm({ businessHours, dayLabels, onSubmitAction }: BusinessHoursFormProps) {
   return (
-    <form action={onSubmit} className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4">
+    <form action={onSubmitAction} className="bg-white p-6 rounded-3xl border border-stone-100 space-y-4">
       <h2 className="text-sm font-bold text-gray-700">Horários de Funcionamento</h2>
       <div className="space-y-3">
         {businessHours.map((day) => (

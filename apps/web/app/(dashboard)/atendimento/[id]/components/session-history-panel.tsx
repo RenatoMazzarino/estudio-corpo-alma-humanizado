@@ -13,9 +13,9 @@ import {
 
 interface SessionHistoryPanelProps {
   open: boolean;
-  onToggleOpen: () => void;
+  onToggleOpenAction: () => void;
   historyFilter: HistoryFilter;
-  onChangeFilter: (value: HistoryFilter) => void;
+  onChangeFilterAction: (value: HistoryFilter) => void;
   historyCounters: {
     all: number;
     past: number;
@@ -23,26 +23,26 @@ interface SessionHistoryPanelProps {
   };
   filteredHistory: ClientHistoryEntry[];
   expandedHistoryId: string | null;
-  onToggleHistoryAccordion: (appointmentId: string) => void;
-  onSelectHistory: (item: ClientHistoryEntry) => void;
+  onToggleHistoryAccordionAction: (appointmentId: string) => void;
+  onSelectHistoryAction: (item: ClientHistoryEntry) => void;
 }
 
 export function SessionHistoryPanel({
   open,
-  onToggleOpen,
+  onToggleOpenAction,
   historyFilter,
-  onChangeFilter,
+  onChangeFilterAction,
   historyCounters,
   filteredHistory,
   expandedHistoryId,
-  onToggleHistoryAccordion,
-  onSelectHistory,
+  onToggleHistoryAccordionAction,
+  onSelectHistoryAction,
 }: SessionHistoryPanelProps) {
   return (
     <div className="rounded-3xl border border-white bg-white p-4 shadow-soft">
       <button
         type="button"
-        onClick={onToggleOpen}
+        onClick={onToggleOpenAction}
         className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left"
       >
         <div className="flex min-w-0 items-center gap-3">
@@ -66,7 +66,7 @@ export function SessionHistoryPanel({
           <div className="mt-3 grid grid-cols-3 gap-2">
             <button
               type="button"
-              onClick={() => onChangeFilter("all")}
+              onClick={() => onChangeFilterAction("all")}
               className={`h-9 rounded-full border px-2 text-[11px] font-bold transition ${
                 historyFilter === "all"
                   ? "border-studio-green/30 bg-studio-light text-studio-green"
@@ -77,7 +77,7 @@ export function SessionHistoryPanel({
             </button>
             <button
               type="button"
-              onClick={() => onChangeFilter("past")}
+              onClick={() => onChangeFilterAction("past")}
               className={`h-9 rounded-full border px-2 text-[11px] font-bold transition ${
                 historyFilter === "past"
                   ? "border-studio-green/30 bg-studio-light text-studio-green"
@@ -88,7 +88,7 @@ export function SessionHistoryPanel({
             </button>
             <button
               type="button"
-              onClick={() => onChangeFilter("scheduled")}
+              onClick={() => onChangeFilterAction("scheduled")}
               className={`h-9 rounded-full border px-2 text-[11px] font-bold transition ${
                 historyFilter === "scheduled"
                   ? "border-studio-green/30 bg-studio-light text-studio-green"
@@ -116,7 +116,7 @@ export function SessionHistoryPanel({
                   <div key={item.appointment_id} className="rounded-2xl border border-line bg-paper">
                     <button
                       type="button"
-                      onClick={() => onToggleHistoryAccordion(item.appointment_id)}
+                      onClick={() => onToggleHistoryAccordionAction(item.appointment_id)}
                       className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-studio-light/50"
                     >
                       <div className="min-w-0">
@@ -186,7 +186,7 @@ export function SessionHistoryPanel({
 
                         <button
                           type="button"
-                          onClick={() => onSelectHistory(item)}
+                          onClick={() => onSelectHistoryAction(item)}
                           disabled={!canOpenNotes}
                           className={`mt-3 h-9 rounded-xl border px-3 text-[10px] font-extrabold uppercase tracking-wider ${
                             canOpenNotes

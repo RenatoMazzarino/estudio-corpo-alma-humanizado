@@ -28,11 +28,11 @@ interface AgendaSearchModalProps {
   searchTerm: string;
   isSearching: boolean;
   results: SearchResults;
-  onClose: () => void;
-  onSearchTermChange: (value: string) => void;
-  onSearchClick: () => void;
-  onSelectAppointment: (appointment: SearchAppointmentResult) => void;
-  onSelectClient: (client: SearchClientResult) => void;
+  onCloseAction: () => void;
+  onSearchTermChangeAction: (value: string) => void;
+  onSearchClickAction: () => void;
+  onSelectAppointmentAction: (appointment: SearchAppointmentResult) => void;
+  onSelectClientAction: (client: SearchClientResult) => void;
 }
 
 const parseDate = (value: string) => {
@@ -45,11 +45,11 @@ export function AgendaSearchModal({
   searchTerm,
   isSearching,
   results,
-  onClose,
-  onSearchTermChange,
-  onSearchClick,
-  onSelectAppointment,
-  onSelectClient,
+  onCloseAction,
+  onSearchTermChangeAction,
+  onSearchClickAction,
+  onSelectAppointmentAction,
+  onSelectClientAction,
 }: AgendaSearchModalProps) {
   if (!open) return null;
   const hasQuery = searchTerm.trim().length >= 3;
@@ -63,19 +63,19 @@ export function AgendaSearchModal({
               size="sm"
               icon={<ChevronLeft className="w-4 h-4" />}
               aria-label="Voltar"
-              onClick={onClose}
+              onClick={onCloseAction}
             />
             <Search className="w-4 h-4 text-muted" />
             <input
               autoFocus
               value={searchTerm}
-              onChange={(event) => onSearchTermChange(event.target.value)}
+              onChange={(event) => onSearchTermChangeAction(event.target.value)}
               placeholder="Buscar em tudo..."
               className="flex-1 bg-transparent text-sm text-studio-text placeholder:text-muted focus:outline-none"
             />
             <button
               type="button"
-              onClick={onSearchClick}
+              onClick={onSearchClickAction}
               className="text-xs font-extrabold text-studio-green px-3 py-1.5 rounded-full bg-studio-light"
             >
               Buscar
@@ -106,7 +106,7 @@ export function AgendaSearchModal({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => onSelectAppointment(item)}
+                        onClick={() => onSelectAppointmentAction(item)}
                         className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
                       >
                         <div className="text-sm font-extrabold text-studio-text">{clientName}</div>
@@ -129,7 +129,7 @@ export function AgendaSearchModal({
                     <button
                       key={client.id}
                       type="button"
-                      onClick={() => onSelectClient(client)}
+                      onClick={() => onSelectClientAction(client)}
                       className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
                     >
                       <div className="text-sm font-extrabold text-studio-text">{client.name}</div>

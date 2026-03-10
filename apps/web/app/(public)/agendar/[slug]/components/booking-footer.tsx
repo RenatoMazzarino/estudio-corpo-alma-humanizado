@@ -7,8 +7,8 @@ type BookingFooterProps = {
   showNextButton: boolean;
   isNextDisabled: boolean;
   nextLabel: string;
-  onBack: () => void;
-  onNext: () => void;
+  onBackAction: () => void;
+  onNextAction: () => void;
 };
 
 export function BookingFooter({
@@ -16,8 +16,8 @@ export function BookingFooter({
   showNextButton,
   isNextDisabled,
   nextLabel,
-  onBack,
-  onNext,
+  onBackAction,
+  onNextAction,
 }: BookingFooterProps) {
   if (!visible) return null;
 
@@ -26,7 +26,7 @@ export function BookingFooter({
       <div className={`flex gap-3 px-6 py-3 ${showNextButton ? "" : "justify-start"}`}>
         <button
           type="button"
-          onClick={onBack}
+          onClick={onBackAction}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-soft transition-colors hover:text-studio-text"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -34,7 +34,7 @@ export function BookingFooter({
         {showNextButton && (
           <button
             type="button"
-            onClick={onNext}
+            onClick={onNextAction}
             disabled={isNextDisabled}
             className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-studio-green-dark text-xs font-bold uppercase tracking-widest text-white shadow-xl transition-colors hover:bg-studio-green disabled:opacity-40"
           >

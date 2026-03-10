@@ -25,9 +25,9 @@ type AppointmentServiceLocationStepProps = {
   hasLocationChoice: boolean;
   isHomeVisit: boolean;
   onServiceChange: ChangeEventHandler<HTMLSelectElement>;
-  onClearSelectedService: () => void;
-  onSelectStudioLocation: () => void;
-  onSelectHomeVisitLocation: () => void;
+  onClearSelectedServiceAction: () => void;
+  onSelectStudioLocationAction: () => void;
+  onSelectHomeVisitLocationAction: () => void;
   children?: ReactNode;
 };
 
@@ -46,9 +46,9 @@ export function AppointmentServiceLocationStep({
   hasLocationChoice,
   isHomeVisit,
   onServiceChange,
-  onClearSelectedService,
-  onSelectStudioLocation,
-  onSelectHomeVisitLocation,
+  onClearSelectedServiceAction,
+  onSelectStudioLocationAction,
+  onSelectHomeVisitLocationAction,
   children,
 }: AppointmentServiceLocationStepProps) {
   return (
@@ -93,7 +93,7 @@ export function AppointmentServiceLocationStep({
                 </div>
                 <button
                   type="button"
-                  onClick={onClearSelectedService}
+                  onClick={onClearSelectedServiceAction}
                   className="shrink-0 w-9 h-9 rounded-xl border border-studio-green/20 bg-white text-studio-green hover:bg-studio-light transition flex items-center justify-center"
                   aria-label="Trocar procedimento"
                   title="Trocar procedimento"
@@ -143,7 +143,7 @@ export function AppointmentServiceLocationStep({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={onSelectStudioLocation}
+              onClick={onSelectStudioLocationAction}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 hasLocationChoice && !isHomeVisit
                   ? "border-studio-green bg-green-50 text-studio-green"
@@ -156,7 +156,7 @@ export function AppointmentServiceLocationStep({
 
             <button
               type="button"
-              onClick={onSelectHomeVisitLocation}
+              onClick={onSelectHomeVisitLocationAction}
               className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
                 hasLocationChoice && isHomeVisit
                   ? "border-dom bg-dom/20 text-dom-strong"
@@ -172,7 +172,7 @@ export function AppointmentServiceLocationStep({
             <div className="grid grid-cols-1 gap-2">
               <button
                 type="button"
-                onClick={onSelectStudioLocation}
+                onClick={onSelectStudioLocationAction}
                 className="py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border border-studio-green bg-green-50 text-studio-green"
               >
                 <Building2 className="w-5 h-5" />

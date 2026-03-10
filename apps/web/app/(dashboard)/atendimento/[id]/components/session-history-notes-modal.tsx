@@ -8,29 +8,29 @@ import { formatHistoryDate } from "./session-stage.helpers";
 type SessionHistoryNotesModalProps = {
   selectedHistory: ClientHistoryEntry | null;
   portalTarget: HTMLElement | null;
-  onClose: () => void;
-  onBackdropClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
-  onBackdropKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  onCloseAction: () => void;
+  onBackdropClickAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onBackdropKeyDownAction: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
 };
 
 function SessionHistoryNotesModalContent({
   selectedHistory,
-  onClose,
-  onBackdropClick,
-  onBackdropKeyDown,
+  onCloseAction,
+  onBackdropClickAction,
+  onBackdropKeyDownAction,
   useAbsolute,
 }: {
   selectedHistory: ClientHistoryEntry;
-  onClose: () => void;
-  onBackdropClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
-  onBackdropKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  onCloseAction: () => void;
+  onBackdropClickAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onBackdropKeyDownAction: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
   useAbsolute: boolean;
 }) {
   return (
     <div
       className={`${useAbsolute ? "absolute" : "fixed"} inset-0 z-90 flex items-center justify-center bg-black/45 p-4`}
-      onClick={onBackdropClick}
-      onKeyDown={onBackdropKeyDown}
+      onClick={onBackdropClickAction}
+      onKeyDown={onBackdropKeyDownAction}
       role="button"
       tabIndex={0}
       aria-label="Fechar anotações da sessão"
@@ -45,7 +45,7 @@ function SessionHistoryNotesModalContent({
           <h3 className="text-lg font-serif font-bold text-studio-text">Anotações da sessão</h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="h-8 w-8 rounded-lg border border-line text-sm font-bold text-muted"
           >
             ×
@@ -70,9 +70,9 @@ function SessionHistoryNotesModalContent({
 export function SessionHistoryNotesModal({
   selectedHistory,
   portalTarget,
-  onClose,
-  onBackdropClick,
-  onBackdropKeyDown,
+  onCloseAction,
+  onBackdropClickAction,
+  onBackdropKeyDownAction,
 }: SessionHistoryNotesModalProps) {
   if (!selectedHistory) return null;
 
@@ -80,9 +80,9 @@ export function SessionHistoryNotesModal({
     return createPortal(
       <SessionHistoryNotesModalContent
         selectedHistory={selectedHistory}
-        onClose={onClose}
-        onBackdropClick={onBackdropClick}
-        onBackdropKeyDown={onBackdropKeyDown}
+        onCloseAction={onCloseAction}
+        onBackdropClickAction={onBackdropClickAction}
+        onBackdropKeyDownAction={onBackdropKeyDownAction}
         useAbsolute
       />,
       portalTarget
@@ -92,9 +92,9 @@ export function SessionHistoryNotesModal({
   return (
     <SessionHistoryNotesModalContent
       selectedHistory={selectedHistory}
-      onClose={onClose}
-      onBackdropClick={onBackdropClick}
-      onBackdropKeyDown={onBackdropKeyDown}
+      onCloseAction={onCloseAction}
+      onBackdropClickAction={onBackdropClickAction}
+      onBackdropKeyDownAction={onBackdropKeyDownAction}
       useAbsolute={false}
     />
   );

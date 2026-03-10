@@ -48,15 +48,15 @@ interface AttendancePaymentMethodSectionProps {
   pointPayment: PointPaymentData | null;
   busy: boolean;
   errorText: string | null;
-  onSetMethod: (value: Method) => void;
-  onSetCashAmount: (value: number) => void;
-  onCreatePix: () => void;
-  onCopyPix: () => void;
-  onCopyPixKey: () => void;
-  onRegisterCash: () => void;
-  onRegisterPixKey: () => void;
-  onPointCharge: (cardMode: PointCardMode) => void;
-  onWaiveAsCourtesy: () => void;
+  onSetMethodAction: (value: Method) => void;
+  onSetCashAmountAction: (value: number) => void;
+  onCreatePixAction: () => void;
+  onCopyPixAction: () => void;
+  onCopyPixKeyAction: () => void;
+  onRegisterCashAction: () => void;
+  onRegisterPixKeyAction: () => void;
+  onPointChargeAction: (cardMode: PointCardMode) => void;
+  onWaiveAsCourtesyAction: () => void;
 }
 
 export function AttendancePaymentMethodSection({
@@ -81,15 +81,15 @@ export function AttendancePaymentMethodSection({
   pointPayment,
   busy,
   errorText,
-  onSetMethod,
-  onSetCashAmount,
-  onCreatePix,
-  onCopyPix,
-  onCopyPixKey,
-  onRegisterCash,
-  onRegisterPixKey,
-  onPointCharge,
-  onWaiveAsCourtesy,
+  onSetMethodAction,
+  onSetCashAmountAction,
+  onCreatePixAction,
+  onCopyPixAction,
+  onCopyPixKeyAction,
+  onRegisterCashAction,
+  onRegisterPixKeyAction,
+  onPointChargeAction,
+  onWaiveAsCourtesyAction,
 }: AttendancePaymentMethodSectionProps) {
   return (
     <>
@@ -105,7 +105,7 @@ export function AttendancePaymentMethodSection({
                 ? "border-studio-green bg-studio-light text-studio-green"
                 : "border-line text-muted hover:bg-paper"
             }`}
-            onClick={() => onSetMethod("cash")}
+            onClick={() => onSetMethodAction("cash")}
             disabled={isWaived}
           >
             <PaymentMethodIcon method="cash" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -117,7 +117,7 @@ export function AttendancePaymentMethodSection({
                 ? "border-studio-green bg-studio-light text-studio-green"
                 : "border-line text-muted hover:bg-paper"
             }`}
-            onClick={() => onSetMethod("pix_mp")}
+            onClick={() => onSetMethodAction("pix_mp")}
             disabled={isWaived}
           >
             <PaymentMethodIcon method="pix" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -129,7 +129,7 @@ export function AttendancePaymentMethodSection({
                 ? "border-studio-green bg-studio-light text-studio-green"
                 : "border-line text-muted hover:bg-paper"
             }`}
-            onClick={() => onSetMethod("pix_key")}
+            onClick={() => onSetMethodAction("pix_key")}
             disabled={isWaived}
           >
             <PaymentMethodIcon method="pix_key" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -141,7 +141,7 @@ export function AttendancePaymentMethodSection({
                 ? "border-studio-green bg-studio-light text-studio-green"
                 : "border-line text-muted hover:bg-paper"
             }`}
-            onClick={() => onSetMethod("card")}
+            onClick={() => onSetMethodAction("card")}
             disabled={isWaived}
           >
             <PaymentMethodIcon method="card" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -154,7 +154,7 @@ export function AttendancePaymentMethodSection({
                   ? "border-sky-500 bg-sky-50 text-sky-700"
                   : "border-line text-muted hover:bg-paper"
               }`}
-              onClick={() => onSetMethod("waiver")}
+              onClick={() => onSetMethodAction("waiver")}
             >
               <PaymentMethodIcon method="waiver" className="mx-auto mb-1 h-3.5 w-3.5" />
               Cortesia
@@ -177,11 +177,11 @@ export function AttendancePaymentMethodSection({
             type="number"
             className="w-full rounded-xl border border-line px-3 py-2 text-sm"
             value={cashAmount}
-            onChange={(event) => onSetCashAmount(Number(event.target.value))}
+            onChange={(event) => onSetCashAmountAction(Number(event.target.value))}
           />
           <button
             className="mt-3 h-10 w-full rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
-            onClick={onRegisterCash}
+            onClick={onRegisterCashAction}
             disabled={isFullyPaid || isWaived}
           >
             Registrar recebimento
@@ -194,7 +194,7 @@ export function AttendancePaymentMethodSection({
           {!pixPayment && (
             <button
               className="h-10 w-full rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
-              onClick={onCreatePix}
+              onClick={onCreatePixAction}
               disabled={isFullyPaid || isWaived}
             >
               Gerar PIX MP
@@ -226,7 +226,7 @@ export function AttendancePaymentMethodSection({
               </div>
               <button
                 className="mt-3 h-10 w-full rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-                onClick={onCopyPix}
+                onClick={onCopyPixAction}
               >
                 <Copy className="mr-1 inline h-3.5 w-3.5" />
                 Copiar código Pix
@@ -272,7 +272,7 @@ export function AttendancePaymentMethodSection({
               </div>
               <button
                 className="mt-3 h-10 w-full rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-                onClick={onCopyPixKey}
+                onClick={onCopyPixKeyAction}
               >
                 <Copy className="mr-1 inline h-3.5 w-3.5" />
                 Copiar código Pix chave
@@ -282,7 +282,7 @@ export function AttendancePaymentMethodSection({
 
           <button
             className="mt-3 h-10 w-full rounded-xl bg-studio-green px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
-            onClick={onRegisterPixKey}
+            onClick={onRegisterPixKeyAction}
             disabled={isFullyPaid || isWaived || !pixKeyConfigured || !pixKeyCode || pixKeyGenerating}
           >
             Registrar pagamento Pix chave
@@ -303,14 +303,14 @@ export function AttendancePaymentMethodSection({
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green disabled:opacity-60"
-              onClick={() => onPointCharge("debit")}
+              onClick={() => onPointChargeAction("debit")}
               disabled={!pointEnabled || isFullyPaid || isWaived}
             >
               Cobrar no débito
             </button>
             <button
               className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green disabled:opacity-60"
-              onClick={() => onPointCharge("credit")}
+              onClick={() => onPointChargeAction("credit")}
               disabled={!pointEnabled || isFullyPaid || isWaived}
             >
               Cobrar no crédito
@@ -335,7 +335,7 @@ export function AttendancePaymentMethodSection({
           </p>
           <button
             className="mt-3 h-10 w-full rounded-xl bg-sky-600 px-3 text-[11px] font-extrabold uppercase tracking-wider text-white disabled:opacity-60"
-            onClick={onWaiveAsCourtesy}
+            onClick={onWaiveAsCourtesyAction}
             disabled={isWaived || busy}
           >
             {isWaived ? "Cortesia já aplicada" : "Aplicar cortesia"}

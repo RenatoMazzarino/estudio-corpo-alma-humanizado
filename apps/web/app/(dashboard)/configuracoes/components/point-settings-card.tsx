@@ -9,12 +9,12 @@ type PointSettingsCardProps = {
   terminalExternalId: string;
   loadingDevices: boolean;
   configuring: boolean;
-  onEnabledChange: (value: boolean) => void;
-  onFetchDevices: () => void;
-  onConfigure: () => void;
-  onSelectDevice: (deviceId: string) => void;
-  onTerminalIdChange: (value: string) => void;
-  onTerminalExternalIdChange: (value: string) => void;
+  onEnabledChangeAction: (value: boolean) => void;
+  onFetchDevicesAction: () => void;
+  onConfigureAction: () => void;
+  onSelectDeviceAction: (deviceId: string) => void;
+  onTerminalIdChangeAction: (value: string) => void;
+  onTerminalExternalIdChangeAction: (value: string) => void;
 };
 
 export function PointSettingsCard({
@@ -24,12 +24,12 @@ export function PointSettingsCard({
   terminalExternalId,
   loadingDevices,
   configuring,
-  onEnabledChange,
-  onFetchDevices,
-  onConfigure,
-  onSelectDevice,
-  onTerminalIdChange,
-  onTerminalExternalIdChange,
+  onEnabledChangeAction,
+  onFetchDevicesAction,
+  onConfigureAction,
+  onSelectDeviceAction,
+  onTerminalIdChangeAction,
+  onTerminalExternalIdChangeAction,
 }: PointSettingsCardProps) {
   return (
     <div className="rounded-2xl border border-stone-200 p-4 space-y-3 bg-stone-50/60">
@@ -40,7 +40,7 @@ export function PointSettingsCard({
             type="checkbox"
             name="mp_point_enabled"
             checked={enabled}
-            onChange={(event) => onEnabledChange(event.target.checked)}
+            onChange={(event) => onEnabledChangeAction(event.target.checked)}
           />
           Habilitada
         </label>
@@ -49,7 +49,7 @@ export function PointSettingsCard({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={onFetchDevices}
+          onClick={onFetchDevicesAction}
           disabled={loadingDevices}
           className="h-10 rounded-xl border border-stone-200 bg-white text-xs font-bold text-studio-green disabled:opacity-60"
         >
@@ -57,7 +57,7 @@ export function PointSettingsCard({
         </button>
         <button
           type="button"
-          onClick={onConfigure}
+          onClick={onConfigureAction}
           disabled={configuring}
           className="h-10 rounded-xl border border-studio-green bg-studio-green text-xs font-bold text-white disabled:opacity-60"
         >
@@ -70,7 +70,7 @@ export function PointSettingsCard({
           <label className="text-[11px] font-bold text-gray-500 uppercase">Selecionar maquininha padrão</label>
           <select
             value={terminalId}
-            onChange={(event) => onSelectDevice(event.target.value)}
+            onChange={(event) => onSelectDeviceAction(event.target.value)}
             className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
           >
             <option value="">Selecione...</option>
@@ -89,7 +89,7 @@ export function PointSettingsCard({
           <input
             type="text"
             value={terminalId}
-            onChange={(event) => onTerminalIdChange(event.target.value)}
+            onChange={(event) => onTerminalIdChangeAction(event.target.value)}
             className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
             placeholder="Ex.: PAX12345"
           />
@@ -100,7 +100,7 @@ export function PointSettingsCard({
             type="text"
             name="mp_point_terminal_external_id"
             value={terminalExternalId}
-            onChange={(event) => onTerminalExternalIdChange(event.target.value)}
+            onChange={(event) => onTerminalExternalIdChangeAction(event.target.value)}
             className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm"
             placeholder="Ex.: studio-sala-1"
           />

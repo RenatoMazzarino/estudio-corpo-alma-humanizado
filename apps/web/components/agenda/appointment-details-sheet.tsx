@@ -25,19 +25,19 @@ interface AppointmentDetailsSheetProps {
   signalPercentage?: number;
   publicBaseUrl?: string;
   messageTemplates: AutoMessageTemplates;
-  onClose: () => void;
-  onStartSession: () => void;
-  onSendCreatedMessage: () => void;
-  onSendReminder: () => void;
-  onSendSurvey: () => void;
-  onSendPaymentCharge: () => void;
-  onSendPaymentReceipt: (paymentId: string | null) => void;
-  onConfirmClient: () => void;
-  onCancelAppointment: (options?: { notifyClient?: boolean }) => void;
-  onRecordPayment?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
-  onSaveEvolution?: (text: string) => Promise<{ ok: boolean }>;
-  onStructureEvolution?: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
-  onNotify?: (feedback: UserFeedback) => void;
+  onCloseAction: () => void;
+  onStartSessionAction: () => void;
+  onSendCreatedMessageAction: () => void;
+  onSendReminderAction: () => void;
+  onSendSurveyAction: () => void;
+  onSendPaymentChargeAction: () => void;
+  onSendPaymentReceiptAction: (paymentId: string | null) => void;
+  onConfirmClientAction: () => void;
+  onCancelAppointmentAction: (options?: { notifyClient?: boolean }) => void;
+  onRecordPaymentAction?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
+  onSaveEvolutionAction?: (text: string) => Promise<{ ok: boolean }>;
+  onStructureEvolutionAction?: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
+  onNotifyAction?: (feedback: UserFeedback) => void;
 }
 
 export function AppointmentDetailsSheet({
@@ -49,19 +49,19 @@ export function AppointmentDetailsSheet({
   signalPercentage = 30,
   publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
   messageTemplates,
-  onClose,
-  onStartSession,
-  onSendCreatedMessage,
-  onSendReminder,
-  onSendSurvey,
-  onSendPaymentCharge,
-  onSendPaymentReceipt,
-  onConfirmClient,
-  onCancelAppointment,
-  onRecordPayment,
-  onSaveEvolution,
-  onStructureEvolution,
-  onNotify,
+  onCloseAction,
+  onStartSessionAction,
+  onSendCreatedMessageAction,
+  onSendReminderAction,
+  onSendSurveyAction,
+  onSendPaymentChargeAction,
+  onSendPaymentReceiptAction,
+  onConfirmClientAction,
+  onCancelAppointmentAction,
+  onRecordPaymentAction,
+  onSaveEvolutionAction,
+  onStructureEvolutionAction,
+  onNotifyAction,
 }: AppointmentDetailsSheetProps) {
   const {
     portalTarget,
@@ -88,9 +88,9 @@ export function AppointmentDetailsSheet({
   } = useAppointmentDetailsSheetController({
     open,
     details,
-    onClose,
-    onSaveEvolution,
-    onStructureEvolution,
+    onClose: onCloseAction,
+    onSaveEvolution: onSaveEvolutionAction,
+    onStructureEvolution: onStructureEvolutionAction,
   });
 
   const {
@@ -148,7 +148,7 @@ export function AppointmentDetailsSheet({
     signalPercentage,
     publicBaseUrl,
     messageTemplates,
-    onNotify,
+    onNotify: onNotifyAction,
   });
 
   if (!open || !portalTarget) return null;
@@ -158,7 +158,7 @@ export function AppointmentDetailsSheet({
       <button
         type="button"
         aria-label="Fechar detalhes"
-        onClick={onClose}
+        onClick={onCloseAction}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
       />
 
@@ -253,16 +253,16 @@ export function AppointmentDetailsSheet({
                 surveyScore={details.post?.survey_score ?? null}
                 hasSurveySent={hasSurveySent}
                 onSelectPaymentMethod={setPaymentMethod}
-                onSendPaymentCharge={onSendPaymentCharge}
+                onSendPaymentCharge={onSendPaymentChargeAction}
                 onRecordPayment={() =>
-                  onRecordPayment?.({
+                  onRecordPaymentAction?.({
                     type: "full",
                     amount: remainingAmount,
                     method: paymentMethod,
                   })
                 }
-                onSendPaymentReceipt={() => onSendPaymentReceipt(lastPaid?.id ?? null)}
-                onSendSurvey={onSendSurvey}
+                onSendPaymentReceipt={() => onSendPaymentReceiptAction(lastPaid?.id ?? null)}
+                onSendSurvey={onSendSurveyAction}
                 onOpenEvolutionModal={() => setEvolutionModalOpen(true)}
               />
             ) : (
@@ -307,20 +307,20 @@ export function AppointmentDetailsSheet({
                 paymentMethod={paymentMethod}
                 internalNotes={appointment?.internal_notes ?? ""}
                 onSelectPaymentMethod={setPaymentMethod}
-                onSendCreatedMessage={onSendCreatedMessage}
-                onSendReminder={onSendReminder}
-                onConfirmClient={onConfirmClient}
+                onSendCreatedMessage={onSendCreatedMessageAction}
+                onSendReminder={onSendReminderAction}
+                onConfirmClient={onConfirmClientAction}
                 onOpenCancelDialog={() => setCancelDialogOpen(true)}
-                onSendPaymentCharge={onSendPaymentCharge}
+                onSendPaymentCharge={onSendPaymentChargeAction}
                 onRecordSignalPayment={() =>
-                  onRecordPayment?.({
+                  onRecordPaymentAction?.({
                     type: "signal",
                     amount: signalRemaining,
                     method: paymentMethod,
                   })
                 }
                 onRecordFullPayment={() =>
-                  onRecordPayment?.({
+                  onRecordPaymentAction?.({
                     type: "full",
                     amount: remainingAmount,
                     method: paymentMethod,
@@ -341,8 +341,8 @@ export function AppointmentDetailsSheet({
             saving={evolutionSaving}
             structuring={evolutionStructuring}
             actionPending={actionPending}
-            canSave={Boolean(onSaveEvolution)}
-            canStructure={Boolean(onStructureEvolution)}
+            canSave={Boolean(onSaveEvolutionAction)}
+            canStructure={Boolean(onStructureEvolutionAction)}
             onClose={() => setEvolutionModalOpen(false)}
             onChangeDraft={setEvolutionDraft}
             onStructure={() => void handleStructureEvolution()}
@@ -354,7 +354,7 @@ export function AppointmentDetailsSheet({
           <div className="border-t border-line px-6 py-4 bg-white/95 backdrop-blur">
             <button
               type="button"
-              onClick={onStartSession}
+              onClick={onStartSessionAction}
               disabled={!details || actionPending}
               className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-60"
             >
@@ -375,7 +375,7 @@ export function AppointmentDetailsSheet({
         onChangeNotifyClient={setNotifyClientOnCancel}
         onConfirmCancel={() => {
           setCancelDialogOpen(false);
-          onCancelAppointment({ notifyClient: notifyClientOnCancel });
+          onCancelAppointmentAction({ notifyClient: notifyClientOnCancel });
           setNotifyClientOnCancel(false);
         }}
       />

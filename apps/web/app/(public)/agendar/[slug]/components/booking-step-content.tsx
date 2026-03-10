@@ -239,8 +239,8 @@ export function BookingStepContent({
     <>
       {step === "WELCOME" && (
         <WelcomeStep
-          onStart={onStartWelcome}
-          onTalkToAssistant={onTalkToAssistant}
+          onStartAction={onStartWelcome}
+          onTalkToAssistantAction={onTalkToAssistant}
         />
       )}
 
@@ -250,38 +250,38 @@ export function BookingStepContent({
           clientLookupStatus={clientLookupStatus}
           phoneInputRef={phoneInputRef}
           clientPhone={clientPhone}
-          onPhoneChange={onPhoneChange}
+          onPhoneChangeAction={onPhoneChange}
           isPhoneValid={isPhoneValid}
           hasSuggestedClient={Boolean(suggestedClient)}
           clientCpf={clientCpf}
-          onClientCpfChange={onClientCpfChange}
+          onClientCpfChangeAction={onClientCpfChange}
           identityCaptchaPrompt={identityCaptchaPrompt}
           identityCaptchaAnswer={identityCaptchaAnswer}
-          onCaptchaAnswerChange={onCaptchaAnswerChange}
+          onCaptchaAnswerChangeAction={onCaptchaAnswerChange}
           identityGuardNotice={identityGuardNotice}
-          onVerifyExistingClientCpf={onVerifyExistingClientCpf}
+          onVerifyExistingClientCpfAction={onVerifyExistingClientCpf}
           isCpfValid={isCpfValid}
           isVerifyingClientCpf={isVerifyingClientCpf}
           identityCpfAttempts={identityCpfAttempts}
           suggestedClientInitials={suggestedClientInitials}
           suggestedClientPublicName={suggestedClientPublicName}
           identityWelcomeCountdown={identityWelcomeCountdown}
-          onGoServiceNow={onGoServiceNow}
+          onGoServiceNowAction={onGoServiceNow}
           isEmailValid={isEmailValid}
           clientEmail={clientEmail}
-          onClientEmailChange={onClientEmailChange}
-          onSwitchAccount={onSwitchAccount}
+          onClientEmailChangeAction={onClientEmailChange}
+          onSwitchAccountAction={onSwitchAccount}
           suggestedClientFirstName={suggestedClientFirstName}
           clientFirstName={clientFirstName}
-          onClientFirstNameChange={onClientFirstNameChange}
+          onClientFirstNameChangeAction={onClientFirstNameChange}
           clientLastName={clientLastName}
-          onClientLastNameChange={onClientLastNameChange}
+          onClientLastNameChangeAction={onClientLastNameChange}
           acceptPrivacyPolicy={acceptPrivacyPolicy}
-          onAcceptPrivacyPolicyChange={onAcceptPrivacyPolicyChange}
+          onAcceptPrivacyPolicyChangeAction={onAcceptPrivacyPolicyChange}
           acceptTermsOfService={acceptTermsOfService}
-          onAcceptTermsOfServiceChange={onAcceptTermsOfServiceChange}
+          onAcceptTermsOfServiceChangeAction={onAcceptTermsOfServiceChange}
           acceptCommunicationConsent={acceptCommunicationConsent}
-          onAcceptCommunicationConsentChange={onAcceptCommunicationConsentChange}
+          onAcceptCommunicationConsentChangeAction={onAcceptCommunicationConsentChange}
         />
       )}
 
@@ -290,7 +290,7 @@ export function BookingStepContent({
           label={stepLabels.SERVICE}
           services={services}
           selectedServiceId={selectedService?.id ?? null}
-          onSelectService={onSelectService}
+          onSelectServiceAction={onSelectService}
         />
       )}
 
@@ -301,13 +301,13 @@ export function BookingStepContent({
           totalPrice={totalPrice}
           activeMonth={activeMonth}
           selectedDate={selectedDateObj}
-          onSelectDay={onSelectDay}
-          onChangeMonth={onChangeMonth}
-          isDayDisabled={isDayDisabled}
+          onSelectDayAction={onSelectDay}
+          onChangeMonthAction={onChangeMonth}
+          isDayDisabledAction={isDayDisabled}
           isLoadingDaySlots={isLoadingDaySlots}
           availableSlots={availableSlots}
           selectedTime={selectedTime}
-          onSelectTime={onSelectTime}
+          onSelectTimeAction={onSelectTime}
         />
       )}
 
@@ -332,20 +332,20 @@ export function BookingStepContent({
           cidade={cidade}
           estado={estado}
           mapsQuery={mapsQuery}
-          onSelectStudio={onSelectStudio}
-          onSelectHomeVisit={onSelectHomeVisit}
-          onUseSuggestedAddress={onUseSuggestedAddress}
-          onChooseOtherAddress={onChooseOtherAddress}
-          onSelectAddressMode={onSelectAddressMode}
-          onChangeCep={onChangeCep}
-          onLookupCep={onLookupCep}
-          onOpenSearchModal={onOpenSearchModal}
-          onChangeLogradouro={onChangeLogradouro}
-          onChangeNumero={onChangeNumero}
-          onChangeComplemento={onChangeComplemento}
-          onChangeBairro={onChangeBairro}
-          onChangeCidade={onChangeCidade}
-          onChangeEstado={onChangeEstado}
+          onSelectStudioAction={onSelectStudio}
+          onSelectHomeVisitAction={onSelectHomeVisit}
+          onUseSuggestedAddressAction={onUseSuggestedAddress}
+          onChooseOtherAddressAction={onChooseOtherAddress}
+          onSelectAddressModeAction={onSelectAddressMode}
+          onChangeCepAction={onChangeCep}
+          onLookupCepAction={onLookupCep}
+          onOpenSearchModalAction={onOpenSearchModal}
+          onChangeLogradouroAction={onChangeLogradouro}
+          onChangeNumeroAction={onChangeNumero}
+          onChangeComplementoAction={onChangeComplemento}
+          onChangeBairroAction={onChangeBairro}
+          onChangeCidadeAction={onChangeCidade}
+          onChangeEstadoAction={onChangeEstado}
         />
       )}
 
@@ -361,7 +361,7 @@ export function BookingStepContent({
           paymentMethod={paymentMethod}
           isMercadoPagoMinimumInvalid={isMercadoPagoMinimumInvalid}
           protocol={protocol}
-          onSelectPayment={onSelectPayment}
+          onSelectPaymentAction={onSelectPayment}
         />
       )}
 
@@ -378,8 +378,8 @@ export function BookingStepContent({
           resolvedClientFullName={resolvedClientFullName}
           normalizedClientEmail={normalizedClientEmail}
           appointmentId={appointmentId}
-          onCopyPix={onCopyPix}
-          onRegeneratePix={onRegeneratePix}
+          onCopyPixAction={onCopyPix}
+          onRegeneratePixAction={onRegeneratePix}
           statusMessage={checkoutStatusMessage}
         />
       )}
@@ -390,8 +390,8 @@ export function BookingStepContent({
           selectedTime={selectedTime}
           serviceName={selectedService?.name ?? "Serviço"}
           protocol={protocol}
-          onOpenVoucher={onOpenVoucher}
-          onReset={onReset}
+          onOpenVoucherAction={onOpenVoucher}
+          onResetAction={onReset}
         />
       )}
     </>

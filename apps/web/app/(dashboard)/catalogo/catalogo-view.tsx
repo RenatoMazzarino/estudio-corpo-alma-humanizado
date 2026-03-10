@@ -373,8 +373,8 @@ export function CatalogoView({
             service={activeScreen === "new" ? undefined : activeScreen}
             defaultBufferBefore={defaultBufferBefore}
             defaultBufferAfter={defaultBufferAfter}
-            onSuccess={handleFormSuccess}
-            onCancel={() => setActiveScreen(null)}
+            onSuccessAction={handleFormSuccess}
+            onCancelAction={() => setActiveScreen(null)}
           />
         )}
       </div>

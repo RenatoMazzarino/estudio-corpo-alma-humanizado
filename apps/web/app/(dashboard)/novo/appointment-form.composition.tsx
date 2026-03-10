@@ -658,14 +658,14 @@ export function AppointmentForm({
           duplicateCpfClient,
           clientPhoneInputRef,
           clientCpfInputRef,
-          onFocusClient: () => {
+          onFocusClientAction: () => {
             if (!isEditing && !isClientReadOnly) setIsClientDropdownOpen(true);
           },
-          onBlurClient: () => {
+          onBlurClientAction: () => {
             if (isEditing || isClientReadOnly) return;
             window.setTimeout(() => setIsClientDropdownOpen(false), 120);
           },
-          onChangeClientName: (value) => {
+          onChangeClientNameAction: (value) => {
             if (isClientReadOnly) return;
             setClientName(value);
             if (!isEditing) {
@@ -680,13 +680,13 @@ export function AppointmentForm({
               setIsClientDropdownOpen(true);
             }
           },
-          onClearSelectedClient: clearSelectedClient,
-          onSelectClient: handleSelectClient,
-          onCreateNewClientFromName: handleCreateNewClientFromName,
-          onChangeClientPhone: (value) => setClientPhone(formatBrazilPhone(value)),
-          onChangeClientCpf: (value) => setClientCpf(formatCpf(value)),
-          onLinkExistingClientByCpf: handleLinkExistingClientByCpf,
-          onChangeCpfAfterConflict: handleChangeCpfAfterConflict,
+          onClearSelectedClientAction: clearSelectedClient,
+          onSelectClientAction: handleSelectClient,
+          onCreateNewClientFromNameAction: handleCreateNewClientFromName,
+          onChangeClientPhoneAction: (value) => setClientPhone(formatBrazilPhone(value)),
+          onChangeClientCpfAction: (value) => setClientCpf(formatCpf(value)),
+          onLinkExistingClientByCpfAction: handleLinkExistingClientByCpf,
+          onChangeCpfAfterConflictAction: handleChangeCpfAfterConflict,
         }}
         showStep2={isStep2Unlocked}
         serviceLocationStepProps={{
@@ -704,15 +704,15 @@ export function AppointmentForm({
           hasLocationChoice,
           isHomeVisit,
           onServiceChange: handleServiceChange,
-          onClearSelectedService: handleClearSelectedService,
-          onSelectStudioLocation: () => {
+          onClearSelectedServiceAction: handleClearSelectedService,
+          onSelectStudioLocationAction: () => {
             setHasLocationChoice(true);
             setIsHomeVisit(false);
             setDisplacementEstimate(null);
             setDisplacementStatus("idle");
             setDisplacementError(null);
           },
-          onSelectHomeVisitLocation: () => {
+          onSelectHomeVisitLocationAction: () => {
             setHasLocationChoice(true);
             setIsHomeVisit(true);
             setDisplacementEstimate(null);
@@ -734,11 +734,11 @@ export function AppointmentForm({
           displacementEstimate,
           displacementError,
           manualDisplacementFee,
-          onManualDisplacementFeeChange: setManualDisplacementFee,
-          onZeroDisplacementFee: () => setManualDisplacementFee("0,00"),
-          onSelectExistingAddress: handleSelectExistingAddress,
-          onOpenAddressCreateModal: openAddressCreateModal,
-          onShowAddressSelectionList: setShowAddressSelectionList,
+          onManualDisplacementFeeChangeAction: setManualDisplacementFee,
+          onZeroDisplacementFeeAction: () => setManualDisplacementFee("0,00"),
+          onSelectExistingAddressAction: handleSelectExistingAddress,
+          onOpenAddressCreateModalAction: openAddressCreateModal,
+          onShowAddressSelectionListAction: setShowAddressSelectionList,
         }}
         whenStepProps={{
           visible: isStep3Unlocked,
@@ -831,32 +831,32 @@ export function AppointmentForm({
             email: clientEmail,
             cpf: clientCpf,
             showInvalidEmailHint: clientEmail.trim().length > 0 && !isValidEmailAddress(clientEmail),
-            onClose: () => setIsClientCreateModalOpen(false),
-            onFirstNameChange: (value) => {
+            onCloseAction: () => setIsClientCreateModalOpen(false),
+            onFirstNameChangeAction: (value) => {
               setClientFirstName(value);
               setClientCreateError(null);
             },
-            onLastNameChange: (value) => {
+            onLastNameChangeAction: (value) => {
               setClientLastName(value);
               setClientCreateError(null);
             },
-            onReferenceChange: (value) => {
+            onReferenceChangeAction: (value) => {
               setClientReference(value);
               setClientCreateError(null);
             },
-            onPhoneChange: (value) => {
+            onPhoneChangeAction: (value) => {
               setClientPhone(formatBrazilPhone(value));
               setClientCreateError(null);
             },
-            onEmailChange: (value) => {
+            onEmailChangeAction: (value) => {
               setClientEmail(value);
               setClientCreateError(null);
             },
-            onCpfChange: (value) => {
+            onCpfChangeAction: (value) => {
               setClientCpf(formatCpf(value));
               setClientCreateError(null);
             },
-            onSave: () => void handleSaveClientDraftFromModal(),
+            onSaveAction: () => void handleSaveClientDraftFromModal(),
           },
           addressCreateModalProps: {
             portalTarget,
@@ -958,18 +958,18 @@ export function AppointmentForm({
             chargeNowAmountError,
             creatingChargeBooking,
             isCourtesyDraft,
-            formatCountdown,
-            onClose: handleConfirmationSheetClose,
-            onCreateChargePixNow: (attempt) => handleCreateChargePixNow(attempt),
-            onCopyChargePixCode: handleCopyChargePixCode,
-            onSendChargePixViaWhatsapp: handleSendChargePixViaWhatsapp,
-            onStartChargeCard: (mode) => handleStartChargeCard(mode),
-            onVerifyChargeCardNow: handleVerifyChargeCardNow,
-            onSwitchChargeToAttendance: handleSwitchChargeToAttendance,
-            onClearChargeFlowError: () => setChargeFlowError(null),
-            onResolveDeferredManualPrompt: handleResolveDeferredManualPrompt,
-            onBeginImmediateCharge: handleBeginImmediateCharge,
-            onSchedule: handleSchedule,
+            formatCountdownAction: formatCountdown,
+            onCloseAction: handleConfirmationSheetClose,
+            onCreateChargePixNowAction: (attempt) => handleCreateChargePixNow(attempt),
+            onCopyChargePixCodeAction: handleCopyChargePixCode,
+            onSendChargePixViaWhatsappAction: handleSendChargePixViaWhatsapp,
+            onStartChargeCardAction: (mode) => handleStartChargeCard(mode),
+            onVerifyChargeCardNowAction: handleVerifyChargeCardNow,
+            onSwitchChargeToAttendanceAction: handleSwitchChargeToAttendance,
+            onClearChargeFlowErrorAction: () => setChargeFlowError(null),
+            onResolveDeferredManualPromptAction: handleResolveDeferredManualPrompt,
+            onBeginImmediateChargeAction: handleBeginImmediateCharge,
+            onScheduleAction: handleSchedule,
           },
         }}
         notesAndSubmitProps={{
@@ -980,9 +980,9 @@ export function AppointmentForm({
           labelClass,
           inputClass,
           internalNotes,
-          onChangeInternalNotes: setInternalNotes,
+          onChangeInternalNotesAction: setInternalNotes,
           canOpenConfirmation,
-          onOpenConfirmationPrompt: handleOpenConfirmationPrompt,
+          onOpenConfirmationPromptAction: handleOpenConfirmationPrompt,
         }}
       />
     </form>

@@ -8,10 +8,10 @@ type NewClientMinorSectionProps = {
   guardianName: string;
   guardianPhone: string;
   guardianCpf: string;
-  onChangeIsMinor: (value: boolean) => void;
-  onChangeGuardianName: (value: string) => void;
-  onChangeGuardianPhone: (value: string) => void;
-  onChangeGuardianCpf: (value: string) => void;
+  onChangeIsMinorAction: (value: boolean) => void;
+  onChangeGuardianNameAction: (value: string) => void;
+  onChangeGuardianPhoneAction: (value: string) => void;
+  onChangeGuardianCpfAction: (value: string) => void;
 };
 
 export function NewClientMinorSection({
@@ -19,10 +19,10 @@ export function NewClientMinorSection({
   guardianName,
   guardianPhone,
   guardianCpf,
-  onChangeIsMinor,
-  onChangeGuardianName,
-  onChangeGuardianPhone,
-  onChangeGuardianCpf,
+  onChangeIsMinorAction,
+  onChangeGuardianNameAction,
+  onChangeGuardianPhoneAction,
+  onChangeGuardianCpfAction,
 }: NewClientMinorSectionProps) {
   return (
     <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
@@ -36,7 +36,7 @@ export function NewClientMinorSection({
           type="checkbox"
           name="is_minor"
           checked={isMinor}
-          onChange={(event) => onChangeIsMinor(event.target.checked)}
+          onChange={(event) => onChangeIsMinorAction(event.target.checked)}
           className="w-4 h-4"
         />
         Cliente é menor de idade
@@ -47,21 +47,21 @@ export function NewClientMinorSection({
           <input
             name="guardian_name"
             value={guardianName}
-            onChange={(event) => onChangeGuardianName(event.target.value)}
+            onChange={(event) => onChangeGuardianNameAction(event.target.value)}
             placeholder="Nome do responsável"
             className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
           />
           <input
             name="guardian_phone"
             value={guardianPhone}
-            onChange={(event) => onChangeGuardianPhone(formatBrazilPhone(event.target.value))}
+            onChange={(event) => onChangeGuardianPhoneAction(formatBrazilPhone(event.target.value))}
             placeholder="Telefone do responsável"
             className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
           />
           <input
             name="guardian_cpf"
             value={guardianCpf}
-            onChange={(event) => onChangeGuardianCpf(formatCpf(event.target.value))}
+            onChange={(event) => onChangeGuardianCpfAction(formatCpf(event.target.value))}
             placeholder="CPF do responsável"
             className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
           />

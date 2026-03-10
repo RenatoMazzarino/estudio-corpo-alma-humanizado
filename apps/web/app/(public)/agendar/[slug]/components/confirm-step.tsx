@@ -16,7 +16,7 @@ type ConfirmStepProps = {
   paymentMethod: PaymentMethod;
   isMercadoPagoMinimumInvalid: boolean;
   protocol: string;
-  onSelectPayment: (method: "pix" | "card") => void;
+  onSelectPaymentAction: (method: "pix" | "card") => void;
 };
 
 export function ConfirmStep({
@@ -30,7 +30,7 @@ export function ConfirmStep({
   paymentMethod,
   isMercadoPagoMinimumInvalid,
   protocol,
-  onSelectPayment,
+  onSelectPaymentAction,
 }: ConfirmStepProps) {
   return (
     <section className="no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500 flex flex-1 flex-col overflow-y-auto px-6 pb-32 pt-3">
@@ -76,7 +76,7 @@ export function ConfirmStep({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => onSelectPayment("pix")}
+              onClick={() => onSelectPaymentAction("pix")}
               className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-bold transition-all ${
                 paymentMethod === "pix"
                   ? "border-studio-green bg-green-50 text-studio-green"
@@ -87,7 +87,7 @@ export function ConfirmStep({
             </button>
             <button
               type="button"
-              onClick={() => onSelectPayment("card")}
+              onClick={() => onSelectPaymentAction("card")}
               className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-bold transition-all ${
                 paymentMethod === "card"
                   ? "border-studio-green bg-green-50 text-studio-green"

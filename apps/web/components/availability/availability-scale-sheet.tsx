@@ -16,16 +16,16 @@ type AvailabilityScaleSheetProps = {
   scaleHasShiftBlocks: boolean;
   loading: boolean;
   pendingScaleConfirm: { type: "even" | "odd"; appointments: number } | null;
-  onClose: () => void;
+  onCloseAction: () => void;
   onDragStart: PointerEventHandler<HTMLDivElement>;
   onDragMove: PointerEventHandler<HTMLDivElement>;
   onDragEnd: PointerEventHandler<HTMLDivElement>;
-  onChangeScaleMonth: (value: string) => void;
-  onSelectScaleType: (value: "even" | "odd") => void;
-  onClearScale: (month: string, keepOpen?: boolean) => void;
-  onDismissPendingScaleConfirm: () => void;
-  onConfirmPendingScale: (type: "even" | "odd", month: string) => void;
-  onApplyScale: (type: "even" | "odd", month: string) => void;
+  onChangeScaleMonthAction: (value: string) => void;
+  onSelectScaleTypeAction: (value: "even" | "odd") => void;
+  onClearScaleAction: (month: string, keepOpen?: boolean) => void;
+  onDismissPendingScaleConfirmAction: () => void;
+  onConfirmPendingScaleAction: (type: "even" | "odd", month: string) => void;
+  onApplyScaleAction: (type: "even" | "odd", month: string) => void;
 };
 
 export function AvailabilityScaleSheet({
@@ -40,16 +40,16 @@ export function AvailabilityScaleSheet({
   scaleHasShiftBlocks,
   loading,
   pendingScaleConfirm,
-  onClose,
+  onCloseAction,
   onDragStart,
   onDragMove,
   onDragEnd,
-  onChangeScaleMonth,
-  onSelectScaleType,
-  onClearScale,
-  onDismissPendingScaleConfirm,
-  onConfirmPendingScale,
-  onApplyScale,
+  onChangeScaleMonthAction,
+  onSelectScaleTypeAction,
+  onClearScaleAction,
+  onDismissPendingScaleConfirmAction,
+  onConfirmPendingScaleAction,
+  onApplyScaleAction,
 }: AvailabilityScaleSheetProps) {
   if (!open || !portalTarget) return null;
 
@@ -82,7 +82,7 @@ export function AvailabilityScaleSheet({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100 hover:text-red-500 transition-colors"
             aria-label="Fechar"
           >
@@ -100,7 +100,7 @@ export function AvailabilityScaleSheet({
               <input
                 type="month"
                 value={scaleMonth}
-                onChange={(event) => onChangeScaleMonth(event.target.value)}
+                onChange={(event) => onChangeScaleMonthAction(event.target.value)}
                 className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
               />
             </div>
@@ -114,7 +114,7 @@ export function AvailabilityScaleSheet({
               <p>Deseja apagar a escala atual para gerar uma nova?</p>
               <button
                 type="button"
-                onClick={() => onClearScale(scaleMonth, true)}
+                onClick={() => onClearScaleAction(scaleMonth, true)}
                 disabled={loading}
                 className="px-3 py-1.5 rounded-full bg-red-100 text-red-600 text-[10px] font-extrabold uppercase tracking-wide hover:bg-red-200 transition disabled:opacity-60"
               >
@@ -131,7 +131,7 @@ export function AvailabilityScaleSheet({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => onSelectScaleType("odd")}
+                    onClick={() => onSelectScaleTypeAction("odd")}
                     className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
                       scaleType === "odd"
                         ? "bg-studio-text text-white border-studio-text"
@@ -142,7 +142,7 @@ export function AvailabilityScaleSheet({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onSelectScaleType("even")}
+                    onClick={() => onSelectScaleTypeAction("even")}
                     className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
                       scaleType === "even"
                         ? "bg-studio-text text-white border-studio-text"
@@ -162,13 +162,13 @@ export function AvailabilityScaleSheet({
               <p>{pendingScaleConfirm.appointments} dia(s) têm agendamentos. Bloquear não cancela automaticamente.</p>
               <div className="flex gap-2">
                 <button
-                  onClick={onDismissPendingScaleConfirm}
+                  onClick={onDismissPendingScaleConfirmAction}
                   className="px-3 py-1.5 rounded-full border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={() => onConfirmPendingScale(pendingScaleConfirm.type, scaleMonth)}
+                  onClick={() => onConfirmPendingScaleAction(pendingScaleConfirm.type, scaleMonth)}
                   className="px-3 py-1.5 rounded-full bg-studio-text text-white text-[10px] font-extrabold uppercase tracking-wide"
                 >
                   Criar mesmo assim
@@ -178,7 +178,7 @@ export function AvailabilityScaleSheet({
           )}
 
           <button
-            onClick={() => onClearScale(scaleMonth)}
+            onClick={() => onClearScaleAction(scaleMonth)}
             disabled={loading}
             className="w-full text-red-500 hover:text-red-700 text-xs font-bold uppercase tracking-wide py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
           >
@@ -190,7 +190,7 @@ export function AvailabilityScaleSheet({
         {!scaleHasShiftBlocks && (
           <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
             <button
-              onClick={() => onApplyScale(scaleType, scaleMonth)}
+              onClick={() => onApplyScaleAction(scaleType, scaleMonth)}
               disabled={loading}
               className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
             >

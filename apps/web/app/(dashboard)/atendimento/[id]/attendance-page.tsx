@@ -445,14 +445,14 @@ export function AttendancePage({
             <SessionStage
               checklistEnabled={checklistEnabled}
               checklist={data.checklist}
-              onToggleChecklist={handleToggleChecklist}
+              onToggleChecklistAction={handleToggleChecklist}
               hasSavedEvolution={hasSavedEvolution}
               clientHistory={data.clientHistory}
               evolutionText={evolutionText}
-              onChangeEvolutionText={setEvolutionText}
-              onTranscribeAudio={handleTranscribeAudio}
-              onStructureWithFlora={handleStructureWithFlora}
-              onSaveEvolution={handleSaveEvolution}
+              onChangeEvolutionTextAction={setEvolutionText}
+              onTranscribeAudioAction={handleTranscribeAudio}
+              onStructureWithFloraAction={handleStructureWithFlora}
+              onSaveEvolutionAction={handleSaveEvolution}
             />
           </main>
 
@@ -460,7 +460,7 @@ export function AttendancePage({
             <SlideConfirmButton
               label={primarySlideLabel}
               hint={primarySlideHint}
-              onConfirm={handlePrimaryAction}
+              onConfirmAction={handlePrimaryAction}
             />
           </footer>
         </div>

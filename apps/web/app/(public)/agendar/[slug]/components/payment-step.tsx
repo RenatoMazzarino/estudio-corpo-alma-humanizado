@@ -16,8 +16,8 @@ type PaymentStepProps = {
   resolvedClientFullName: string;
   normalizedClientEmail: string;
   appointmentId: string | null;
-  onCopyPix: () => void;
-  onRegeneratePix: () => void;
+  onCopyPixAction: () => void;
+  onRegeneratePixAction: () => void;
   statusMessage?: string | null;
 };
 
@@ -33,8 +33,8 @@ export function PaymentStep({
   resolvedClientFullName,
   normalizedClientEmail,
   appointmentId,
-  onCopyPix,
-  onRegeneratePix,
+  onCopyPixAction,
+  onRegeneratePixAction,
   statusMessage,
 }: PaymentStepProps) {
   return (
@@ -57,8 +57,8 @@ export function PaymentStep({
         payerName={resolvedClientFullName}
         payerEmail={normalizedClientEmail}
         subjectLabel={appointmentId ? `Agendamento #${appointmentId}` : null}
-        onCopyPix={onCopyPix}
-        onRegeneratePix={onRegeneratePix}
+        onCopyPixAction={onCopyPixAction}
+        onRegeneratePixAction={onRegeneratePixAction}
         statusMessage={statusMessage}
       />
     </section>

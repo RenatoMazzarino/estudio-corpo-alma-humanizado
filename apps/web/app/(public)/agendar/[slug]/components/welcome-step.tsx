@@ -3,11 +3,11 @@
 import Image from "next/image";
 
 type WelcomeStepProps = {
-  onStart: () => void;
-  onTalkToAssistant: () => void;
+  onStartAction: () => void;
+  onTalkToAssistantAction: () => void;
 };
 
-export function WelcomeStep({ onStart, onTalkToAssistant }: WelcomeStepProps) {
+export function WelcomeStep({ onStartAction, onTalkToAssistantAction }: WelcomeStepProps) {
   return (
     <section className="no-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-1 flex-col justify-between overflow-y-auto px-6 pb-10 pt-3">
       <div className="pt-8 text-center">
@@ -34,14 +34,14 @@ export function WelcomeStep({ onStart, onTalkToAssistant }: WelcomeStepProps) {
       <div className="space-y-4 pb-6">
         <button
           type="button"
-          onClick={onStart}
+          onClick={onStartAction}
           className="flex h-16 w-full items-center justify-center rounded-2xl bg-studio-green-dark text-sm font-bold uppercase tracking-widest text-white shadow-xl transition-colors hover:bg-studio-green"
         >
           Agendar Agora
         </button>
         <button
           type="button"
-          onClick={onTalkToAssistant}
+          onClick={onTalkToAssistantAction}
           className="w-full py-4 text-sm font-bold text-studio-text hover:underline"
         >
           Falar com a Flora (Assistente)

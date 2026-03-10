@@ -17,24 +17,24 @@ type AppointmentActionSheetProps = {
   actionSheet: ActionSheetData | null;
   portalTarget: HTMLElement | null;
   isActionPending: boolean;
-  onClose: () => void;
-  onEdit: (payload: ActionSheetData) => void;
-  onDelete: (payload: ActionSheetData) => Promise<void>;
+  onCloseAction: () => void;
+  onEditAction: (payload: ActionSheetData) => void;
+  onDeleteAction: (payload: ActionSheetData) => Promise<void>;
 };
 
 export function AppointmentActionSheet({
   actionSheet,
   portalTarget,
   isActionPending,
-  onClose,
-  onEdit,
-  onDelete,
+  onCloseAction,
+  onEditAction,
+  onDeleteAction,
 }: AppointmentActionSheetProps) {
   if (!actionSheet) return null;
 
   const actionSheetNode = (
     <div className={`${portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center`}>
-      <button type="button" aria-label="Fechar ações" onClick={onClose} className="absolute inset-0 bg-black/40" />
+      <button type="button" aria-label="Fechar ações" onClick={onCloseAction} className="absolute inset-0 bg-black/40" />
       <div className="relative w-full max-w-105 rounded-t-3xl bg-white p-5 shadow-float">
         <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Ações do agendamento</div>
         <div className="mt-2 text-sm font-extrabold text-studio-text">{actionSheet.clientName}</div>
@@ -45,7 +45,7 @@ export function AppointmentActionSheet({
         <div className="mt-4 space-y-2">
           <button
             type="button"
-            onClick={() => onEdit(actionSheet)}
+            onClick={() => onEditAction(actionSheet)}
             className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm font-extrabold text-studio-text hover:bg-studio-light transition"
           >
             Editar agendamento
@@ -53,14 +53,14 @@ export function AppointmentActionSheet({
           <button
             type="button"
             disabled={isActionPending}
-            onClick={() => void onDelete(actionSheet)}
+            onClick={() => void onDeleteAction(actionSheet)}
             className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-100 transition disabled:opacity-60"
           >
             Excluir agendamento
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
           >
             Cancelar

@@ -25,15 +25,15 @@ export function MobileAgenda(props: MobileAgendaProps) {
             monthPickerYear={controller.monthPickerYear}
             monthLabels={controller.monthLabels}
             isMonthPickerOpen={controller.isMonthPickerOpen}
-            onToggleMonthPicker={() => controller.setIsMonthPickerOpen((prev) => !prev)}
-            onOpenSearch={() => {
+            onToggleMonthPickerAction={() => controller.setIsMonthPickerOpen((prev) => !prev)}
+            onOpenSearchAction={() => {
               controller.setSearchMode("quick");
               controller.setIsSearchOpen(true);
             }}
-            onSetView={controller.setViewAndSync}
-            onPrevYear={() => controller.setMonthPickerYear((prev) => prev - 1)}
-            onNextYear={() => controller.setMonthPickerYear((prev) => prev + 1)}
-            onSelectMonth={(monthIndex) => {
+            onSetViewAction={controller.setViewAndSync}
+            onPrevYearAction={() => controller.setMonthPickerYear((prev) => prev - 1)}
+            onNextYearAction={() => controller.setMonthPickerYear((prev) => prev + 1)}
+            onSelectMonthAction={(monthIndex) => {
               const next = new Date(controller.monthPickerYear, monthIndex, 1);
               controller.setCurrentMonth(next);
               controller.setSelectedDate(next);
@@ -69,9 +69,9 @@ export function MobileAgenda(props: MobileAgendaProps) {
             visible={controller.view === "week"}
             selectedDate={controller.selectedDate}
             weekDays={controller.weekDays}
-            getDayData={controller.getDayData}
-            onChangeSelectedDate={controller.setSelectedDate}
-            onOpenDay={(day) => {
+            getDayDataAction={controller.getDayData}
+            onChangeSelectedDateAction={controller.setSelectedDate}
+            onOpenDayAction={(day) => {
               controller.setSelectedDate(day);
               controller.setViewAndSync("day", day);
               controller.setIsMonthPickerOpen(false);
@@ -89,7 +89,7 @@ export function MobileAgenda(props: MobileAgendaProps) {
         actionSheet={controller.actionSheet}
         portalTarget={controller.portalTarget}
         isActionPending={controller.isActionPending}
-        onCloseActionSheet={() => controller.setActionSheet(null)}
+        onCloseActionSheetAction={() => controller.setActionSheet(null)}
         onEditAction={(payload) => {
           const nextReturn = payload.returnTo;
           controller.setActionSheet(null);
@@ -111,19 +111,19 @@ export function MobileAgenda(props: MobileAgendaProps) {
         searchTerm={controller.searchTerm}
         isSearching={controller.isSearching}
         searchResults={controller.searchResults}
-        onCloseSearch={() => {
+        onCloseSearchAction={() => {
           controller.setIsSearchOpen(false);
           controller.setSearchTerm("");
         }}
-        onSearchTermChange={controller.setSearchTerm}
-        onSearchClick={() => controller.setSearchMode("full")}
-        onSelectSearchAppointment={(item) => {
+        onSearchTermChangeAction={controller.setSearchTerm}
+        onSearchClickAction={() => controller.setSearchMode("full")}
+        onSelectSearchAppointmentAction={(item) => {
           const returnTo = `/?view=${controller.view}&date=${format(controller.selectedDate, "yyyy-MM-dd")}`;
           controller.setIsSearchOpen(false);
           controller.setSearchTerm("");
           controller.router.push(`/atendimento/${item.id}?return=${encodeURIComponent(returnTo)}`);
         }}
-        onSelectSearchClient={(client) => {
+        onSelectSearchClientAction={(client) => {
           controller.setIsSearchOpen(false);
           controller.setSearchTerm("");
           controller.router.push(`/clientes/${client.id}`);
@@ -136,27 +136,27 @@ export function MobileAgenda(props: MobileAgendaProps) {
         signalPercentage={controller.signalPercentage}
         publicBaseUrl={controller.publicBaseUrl}
         messageTemplates={controller.messageTemplates}
-        onCloseDetails={() => {
+        onCloseDetailsAction={() => {
           controller.closeDetails();
           controller.setDetailsActionPending(false);
         }}
-        onStartSession={controller.handleOpenAttendance}
-        onSendCreatedMessage={() => controller.handleSendMessage("created_confirmation")}
-        onSendReminder={controller.handleSendReminder}
-        onSendSurvey={controller.handleSendSurvey}
-        onSendPaymentCharge={controller.handleSendPaymentCharge}
-        onSendPaymentReceipt={controller.handleSendPaymentReceipt}
-        onConfirmClient={controller.handleConfirmClient}
-        onCancelAppointment={controller.handleCancelAppointment}
-        onRecordPayment={controller.handleRecordPayment}
-        onSaveEvolution={controller.handleSaveEvolutionFromDetails}
-        onStructureEvolution={controller.handleStructureEvolutionFromDetails}
-        onNotify={(feedback) => controller.showToast(feedback)}
+        onStartSessionAction={controller.handleOpenAttendance}
+        onSendCreatedMessageAction={() => controller.handleSendMessage("created_confirmation")}
+        onSendReminderAction={controller.handleSendReminder}
+        onSendSurveyAction={controller.handleSendSurvey}
+        onSendPaymentChargeAction={controller.handleSendPaymentCharge}
+        onSendPaymentReceiptAction={controller.handleSendPaymentReceipt}
+        onConfirmClientAction={controller.handleConfirmClient}
+        onCancelAppointmentAction={controller.handleCancelAppointment}
+        onRecordPaymentAction={controller.handleRecordPayment}
+        onSaveEvolutionAction={controller.handleSaveEvolutionFromDetails}
+        onStructureEvolutionAction={controller.handleStructureEvolutionFromDetails}
+        onNotifyAction={(feedback) => controller.showToast(feedback)}
         selectedDate={controller.selectedDate}
         view={controller.view}
-        onOpenBlockModal={(dateTarget) => controller.availabilityRef.current?.openBlockModal(dateTarget)}
-        onOpenNewClient={() => controller.router.push("/clientes/novo")}
-        onOpenNewAppointment={(dateParam, returnTo) =>
+        onOpenBlockModalAction={(dateTarget) => controller.availabilityRef.current?.openBlockModal(dateTarget)}
+        onOpenNewClientAction={() => controller.router.push("/clientes/novo")}
+        onOpenNewAppointmentAction={(dateParam, returnTo) =>
           controller.router.push(`/novo?date=${dateParam}&returnTo=${encodeURIComponent(returnTo)}`)
         }
       />

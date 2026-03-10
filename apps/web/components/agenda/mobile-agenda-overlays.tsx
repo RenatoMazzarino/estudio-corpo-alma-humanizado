@@ -25,18 +25,18 @@ type MobileAgendaOverlaysProps = {
   } | null;
   portalTarget: HTMLElement | null;
   isActionPending: boolean;
-  onCloseActionSheet: () => void;
+  onCloseActionSheetAction: () => void;
   onEditAction: (payload: { id: string; returnTo: string }) => void;
   onDeleteAction: (payload: { id: string }) => Promise<void>;
   searchOpen: boolean;
   searchTerm: string;
   isSearching: boolean;
   searchResults: SearchResults;
-  onCloseSearch: () => void;
-  onSearchTermChange: (value: string) => void;
-  onSearchClick: () => void;
-  onSelectSearchAppointment: (item: { id: string }) => void;
-  onSelectSearchClient: (client: { id: string }) => void;
+  onCloseSearchAction: () => void;
+  onSearchTermChangeAction: (value: string) => void;
+  onSearchClickAction: () => void;
+  onSelectSearchAppointmentAction: (item: { id: string }) => void;
+  onSelectSearchClientAction: (client: { id: string }) => void;
   detailsOpen: boolean;
   detailsLoading: boolean;
   detailsData: AttendanceOverview | null;
@@ -45,28 +45,28 @@ type MobileAgendaOverlaysProps = {
   signalPercentage: number;
   publicBaseUrl: string;
   messageTemplates: AutoMessageTemplates;
-  onCloseDetails: () => void;
-  onStartSession: () => void;
-  onSendCreatedMessage: () => void;
-  onSendReminder: () => void;
-  onSendSurvey: () => void;
-  onSendPaymentCharge: () => void;
-  onSendPaymentReceipt: (paymentId: string | null) => void;
-  onConfirmClient: () => void;
-  onCancelAppointment: () => void;
-  onRecordPayment: (payload: {
+  onCloseDetailsAction: () => void;
+  onStartSessionAction: () => void;
+  onSendCreatedMessageAction: () => void;
+  onSendReminderAction: () => void;
+  onSendSurveyAction: () => void;
+  onSendPaymentChargeAction: () => void;
+  onSendPaymentReceiptAction: (paymentId: string | null) => void;
+  onConfirmClientAction: () => void;
+  onCancelAppointmentAction: () => void;
+  onRecordPaymentAction: (payload: {
     type: "signal" | "full";
     amount: number;
     method: "pix" | "card" | "cash" | "other";
   }) => void;
-  onSaveEvolution: (text: string) => Promise<{ ok: boolean }>;
-  onStructureEvolution: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
-  onNotify: (feedback: UserFeedback) => void;
+  onSaveEvolutionAction: (text: string) => Promise<{ ok: boolean }>;
+  onStructureEvolutionAction: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
+  onNotifyAction: (feedback: UserFeedback) => void;
   selectedDate: Date;
   view: "day" | "week" | "month";
-  onOpenBlockModal: (date: Date) => void;
-  onOpenNewClient: () => void;
-  onOpenNewAppointment: (dateParam: string, returnTo: string) => void;
+  onOpenBlockModalAction: (date: Date) => void;
+  onOpenNewClientAction: () => void;
+  onOpenNewAppointmentAction: (dateParam: string, returnTo: string) => void;
 };
 
 export function MobileAgendaOverlays({
@@ -74,18 +74,18 @@ export function MobileAgendaOverlays({
   actionSheet,
   portalTarget,
   isActionPending,
-  onCloseActionSheet,
+  onCloseActionSheetAction,
   onEditAction,
   onDeleteAction,
   searchOpen,
   searchTerm,
   isSearching,
   searchResults,
-  onCloseSearch,
-  onSearchTermChange,
-  onSearchClick,
-  onSelectSearchAppointment,
-  onSelectSearchClient,
+  onCloseSearchAction,
+  onSearchTermChangeAction,
+  onSearchClickAction,
+  onSelectSearchAppointmentAction,
+  onSelectSearchClientAction,
   detailsOpen,
   detailsLoading,
   detailsData,
@@ -94,24 +94,24 @@ export function MobileAgendaOverlays({
   signalPercentage,
   publicBaseUrl,
   messageTemplates,
-  onCloseDetails,
-  onStartSession,
-  onSendCreatedMessage,
-  onSendReminder,
-  onSendSurvey,
-  onSendPaymentCharge,
-  onSendPaymentReceipt,
-  onConfirmClient,
-  onCancelAppointment,
-  onRecordPayment,
-  onSaveEvolution,
-  onStructureEvolution,
-  onNotify,
+  onCloseDetailsAction,
+  onStartSessionAction,
+  onSendCreatedMessageAction,
+  onSendReminderAction,
+  onSendSurveyAction,
+  onSendPaymentChargeAction,
+  onSendPaymentReceiptAction,
+  onConfirmClientAction,
+  onCancelAppointmentAction,
+  onRecordPaymentAction,
+  onSaveEvolutionAction,
+  onStructureEvolutionAction,
+  onNotifyAction,
   selectedDate,
   view,
-  onOpenBlockModal,
-  onOpenNewClient,
-  onOpenNewAppointment,
+  onOpenBlockModalAction,
+  onOpenNewClientAction,
+  onOpenNewAppointmentAction,
 }: MobileAgendaOverlaysProps) {
   return (
     <>
@@ -121,9 +121,9 @@ export function MobileAgendaOverlays({
         actionSheet={actionSheet}
         portalTarget={portalTarget}
         isActionPending={isActionPending}
-        onClose={onCloseActionSheet}
-        onEdit={onEditAction}
-        onDelete={onDeleteAction}
+        onCloseAction={onCloseActionSheetAction}
+        onEditAction={onEditAction}
+        onDeleteAction={onDeleteAction}
       />
 
       <AgendaSearchModal
@@ -131,11 +131,11 @@ export function MobileAgendaOverlays({
         searchTerm={searchTerm}
         isSearching={isSearching}
         results={searchResults}
-        onClose={onCloseSearch}
-        onSearchTermChange={onSearchTermChange}
-        onSearchClick={onSearchClick}
-        onSelectAppointment={onSelectSearchAppointment}
-        onSelectClient={onSelectSearchClient}
+        onCloseAction={onCloseSearchAction}
+        onSearchTermChangeAction={onSearchTermChangeAction}
+        onSearchClickAction={onSearchClickAction}
+        onSelectAppointmentAction={onSelectSearchAppointmentAction}
+        onSelectClientAction={onSelectSearchClientAction}
       />
 
       <AppointmentDetailsSheet
@@ -147,19 +147,19 @@ export function MobileAgendaOverlays({
         signalPercentage={signalPercentage}
         publicBaseUrl={publicBaseUrl}
         messageTemplates={messageTemplates}
-        onClose={onCloseDetails}
-        onStartSession={onStartSession}
-        onSendCreatedMessage={onSendCreatedMessage}
-        onSendReminder={onSendReminder}
-        onSendSurvey={onSendSurvey}
-        onSendPaymentCharge={onSendPaymentCharge}
-        onSendPaymentReceipt={onSendPaymentReceipt}
-        onConfirmClient={onConfirmClient}
-        onCancelAppointment={onCancelAppointment}
-        onRecordPayment={onRecordPayment}
-        onSaveEvolution={onSaveEvolution}
-        onStructureEvolution={onStructureEvolution}
-        onNotify={onNotify}
+        onCloseAction={onCloseDetailsAction}
+        onStartSessionAction={onStartSessionAction}
+        onSendCreatedMessageAction={onSendCreatedMessageAction}
+        onSendReminderAction={onSendReminderAction}
+        onSendSurveyAction={onSendSurveyAction}
+        onSendPaymentChargeAction={onSendPaymentChargeAction}
+        onSendPaymentReceiptAction={onSendPaymentReceiptAction}
+        onConfirmClientAction={onConfirmClientAction}
+        onCancelAppointmentAction={onCancelAppointmentAction}
+        onRecordPaymentAction={onRecordPaymentAction}
+        onSaveEvolutionAction={onSaveEvolutionAction}
+        onStructureEvolutionAction={onStructureEvolutionAction}
+        onNotifyAction={onNotifyAction}
       />
 
       <FloatingActionMenu
@@ -174,14 +174,14 @@ export function MobileAgendaOverlays({
             label: "Bloquear horário",
             icon: <Clock className="w-5 h-5" />,
             onClick: () => {
-              onOpenBlockModal(selectedDate);
+              onOpenBlockModalAction(selectedDate);
             },
             tone: "neutral",
           },
           {
             label: "Novo Cliente",
             icon: <UserPlus className="w-5 h-5" />,
-            onClick: onOpenNewClient,
+            onClick: onOpenNewClientAction,
             tone: "green",
           },
           {
@@ -190,7 +190,7 @@ export function MobileAgendaOverlays({
             onClick: () => {
               const dateParam = format(selectedDate, "yyyy-MM-dd");
               const returnTo = `/?view=${view}&date=${dateParam}`;
-              onOpenNewAppointment(dateParam, returnTo);
+              onOpenNewAppointmentAction(dateParam, returnTo);
             },
             tone: "neutral",
           },

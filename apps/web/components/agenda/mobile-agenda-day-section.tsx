@@ -317,8 +317,8 @@ export function MobileAgendaDaySection({
                                   hasPreBuffer={hasPreBuffer}
                                   hasPostBuffer={hasPostBuffer}
                                   loading={loadingAppointmentId === item.id}
-                                  onOpen={() => onOpenAppointment(item.id)}
-                                  onLongPress={() => {
+                                  onOpenAction={() => onOpenAppointment(item.id)}
+                                  onLongPressAction={() => {
                                     onOpenActionSheet({
                                       id: item.id,
                                       clientName: item.clientName,

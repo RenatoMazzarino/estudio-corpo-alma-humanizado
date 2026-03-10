@@ -4,18 +4,18 @@ type NewClientPreferencesSectionProps = {
   isVip: boolean;
   needsAttention: boolean;
   marketingOptIn: boolean;
-  onChangeIsVip: (value: boolean) => void;
-  onChangeNeedsAttention: (value: boolean) => void;
-  onChangeMarketingOptIn: (value: boolean) => void;
+  onChangeIsVipAction: (value: boolean) => void;
+  onChangeNeedsAttentionAction: (value: boolean) => void;
+  onChangeMarketingOptInAction: (value: boolean) => void;
 };
 
 export function NewClientPreferencesSection({
   isVip,
   needsAttention,
   marketingOptIn,
-  onChangeIsVip,
-  onChangeNeedsAttention,
-  onChangeMarketingOptIn,
+  onChangeIsVipAction,
+  onChangeNeedsAttentionAction,
+  onChangeMarketingOptInAction,
 }: NewClientPreferencesSectionProps) {
   return (
     <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
@@ -30,7 +30,7 @@ export function NewClientPreferencesSection({
             type="checkbox"
             name="is_vip"
             checked={isVip}
-            onChange={(event) => onChangeIsVip(event.target.checked)}
+            onChange={(event) => onChangeIsVipAction(event.target.checked)}
             className="w-4 h-4"
           />
           VIP
@@ -40,7 +40,7 @@ export function NewClientPreferencesSection({
             type="checkbox"
             name="needs_attention"
             checked={needsAttention}
-            onChange={(event) => onChangeNeedsAttention(event.target.checked)}
+            onChange={(event) => onChangeNeedsAttentionAction(event.target.checked)}
             className="w-4 h-4"
           />
           Atenção
@@ -50,7 +50,7 @@ export function NewClientPreferencesSection({
             type="checkbox"
             name="marketing_opt_in"
             checked={marketingOptIn}
-            onChange={(event) => onChangeMarketingOptIn(event.target.checked)}
+            onChange={(event) => onChangeMarketingOptInAction(event.target.checked)}
             className="w-4 h-4"
           />
           Aceita novidades

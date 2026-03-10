@@ -9,13 +9,13 @@ type DatetimeStepProps = {
   totalPrice: number;
   activeMonth: Date;
   selectedDate: Date;
-  onSelectDay: (day: Date) => void;
-  onChangeMonth: (month: Date) => void;
-  isDayDisabled: (day: Date) => boolean;
+  onSelectDayAction: (day: Date) => void;
+  onChangeMonthAction: (month: Date) => void;
+  isDayDisabledAction: (day: Date) => boolean;
   isLoadingDaySlots: boolean;
   availableSlots: string[];
   selectedTime: string;
-  onSelectTime: (time: string) => void;
+  onSelectTimeAction: (time: string) => void;
 };
 
 export function DatetimeStep({
@@ -24,13 +24,13 @@ export function DatetimeStep({
   totalPrice,
   activeMonth,
   selectedDate,
-  onSelectDay,
-  onChangeMonth,
-  isDayDisabled,
+  onSelectDayAction,
+  onChangeMonthAction,
+  isDayDisabledAction,
   isLoadingDaySlots,
   availableSlots,
   selectedTime,
-  onSelectTime,
+  onSelectTimeAction,
 }: DatetimeStepProps) {
   return (
     <section className="no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500 flex flex-1 flex-col overflow-y-auto px-6 pb-24 pt-3">
@@ -57,9 +57,9 @@ export function DatetimeStep({
           <MonthCalendar
             currentMonth={activeMonth}
             selectedDate={selectedDate}
-            onSelectDay={onSelectDay}
-            onChangeMonth={onChangeMonth}
-            isDayDisabled={isDayDisabled}
+            onSelectDayAction={onSelectDayAction}
+            onChangeMonthAction={onChangeMonthAction}
+            isDayDisabledAction={isDayDisabledAction}
             enableSwipe
           />
         </div>
@@ -76,7 +76,7 @@ export function DatetimeStep({
                 <button
                   key={time}
                   type="button"
-                  onClick={() => onSelectTime(time)}
+                  onClick={() => onSelectTimeAction(time)}
                   className={`rounded-2xl border px-3 py-3 text-xs font-bold transition ${
                     selectedTime === time
                       ? "border-studio-green-dark bg-studio-green-dark text-white"

@@ -7,9 +7,9 @@ type AddressSearchModalProps = {
   query: string;
   results: AddressSearchResult[];
   loading: boolean;
-  onClose: () => void;
-  onQueryChange: (value: string) => void;
-  onSelectResult: (result: AddressSearchResult) => void;
+  onCloseAction: () => void;
+  onQueryChangeAction: (value: string) => void;
+  onSelectResultAction: (result: AddressSearchResult) => void;
 };
 
 export function AddressSearchModal({
@@ -17,15 +17,15 @@ export function AddressSearchModal({
   query,
   results,
   loading,
-  onClose,
-  onQueryChange,
-  onSelectResult,
+  onCloseAction,
+  onQueryChangeAction,
+  onSelectResultAction,
 }: AddressSearchModalProps) {
   if (!open) return null;
 
   return (
     <div className="absolute inset-0 z-40">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onCloseAction} />
       <div className="absolute bottom-0 left-0 right-0 rounded-t-4xl bg-white p-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -34,7 +34,7 @@ export function AddressSearchModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-50 text-gray-400 hover:bg-stone-100"
           >
             ✕
@@ -44,7 +44,7 @@ export function AddressSearchModal({
         <div className="space-y-3">
           <input
             value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
+            onChange={(event) => onQueryChangeAction(event.target.value)}
             className="w-full rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3 text-sm font-medium text-gray-700"
             placeholder="Digite o endereço"
           />
@@ -55,7 +55,7 @@ export function AddressSearchModal({
               <button
                 key={result.placeId}
                 type="button"
-                onClick={() => onSelectResult(result)}
+                onClick={() => onSelectResultAction(result)}
                 className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-left text-sm text-gray-600 transition hover:border-studio-green hover:text-studio-green"
               >
                 {result.label}

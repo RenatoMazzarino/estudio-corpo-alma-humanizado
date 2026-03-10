@@ -21,19 +21,19 @@ type AvailabilityBlockSheetProps = {
   blockTitle: string;
   loading: boolean;
   pendingBlockConfirm: { payload: CreateBlockPayload; appointments: number } | null;
-  onClose: () => void;
+  onCloseAction: () => void;
   onDragStart: PointerEventHandler<HTMLDivElement>;
   onDragMove: PointerEventHandler<HTMLDivElement>;
   onDragEnd: PointerEventHandler<HTMLDivElement>;
-  onSelectBlockType: (value: BlockType) => void;
-  onChangeBlockDate: (value: string) => void;
-  onToggleBlockFullDay: () => void;
-  onChangeBlockStart: (value: string) => void;
-  onChangeBlockEnd: (value: string) => void;
-  onChangeBlockTitle: (value: string) => void;
-  onDismissPendingBlockConfirm: () => void;
-  onConfirmPendingBlock: (payload: CreateBlockPayload) => void;
-  onSubmit: () => void;
+  onSelectBlockTypeAction: (value: BlockType) => void;
+  onChangeBlockDateAction: (value: string) => void;
+  onToggleBlockFullDayAction: () => void;
+  onChangeBlockStartAction: (value: string) => void;
+  onChangeBlockEndAction: (value: string) => void;
+  onChangeBlockTitleAction: (value: string) => void;
+  onDismissPendingBlockConfirmAction: () => void;
+  onConfirmPendingBlockAction: (payload: CreateBlockPayload) => void;
+  onSubmitAction: () => void;
 };
 
 export function AvailabilityBlockSheet({
@@ -51,19 +51,19 @@ export function AvailabilityBlockSheet({
   blockTitle,
   loading,
   pendingBlockConfirm,
-  onClose,
+  onCloseAction,
   onDragStart,
   onDragMove,
   onDragEnd,
-  onSelectBlockType,
-  onChangeBlockDate,
-  onToggleBlockFullDay,
-  onChangeBlockStart,
-  onChangeBlockEnd,
-  onChangeBlockTitle,
-  onDismissPendingBlockConfirm,
-  onConfirmPendingBlock,
-  onSubmit,
+  onSelectBlockTypeAction,
+  onChangeBlockDateAction,
+  onToggleBlockFullDayAction,
+  onChangeBlockStartAction,
+  onChangeBlockEndAction,
+  onChangeBlockTitleAction,
+  onDismissPendingBlockConfirmAction,
+  onConfirmPendingBlockAction,
+  onSubmitAction,
 }: AvailabilityBlockSheetProps) {
   if (!open || !portalTarget) return null;
 
@@ -94,7 +94,7 @@ export function AvailabilityBlockSheet({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100 hover:text-red-500 transition-colors"
             aria-label="Fechar"
           >
@@ -115,7 +115,7 @@ export function AvailabilityBlockSheet({
                   <button
                     key={option.type}
                     type="button"
-                    onClick={() => onSelectBlockType(option.type)}
+                    onClick={() => onSelectBlockTypeAction(option.type)}
                     className="flex flex-col items-center gap-2 group"
                   >
                     <div
@@ -152,7 +152,7 @@ export function AvailabilityBlockSheet({
               <input
                 type="date"
                 value={blockDate}
-                onChange={(event) => onChangeBlockDate(event.target.value)}
+                onChange={(event) => onChangeBlockDateAction(event.target.value)}
                 className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:ring-1 focus:ring-studio-green/40 outline-none"
               />
             </div>
@@ -171,7 +171,7 @@ export function AvailabilityBlockSheet({
                 </div>
                 <button
                   type="button"
-                  onClick={onToggleBlockFullDay}
+                  onClick={onToggleBlockFullDayAction}
                   className={`w-12 h-7 rounded-full relative transition-colors ${
                     blockFullDay ? "bg-studio-green" : "bg-stone-300"
                   }`}
@@ -194,7 +194,7 @@ export function AvailabilityBlockSheet({
                     <input
                       type="time"
                       value={blockStart}
-                      onChange={(event) => onChangeBlockStart(event.target.value)}
+                      onChange={(event) => onChangeBlockStartAction(event.target.value)}
                       className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-base font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none"
                     />
                   </div>
@@ -205,7 +205,7 @@ export function AvailabilityBlockSheet({
                     <input
                       type="time"
                       value={blockEnd}
-                      onChange={(event) => onChangeBlockEnd(event.target.value)}
+                      onChange={(event) => onChangeBlockEndAction(event.target.value)}
                       className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-base font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none"
                     />
                   </div>
@@ -226,7 +226,7 @@ export function AvailabilityBlockSheet({
               <input
                 type="text"
                 value={blockTitle}
-                onChange={(event) => onChangeBlockTitle(event.target.value)}
+                onChange={(event) => onChangeBlockTitleAction(event.target.value)}
                 placeholder="Ex: Plantão Home Care"
                 className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-studio-green/20 placeholder-gray-300 transition-all outline-none"
               />
@@ -239,13 +239,13 @@ export function AvailabilityBlockSheet({
               <p>{pendingBlockConfirm.appointments} atendimento(s) serão mantidos e não serão cancelados.</p>
               <div className="flex gap-2">
                 <button
-                  onClick={onDismissPendingBlockConfirm}
+                  onClick={onDismissPendingBlockConfirmAction}
                   className="px-3 py-1.5 rounded-full border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={() => onConfirmPendingBlock(pendingBlockConfirm.payload)}
+                  onClick={() => onConfirmPendingBlockAction(pendingBlockConfirm.payload)}
                   className="px-3 py-1.5 rounded-full bg-studio-text text-white text-[10px] font-extrabold uppercase tracking-wide"
                 >
                   Criar mesmo assim
@@ -257,7 +257,7 @@ export function AvailabilityBlockSheet({
 
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
           <button
-            onClick={onSubmit}
+            onClick={onSubmitAction}
             disabled={loading}
             className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
           >

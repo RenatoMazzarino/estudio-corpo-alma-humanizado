@@ -26,20 +26,20 @@ type LocationStepProps = {
   cidade: string;
   estado: string;
   mapsQuery: string;
-  onSelectStudio: () => void;
-  onSelectHomeVisit: () => void;
-  onUseSuggestedAddress: () => void;
-  onChooseOtherAddress: () => void;
-  onSelectAddressMode: (mode: Exclude<AddressMode, null>) => void;
-  onChangeCep: (value: string) => void;
-  onLookupCep: () => void;
-  onOpenSearchModal: () => void;
-  onChangeLogradouro: (value: string) => void;
-  onChangeNumero: (value: string) => void;
-  onChangeComplemento: (value: string) => void;
-  onChangeBairro: (value: string) => void;
-  onChangeCidade: (value: string) => void;
-  onChangeEstado: (value: string) => void;
+  onSelectStudioAction: () => void;
+  onSelectHomeVisitAction: () => void;
+  onUseSuggestedAddressAction: () => void;
+  onChooseOtherAddressAction: () => void;
+  onSelectAddressModeAction: (mode: Exclude<AddressMode, null>) => void;
+  onChangeCepAction: (value: string) => void;
+  onLookupCepAction: () => void;
+  onOpenSearchModalAction: () => void;
+  onChangeLogradouroAction: (value: string) => void;
+  onChangeNumeroAction: (value: string) => void;
+  onChangeComplementoAction: (value: string) => void;
+  onChangeBairroAction: (value: string) => void;
+  onChangeCidadeAction: (value: string) => void;
+  onChangeEstadoAction: (value: string) => void;
 };
 
 export function LocationStep({
@@ -62,20 +62,20 @@ export function LocationStep({
   cidade,
   estado,
   mapsQuery,
-  onSelectStudio,
-  onSelectHomeVisit,
-  onUseSuggestedAddress,
-  onChooseOtherAddress,
-  onSelectAddressMode,
-  onChangeCep,
-  onLookupCep,
-  onOpenSearchModal,
-  onChangeLogradouro,
-  onChangeNumero,
-  onChangeComplemento,
-  onChangeBairro,
-  onChangeCidade,
-  onChangeEstado,
+  onSelectStudioAction,
+  onSelectHomeVisitAction,
+  onUseSuggestedAddressAction,
+  onChooseOtherAddressAction,
+  onSelectAddressModeAction,
+  onChangeCepAction,
+  onLookupCepAction,
+  onOpenSearchModalAction,
+  onChangeLogradouroAction,
+  onChangeNumeroAction,
+  onChangeComplementoAction,
+  onChangeBairroAction,
+  onChangeCidadeAction,
+  onChangeEstadoAction,
 }: LocationStepProps) {
   return (
     <section className="no-scrollbar animate-in fade-in slide-in-from-right-6 duration-500 flex flex-1 flex-col overflow-y-auto px-6 pb-24 pt-6">
@@ -88,7 +88,7 @@ export function LocationStep({
       <div className="space-y-4">
         <button
           type="button"
-          onClick={onSelectStudio}
+          onClick={onSelectStudioAction}
           className={`w-full rounded-3xl border bg-white p-5 text-left shadow-soft transition ${
             !isHomeVisit ? "border-studio-green bg-green-50/50" : "border-stone-100"
           }`}
@@ -104,7 +104,7 @@ export function LocationStep({
 
         <button
           type="button"
-          onClick={onSelectHomeVisit}
+          onClick={onSelectHomeVisitAction}
           className={`w-full rounded-3xl border bg-white p-5 text-left shadow-soft transition ${
             isHomeVisit ? "border-studio-green bg-green-50/50" : "border-stone-100"
           } ${!homeVisitAllowed ? "cursor-not-allowed opacity-40" : ""}`}
@@ -137,14 +137,14 @@ export function LocationStep({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={onUseSuggestedAddress}
+                    onClick={onUseSuggestedAddressAction}
                     className="h-10 flex-1 rounded-full bg-studio-green text-xs font-bold uppercase tracking-widest text-white"
                   >
                     Usar este
                   </button>
                   <button
                     type="button"
-                    onClick={onChooseOtherAddress}
+                    onClick={onChooseOtherAddressAction}
                     className="h-10 flex-1 rounded-full border border-stone-200 text-xs font-bold uppercase tracking-widest text-gray-500"
                   >
                     Outro
@@ -160,7 +160,7 @@ export function LocationStep({
                     <MapPin className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase">Endereço selecionado</span>
                   </div>
-                  <button type="button" onClick={onChooseOtherAddress} className="text-[10px] font-bold uppercase text-gray-400">
+                  <button type="button" onClick={onChooseOtherAddressAction} className="text-[10px] font-bold uppercase text-gray-400">
                     Alterar
                   </button>
                 </div>
@@ -183,7 +183,7 @@ export function LocationStep({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => onSelectAddressMode("cep")}
+                    onClick={() => onSelectAddressModeAction("cep")}
                     className={`rounded-2xl border px-4 py-3 text-xs font-bold uppercase ${
                       addressMode === "cep" ? "border-studio-green bg-green-50 text-studio-green" : "border-stone-200 text-gray-500"
                     }`}
@@ -192,7 +192,7 @@ export function LocationStep({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onSelectAddressMode("text")}
+                    onClick={() => onSelectAddressModeAction("text")}
                     className={`rounded-2xl border px-4 py-3 text-xs font-bold uppercase ${
                       addressMode === "text" ? "border-studio-green bg-green-50 text-studio-green" : "border-stone-200 text-gray-500"
                     }`}
@@ -208,7 +208,7 @@ export function LocationStep({
                         <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">CEP</label>
                         <input
                           value={cep}
-                          onChange={(event) => onChangeCep(event.target.value)}
+                          onChange={(event) => onChangeCepAction(event.target.value)}
                           className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium text-gray-700"
                           inputMode="numeric"
                           placeholder="00000-000"
@@ -216,7 +216,7 @@ export function LocationStep({
                       </div>
                       <button
                         type="button"
-                        onClick={onLookupCep}
+                        onClick={onLookupCepAction}
                         className="mt-5 rounded-2xl bg-gray-100 px-4 font-bold text-studio-text transition-colors hover:bg-gray-200"
                       >
                         Buscar
@@ -230,7 +230,7 @@ export function LocationStep({
                     <p>Procure seu endereço completo.</p>
                     <button
                       type="button"
-                      onClick={onOpenSearchModal}
+                      onClick={onOpenSearchModalAction}
                       className="mt-3 text-xs font-bold uppercase tracking-widest text-studio-green"
                     >
                       Buscar endereço
@@ -244,7 +244,7 @@ export function LocationStep({
                       <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">Rua / Av</label>
                       <input
                         value={logradouro}
-                        onChange={(event) => onChangeLogradouro(event.target.value)}
+                        onChange={(event) => onChangeLogradouroAction(event.target.value)}
                         className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium text-gray-700"
                         placeholder="Endereço"
                       />
@@ -255,7 +255,7 @@ export function LocationStep({
                         <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">Número</label>
                         <input
                           value={numero}
-                          onChange={(event) => onChangeNumero(event.target.value)}
+                          onChange={(event) => onChangeNumeroAction(event.target.value)}
                           className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium text-gray-700"
                           placeholder="Nº"
                         />
@@ -264,7 +264,7 @@ export function LocationStep({
                         <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">Complemento</label>
                         <input
                           value={complemento}
-                          onChange={(event) => onChangeComplemento(event.target.value)}
+                          onChange={(event) => onChangeComplementoAction(event.target.value)}
                           className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium text-gray-700"
                           placeholder="Apto/Bloco"
                         />
@@ -276,7 +276,7 @@ export function LocationStep({
                         <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">Bairro</label>
                         <input
                           value={bairro}
-                          onChange={(event) => onChangeBairro(event.target.value)}
+                          onChange={(event) => onChangeBairroAction(event.target.value)}
                           className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium text-gray-700"
                           placeholder="Bairro"
                         />
@@ -285,7 +285,7 @@ export function LocationStep({
                         <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">Cidade</label>
                         <input
                           value={cidade}
-                          onChange={(event) => onChangeCidade(event.target.value)}
+                          onChange={(event) => onChangeCidadeAction(event.target.value)}
                           className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium text-gray-700"
                           placeholder="Cidade"
                         />
@@ -296,7 +296,7 @@ export function LocationStep({
                       <label className="ml-1 text-[10px] font-bold uppercase text-gray-400">Estado</label>
                       <input
                         value={estado}
-                        onChange={(event) => onChangeEstado(event.target.value)}
+                        onChange={(event) => onChangeEstadoAction(event.target.value)}
                         maxLength={2}
                         className="w-full rounded-2xl border border-stone-100 bg-white px-4 py-3 text-sm font-medium uppercase text-gray-700"
                         placeholder="UF"

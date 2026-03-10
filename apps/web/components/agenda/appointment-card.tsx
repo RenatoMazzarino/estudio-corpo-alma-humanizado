@@ -16,8 +16,8 @@ interface AppointmentCardProps {
   hasPreBuffer?: boolean;
   hasPostBuffer?: boolean;
   loading?: boolean;
-  onOpen: () => void;
-  onLongPress?: () => void;
+  onOpenAction: () => void;
+  onLongPressAction?: () => void;
   ["data-card"]?: boolean;
 }
 
@@ -50,8 +50,8 @@ export function AppointmentCard({
   hasPreBuffer = false,
   hasPostBuffer = false,
   loading = false,
-  onOpen,
-  onLongPress,
+  onOpenAction,
+  onLongPressAction,
   "data-card": dataCard,
 }: AppointmentCardProps) {
   const longPressTimeout = useRef<number | null>(null);
@@ -87,7 +87,7 @@ export function AppointmentCard({
 
   const triggerLongPress = () => {
     suppressClick.current = true;
-    onLongPress?.();
+    onLongPressAction?.();
   };
 
   return (
@@ -100,10 +100,10 @@ export function AppointmentCard({
           suppressClick.current = false;
           return;
         }
-        onOpen();
+        onOpenAction();
       }}
       onPointerDown={(event) => {
-        if (!onLongPress) return;
+        if (!onLongPressAction) return;
         if (event.pointerType === "mouse") return;
         startPoint.current = { x: event.clientX, y: event.clientY };
         longPressTimeout.current = window.setTimeout(() => {
@@ -127,7 +127,7 @@ export function AppointmentCard({
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onOpen();
+          onOpenAction();
         }
       }}
       aria-busy={loading}

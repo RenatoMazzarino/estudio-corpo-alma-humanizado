@@ -24,14 +24,14 @@ type ClientCreateModalProps = {
   email: string;
   cpf: string;
   showInvalidEmailHint: boolean;
-  onClose: () => void;
-  onFirstNameChange: (value: string) => void;
-  onLastNameChange: (value: string) => void;
-  onReferenceChange: (value: string) => void;
-  onPhoneChange: (value: string) => void;
-  onEmailChange: (value: string) => void;
-  onCpfChange: (value: string) => void;
-  onSave: () => void;
+  onCloseAction: () => void;
+  onFirstNameChangeAction: (value: string) => void;
+  onLastNameChangeAction: (value: string) => void;
+  onReferenceChangeAction: (value: string) => void;
+  onPhoneChangeAction: (value: string) => void;
+  onEmailChangeAction: (value: string) => void;
+  onCpfChangeAction: (value: string) => void;
+  onSaveAction: () => void;
 };
 
 export function ClientCreateModal({
@@ -54,14 +54,14 @@ export function ClientCreateModal({
   email,
   cpf,
   showInvalidEmailHint,
-  onClose,
-  onFirstNameChange,
-  onLastNameChange,
-  onReferenceChange,
-  onPhoneChange,
-  onEmailChange,
-  onCpfChange,
-  onSave,
+  onCloseAction,
+  onFirstNameChangeAction,
+  onLastNameChangeAction,
+  onReferenceChangeAction,
+  onPhoneChangeAction,
+  onEmailChangeAction,
+  onCpfChangeAction,
+  onSaveAction,
 }: ClientCreateModalProps) {
   if (!portalTarget || !open) return null;
 
@@ -76,7 +76,7 @@ export function ClientCreateModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCloseAction}
             disabled={saving}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-studio-light text-studio-green disabled:opacity-60"
           >
@@ -93,7 +93,7 @@ export function ClientCreateModal({
               ref={firstNameInputRef}
               type="text"
               value={firstName}
-              onChange={(event) => onFirstNameChange(event.target.value)}
+              onChange={(event) => onFirstNameChangeAction(event.target.value)}
               className={inputClass}
             />
           </div>
@@ -103,7 +103,7 @@ export function ClientCreateModal({
             <input
               type="text"
               value={lastName}
-              onChange={(event) => onLastNameChange(event.target.value)}
+              onChange={(event) => onLastNameChangeAction(event.target.value)}
               className={inputClass}
             />
           </div>
@@ -113,7 +113,7 @@ export function ClientCreateModal({
             <input
               type="text"
               value={reference}
-              onChange={(event) => onReferenceChange(event.target.value)}
+              onChange={(event) => onReferenceChangeAction(event.target.value)}
               className={inputClass}
             />
             <p className="ml-1 mt-1 text-[10px] text-muted">Uso interno. Não aparece em mensagens e telas públicas.</p>
@@ -138,7 +138,7 @@ export function ClientCreateModal({
                 inputMode="numeric"
                 placeholder="(00) 00000-0000"
                 value={phone}
-                onChange={(event) => onPhoneChange(event.target.value)}
+                onChange={(event) => onPhoneChangeAction(event.target.value)}
                 className={inputWithIconClass}
               />
             </div>
@@ -152,7 +152,7 @@ export function ClientCreateModal({
               inputMode="email"
               placeholder="cliente@exemplo.com"
               value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
+              onChange={(event) => onEmailChangeAction(event.target.value)}
               className={inputClass}
             />
             {showInvalidEmailHint && <p className="ml-1 mt-2 text-[11px] text-red-600">Informe um email válido.</p>}
@@ -167,7 +167,7 @@ export function ClientCreateModal({
               placeholder="000.000.000-00"
               maxLength={14}
               value={cpf}
-              onChange={(event) => onCpfChange(event.target.value)}
+              onChange={(event) => onCpfChangeAction(event.target.value)}
               className={inputClass}
             />
           </div>
@@ -175,7 +175,7 @@ export function ClientCreateModal({
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               type="button"
-              onClick={onClose}
+              onClick={onCloseAction}
               disabled={saving}
               className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
             >
@@ -183,7 +183,7 @@ export function ClientCreateModal({
             </button>
             <button
               type="button"
-              onClick={onSave}
+              onClick={onSaveAction}
               disabled={saving}
               className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10 disabled:opacity-70"
             >

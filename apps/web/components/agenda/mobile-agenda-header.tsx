@@ -16,12 +16,12 @@ type MobileAgendaHeaderProps = {
   monthPickerYear: number;
   monthLabels: string[];
   isMonthPickerOpen: boolean;
-  onToggleMonthPicker: () => void;
-  onOpenSearch: () => void;
-  onSetView: (view: AgendaView) => void;
-  onPrevYear: () => void;
-  onNextYear: () => void;
-  onSelectMonth: (monthIndex: number) => void;
+  onToggleMonthPickerAction: () => void;
+  onOpenSearchAction: () => void;
+  onSetViewAction: (view: AgendaView) => void;
+  onPrevYearAction: () => void;
+  onNextYearAction: () => void;
+  onSelectMonthAction: (monthIndex: number) => void;
 };
 
 export function MobileAgendaHeader({
@@ -32,12 +32,12 @@ export function MobileAgendaHeader({
   monthPickerYear,
   monthLabels,
   isMonthPickerOpen,
-  onToggleMonthPicker,
-  onOpenSearch,
-  onSetView,
-  onPrevYear,
-  onNextYear,
-  onSelectMonth,
+  onToggleMonthPickerAction,
+  onOpenSearchAction,
+  onSetViewAction,
+  onPrevYearAction,
+  onNextYearAction,
+  onSelectMonthAction,
 }: MobileAgendaHeaderProps) {
   return (
     <>
@@ -48,7 +48,7 @@ export function MobileAgendaHeader({
             <span>Sua Agenda de</span>
             <button
               type="button"
-              onClick={onToggleMonthPicker}
+              onClick={onToggleMonthPickerAction}
               className="text-studio-green border-b-2 border-studio-green/20 hover:border-studio-green transition capitalize"
             >
               {format(currentMonth, "MMMM", { locale: ptBR })}
@@ -62,14 +62,14 @@ export function MobileAgendaHeader({
               aria-label={isOnline ? "Conectado" : "Sem conexão"}
               title={isOnline ? "Conectado" : "Sem conexão"}
             />
-            <IconButton size="sm" icon={<Search className="w-4 h-4" />} aria-label="Buscar" onClick={onOpenSearch} />
+            <IconButton size="sm" icon={<Search className="w-4 h-4" />} aria-label="Buscar" onClick={onOpenSearchAction} />
           </div>
         }
         bottomSlot={
           <div className="bg-studio-light p-1 rounded-2xl flex justify-between border border-line">
             <button
               type="button"
-              onClick={() => onSetView("day")}
+              onClick={() => onSetViewAction("day")}
               className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
                 view === "day" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
               }`}
@@ -78,7 +78,7 @@ export function MobileAgendaHeader({
             </button>
             <button
               type="button"
-              onClick={() => onSetView("week")}
+              onClick={() => onSetViewAction("week")}
               className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
                 view === "week" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
               }`}
@@ -87,7 +87,7 @@ export function MobileAgendaHeader({
             </button>
             <button
               type="button"
-              onClick={() => onSetView("month")}
+              onClick={() => onSetViewAction("month")}
               className={`flex-1 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
                 view === "month" ? "bg-white text-studio-green shadow-soft" : "text-muted hover:text-studio-green"
               }`}
@@ -106,9 +106,9 @@ export function MobileAgendaHeader({
         monthLabels={monthLabels}
         currentMonthYear={currentMonth.getFullYear()}
         currentMonthIndex={currentMonth.getMonth()}
-        onPrevYear={onPrevYear}
-        onNextYear={onNextYear}
-        onSelectMonth={onSelectMonth}
+        onPrevYearAction={onPrevYearAction}
+        onNextYearAction={onNextYearAction}
+        onSelectMonthAction={onSelectMonthAction}
       />
     </>
   );
