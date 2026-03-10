@@ -149,9 +149,9 @@ foreach ($file in $expectedFiles) {
   }
 
   if ($file -eq "vercel-production-required.env") {
-    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
+    $whatsAppProfile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
     $recipientMode = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_RECIPIENT_MODE"
-    if ($profile -ne "prod_real") {
+    if ($whatsAppProfile -ne "prod_real") {
       Add-Result $file "prod-profile" "FAIL" "Production deve usar WHATSAPP_PROFILE=prod_real."
     }
     if ($recipientMode -ne "customer") {
@@ -160,9 +160,9 @@ foreach ($file in $expectedFiles) {
   }
 
   if ($file -eq "vercel-preview-required.env") {
-    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
+    $whatsAppProfile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
     $recipientMode = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_RECIPIENT_MODE"
-    if ($profile -ne "preview_real_test") {
+    if ($whatsAppProfile -ne "preview_real_test") {
       Add-Result $file "preview-profile" "FAIL" "Preview deve usar WHATSAPP_PROFILE=preview_real_test."
     }
     if ($recipientMode -ne "test_recipient") {
@@ -171,9 +171,9 @@ foreach ($file in $expectedFiles) {
   }
 
   if ($file -eq "vercel-development-required.env") {
-    $profile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
+    $whatsAppProfile = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_PROFILE"
     $recipientMode = Get-NormalizedEnvValue -EnvMap $vars -Key "WHATSAPP_AUTOMATION_RECIPIENT_MODE"
-    if ($profile -ne "dev_sandbox") {
+    if ($whatsAppProfile -ne "dev_sandbox") {
       Add-Result $file "dev-profile" "FAIL" "Development deve usar WHATSAPP_PROFILE=dev_sandbox."
     }
     if ($recipientMode -ne "test_recipient") {
