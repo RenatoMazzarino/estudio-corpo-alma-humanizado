@@ -28,11 +28,17 @@ type OneSignalRuntime = {
     };
   };
   Notifications: {
-    permission?: string;
+    permission?: unknown;
+    requestPermission?: () => Promise<unknown>;
   };
   Slidedown: {
     promptPush: () => Promise<void>;
   };
+};
+
+type OneSignalWindow = Window & {
+  OneSignal?: OneSignalRuntime;
+  OneSignalDeferred?: Array<(oneSignal: OneSignalRuntime) => void | Promise<void>>;
 };
 
 function normalizeOneSignalPermission(permission: unknown): string {
@@ -47,6 +53,73 @@ function normalizeOneSignalPermission(permission: unknown): string {
     }
   }
   return "unknown";
+}
+
+async function resolveOneSignalRuntime(timeoutMs = 10000): Promise<OneSignalRuntime> {
+  if (typeof window === "undefined") {
+    throw new Error("Navegador indisponível para forçar inscrição.");
+  }
+
+  const runtimeWindow = window as OneSignalWindow;
+  const direct = runtimeWindow.OneSignal;
+  if (direct && direct.User?.PushSubscription) {
+    return direct;
+  }
+
+  return await new Promise<OneSignalRuntime>((resolve, reject) => {
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(
+        new Error(
+          "OneSignal não inicializou neste navegador. Recarregue a página e tente novamente."
+        )
+      );
+    }, timeoutMs);
+
+    runtimeWindow.OneSignalDeferred = runtimeWindow.OneSignalDeferred ?? [];
+    runtimeWindow.OneSignalDeferred.push(async (oneSignal) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve(oneSignal);
+    });
+  });
+}
+
+async function waitForSubscribedDevice(
+  oneSignal: OneSignalRuntime,
+  options?: { timeoutMs?: number; pollIntervalMs?: number }
+) {
+  const timeoutMs = options?.timeoutMs ?? 12000;
+  const pollIntervalMs = options?.pollIntervalMs ?? 250;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const permission = normalizeOneSignalPermission(oneSignal.Notifications?.permission);
+    const subscriptionId =
+      typeof oneSignal.User?.PushSubscription?.id === "string"
+        ? oneSignal.User.PushSubscription.id
+        : null;
+    const optedIn = Boolean(oneSignal.User?.PushSubscription?.optedIn);
+
+    if (subscriptionId && optedIn) {
+      return {
+        permission,
+        subscriptionId,
+        optedIn,
+      };
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, pollIntervalMs));
+  }
+
+  return {
+    permission: normalizeOneSignalPermission(oneSignal.Notifications?.permission),
+    subscriptionId: null,
+    optedIn: Boolean(oneSignal.User?.PushSubscription?.optedIn),
+  };
 }
 
 const eventLabels: Record<(typeof PUSH_EVENT_TYPES)[number], string> = {
@@ -235,48 +308,24 @@ export function PushNotificationsSettingsCard({
     setForceStatus(null);
 
     try {
-      const oneSignalData = await new Promise<{
-        permission: string;
-        subscriptionId: string | null;
-        optedIn: boolean;
-      }>((resolve, reject) => {
-        if (typeof window === "undefined") {
-          reject(new Error("Navegador indisponível para forçar inscrição."));
-          return;
+      if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+        throw new Error("Este navegador não suporta push web.");
+      }
+
+      const oneSignal = await resolveOneSignalRuntime();
+      const permissionBeforePrompt = normalizeOneSignalPermission(
+        oneSignal.Notifications?.permission
+      );
+
+      if (permissionBeforePrompt !== "granted" || !oneSignal.User?.PushSubscription?.optedIn) {
+        if (typeof oneSignal.Notifications?.requestPermission === "function") {
+          await oneSignal.Notifications.requestPermission();
+        } else {
+          await oneSignal.Slidedown.promptPush();
         }
-        const runtimeWindow = window as Window & {
-          OneSignalDeferred?: Array<(oneSignal: OneSignalRuntime) => void | Promise<void>>;
-        };
-        runtimeWindow.OneSignalDeferred = runtimeWindow.OneSignalDeferred ?? [];
-        runtimeWindow.OneSignalDeferred.push(async (OneSignal) => {
-          try {
-            const permissionBeforePrompt = normalizeOneSignalPermission(
-              OneSignal.Notifications?.permission
-            );
-            if (
-              permissionBeforePrompt !== "granted" ||
-              !OneSignal.User?.PushSubscription?.optedIn
-            ) {
-              await OneSignal.Slidedown.promptPush();
-            }
+      }
 
-            const permission = normalizeOneSignalPermission(OneSignal.Notifications?.permission);
-            const subscriptionId =
-              typeof OneSignal.User?.PushSubscription?.id === "string"
-                ? OneSignal.User.PushSubscription.id
-                : null;
-            const optedIn = Boolean(OneSignal.User?.PushSubscription?.optedIn);
-
-            resolve({
-              permission,
-              subscriptionId,
-              optedIn,
-            });
-          } catch (callbackError) {
-            reject(callbackError);
-          }
-        });
-      });
+      const oneSignalData = await waitForSubscribedDevice(oneSignal);
 
       if (!oneSignalData.subscriptionId || !oneSignalData.optedIn) {
         throw new Error(

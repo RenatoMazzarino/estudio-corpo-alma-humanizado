@@ -39,28 +39,15 @@ function isDevPasswordLoginEnabled() {
   return (process.env.DEV_PASSWORD_LOGIN_ENABLED ?? "").trim().toLowerCase() === "true";
 }
 
-function isDevOrLocalHost(host: string | null | undefined) {
-  const hostname = (host ?? "").trim().toLowerCase().split(":")[0] ?? "";
-  if (!hostname) return false;
-  if (hostname === "dev.public.corpoealmahumanizado.com.br") return true;
-  if (hostname === "localhost" || hostname === "127.0.0.1") return true;
-  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  if (hostname.endsWith(".vercel.app")) return true;
-  return false;
-}
-
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const headerStore = await headers();
-  const requestHost = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+  await headers();
   const next = sanitizeDashboardNextPath(params?.next, "/");
   const reasonMessage = getReasonMessage(params?.reason);
   const loginHref = `/auth/google${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`;
   const devPasswordHref = `/auth/dev-login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`;
   const isSignedOut = (params?.reason ?? "").trim() === "signed_out";
-  const showDevPasswordLogin = isDevPasswordLoginEnabled() && isDevOrLocalHost(requestHost);
+  const showDevPasswordLogin = isDevPasswordLoginEnabled();
 
   return (
     <div className="app-viewport flex items-stretch justify-center overflow-hidden bg-neutral-900">
@@ -133,7 +120,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               {showDevPasswordLogin ? (
                 <div className="mt-4 rounded-2xl border border-dashed border-line bg-paper p-4">
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
-                    Acesso de desenvolvimento (DEV/local)
+                    Acesso com e-mail e senha
                   </p>
                   <form action={devPasswordHref} method="post" className="mt-3 space-y-3">
                     <input type="hidden" name="next" value={next} />
@@ -167,7 +154,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                       type="submit"
                       className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-studio-green/25 bg-white px-4 text-sm font-extrabold uppercase tracking-[0.12em] text-studio-green transition active:scale-[0.99]"
                     >
-                      Entrar com e-mail e senha (DEV)
+                      Entrar com e-mail e senha
                     </button>
                   </form>
                 </div>
