@@ -32,6 +32,7 @@ export async function POST() {
         ok: false,
         error:
           "Nenhuma assinatura push ativa para este usuário. Autorize notificações no navegador e recarregue a página.",
+        appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() || null,
       },
       { status: 409 }
     );
@@ -74,6 +75,7 @@ export async function POST() {
       ok: true,
       subscriptions: subscriptions.length,
       providerMessageId: dispatch.providerMessageId,
+      appId: dispatch.providerAppId ?? null,
       deliveryMode: dispatch.skipped ? "queued_without_targets" : "sent",
     });
   } catch (error) {
@@ -94,6 +96,13 @@ export async function POST() {
       attempt: 1,
     });
 
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: message,
+        appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() || null,
+      },
+      { status: 500 }
+    );
   }
 }

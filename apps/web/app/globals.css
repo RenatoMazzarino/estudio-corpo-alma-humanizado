@@ -1,6 +1,10 @@
 @import url("https://fonts.cdnfonts.com/css/qalisha-signature-script");
 @import "tailwindcss";
 
+:root {
+  --app-dvh: 100dvh;
+}
+
 @theme {
   /* Paleta Oficial Estúdio Corpo & Alma */
   --color-studio-bg: #FAF9F6;
@@ -54,15 +58,15 @@ html {
 }
 
 .app-viewport {
-  height: 100svh;
-  height: 100dvh;
+  min-height: var(--app-dvh);
+  height: var(--app-dvh);
   overflow: hidden;
 }
 
 .app-frame {
   width: min(412px, 100vw);
-  min-height: 100svh;
-  height: 100dvh;
+  min-height: var(--app-dvh);
+  height: var(--app-dvh);
 }
 
 .safe-top {

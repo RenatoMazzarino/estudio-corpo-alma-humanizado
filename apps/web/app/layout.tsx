@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Lato, Playfair_Display } from "next/font/google";
+import { ViewportHeightSync } from "../components/viewport-height-sync";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body
         className={`${lato.variable} ${playfair.variable} font-sans min-h-screen bg-studio-bg text-studio-text`}
       >
+        <ViewportHeightSync />
         {children}
       </body>
     </html>

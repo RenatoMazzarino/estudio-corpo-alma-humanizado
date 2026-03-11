@@ -21,6 +21,7 @@ export async function sendPushViaOneSignal(payload: PushDispatchPayload) {
       ok: true as const,
       skipped: true as const,
       providerMessageId: null,
+      providerAppId: ONESIGNAL_APP_ID,
       response: null,
     };
   }
@@ -62,6 +63,7 @@ export async function sendPushViaOneSignal(payload: PushDispatchPayload) {
     ok: true as const,
     skipped: false as const,
     providerMessageId: json?.id ?? null,
+    providerAppId: ONESIGNAL_APP_ID,
     response: json,
   };
 }

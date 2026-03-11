@@ -131,6 +131,11 @@ const eventLabels: Record<(typeof PUSH_EVENT_TYPES)[number], string> = {
   "whatsapp.job.status_changed": "Falha/status da automação WhatsApp",
 };
 
+const ONESIGNAL_APP_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ?? "").trim();
+const ONESIGNAL_APP_ID_SHORT = ONESIGNAL_APP_ID
+  ? `${ONESIGNAL_APP_ID.slice(0, 8)}...${ONESIGNAL_APP_ID.slice(-6)}`
+  : "não configurado";
+
 export function PushNotificationsSettingsCard({
   pushConfigured,
 }: PushNotificationsSettingsCardProps) {
@@ -279,7 +284,7 @@ export function PushNotificationsSettingsCard({
         headers: { "content-type": "application/json; charset=utf-8" },
       });
       const payload = (await response.json().catch(() => null)) as
-        | { ok: true; subscriptions: number; providerMessageId: string | null }
+        | { ok: true; subscriptions: number; providerMessageId: string | null; appId: string | null }
         | { ok: false; error: string }
         | null;
 
@@ -289,7 +294,7 @@ export function PushNotificationsSettingsCard({
       }
 
       setTestStatus(
-        `Push de teste enviado com sucesso (${payload.subscriptions} assinatura(s) ativa(s)).`
+        `Push de teste enviado com sucesso (${payload.subscriptions} assinatura(s) ativa(s), app ${payload.appId ?? ONESIGNAL_APP_ID_SHORT}).`
       );
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Falha ao disparar push de teste.";
@@ -429,6 +434,9 @@ export function PushNotificationsSettingsCard({
       {forceStatus ? <p className="text-xs text-studio-green">{forceStatus}</p> : null}
       {pushConfigured ? (
         <div className="space-y-2 rounded-xl border border-dashed border-line p-3">
+          <p className="text-[11px] text-muted">
+            App OneSignal em uso neste ambiente: <strong>{ONESIGNAL_APP_ID_SHORT}</strong>
+          </p>
           <p className="text-xs text-muted">
             Assinaturas ativas neste usuário: <strong>{subscriptions.length}</strong>
           </p>
