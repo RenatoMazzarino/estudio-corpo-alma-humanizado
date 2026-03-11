@@ -13,17 +13,17 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const canShowBottomNav = () => {
-    if (
-      pathname === "/" ||
-      pathname === "/clientes" ||
-      pathname === "/caixa" ||
-      pathname === "/mensagens" ||
-      pathname === "/menu"
-    ) {
-      return true;
-    }
-    if (pathname === "/clientes/novo") return true;
-    return false;
+    const routesWithBottomNav = new Set([
+      "/",
+      "/clientes",
+      "/clientes/novo",
+      "/caixa",
+      "/mensagens",
+      "/menu",
+      "/catalogo",
+      "/configuracoes",
+    ]);
+    return routesWithBottomNav.has(pathname);
   };
   const showBottomNav = canShowBottomNav();
   const navHeight = showBottomNav ? "calc(48px + env(safe-area-inset-bottom))" : "0px";
