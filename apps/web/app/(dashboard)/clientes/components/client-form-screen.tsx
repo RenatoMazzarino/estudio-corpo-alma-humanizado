@@ -14,9 +14,7 @@ import { formatCpf } from "../../../../src/shared/cpf";
 import type { ActionResult } from "../../../../src/shared/errors/result";
 import {
   composeInternalClientName,
-  resolveClientNames,
 } from "../../../../src/modules/clients/name-profile";
-import type { ClientDetailSnapshot } from "../../../../src/modules/clients/profile-data";
 import { NewClientAddressSection } from "../novo/components/new-client-address-section";
 import { NewClientContactChannelsSection } from "../novo/components/new-client-contact-channels-section";
 import { NewClientExtraDataSection } from "../novo/components/new-client-extra-data-section";
@@ -25,6 +23,11 @@ import { NewClientMinorSection } from "../novo/components/new-client-minor-secti
 import { NewClientNotesSection } from "../novo/components/new-client-notes-section";
 import { NewClientPreferencesSection } from "../novo/components/new-client-preferences-section";
 import type { AddressEntry, EmailEntry, PhoneEntry } from "../novo/components/new-client.types";
+import {
+  createDefaultEmailEntry,
+  createDefaultPhoneEntry,
+  type ClientFormInitialData,
+} from "./client-form-data";
 
 interface ClientSuggestion {
   id: string;
@@ -34,35 +37,6 @@ interface ClientSuggestion {
 
 type SubmitResult = void | ActionResult<{ id: string }>;
 
-export type ClientFormInitialData = {
-  clientId: string | null;
-  avatarUrl: string | null;
-  firstName: string;
-  lastName: string;
-  reference: string;
-  birthDate: string;
-  cpf: string;
-  isVip: boolean;
-  needsAttention: boolean;
-  marketingOptIn: boolean;
-  isMinor: boolean;
-  guardianName: string;
-  guardianPhone: string;
-  guardianCpf: string;
-  preferencesNotes: string;
-  contraindications: string;
-  clinicalHistory: string;
-  anamneseUrl: string;
-  observacoesGerais: string;
-  profissao: string;
-  comoConheceu: string;
-  allergyTags: string[];
-  conditionTags: string[];
-  phones: PhoneEntry[];
-  emails: EmailEntry[];
-  address: AddressEntry;
-};
-
 type ClientFormScreenProps = {
   mode: "create" | "edit";
   title: string;
@@ -71,7 +45,7 @@ type ClientFormScreenProps = {
   backHref: string;
   submitMode: "form-action" | "imperative";
   initialData: ClientFormInitialData;
-  submitAction: (formData: FormData) => Promise<SubmitResult>;
+  submitActionAction: (formData: FormData) => Promise<SubmitResult>;
   searchClientsByNameAction?: (query: string) => Promise<{ data: ClientSuggestion[] }>;
   successRedirectHref?: string;
 };
@@ -86,165 +60,6 @@ function normalizePhone(raw: string) {
   return {
     number_raw: raw,
     number_e164: parsed?.isValid() ? parsed.format("E.164") : null,
-  };
-}
-
-function createDefaultPhoneEntry(): PhoneEntry {
-  return {
-    id: "phone-primary",
-    label: "Principal",
-    number: "",
-    isPrimary: true,
-    isWhatsapp: true,
-  };
-}
-
-function createDefaultEmailEntry(): EmailEntry {
-  return {
-    id: "email-primary",
-    label: "Principal",
-    email: "",
-    isPrimary: true,
-  };
-}
-
-function createDefaultAddressEntry(): AddressEntry {
-  return {
-    label: "Principal",
-    cep: "",
-    logradouro: "",
-    numero: "",
-    complemento: "",
-    bairro: "",
-    cidade: "",
-    estado: "",
-  };
-}
-
-export function createEmptyClientFormInitialData(): ClientFormInitialData {
-  return {
-    clientId: null,
-    avatarUrl: null,
-    firstName: "",
-    lastName: "",
-    reference: "",
-    birthDate: "",
-    cpf: "",
-    isVip: false,
-    needsAttention: false,
-    marketingOptIn: false,
-    isMinor: false,
-    guardianName: "",
-    guardianPhone: "",
-    guardianCpf: "",
-    preferencesNotes: "",
-    contraindications: "",
-    clinicalHistory: "",
-    anamneseUrl: "",
-    observacoesGerais: "",
-    profissao: "",
-    comoConheceu: "",
-    allergyTags: [],
-    conditionTags: [],
-    phones: [createDefaultPhoneEntry()],
-    emails: [createDefaultEmailEntry()],
-    address: createDefaultAddressEntry(),
-  };
-}
-
-export function createClientFormInitialDataFromSnapshot(
-  snapshot: ClientDetailSnapshot
-): ClientFormInitialData {
-  const names = resolveClientNames({
-    name: snapshot.client.name,
-    publicFirstName: snapshot.client.public_first_name,
-    publicLastName: snapshot.client.public_last_name,
-    internalReference: snapshot.client.internal_reference,
-  });
-
-  const phones: PhoneEntry[] =
-    snapshot.phones.length > 0
-      ? snapshot.phones.map((phone, index) => ({
-          id: phone.id || `phone-${index}`,
-          label: phone.label || (index === 0 ? "Principal" : "Outro"),
-          number: phone.number_raw || "",
-          isPrimary: phone.is_primary ?? index === 0,
-          isWhatsapp: phone.is_whatsapp ?? false,
-        }))
-      : [createDefaultPhoneEntry()];
-
-  const emails: EmailEntry[] =
-    snapshot.emails.length > 0
-      ? snapshot.emails.map((email, index) => ({
-          id: email.id || `email-${index}`,
-          label: email.label || (index === 0 ? "Principal" : "Outro"),
-          email: email.email || "",
-          isPrimary: email.is_primary ?? index === 0,
-        }))
-      : [
-          {
-            ...createDefaultEmailEntry(),
-            email: snapshot.client.email || "",
-          },
-        ];
-
-  const primaryAddress = snapshot.addresses.find((address) => address.is_primary) ?? snapshot.addresses[0] ?? null;
-  const address: AddressEntry = {
-    label: primaryAddress?.label || "Principal",
-    cep: primaryAddress?.address_cep || snapshot.client.address_cep || "",
-    logradouro: primaryAddress?.address_logradouro || snapshot.client.address_logradouro || "",
-    numero: primaryAddress?.address_numero || snapshot.client.address_numero || "",
-    complemento: primaryAddress?.address_complemento || snapshot.client.address_complemento || "",
-    bairro: primaryAddress?.address_bairro || snapshot.client.address_bairro || "",
-    cidade: primaryAddress?.address_cidade || snapshot.client.address_cidade || "",
-    estado: primaryAddress?.address_estado || snapshot.client.address_estado || "",
-  };
-
-  const allergyTags = snapshot.healthItems
-    .filter((item) => item.type === "allergy")
-    .map((item) => item.label)
-    .filter(Boolean);
-
-  const conditionSet = new Set(
-    snapshot.healthItems
-      .filter((item) => item.type !== "allergy")
-      .map((item) => item.label)
-      .filter(Boolean)
-  );
-
-  for (const tag of snapshot.client.health_tags ?? []) {
-    if (tag?.trim()) {
-      conditionSet.add(tag.trim());
-    }
-  }
-
-  return {
-    clientId: snapshot.client.id,
-    avatarUrl: snapshot.client.avatar_url || null,
-    firstName: names.publicFirstName,
-    lastName: names.publicLastName,
-    reference: names.reference,
-    birthDate: snapshot.client.birth_date ?? snapshot.client.data_nascimento ?? "",
-    cpf: snapshot.client.cpf ?? "",
-    isVip: snapshot.client.is_vip ?? false,
-    needsAttention: snapshot.client.needs_attention ?? false,
-    marketingOptIn: snapshot.client.marketing_opt_in ?? false,
-    isMinor: snapshot.client.is_minor ?? false,
-    guardianName: snapshot.client.guardian_name ?? "",
-    guardianPhone: snapshot.client.guardian_phone ?? "",
-    guardianCpf: snapshot.client.guardian_cpf ?? "",
-    preferencesNotes: snapshot.client.preferences_notes ?? "",
-    contraindications: snapshot.client.contraindications ?? "",
-    clinicalHistory: snapshot.client.clinical_history ?? "",
-    anamneseUrl: snapshot.client.anamnese_url ?? "",
-    observacoesGerais: snapshot.client.observacoes_gerais ?? "",
-    profissao: snapshot.client.profissao ?? "",
-    comoConheceu: snapshot.client.como_conheceu ?? "",
-    allergyTags,
-    conditionTags: Array.from(conditionSet),
-    phones,
-    emails,
-    address,
   };
 }
 
@@ -276,7 +91,7 @@ export function ClientFormScreen({
   backHref,
   submitMode,
   initialData,
-  submitAction,
+  submitActionAction,
   searchClientsByNameAction,
   successRedirectHref,
 }: ClientFormScreenProps) {
@@ -481,7 +296,7 @@ export function ClientFormScreen({
 
     try {
       const formData = new FormData(event.currentTarget);
-      const result = await submitAction(formData);
+      const result = await submitActionAction(formData);
 
       if (result && typeof result === "object" && "ok" in result && !result.ok) {
         showToast(result.error.message ?? "Não foi possível salvar o cadastro do cliente.", "error");
@@ -520,7 +335,7 @@ export function ClientFormScreen({
         <form
           action={
             submitMode === "form-action"
-              ? (submitAction as (formData: FormData) => void | Promise<void>)
+              ? (submitActionAction as (formData: FormData) => void | Promise<void>)
               : undefined
           }
           onSubmit={submitMode === "imperative" ? handleImperativeSubmit : undefined}

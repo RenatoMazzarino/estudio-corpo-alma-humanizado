@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { ModulePage } from "../../../../../components/ui/module-page";
 import { requireDashboardAccessForPage } from "../../../../../src/modules/auth/dashboard-access";
 import { getClientDetailSnapshot } from "../../../../../src/modules/clients/profile-data";
-import { ClientFormScreen, createClientFormInitialDataFromSnapshot } from "../../components/client-form-screen";
+import { createClientFormInitialDataFromSnapshot } from "../../components/client-form-data";
+import { ClientFormScreen } from "../../components/client-form-screen";
 import { updateClientProfile } from "../actions";
 
 interface PageProps {
@@ -29,7 +30,7 @@ export default async function EditClientPage(props: PageProps) {
         backHref={`/clientes/${snapshot.client.id}`}
         submitMode="imperative"
         initialData={createClientFormInitialDataFromSnapshot(snapshot)}
-        submitAction={updateClientProfile}
+        submitActionAction={updateClientProfile}
         successRedirectHref={`/clientes/${snapshot.client.id}`}
       />
     </ModulePage>

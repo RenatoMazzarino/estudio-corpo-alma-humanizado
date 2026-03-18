@@ -1,4 +1,5 @@
-import { createEmptyClientFormInitialData, ClientFormScreen } from "../components/client-form-screen";
+import { ClientFormScreen } from "../components/client-form-screen";
+import { createEmptyClientFormInitialData } from "../components/client-form-data";
 import { createClientAction, searchClientsByName } from "./actions";
 
 export default function NewClientPage() {
@@ -11,7 +12,7 @@ export default function NewClientPage() {
       backHref="/clientes"
       submitMode="form-action"
       initialData={createEmptyClientFormInitialData()}
-      submitAction={createClientAction}
+      submitActionAction={createClientAction}
       searchClientsByNameAction={searchClientsByName}
     />
   );
