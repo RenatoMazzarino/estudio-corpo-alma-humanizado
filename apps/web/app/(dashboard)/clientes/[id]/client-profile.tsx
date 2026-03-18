@@ -725,16 +725,17 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
 
   return (
     <>
-      <div className="space-y-4 px-4 pb-10 pt-4">
-        <SurfaceCard className="overflow-visible border-white bg-white/95 p-0">
-          <div className="relative overflow-visible rounded-3xl bg-gradient-to-br from-studio-light via-white to-paper px-5 pb-5 pt-5">
-            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-studio-green/10 blur-3xl" />
+      <div className="pb-10">
+        <header className="relative overflow-hidden border-b border-line/80 bg-gradient-to-br from-studio-light via-white to-paper">
+          <div className="absolute -right-12 top-0 h-44 w-44 rounded-full bg-studio-green/10 blur-3xl" />
+          <div className="absolute left-0 top-0 h-px w-full bg-white/70" />
 
-            <div className="relative flex items-center justify-between gap-3">
+          <div className="relative px-4 pb-6 pt-4">
+            <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => router.push("/clientes")}
-                className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-line bg-white/85 px-3 text-studio-text transition hover:bg-white"
+                className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-line bg-white/90 px-3 text-studio-text transition hover:bg-white"
                 aria-label="Voltar para clientes"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -744,7 +745,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                 <button
                   type="button"
                   onClick={() => setMenuOpen((current) => !current)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/85 text-studio-text transition hover:bg-white"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/90 text-studio-text transition hover:bg-white"
                   aria-label="Abrir ações do cliente"
                 >
                   <EllipsisVertical className="h-4 w-4" />
@@ -784,8 +785,8 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               </div>
             </div>
 
-            <div className="relative mt-4 flex items-start gap-4">
-              <div className="relative flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-full bg-studio-green text-xl font-serif font-bold text-white shadow-soft">
+            <div className="mt-5 flex items-start gap-4">
+              <div className="relative flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-full bg-studio-green text-xl font-serif font-bold text-white shadow-soft ring-4 ring-white/80">
                 {client.avatar_url ? (
                   <Image src={client.avatar_url} alt={client.name} fill sizes="72px" className="object-cover" unoptimized />
                 ) : (
@@ -801,26 +802,28 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                 </div>
                 <p className="mt-1 text-sm font-semibold text-muted">Cliente desde {formatShortDate(client.created_at)}</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
-                  {publicName ? <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">Nome público: {publicName}</span> : null}
-                  {client.profissao ? <span className="rounded-full bg-white/80 px-2.5 py-1 font-semibold">{client.profissao}</span> : null}
+                  {publicName ? <span className="rounded-full border border-line/60 bg-white/85 px-2.5 py-1 font-semibold">Nome público: {publicName}</span> : null}
+                  {client.profissao ? <span className="rounded-full border border-line/60 bg-white/85 px-2.5 py-1 font-semibold">{client.profissao}</span> : null}
                 </div>
               </div>
             </div>
 
-            <div className="relative mt-4 flex flex-wrap gap-2.5">
+            <div className="mt-5 flex flex-wrap gap-2.5">
               <ActionIconLink href={callHref} label="Ligar" icon={<Phone className="h-4 w-4" />} />
               <ActionIconLink href={whatsappHref} label="WhatsApp" icon={<MessageCircle className="h-4 w-4" />} tone="green" />
               <ActionIconLink href={scheduleHref} label="Agendar" icon={<CalendarPlus className="h-4 w-4" />} tone="green" />
               <ActionIconLink href={prontuarioHref} label="Prontuário" icon={<FileText className="h-4 w-4" />} />
             </div>
 
-            <div className="relative mt-4 grid grid-cols-3 gap-2">
+            <div className="mt-5 grid grid-cols-3 gap-2">
               <MetricCard label="Sessões" value={finance.completedSessionsCount} />
               <MetricCard label="Última visita" value={finance.daysSinceLastVisit === null ? "-" : finance.daysSinceLastVisit + " dia(s)"} />
               <MetricCard label="Fidelidade" value={formatStars(finance.fidelityStars)} />
             </div>
           </div>
-        </SurfaceCard>
+        </header>
+
+        <div className="space-y-4 px-4 pt-4">
 
         <SectionCard title="Contato" icon={<Phone className="h-4 w-4" />}>
           {primaryPhone ? (
@@ -1024,6 +1027,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
             )}
           </div>
         </SectionCard>
+        </div>
       </div>
 
       <ClientEditDialog
