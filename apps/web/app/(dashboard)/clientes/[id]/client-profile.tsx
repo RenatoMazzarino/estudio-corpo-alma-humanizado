@@ -42,7 +42,7 @@ import type {
   ClientPaymentMethodSummary,
   ClientProntuarioEntry,
 } from "../../../../src/modules/clients/profile-data";
-import { deleteClient, updateClientProfile } from "./actions";
+import { deleteClient } from "./actions";
 import { NotesSection } from "./notes-section";
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -61,40 +61,6 @@ const longDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
   year: "numeric",
 });
-
-type EditDraft = {
-  name: string;
-  phone: string;
-  email: string;
-  birthDate: string;
-  cpf: string;
-  profissao: string;
-  comoConheceu: string;
-  publicFirstName: string;
-  publicLastName: string;
-  internalReference: string;
-  preferencesNotes: string;
-  contraindications: string;
-  clinicalHistory: string;
-  observations: string;
-  anamneseUrl: string;
-  isVip: boolean;
-  needsAttention: boolean;
-  marketingOptIn: boolean;
-  isMinor: boolean;
-  guardianName: string;
-  guardianPhone: string;
-  guardianCpf: string;
-  healthTags: string;
-  legacyAddressFull: string;
-  addressCep: string;
-  addressLogradouro: string;
-  addressNumero: string;
-  addressComplemento: string;
-  addressBairro: string;
-  addressCidade: string;
-  addressEstado: string;
-};
 
 function getInitials(name: string) {
   const parts = name.split(" ").filter(Boolean);
@@ -146,105 +112,6 @@ function getLegacyAddress(snapshot: ClientDetailSnapshot) {
 
 function formatStars(value: number) {
   return "⭐".repeat(Math.max(1, Math.min(5, value)));
-}
-
-function createEditDraft(snapshot: ClientDetailSnapshot): EditDraft {
-  const primaryPhone = snapshot.phones.find((phone) => phone.is_primary)?.number_raw ?? snapshot.client.phone ?? "";
-  const primaryEmail = snapshot.emails.find((email) => email.is_primary)?.email ?? snapshot.client.email ?? "";
-
-  return {
-    name: snapshot.client.name ?? "",
-    phone: primaryPhone,
-    email: primaryEmail,
-    birthDate: snapshot.client.birth_date ?? snapshot.client.data_nascimento ?? "",
-    cpf: snapshot.client.cpf ?? "",
-    profissao: snapshot.client.profissao ?? "",
-    comoConheceu: snapshot.client.como_conheceu ?? "",
-    publicFirstName: snapshot.client.public_first_name ?? "",
-    publicLastName: snapshot.client.public_last_name ?? "",
-    internalReference: snapshot.client.internal_reference ?? "",
-    preferencesNotes: snapshot.client.preferences_notes ?? "",
-    contraindications: snapshot.client.contraindications ?? "",
-    clinicalHistory: snapshot.client.clinical_history ?? "",
-    observations: snapshot.client.observacoes_gerais ?? "",
-    anamneseUrl: snapshot.client.anamnese_url ?? "",
-    isVip: snapshot.client.is_vip ?? false,
-    needsAttention: snapshot.client.needs_attention ?? false,
-    marketingOptIn: snapshot.client.marketing_opt_in ?? false,
-    isMinor: snapshot.client.is_minor ?? false,
-    guardianName: snapshot.client.guardian_name ?? "",
-    guardianPhone: snapshot.client.guardian_phone ?? "",
-    guardianCpf: snapshot.client.guardian_cpf ?? "",
-    healthTags: Array.isArray(snapshot.client.health_tags) ? snapshot.client.health_tags.join(", ") : "",
-    legacyAddressFull: snapshot.client.endereco_completo ?? "",
-    addressCep: snapshot.client.address_cep ?? "",
-    addressLogradouro: snapshot.client.address_logradouro ?? "",
-    addressNumero: snapshot.client.address_numero ?? "",
-    addressComplemento: snapshot.client.address_complemento ?? "",
-    addressBairro: snapshot.client.address_bairro ?? "",
-    addressCidade: snapshot.client.address_cidade ?? "",
-    addressEstado: snapshot.client.address_estado ?? "",
-  };
-}
-
-function buildPhonesJson(snapshot: ClientDetailSnapshot, nextPhone: string) {
-  const trimmed = nextPhone.trim();
-  if (snapshot.phones.length === 0) {
-    return trimmed
-      ? [
-          {
-            label: "Principal",
-            number_raw: trimmed,
-            number_e164: null,
-            is_primary: true,
-            is_whatsapp: true,
-          },
-        ]
-      : [];
-  }
-
-  let replaced = false;
-  const rows = snapshot.phones.map((phone, index) => {
-    const shouldReplace = phone.is_primary || (!replaced && index === 0);
-    if (shouldReplace) replaced = true;
-    return {
-      label: phone.label,
-      number_raw: shouldReplace ? trimmed : phone.number_raw,
-      number_e164: shouldReplace ? null : phone.number_e164,
-      is_primary: phone.is_primary,
-      is_whatsapp: phone.is_whatsapp,
-    };
-  });
-
-  return rows.filter((row) => row.number_raw && row.number_raw.trim().length > 0);
-}
-
-function buildEmailsJson(snapshot: ClientDetailSnapshot, nextEmail: string) {
-  const trimmed = nextEmail.trim();
-  if (snapshot.emails.length === 0) {
-    return trimmed
-      ? [
-          {
-            label: "Principal",
-            email: trimmed,
-            is_primary: true,
-          },
-        ]
-      : [];
-  }
-
-  let replaced = false;
-  const rows = snapshot.emails.map((email, index) => {
-    const shouldReplace = email.is_primary || (!replaced && index === 0);
-    if (shouldReplace) replaced = true;
-    return {
-      label: email.label,
-      email: shouldReplace ? trimmed : email.email,
-      is_primary: email.is_primary,
-    };
-  });
-
-  return rows.filter((row) => row.email && row.email.trim().length > 0);
 }
 
 function ActionIconLink({
@@ -361,137 +228,6 @@ function PaymentMethodBar({ method }: { method: ClientPaymentMethodSummary }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function ClientEditDialog({
-  open,
-  draft,
-  saving,
-  onCloseAction,
-  onChangeAction,
-  onSaveAction,
-}: {
-  open: boolean;
-  draft: EditDraft;
-  saving: boolean;
-  onCloseAction: () => void;
-  onChangeAction: (field: keyof EditDraft, value: string | boolean) => void;
-  onSaveAction: () => void;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-80 flex items-end justify-center bg-black/35 backdrop-blur-sm sm:items-center">
-      <button type="button" className="absolute inset-0" aria-label="Fechar edição" onClick={onCloseAction} />
-      <div className="relative z-10 flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-t-[30px] bg-white shadow-float sm:rounded-[30px]">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted">Cliente</p>
-            <h3 className="text-lg font-serif text-studio-text">Editar cadastro base</h3>
-          </div>
-          <button
-            type="button"
-            onClick={onCloseAction}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line text-muted"
-            aria-label="Fechar"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="space-y-4 overflow-y-auto px-5 py-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Nome completo">
-              <input value={draft.name} onChange={(event) => onChangeAction("name", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Telefone principal">
-              <input value={draft.phone} onChange={(event) => onChangeAction("phone", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Email principal">
-              <input value={draft.email} onChange={(event) => onChangeAction("email", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Nascimento">
-              <input type="date" value={draft.birthDate} onChange={(event) => onChangeAction("birthDate", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="CPF">
-              <input value={draft.cpf} onChange={(event) => onChangeAction("cpf", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Profissão">
-              <input value={draft.profissao} onChange={(event) => onChangeAction("profissao", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Como conheceu">
-              <input value={draft.comoConheceu} onChange={(event) => onChangeAction("comoConheceu", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Referência interna">
-              <input value={draft.internalReference} onChange={(event) => onChangeAction("internalReference", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Nome público">
-              <input value={draft.publicFirstName} onChange={(event) => onChangeAction("publicFirstName", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-            <Field label="Sobrenome público">
-              <input value={draft.publicLastName} onChange={(event) => onChangeAction("publicLastName", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-            </Field>
-          </div>
-
-          <Field label="Preferências de atendimento">
-            <textarea value={draft.preferencesNotes} onChange={(event) => onChangeAction("preferencesNotes", event.target.value)} className="min-h-24 w-full resize-none rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-          </Field>
-
-          <Field label="Contraindicações">
-            <textarea value={draft.contraindications} onChange={(event) => onChangeAction("contraindications", event.target.value)} className="min-h-24 w-full resize-none rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-          </Field>
-
-          <Field label="Histórico clínico">
-            <textarea value={draft.clinicalHistory} onChange={(event) => onChangeAction("clinicalHistory", event.target.value)} className="min-h-24 w-full resize-none rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-          </Field>
-
-          <Field label="Observações gerais">
-            <textarea value={draft.observations} onChange={(event) => onChangeAction("observations", event.target.value)} className="min-h-24 w-full resize-none rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-          </Field>
-
-          <Field label="Link da anamnese">
-            <input value={draft.anamneseUrl} onChange={(event) => onChangeAction("anamneseUrl", event.target.value)} className="w-full rounded-2xl border border-line bg-paper/80 px-4 py-3 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20" />
-          </Field>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label className="flex items-center gap-2 rounded-2xl border border-line bg-paper/70 px-3 py-3 text-sm font-semibold text-studio-text">
-              <input type="checkbox" checked={draft.isVip} onChange={(event) => onChangeAction("isVip", event.target.checked)} className="h-4 w-4 rounded border-line text-studio-green focus:ring-studio-green" />
-              Cliente VIP
-            </label>
-            <label className="flex items-center gap-2 rounded-2xl border border-line bg-paper/70 px-3 py-3 text-sm font-semibold text-studio-text">
-              <input type="checkbox" checked={draft.needsAttention} onChange={(event) => onChangeAction("needsAttention", event.target.checked)} className="h-4 w-4 rounded border-line text-studio-green focus:ring-studio-green" />
-              Precisa atenção
-            </label>
-            <label className="flex items-center gap-2 rounded-2xl border border-line bg-paper/70 px-3 py-3 text-sm font-semibold text-studio-text">
-              <input type="checkbox" checked={draft.marketingOptIn} onChange={(event) => onChangeAction("marketingOptIn", event.target.checked)} className="h-4 w-4 rounded border-line text-studio-green focus:ring-studio-green" />
-              Aceita marketing
-            </label>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-          <button type="button" onClick={onCloseAction} className="px-4 py-2 text-xs font-extrabold text-muted transition hover:text-studio-text" disabled={saving}>
-            Cancelar
-          </button>
-          <button type="button" onClick={onSaveAction} className="inline-flex items-center gap-2 rounded-xl bg-studio-green px-4 py-2 text-xs font-extrabold text-white shadow-soft transition hover:bg-studio-green-dark disabled:opacity-60" disabled={saving}>
-            <PencilLine className="h-3.5 w-3.5" />
-            {saving ? "Salvando..." : "Salvar cadastro"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function DeleteClientDialog({
   open,
@@ -566,11 +302,8 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   const router = useRouter();
   const { toast, showToast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [draft, setDraft] = useState<EditDraft>(() => createEditDraft(snapshot));
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const { client, phones, emails, addresses, healthItems, history, finance, anamnesis, prontuarioEntries } = snapshot;
@@ -581,6 +314,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   const whatsappHref = buildClientWhatsAppHref(whatsappPhone?.number_raw ?? client.phone);
   const scheduleHref = buildNewAppointmentHref(client.id, "/clientes/" + client.id);
   const prontuarioHref = "/clientes/" + client.id + "/prontuario";
+  const editHref = "/clientes/" + client.id + "/editar";
   const publicName = [client.public_first_name, client.public_last_name].filter(Boolean).join(" ") || null;
   const birthDate = client.birth_date ?? client.data_nascimento ?? null;
   const legacyAddress = getLegacyAddress(snapshot);
@@ -601,16 +335,6 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [menuOpen]);
-
-  const handleDraftChange = (field: keyof EditDraft, value: string | boolean) => {
-    setDraft((current) => ({ ...current, [field]: value }));
-  };
-
-  const handleOpenEdit = () => {
-    setDraft(createEditDraft(snapshot));
-    setMenuOpen(false);
-    setEditOpen(true);
-  };
 
   const handleShare = async () => {
     setMenuOpen(false);
@@ -645,62 +369,6 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
       showToast("Telefone principal copiado.", "success");
     } catch {
       showToast("Não foi possível copiar o telefone.", "error");
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    setSavingEdit(true);
-    try {
-      const formData = new FormData();
-      formData.set("clientId", client.id);
-      formData.set("name", draft.name);
-      formData.set("phone", draft.phone);
-      formData.set("email", draft.email);
-      formData.set("birth_date", draft.birthDate);
-      formData.set("cpf", draft.cpf);
-      formData.set("profissao", draft.profissao);
-      formData.set("como_conheceu", draft.comoConheceu);
-      formData.set("public_first_name", draft.publicFirstName);
-      formData.set("public_last_name", draft.publicLastName);
-      formData.set("internal_reference", draft.internalReference);
-      formData.set("preferences_notes", draft.preferencesNotes);
-      formData.set("contraindications", draft.contraindications);
-      formData.set("clinical_history", draft.clinicalHistory);
-      formData.set("observacoes_gerais", draft.observations);
-      formData.set("anamnese_url", draft.anamneseUrl);
-      formData.set("endereco_completo", draft.legacyAddressFull);
-      formData.set("address_cep", draft.addressCep);
-      formData.set("address_logradouro", draft.addressLogradouro);
-      formData.set("address_numero", draft.addressNumero);
-      formData.set("address_complemento", draft.addressComplemento);
-      formData.set("address_bairro", draft.addressBairro);
-      formData.set("address_cidade", draft.addressCidade);
-      formData.set("address_estado", draft.addressEstado);
-      formData.set("guardian_name", draft.guardianName);
-      formData.set("guardian_phone", draft.guardianPhone);
-      formData.set("guardian_cpf", draft.guardianCpf);
-      formData.set("health_tags", draft.healthTags);
-      formData.set("phones_json", JSON.stringify(buildPhonesJson(snapshot, draft.phone)));
-      formData.set("emails_json", JSON.stringify(buildEmailsJson(snapshot, draft.email)));
-
-      if (draft.isVip) formData.set("is_vip", "on");
-      if (draft.needsAttention) formData.set("needs_attention", "on");
-      if (draft.marketingOptIn) formData.set("marketing_opt_in", "on");
-      if (draft.isMinor) formData.set("is_minor", "on");
-
-      const result = await updateClientProfile(formData);
-      if (!result.ok) {
-        showToast(result.error.message ?? "Falha ao salvar o cadastro do cliente.", "error");
-        return;
-      }
-
-      showToast("Cadastro do cliente atualizado.", "success");
-      setEditOpen(false);
-      router.refresh();
-    } catch {
-      showToast("Falha ao salvar o cadastro do cliente.", "error");
-    } finally {
-      setSavingEdit(false);
     }
   };
 
@@ -753,10 +421,14 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
 
                 {menuOpen ? (
                   <div className="absolute right-0 top-12 z-20 w-52 rounded-2xl border border-line bg-white p-2 shadow-float">
-                    <button type="button" onClick={handleOpenEdit} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper">
+                    <Link
+                      href={editHref}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper"
+                    >
                       <PencilLine className="h-4 w-4" />
                       Editar cadastro
-                    </button>
+                    </Link>
                     <button type="button" onClick={handleShare} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper">
                       <Share2 className="h-4 w-4" />
                       Compartilhar perfil
@@ -850,15 +522,27 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
             />
           ))}
 
-          <SectionRow
-            icon={<Mail className="h-4 w-4" />}
-            label="E-mail"
-            value={emails[0]?.email || client.email || "Não informado"}
-            meta={emails.length > 1 ? <span className="text-xs text-muted">{emails.length} emails cadastrados</span> : null}
-          />
+          {emails.length > 0 ? (
+            emails.map((email) => (
+              <SectionRow
+                key={email.id}
+                icon={<Mail className="h-4 w-4" />}
+                label={email.label || (email.is_primary ? "E-mail principal" : "E-mail")}
+                value={email.email}
+                meta={email.is_primary ? <Chip>Principal</Chip> : null}
+              />
+            ))
+          ) : (
+            <SectionRow icon={<Mail className="h-4 w-4" />} label="E-mail" value={client.email || "Não informado"} />
+          )}
           <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nascimento" value={formatBirthDateWithAge(birthDate)} />
           <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF" value={formatCpf(client.cpf)} />
           <SectionRow icon={<Briefcase className="h-4 w-4" />} label="Profissão" value={client.profissao || "Não informada"} />
+          <SectionRow
+            icon={<Share2 className="h-4 w-4" />}
+            label="Aceita novidades"
+            value={client.marketing_opt_in ? "Sim, aceita receber novidades" : "Não configurado / sem aceite"}
+          />
         </SectionCard>
 
         <SectionCard title="Endereços" icon={<MapPin className="h-4 w-4" />}>
@@ -896,6 +580,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         </SectionCard>
 
         <SectionCard title="Origem & indicação" icon={<Sparkles className="h-4 w-4" />}>
+          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nome público" value={publicName || "Não informado"} />
           <SectionRow icon={<Sparkles className="h-4 w-4" />} label="Como conheceu" value={client.como_conheceu || "Não informado"} />
           <SectionRow icon={<UserRound className="h-4 w-4" />} label="Referência interna" value={client.internal_reference || "Não informada"} />
           <SectionRow icon={<Share2 className="h-4 w-4" />} label="Indicações feitas" value={finance.referralsCount + " cliente(s)"} />
@@ -938,6 +623,16 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               )
             }
           />
+          {client.is_minor ? (
+            <>
+              <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="Sim" />
+              <SectionRow icon={<UserRound className="h-4 w-4" />} label="Responsável" value={client.guardian_name || "Não informado"} />
+              <SectionRow icon={<Phone className="h-4 w-4" />} label="Telefone do responsável" value={client.guardian_phone || "Não informado"} />
+              <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF do responsável" value={formatCpf(client.guardian_cpf)} />
+            </>
+          ) : (
+            <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="Não" />
+          )}
         </SectionCard>
 
         <NotesSection clientId={client.id} initialNotes={anamnesis.observations} />
@@ -1029,15 +724,6 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         </SectionCard>
         </div>
       </div>
-
-      <ClientEditDialog
-        open={editOpen}
-        draft={draft}
-        saving={savingEdit}
-        onCloseAction={() => setEditOpen(false)}
-        onChangeAction={handleDraftChange}
-        onSaveAction={handleSaveEdit}
-      />
 
       <DeleteClientDialog
         open={deleteOpen}

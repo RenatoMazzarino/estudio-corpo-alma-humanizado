@@ -5,6 +5,7 @@ import { fail, ok, type ActionResult } from "../../../shared/errors/result";
 import { updateClientSchema } from "../../../shared/validation/clients";
 import { requireDashboardAccessForServerAction } from "../../auth/dashboard-access";
 import {
+  replaceClientAddresses,
   replaceClientEmails,
   replaceClientHealthItems,
   replaceClientPhones,
@@ -14,6 +15,8 @@ import {
   buildAddressLine,
   getInitials,
   parseJson,
+  uploadClientAvatar,
+  type AddressPayload,
   type EmailPayload,
   type HealthItemPayload,
   type PhonePayload,
@@ -63,7 +66,9 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
       : null;
   const phonesJson = formData.get("phones_json");
   const emailsJson = formData.get("emails_json");
+  const addressesJson = formData.get("addresses_json");
   const healthItemsJson = formData.get("health_items_json");
+  const avatarFile = formData.get("avatar");
 
   const parsed = updateClientSchema.safeParse({
     clientId,
@@ -207,6 +212,45 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
     if (mappedEmailError) return fail(mappedEmailError);
   }
 
+  if (addressesJson) {
+    const addresses = parseJson<AddressPayload[]>(addressesJson, []);
+    const normalizedAddresses = addresses.filter((addressEntry) =>
+      [
+        addressEntry.address_cep,
+        addressEntry.address_logradouro,
+        addressEntry.address_numero,
+        addressEntry.address_complemento,
+        addressEntry.address_bairro,
+        addressEntry.address_cidade,
+        addressEntry.address_estado,
+      ].some((value) => (value ?? "").trim().length > 0)
+    );
+
+    const resolvedAddresses = normalizedAddresses.map((addressEntry, index) => ({
+      id: addressEntry.id,
+      tenant_id: tenantId,
+      client_id: parsed.data.clientId,
+      label: addressEntry.label ?? "Principal",
+      is_primary: addressEntry.is_primary ?? index === 0,
+      address_cep: addressEntry.address_cep ?? null,
+      address_logradouro: addressEntry.address_logradouro ?? null,
+      address_numero: addressEntry.address_numero ?? null,
+      address_complemento: addressEntry.address_complemento ?? null,
+      address_bairro: addressEntry.address_bairro ?? null,
+      address_cidade: addressEntry.address_cidade ?? null,
+      address_estado: addressEntry.address_estado ?? null,
+      referencia: addressEntry.referencia ?? null,
+    }));
+
+    const { error: addressError } = await replaceClientAddresses(
+      tenantId,
+      parsed.data.clientId,
+      resolvedAddresses
+    );
+    const mappedAddressError = mapSupabaseError(addressError);
+    if (mappedAddressError) return fail(mappedAddressError);
+  }
+
   if (healthItemsJson) {
     const items = parseJson<HealthItemPayload[]>(healthItemsJson, []);
     const normalizedItems = items
@@ -229,6 +273,20 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
     if (mappedHealthError) return fail(mappedHealthError);
   }
 
+  if (avatarFile instanceof File && avatarFile.size > 0) {
+    try {
+      const avatarUrl = await uploadClientAvatar(parsed.data.clientId, avatarFile);
+      const { error: avatarError } = await updateClient(tenantId, parsed.data.clientId, {
+        avatar_url: avatarUrl,
+      });
+      const mappedAvatarError = mapSupabaseError(avatarError);
+      if (mappedAvatarError) return fail(mappedAvatarError);
+    } catch (error) {
+      return fail(error instanceof AppError ? error : new AppError("Falha ao enviar imagem do cliente", "STORAGE_ERROR", 500, error));
+    }
+  }
+
+  revalidatePath(`/clientes/${parsed.data.clientId}/editar`);
   revalidatePath(`/clientes/${parsed.data.clientId}`);
   return ok({ id: parsed.data.clientId });
 }
