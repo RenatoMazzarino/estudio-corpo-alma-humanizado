@@ -26,6 +26,8 @@ Resumo aplicado neste repo:
 4. Instrucoes globais do agente em `AGENTS.md`
 5. Config de projeto do Codex em `.codex/config.toml`
 6. Overrides locais em `AGENTS.override.md` por area critica
+7. Politica de subagentes fica em `AGENTS.md`; habilitacao tecnica compartilhada
+   fica em `.codex/config.toml`
 
 ## Escopo atual (habilidades instaladas/esperadas)
 
@@ -60,6 +62,7 @@ Atualmente:
 2. `.codex/config.toml` no repo: presente
 3. `apps/web/AGENTS.override.md`: presente
 4. `supabase/functions/AGENTS.override.md`: presente
+5. `multi_agent` habilitado no config do repo: presente
 
 ## Nao instalado (exemplos relevantes)
 
@@ -110,3 +113,5 @@ Esse fluxo nao escreve token no repo e usa o Git Credential Manager local.
    no repo.
 3. Se `Playwright Interactive` estiver habilitado no config (`js_repl = true`),
    reinicie a sessao do Codex para a lista de tools refletir a mudanca.
+4. Trusted project com caminho absoluto local deve ser configurado em
+   `~/.codex/config.toml`; isso nao deve ser versionado neste repo.
