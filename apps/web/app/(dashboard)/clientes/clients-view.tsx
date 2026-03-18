@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -13,7 +13,6 @@ import { FloatingActionMenu } from "../../../components/ui/floating-action-menu"
 import { Toast, useToast } from "../../../components/ui/toast";
 import { importClientsFromContacts } from "../../../src/modules/clients/actions";
 import { ClientListAccordionItem } from "./components/client-list-accordion-item";
-import { ClientsAlphaRail } from "./components/clients-alpha-rail";
 
 interface ClientListItem {
   id: string;
@@ -38,8 +37,6 @@ interface ClientsViewProps {
   query: string;
   filter: string;
 }
-
-const alphabet = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
 
 type ContactAddress = {
   city?: string;
@@ -98,82 +95,17 @@ export function ClientsView({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
-  const [isAlphabetRailVisible, setIsAlphabetRailVisible] = useState(false);
-  const [activeLetter, setActiveLetter] = useState<string | null>(null);
-  const hideAlphabetRailTimeoutRef = useRef<number | null>(null);
   const router = useRouter();
 
-  const grouped = useMemo(() => {
-    return clients.reduce<Record<string, ClientListItem[]>>((acc, client) => {
-      const normalized = client.name?.trim() || "";
-      const letter = normalized.charAt(0).toUpperCase() || "#";
-      if (!acc[letter]) acc[letter] = [];
-      acc[letter].push(client);
-      return acc;
-    }, {});
-  }, [clients]);
+  const grouped = clients.reduce<Record<string, ClientListItem[]>>((acc, client) => {
+    const normalized = client.name?.trim() || "";
+    const letter = normalized.charAt(0).toUpperCase() || "#";
+    if (!acc[letter]) acc[letter] = [];
+    acc[letter].push(client);
+    return acc;
+  }, {});
 
-  const existingLetters = useMemo(
-    () => Object.keys(grouped).sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [grouped]
-  );
-  const existingLettersSet = useMemo(() => new Set(existingLetters), [existingLetters]);
-
-  useEffect(() => {
-    setActiveLetter(existingLetters[0] ?? null);
-  }, [existingLetters]);
-
-  useEffect(() => {
-    const container = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
-    if (!container) return;
-
-    const resolveActiveLetter = () => {
-      let currentLetter = existingLetters[0] ?? null;
-      for (const letter of existingLetters) {
-        const section = document.getElementById(`clients-letter-${letter}`);
-        if (!section) continue;
-        if (container.scrollTop + 84 >= section.offsetTop) {
-          currentLetter = letter;
-        }
-      }
-      return currentLetter;
-    };
-
-    const handleScroll = () => {
-      const top = container.scrollTop;
-      const currentLetter = resolveActiveLetter();
-      if (currentLetter) setActiveLetter(currentLetter);
-
-      if (top <= 18 || existingLetters.length === 0) {
-        setIsAlphabetRailVisible(false);
-        if (hideAlphabetRailTimeoutRef.current) {
-          window.clearTimeout(hideAlphabetRailTimeoutRef.current);
-          hideAlphabetRailTimeoutRef.current = null;
-        }
-        return;
-      }
-
-      setIsAlphabetRailVisible(true);
-      if (hideAlphabetRailTimeoutRef.current) {
-        window.clearTimeout(hideAlphabetRailTimeoutRef.current);
-      }
-      hideAlphabetRailTimeoutRef.current = window.setTimeout(() => {
-        setIsAlphabetRailVisible(false);
-        hideAlphabetRailTimeoutRef.current = null;
-      }, 900);
-    };
-
-    handleScroll();
-    container.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      if (hideAlphabetRailTimeoutRef.current) {
-        window.clearTimeout(hideAlphabetRailTimeoutRef.current);
-        hideAlphabetRailTimeoutRef.current = null;
-      }
-    };
-  }, [existingLetters]);
+  const existingLetters = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   const buildFilterHref = (nextFilter: string) => {
     const params = new URLSearchParams();
@@ -181,19 +113,6 @@ export function ClientsView({
     if (nextFilter !== "all") params.set("filter", nextFilter);
     const qs = params.toString();
     return qs ? `/clientes?${qs}` : "/clientes";
-  };
-
-  const handleLetterClick = (letter: string) => {
-    const container = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
-    const section = document.getElementById(`clients-letter-${letter}`);
-    if (!container || !section) {
-      showToast(`Sem clientes na letra ${letter}`, "info");
-      return;
-    }
-
-    setIsAlphabetRailVisible(true);
-    setActiveLetter(letter);
-    container.scrollTo({ top: Math.max(section.offsetTop - 8, 0), behavior: "smooth" });
   };
 
   const handleImportClients = async () => {
@@ -365,21 +284,9 @@ export function ClientsView({
             className="min-h-42"
           />
         }
-        contentClassName="relative flex-1"
+        contentClassName="flex-1"
       >
-        <div className="relative flex-1 pb-8">
-          <div className="pointer-events-none absolute inset-y-0 right-2 z-20 flex items-center">
-            <div className="pointer-events-auto sticky top-1/2 -translate-y-1/2">
-              <ClientsAlphaRail
-                letters={alphabet}
-                existingLetters={existingLettersSet}
-                activeLetter={activeLetter}
-                visible={isAlphabetRailVisible}
-                onSelectLetterAction={handleLetterClick}
-              />
-            </div>
-          </div>
-
+        <div className="flex-1 pb-8">
           {existingLetters.map((letter) => (
             <section key={letter} id={`clients-letter-${letter}`} className="px-4 pt-4 first:pt-3">
               <div className="sticky top-0 z-10 bg-studio-bg/95 py-2 backdrop-blur">
@@ -388,7 +295,7 @@ export function ClientsView({
                 </h3>
               </div>
 
-              <div className="overflow-hidden rounded-[32px] border border-white bg-white shadow-soft">
+              <div className="rounded-[32px] border border-white bg-white pb-2 pt-1 shadow-soft">
                 {(grouped[letter] ?? []).map((client) => {
                   const lastVisit = lastVisits[client.id];
                   const lastVisitLabel = lastVisit
@@ -401,19 +308,18 @@ export function ClientsView({
                   };
 
                   return (
-                    <div key={client.id} className="border-b border-line last:border-b-0">
-                      <ClientListAccordionItem
-                        client={client}
-                        expanded={expandedClientId === client.id}
-                        lastVisitLabel={lastVisitLabel}
-                        primaryPhoneRaw={quickChannel.primaryPhoneRaw}
-                        whatsappPhoneRaw={quickChannel.whatsappPhoneRaw}
-                        phoneCount={quickChannel.phoneCount}
-                        onToggleAction={() =>
-                          setExpandedClientId((current) => (current === client.id ? null : client.id))
-                        }
-                      />
-                    </div>
+                    <ClientListAccordionItem
+                      key={client.id}
+                      client={client}
+                      expanded={expandedClientId === client.id}
+                      lastVisitLabel={lastVisitLabel}
+                      primaryPhoneRaw={quickChannel.primaryPhoneRaw}
+                      whatsappPhoneRaw={quickChannel.whatsappPhoneRaw}
+                      phoneCount={quickChannel.phoneCount}
+                      onToggleAction={() =>
+                        setExpandedClientId((current) => (current === client.id ? null : client.id))
+                      }
+                    />
                   );
                 })}
               </div>

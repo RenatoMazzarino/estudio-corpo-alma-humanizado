@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { updateClientNotes } from "./actions";
-import { Edit2, Save } from "lucide-react";
+import { Edit2, Save, StickyNote } from "lucide-react";
+
 import { SurfaceCard } from "../../../../components/ui/surface-card";
+import { updateClientNotes } from "./actions";
 
 interface NotesSectionProps {
   clientId: string;
@@ -28,62 +29,68 @@ export function NotesSection({ clientId, initialNotes }: NotesSectionProps) {
   };
 
   return (
-    <SurfaceCard className="relative">
-      <div className="flex justify-between items-center mb-3">
-        <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Cliente</p>
-          <h2 className="text-lg font-serif text-studio-text">Observações internas</h2>
+    <SurfaceCard className="overflow-hidden p-0">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <div className="flex items-center gap-2">
+          <StickyNote className="h-4 w-4 text-studio-green" />
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted">
+            Observações internas
+          </p>
         </div>
         {!isEditing && (
           <button
+            type="button"
             onClick={() => setIsEditing(true)}
-            className="text-xs font-extrabold text-studio-green flex items-center gap-1 hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-extrabold text-studio-green hover:underline"
           >
-            <Edit2 size={12} /> Editar
+            <Edit2 className="h-3.5 w-3.5" />
+            Editar
           </button>
         )}
       </div>
 
-      {isEditing ? (
-        <div className="space-y-3">
-          <textarea
-            className="w-full bg-studio-light border border-line rounded-2xl p-4 text-studio-text text-sm focus:outline-none focus:ring-2 focus:ring-studio-green/20 resize-none transition-all"
-            rows={6}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Escreva aqui observações internas do cliente..."
-            autoFocus
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 text-xs font-extrabold text-muted hover:text-studio-text transition"
-              disabled={isSaving}
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-studio-green text-white text-xs font-extrabold rounded-xl shadow-soft hover:bg-studio-green-dark transition flex items-center gap-2"
-            >
-              {isSaving ? "Salvando..." : (
-                <>
-                  <Save size={14} /> Salvar Alterações
-                </>
-              )}
-            </button>
+      <div className="p-4">
+        {isEditing ? (
+          <div className="space-y-3">
+            <textarea
+              className="min-h-34 w-full rounded-2xl border border-line bg-paper/70 p-4 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20"
+              rows={6}
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Escreva aqui observações internas do cliente..."
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-4 py-2 text-xs font-extrabold text-muted transition hover:text-studio-text"
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-xl bg-studio-green px-4 py-2 text-xs font-extrabold text-white shadow-soft transition hover:bg-studio-green-dark disabled:opacity-60"
+              >
+                <Save className="h-3.5 w-3.5" />
+                {isSaving ? "Salvando..." : "Salvar alterações"}
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div
-          className="w-full bg-studio-light/60 border border-line rounded-2xl p-4 text-muted text-sm whitespace-pre-wrap cursor-pointer hover:bg-studio-light transition"
-          onClick={() => setIsEditing(true)}
-          title="Clique para editar"
-        >
-          {notes || "Nenhuma observação registrada. Clique em editar para adicionar."}
-        </div>
-      )}
+        ) : (
+          <button
+            type="button"
+            className="w-full rounded-2xl border border-line bg-paper/60 p-4 text-left text-sm text-studio-text transition hover:bg-paper"
+            onClick={() => setIsEditing(true)}
+            title="Clique para editar"
+          >
+            {notes || "Nenhuma observação registrada. Toque para adicionar."}
+          </button>
+        )}
+      </div>
     </SurfaceCard>
   );
 }

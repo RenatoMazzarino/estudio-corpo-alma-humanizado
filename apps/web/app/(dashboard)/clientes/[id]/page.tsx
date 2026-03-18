@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { ChevronLeft, FileText } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { ModuleHeader } from "../../../../components/ui/module-header";
 import { ModulePage } from "../../../../components/ui/module-page";
 import { requireDashboardAccessForPage } from "../../../../src/modules/auth/dashboard-access";
 import { getClientDetailSnapshot } from "../../../../src/modules/clients/profile-data";
@@ -22,35 +19,7 @@ export default async function ClientProfilePage(props: PageProps) {
   }
 
   return (
-    <ModulePage
-      header={
-        <ModuleHeader
-          kicker="Clientes"
-          title={snapshot.client.name}
-          subtitle="Perfil completo, histórico financeiro e acesso rápido ao prontuário."
-          rightSlot={
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/clientes/${snapshot.client.id}/prontuario`}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-studio-light text-studio-green transition hover:bg-studio-green hover:text-white"
-                aria-label="Abrir prontuário"
-                title="Abrir prontuário"
-              >
-                <FileText className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/clientes"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-studio-light text-studio-green transition hover:bg-studio-green hover:text-white"
-                aria-label="Voltar para clientes"
-                title="Voltar para clientes"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Link>
-            </div>
-          }
-        />
-      }
-    >
+    <ModulePage header={null} contentClassName="flex-1">
       <ClientProfile snapshot={snapshot} />
     </ModulePage>
   );
