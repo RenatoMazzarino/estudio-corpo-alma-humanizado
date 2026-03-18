@@ -1,18 +1,18 @@
 import Link from "next/link";
-import { ChevronLeft, FileText } from "lucide-react";
+import { ChevronLeft, UserRound } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { ModuleHeader } from "../../../../components/ui/module-header";
-import { ModulePage } from "../../../../components/ui/module-page";
-import { requireDashboardAccessForPage } from "../../../../src/modules/auth/dashboard-access";
-import { getClientDetailSnapshot } from "../../../../src/modules/clients/profile-data";
-import { ClientProfile } from "./client-profile";
+import { ModuleHeader } from "../../../../../components/ui/module-header";
+import { ModulePage } from "../../../../../components/ui/module-page";
+import { requireDashboardAccessForPage } from "../../../../../src/modules/auth/dashboard-access";
+import { getClientDetailSnapshot } from "../../../../../src/modules/clients/profile-data";
+import { ClientProntuarioView } from "../client-prontuario-view";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ClientProfilePage(props: PageProps) {
+export default async function ClientProntuarioPage(props: PageProps) {
   const { tenantId } = await requireDashboardAccessForPage("/clientes");
   const params = await props.params;
   const snapshot = await getClientDetailSnapshot(tenantId, params.id);
@@ -25,18 +25,18 @@ export default async function ClientProfilePage(props: PageProps) {
     <ModulePage
       header={
         <ModuleHeader
-          kicker="Clientes"
+          kicker="Prontuário"
           title={snapshot.client.name}
-          subtitle="Perfil completo, histórico financeiro e acesso rápido ao prontuário."
+          subtitle="Anamnese base e linha do tempo de evoluções de atendimento."
           rightSlot={
             <div className="flex items-center gap-2">
               <Link
-                href={`/clientes/${snapshot.client.id}/prontuario`}
+                href={`/clientes/${snapshot.client.id}`}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-studio-light text-studio-green transition hover:bg-studio-green hover:text-white"
-                aria-label="Abrir prontuário"
-                title="Abrir prontuário"
+                aria-label="Voltar para o perfil do cliente"
+                title="Voltar para o perfil do cliente"
               >
-                <FileText className="h-4 w-4" />
+                <UserRound className="h-4 w-4" />
               </Link>
               <Link
                 href="/clientes"
@@ -51,7 +51,7 @@ export default async function ClientProfilePage(props: PageProps) {
         />
       }
     >
-      <ClientProfile snapshot={snapshot} />
+      <ClientProntuarioView snapshot={snapshot} />
     </ModulePage>
   );
 }

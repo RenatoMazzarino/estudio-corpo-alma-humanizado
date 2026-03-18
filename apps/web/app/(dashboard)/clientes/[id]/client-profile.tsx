@@ -1,396 +1,510 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import type { ReactNode } from "react";
 import Image from "next/image";
-import { CalendarPlus, ChevronLeft, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
-import type { Database } from "../../../../lib/supabase/types";
+import Link from "next/link";
+import {
+  CalendarPlus,
+  CircleDollarSign,
+  ExternalLink,
+  FileText,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
+
 import { Chip } from "../../../../components/ui/chip";
 import { SurfaceCard } from "../../../../components/ui/surface-card";
+import { formatBrazilPhone } from "../../../../src/shared/phone";
+import {
+  buildClientPhoneHref,
+  buildClientWhatsAppHref,
+  buildNewAppointmentHref,
+} from "../../../../src/modules/clients/contact-links";
+import type { ClientDetailSnapshot } from "../../../../src/modules/clients/profile-data";
+import { NotesSection } from "./notes-section";
 
-type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
-type ClientPhoneRow = Database["public"]["Tables"]["client_phones"]["Row"];
-type ClientEmailRow = Database["public"]["Tables"]["client_emails"]["Row"];
-type ClientAddressRow = Database["public"]["Tables"]["client_addresses"]["Row"];
-type ClientHealthItemRow = Database["public"]["Tables"]["client_health_items"]["Row"];
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
-interface ClientProfileProps {
-  client: ClientRow;
-  metrics: {
-    visits: number;
-    absences: number;
-    lastVisitLabel: string;
-  };
-  phones: ClientPhoneRow[];
-  emails: ClientEmailRow[];
-  addresses: ClientAddressRow[];
-  healthItems: ClientHealthItemRow[];
-}
-
-function onlyDigits(value: string) {
-  return value.replace(/\D/g, "");
-}
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
 
 function getInitials(name: string) {
   const parts = name.split(" ").filter(Boolean);
   if (parts.length === 0) return "CA";
-  const first = parts[0] ?? "";
-  const last = parts[parts.length - 1] ?? "";
-  if (parts.length === 1) return first.slice(0, 2).toUpperCase();
-  return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
+  if (parts.length === 1) return parts[0]?.slice(0, 2).toUpperCase() ?? "CA";
+  return `${parts[0]?.[0] ?? ""}${parts[parts.length - 1]?.[0] ?? ""}`.toUpperCase();
 }
 
-function buildAddressLine(payload: {
-  logradouro?: string | null;
-  numero?: string | null;
-  complemento?: string | null;
-  bairro?: string | null;
-  cidade?: string | null;
-  estado?: string | null;
-  cep?: string | null;
+function formatCpf(value: string | null | undefined) {
+  const digits = (value ?? "").replace(/\D/g, "").slice(0, 11);
+  if (digits.length !== 11) return value ?? "-";
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return dateFormatter.format(date);
+}
+
+function buildAddressLine(parts: Array<string | null | undefined>) {
+  const filtered = parts.map((value) => value?.trim()).filter(Boolean);
+  return filtered.length > 0 ? filtered.join(", ") : null;
+}
+
+function getLegacyAddress(snapshot: ClientDetailSnapshot) {
+  const client = snapshot.client;
+  return (
+    buildAddressLine([
+      client.address_logradouro,
+      client.address_numero,
+      client.address_complemento,
+      client.address_bairro,
+      client.address_cidade,
+      client.address_estado,
+      client.address_cep,
+    ]) ?? client.endereco_completo ?? null
+  );
+}
+
+function formatStars(value: number) {
+  return "⭐".repeat(Math.max(1, Math.min(5, value)));
+}
+
+function HealthTone({ type }: { type: string | null }) {
+  if (type === "allergy") return <Chip tone="danger">Alergia</Chip>;
+  if (type === "condition") return <Chip tone="warning">Condição</Chip>;
+  return <Chip>Saúde</Chip>;
+}
+
+function QuickAction({
+  href,
+  label,
+  icon,
+  tone = "default",
+}: {
+  href: string | null;
+  label: string;
+  icon: ReactNode;
+  tone?: "default" | "green";
 }) {
-  const parts = [
-    payload.logradouro,
-    payload.numero,
-    payload.complemento,
-    payload.bairro,
-    payload.cidade,
-    payload.estado,
-    payload.cep,
-  ]
-    .map((value) => (value ? value.trim() : ""))
-    .filter((value) => value.length > 0);
+  const className = `inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border px-3 transition active:scale-95 ${
+    tone === "green"
+      ? "border-studio-green/15 bg-white text-studio-green hover:bg-studio-green hover:text-white"
+      : "border-line bg-white text-studio-text hover:bg-paper"
+  }`;
 
-  return parts.length > 0 ? parts.join(", ") : null;
-}
+  if (!href) {
+    return (
+      <span className={`${className} cursor-not-allowed opacity-40`} aria-label={`${label} indisponível`}>
+        {icon}
+      </span>
+    );
+  }
 
-export function ClientProfile({ client, metrics, phones, emails, addresses, healthItems }: ClientProfileProps) {
-  const [compactHeader, setCompactHeader] = useState(false);
-  const initials = client.initials || getInitials(client.name);
-  const createdAtLabel = client.created_at
-    ? new Date(client.created_at).toLocaleDateString("pt-BR", { month: "short", year: "numeric" })
-    : "";
-
-  const primaryPhone = phones.find((phone) => phone.is_primary) ?? phones[0] ?? null;
-  const whatsappPhone = phones.find((phone) => phone.is_whatsapp) ?? primaryPhone;
-  const primaryAddress = addresses.find((address) => address.is_primary) ?? addresses[0] ?? null;
-
-  const whatsappDigits = whatsappPhone?.number_raw ? onlyDigits(whatsappPhone.number_raw) : "";
-  const phoneDigits = primaryPhone?.number_raw ? onlyDigits(primaryPhone.number_raw) : "";
-  const whatsappLink = whatsappDigits ? `https://wa.me/55${whatsappDigits}` : null;
-  const callLink = phoneDigits ? `tel:+55${phoneDigits}` : null;
-
-  const addressLine = primaryAddress
-    ? buildAddressLine({
-        logradouro: primaryAddress.address_logradouro,
-        numero: primaryAddress.address_numero,
-        complemento: primaryAddress.address_complemento,
-        bairro: primaryAddress.address_bairro,
-        cidade: primaryAddress.address_cidade,
-        estado: primaryAddress.address_estado,
-        cep: primaryAddress.address_cep,
-      })
-    : null;
-  const mapQuery = addressLine ? encodeURIComponent(addressLine) : null;
-  const mapsLink = mapQuery ? `https://maps.google.com/?q=${mapQuery}` : null;
-
-  const allergies = healthItems.filter((item) => item.type === "allergy");
-  const conditions = healthItems.filter((item) => item.type === "condition");
-  const quickTags = [...allergies, ...conditions].slice(0, 3);
-
-  useEffect(() => {
-    const container = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
-    if (!container) return;
-    const handle = () => setCompactHeader(container.scrollTop > 120);
-    handle();
-    container.addEventListener("scroll", handle, { passive: true });
-    return () => container.removeEventListener("scroll", handle);
-  }, []);
+  const external = !href.startsWith("/");
+  if (!external) {
+    return (
+      <Link href={href} className={className} aria-label={label} title={label} prefetch={false}>
+        {icon}
+      </Link>
+    );
+  }
 
   return (
-    <div>
-      <div
-        className={`sticky top-0 z-40 safe-top px-6 pt-4 pb-3 bg-white/95 backdrop-blur border-b border-line transition ${
-          compactHeader ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <Link
-            href="/clientes"
-            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
-            aria-label="Voltar"
-          >
-            <ChevronLeft size={18} />
-          </Link>
-          <div className="min-w-0">
-            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Cliente</p>
-            <p className="text-sm font-extrabold text-studio-text truncate">{client.name}</p>
-          </div>
-        </div>
-      </div>
+    <a href={href} className={className} aria-label={label} title={label} target="_blank" rel="noreferrer">
+      {icon}
+    </a>
+  );
+}
 
-      <section className="relative bg-white rounded-b-[2.5rem] shadow-soft overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-full h-36 bg-linear-to-b from-studio-light to-white"></div>
-          <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-studio-light/60 blur-2xl"></div>
-          <div className="absolute -left-12 top-10 w-52 h-52 rounded-full bg-studio-light/40 blur-2xl"></div>
-        </div>
+function DataField({ label, value }: { label: string; value: ReactNode }) {
+  const hasValue =
+    value !== null && value !== undefined && !(typeof value === "string" && value.trim().length === 0);
 
-        <div className="relative safe-top pt-20 px-6 pb-6 flex flex-col items-center text-center">
-          <div className="relative w-24 h-24 rounded-full bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.08)] mb-3 overflow-hidden">
-            {client.avatar_url ? (
-              <Image
-                src={client.avatar_url}
-                alt={client.name}
-                fill
-                sizes="96px"
-                className="object-cover rounded-full"
-                unoptimized
-              />
-            ) : (
-              <div className="w-full h-full rounded-full bg-studio-green text-white flex items-center justify-center text-3xl font-serif font-bold">
-                {initials}
-              </div>
-            )}
-          </div>
+  return (
+    <div className="rounded-2xl border border-line bg-paper/70 p-3">
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <div className="mt-1 text-sm font-semibold text-studio-text">{hasValue ? value : "-"}</div>
+    </div>
+  );
+}
 
-          <h1 className="text-2xl font-serif font-bold text-studio-text leading-tight">{client.name}</h1>
-          <p className="text-sm text-muted font-semibold mt-1">Cliente desde {createdAtLabel || "-"}</p>
+export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) {
+  const { client, phones, emails, addresses, healthItems, history, finance, anamnesis } = snapshot;
+  const initials = client.initials || getInitials(client.name);
+  const primaryPhone = phones.find((phone) => phone.is_primary) ?? phones[0] ?? null;
+  const whatsappPhone = phones.find((phone) => phone.is_whatsapp) ?? primaryPhone;
+  const callHref = buildClientPhoneHref(primaryPhone?.number_raw ?? client.phone);
+  const whatsappHref = buildClientWhatsAppHref(whatsappPhone?.number_raw ?? client.phone);
+  const scheduleHref = buildNewAppointmentHref(client.id, `/clientes/${client.id}`);
+  const prontuarioHref = `/clientes/${client.id}/prontuario`;
+  const publicName = [client.public_first_name, client.public_last_name].filter(Boolean).join(" ") || "-";
+  const birthDate = client.birth_date ?? client.data_nascimento ?? null;
+  const legacyAddress = getLegacyAddress(snapshot);
+  const paymentMethods = finance.paymentMethods;
+  const recentHistory = history.slice(0, 8);
 
-          <div className="mt-3 flex flex-wrap gap-2 justify-center">
-            {client.is_vip && <Chip tone="success">VIP</Chip>}
-            {client.needs_attention && <Chip tone="danger">Atenção</Chip>}
-            {client.is_minor && <Chip tone="warning">Menor</Chip>}
-            {quickTags.map((item) => (
-              <Chip key={item.id} tone={item.type === "allergy" ? "danger" : "warning"}>
-                {item.label}
-              </Chip>
-            ))}
-          </div>
-
-          <div className="mt-5 flex gap-5">
-            {whatsappLink ? (
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-col items-center gap-1 group"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
-                  <MessageCircle className="w-5 h-5 text-studio-green" />
-                </div>
-                <span className="text-[10px] font-extrabold text-muted">Whats</span>
-              </a>
-            ) : (
-              <div className="flex flex-col items-center gap-1 opacity-40">
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center">
-                  <MessageCircle className="w-5 h-5 text-studio-green" />
-                </div>
-                <span className="text-[10px] font-extrabold text-muted">Whats</span>
-              </div>
-            )}
-
-            {callLink ? (
-              <a
-                href={callLink}
-                className="flex flex-col items-center gap-1 group"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
-                  <Phone className="w-5 h-5 text-studio-text" />
-                </div>
-                <span className="text-[10px] font-extrabold text-muted">Ligar</span>
-              </a>
-            ) : (
-              <div className="flex flex-col items-center gap-1 opacity-40">
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center">
-                  <Phone className="w-5 h-5 text-studio-text" />
-                </div>
-                <span className="text-[10px] font-extrabold text-muted">Ligar</span>
-              </div>
-            )}
-
-            {mapsLink ? (
-              <a href={mapsLink} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1 group">
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center group-active:scale-95 transition">
-                  <MapPin className="w-5 h-5 text-studio-text" />
-                </div>
-                <span className="text-[10px] font-extrabold text-muted">Mapa</span>
-              </a>
-            ) : (
-              <div className="flex flex-col items-center gap-1 opacity-40">
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-line flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-studio-text" />
-                </div>
-                <span className="text-[10px] font-extrabold text-muted">Mapa</span>
-              </div>
-            )}
-
-            <Link href={`/?view=day&date=${new Date().toISOString().slice(0, 10)}`} className="flex flex-col items-center gap-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-studio-green text-white shadow-soft flex items-center justify-center group-active:scale-95 transition">
-                <CalendarPlus className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-extrabold text-muted">Agendar</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 -mt-6 relative z-10">
-        <div className="bg-white rounded-2xl shadow-sm border border-white px-4 py-3 flex justify-around">
-          <div className="text-center">
-            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Visitas</p>
-            <p className="text-lg font-black text-studio-green tabular-nums">{metrics.visits}</p>
-          </div>
-          <div className="w-px bg-line"></div>
-          <div className="text-center">
-            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Faltas</p>
-            <p className="text-lg font-black text-muted tabular-nums">{metrics.absences}</p>
-          </div>
-          <div className="w-px bg-line"></div>
-          <div className="text-center">
-            <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Última</p>
-            <p className="text-lg font-black text-studio-text tabular-nums">{metrics.lastVisitLabel}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 pt-5 pb-4 space-y-5">
-        <div>
-          <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">Contato</h3>
-          <div className="bg-white rounded-3xl border border-white shadow-sm overflow-hidden">
-            <div className="px-5 py-4 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-studio-light flex items-center justify-center text-studio-green">
-                <Phone className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Telefones</p>
-                {phones.length > 0 ? (
-                  <div className="space-y-1">
-                    {phones.map((phone) => (
-                      <p key={phone.id} className="text-sm font-extrabold text-studio-text truncate">
-                        {phone.number_raw}
-                        {phone.is_whatsapp && <span className="ml-2 text-[10px] text-studio-green">Whats</span>}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted">Sem telefone cadastrado.</p>
-                )}
-              </div>
-            </div>
-            <div className="h-px bg-line mx-5"></div>
-            <div className="px-5 py-4 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-paper border border-line flex items-center justify-center text-studio-text">
-                <Mail className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Emails</p>
-                {emails.length > 0 ? (
-                  <div className="space-y-1">
-                    {emails.map((email) => (
-                      <p key={email.id} className="text-sm font-extrabold text-studio-text truncate">
-                        {email.email}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted">Sem email cadastrado.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">Endereços</h3>
-          {addresses.length > 0 ? (
-            <div className="space-y-3">
-              {addresses.map((address) => (
-                <div key={address.id} className="bg-white rounded-3xl border border-white shadow-sm p-5">
-                  <p className="text-[10px] font-extrabold text-muted uppercase tracking-widest">
-                    {address.label || "Endereço"}
-                    {address.is_primary && <span className="ml-2 text-studio-green">Principal</span>}
-                  </p>
-                  <p className="text-sm font-extrabold text-studio-text mt-1">
-                    {buildAddressLine({
-                      logradouro: address.address_logradouro,
-                      numero: address.address_numero,
-                      complemento: address.address_complemento,
-                      bairro: address.address_bairro,
-                      cidade: address.address_cidade,
-                      estado: address.address_estado,
-                      cep: address.address_cep,
-                    }) || "Endereço não informado"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <SurfaceCard className="text-center py-6 text-muted border border-dashed border-line bg-studio-light/40">
-              <p>Nenhum endereço cadastrado.</p>
-            </SurfaceCard>
-          )}
-        </div>
-
-        <div>
-          <h3 className="text-[11px] font-extrabold text-muted uppercase tracking-[0.22em] mb-2 pl-1">Saúde & Preferências</h3>
-          <div className="bg-white rounded-3xl border border-white shadow-sm p-5 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {allergies.map((item) => (
-                <span
-                  key={item.id}
-                  className="px-3 py-1 rounded-xl bg-red-50 text-red-600 text-[11px] font-extrabold border border-red-100"
-                >
-                  {item.label}
-                </span>
-              ))}
-              {conditions.map((item) => (
-                <span
-                  key={item.id}
-                  className="px-3 py-1 rounded-xl bg-orange-50 text-orange-600 text-[11px] font-extrabold border border-orange-100"
-                >
-                  {item.label}
-                </span>
-              ))}
-              {allergies.length === 0 && conditions.length === 0 && (
-                <span className="text-xs text-muted">Sem tags de saúde cadastradas.</span>
+  return (
+    <div className="space-y-5 px-4 pb-10 pt-4">
+      <SurfaceCard className="overflow-hidden border-white bg-white/95 p-0">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-studio-light via-white to-paper px-5 pb-5 pt-5">
+          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-studio-green/10 blur-3xl" />
+          <div className="relative flex items-start gap-4">
+            <div className="relative flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-full bg-studio-green text-xl font-serif font-bold text-white shadow-soft">
+              {client.avatar_url ? (
+                <Image src={client.avatar_url} alt={client.name} fill sizes="72px" className="object-cover" unoptimized />
+              ) : (
+                initials
               )}
             </div>
-
-            {client.contraindications && (
-              <div className="bg-paper rounded-2xl p-4 border border-line">
-                <p className="text-xs text-studio-text font-semibold">Contraindicações</p>
-                <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{client.contraindications}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="truncate text-2xl font-serif text-studio-text">{client.name}</h2>
+                {client.is_vip && <Chip tone="success">VIP</Chip>}
+                {client.needs_attention && <Chip tone="danger">Atenção</Chip>}
+                {client.is_minor && <Chip tone="warning">Menor</Chip>}
               </div>
-            )}
-
-            {client.preferences_notes && (
-              <div className="bg-paper rounded-2xl p-4 border border-line">
-                <p className="text-xs text-studio-text font-semibold">Preferências</p>
-                <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{client.preferences_notes}</p>
+              <p className="mt-1 text-sm font-semibold text-muted">Cliente desde {formatDate(client.created_at)}</p>
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                <QuickAction href={callHref} label="Ligar" icon={<Phone className="h-4 w-4" />} />
+                <QuickAction
+                  href={whatsappHref}
+                  label="Abrir WhatsApp"
+                  icon={<MessageCircle className="h-4 w-4" />}
+                  tone="green"
+                />
+                <QuickAction
+                  href={scheduleHref}
+                  label="Agendar para este cliente"
+                  icon={<CalendarPlus className="h-4 w-4" />}
+                  tone="green"
+                />
+                <QuickAction
+                  href={prontuarioHref}
+                  label="Abrir prontuário"
+                  icon={<FileText className="h-4 w-4" />}
+                />
               </div>
-            )}
+            </div>
+          </div>
 
-            {client.clinical_history && (
-              <div className="bg-paper rounded-2xl p-4 border border-line">
-                <p className="text-xs text-studio-text font-semibold">Histórico clínico</p>
-                <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{client.clinical_history}</p>
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <DataField label="Sessões" value={finance.completedSessionsCount} />
+            <DataField
+              label="Última visita"
+              value={finance.daysSinceLastVisit === null ? "-" : `${finance.daysSinceLastVisit} dia(s)`}
+            />
+            <DataField label="Fidelidade" value={formatStars(finance.fidelityStars)} />
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Identificação</p>
+        <SurfaceCard className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DataField label="Nome público" value={publicName} />
+            <DataField label="Referência interna" value={client.internal_reference || "-"} />
+            <DataField label="CPF" value={formatCpf(client.cpf)} />
+            <DataField label="Nascimento" value={formatDate(birthDate)} />
+            <DataField label="Profissão" value={client.profissao || "-"} />
+            <DataField label="Como conheceu" value={client.como_conheceu || "-"} />
+            <DataField
+              label="Marketing"
+              value={client.marketing_opt_in ? "Aceitou receber comunicações" : "Não autorizado"}
+            />
+            <DataField
+              label="Anamnese anexada"
+              value={
+                anamnesis.anamneseUrl ? (
+                  <a
+                    className="inline-flex items-center gap-1 text-studio-green underline"
+                    href={anamnesis.anamneseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Abrir link <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  "-"
+                )
+              }
+            />
+          </div>
+          {(client.guardian_name || client.guardian_phone || client.guardian_cpf) && (
+            <div className="rounded-3xl border border-line bg-paper/80 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-studio-green" />
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-muted">Responsável legal</p>
               </div>
-            )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <DataField label="Nome" value={client.guardian_name || "-"} />
+                <DataField
+                  label="Telefone"
+                  value={client.guardian_phone ? formatBrazilPhone(client.guardian_phone) : "-"}
+                />
+                <DataField label="CPF" value={formatCpf(client.guardian_cpf)} />
+              </div>
+            </div>
+          )}
+        </SurfaceCard>
+      </section>
 
-            {client.anamnese_url && (
-              <a
-                href={client.anamnese_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex text-xs font-semibold text-studio-green underline"
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Contato</p>
+        <SurfaceCard className="space-y-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Phone className="h-4 w-4 text-studio-green" />
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-muted">Telefones</p>
+            </div>
+            <div className="space-y-2">
+              {phones.length > 0 ? (
+                phones.map((phone) => (
+                  <div key={phone.id} className="rounded-2xl border border-line bg-paper/80 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-studio-text">
+                        {formatBrazilPhone(phone.number_raw)}
+                      </span>
+                      {phone.is_primary && <Chip>Principal</Chip>}
+                      {phone.is_whatsapp && <Chip tone="success">WhatsApp</Chip>}
+                      {phone.label && <Chip>{phone.label}</Chip>}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-line bg-paper/50 p-4 text-sm text-muted">
+                  Nenhum telefone cadastrado.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Mail className="h-4 w-4 text-studio-green" />
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-muted">Emails</p>
+            </div>
+            <div className="space-y-2">
+              {emails.length > 0 ? (
+                emails.map((email) => (
+                  <div key={email.id} className="rounded-2xl border border-line bg-paper/80 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-studio-text">{email.email}</span>
+                      {email.is_primary && <Chip>Principal</Chip>}
+                      {email.label && <Chip>{email.label}</Chip>}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-line bg-paper/50 p-4 text-sm text-muted">
+                  Nenhum email cadastrado.
+                </div>
+              )}
+            </div>
+          </div>
+        </SurfaceCard>
+      </section>
+
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Endereços</p>
+        <SurfaceCard className="space-y-3">
+          {addresses.length > 0 ? (
+            addresses.map((address) => {
+              const addressLine = buildAddressLine([
+                address.address_logradouro,
+                address.address_numero,
+                address.address_complemento,
+                address.address_bairro,
+                address.address_cidade,
+                address.address_estado,
+                address.address_cep,
+              ]);
+              return (
+                <div key={address.id} className="rounded-3xl border border-line bg-paper/75 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-studio-green" />
+                    <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-muted">
+                      {address.label || "Endereço"}
+                    </p>
+                    {address.is_primary && <Chip>Principal</Chip>}
+                  </div>
+                  <p className="text-sm font-semibold text-studio-text">{addressLine || "Endereço não informado"}</p>
+                  {address.referencia && (
+                    <p className="mt-2 text-xs text-muted">Referência: {address.referencia}</p>
+                  )}
+                </div>
+              );
+            })
+          ) : legacyAddress ? (
+            <div className="rounded-3xl border border-line bg-paper/75 p-4">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-muted">Endereço legado</p>
+              <p className="mt-2 text-sm font-semibold text-studio-text">{legacyAddress}</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-line bg-paper/50 p-4 text-sm text-muted">
+              Nenhum endereço cadastrado.
+            </div>
+          )}
+        </SurfaceCard>
+      </section>
+
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Saúde e preferências</p>
+        <SurfaceCard className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {anamnesis.healthTags.map((tag) => (
+              <Chip key={tag}>{tag}</Chip>
+            ))}
+            {healthItems.map((item) => (
+              <span
+                key={item.id}
+                className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold text-studio-text"
               >
-                Ver anamnese anexada
-              </a>
+                <HealthTone type={item.type} />
+                <span>{item.label}</span>
+              </span>
+            ))}
+            {anamnesis.healthTags.length === 0 && healthItems.length === 0 && (
+              <span className="text-sm text-muted">Nenhuma informação estruturada de saúde cadastrada.</span>
             )}
           </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <DataField label="Contraindicações" value={client.contraindications || "-"} />
+            <DataField label="Preferências" value={client.preferences_notes || "-"} />
+            <DataField label="Histórico clínico" value={client.clinical_history || "-"} />
+            <DataField label="Observações gerais" value={client.observacoes_gerais || "-"} />
+            <DataField label="Notas legadas" value={client.notes || "-"} />
+          </div>
+        </SurfaceCard>
+      </section>
+
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Resumo financeiro</p>
+        <SurfaceCard className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DataField label="Total gasto (lifetime)" value={currencyFormatter.format(finance.totalSpentLifetime)} />
+            <DataField label="Ticket médio por sessão" value={currencyFormatter.format(finance.averageTicket)} />
+            <DataField label="Pacotes adquiridos" value={`${finance.packagesAcquired} pacote(s)`} />
+            <DataField label="Descontos concedidos" value={`- ${currencyFormatter.format(finance.discountsGranted)}`} />
+            <DataField label="LTV estimado (12 meses)" value={currencyFormatter.format(finance.estimatedLtv12Months)} />
+            <DataField label="Sessões concluídas" value={finance.completedSessionsCount} />
+          </div>
+
+          <div className="rounded-3xl border border-line bg-paper/75 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <CircleDollarSign className="h-4 w-4 text-studio-green" />
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-muted">Métodos de pagamento</p>
+            </div>
+            {paymentMethods.length > 0 ? (
+              <div className="space-y-3">
+                {paymentMethods.map((method) => (
+                  <div key={method.key} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3 text-sm font-semibold text-studio-text">
+                      <span>{method.label}</span>
+                      <span>{method.percentage}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white">
+                      <div
+                        className="h-2 rounded-full bg-studio-green transition-all"
+                        style={{ width: `${Math.max(method.percentage, method.percentage > 0 ? 12 : 0)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">Nenhum pagamento consolidado ainda.</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DataField
+              label="Intervalo médio entre sessões"
+              value={finance.averageIntervalDays === null ? "-" : `${finance.averageIntervalDays} dias`}
+            />
+            <DataField
+              label="Dias sem aparecer"
+              value={finance.daysSinceLastVisit === null ? "-" : `${finance.daysSinceLastVisit} dias`}
+            />
+            <DataField label="Fidelidade" value={formatStars(finance.fidelityStars)} />
+            <DataField label="Indicações feitas" value={`${finance.referralsCount} cliente(s)`} />
+          </div>
+        </SurfaceCard>
+      </section>
+
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Prontuário</p>
+        <SurfaceCard className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-studio-green" />
+              <p className="text-sm font-extrabold text-studio-text">Prontuário clínico organizado</p>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              {snapshot.prontuarioEntries.length} registro(s) de sessão disponíveis, incluindo anamnese base e evoluções de atendimento.
+            </p>
+          </div>
+          <Link
+            href={prontuarioHref}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-studio-green px-4 py-3 text-sm font-extrabold text-white shadow-soft transition hover:bg-studio-green-dark"
+          >
+            Abrir prontuário
+            <FileText className="h-4 w-4" />
+          </Link>
+        </SurfaceCard>
+      </section>
+
+      <NotesSection clientId={client.id} initialNotes={anamnesis.observations} />
+
+      <section className="space-y-2">
+        <p className="pl-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-muted">Histórico recente</p>
+        <div className="space-y-3">
+          {recentHistory.length > 0 ? (
+            recentHistory.map((appointment) => (
+              <SurfaceCard key={appointment.id} className="space-y-2">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-extrabold text-studio-text">{appointment.service_name}</p>
+                    <p className="text-xs text-muted">
+                      {formatDate(appointment.start_time)} • {appointment.is_home_visit ? "Domicílio" : "Estúdio"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Chip tone={appointment.status === "completed" ? "success" : "dom"}>
+                      {appointment.status === "completed" ? "Concluído" : appointment.status || "Agendado"}
+                    </Chip>
+                    {appointment.payment_status && <Chip>{appointment.payment_status}</Chip>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <DataField label="Código" value={appointment.attendance_code || "-"} />
+                  <DataField
+                    label="Valor previsto"
+                    value={currencyFormatter.format((appointment.price_override ?? appointment.price ?? 0) + (appointment.displacement_fee ?? 0))}
+                  />
+                </div>
+              </SurfaceCard>
+            ))
+          ) : (
+            <SurfaceCard className="border border-dashed border-line bg-paper/50 text-sm text-muted">
+              Nenhum atendimento encontrado para este cliente.
+            </SurfaceCard>
+          )}
         </div>
       </section>
     </div>
   );
 }
+
