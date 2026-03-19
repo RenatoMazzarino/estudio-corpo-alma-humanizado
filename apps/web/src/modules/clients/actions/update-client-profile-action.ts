@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { AppError } from "../../../shared/errors/AppError";
 import { mapSupabaseError } from "../../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../shared/errors/result";
 import { updateClientSchema } from "../../../shared/validation/clients";

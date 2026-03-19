@@ -31,6 +31,17 @@ jobs:
         run: pnpm build
       - name: Install Playwright Chromium
         run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: Load smoke env
+        shell: bash
+        run: |
+          set -a
+          source ./.vercel/env-import/vercel-preview-required.env
+          set +a
+
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}"
+          } >> "$GITHUB_ENV"
       - name: Smoke Tests
         run: pnpm --filter web test:smoke
 
