@@ -49,6 +49,7 @@ export interface AppointmentFormProps {
   clients: AppointmentFormClient[];
   safeDate: string;
   initialAppointment?: InitialAppointment | null;
+  prefilledClient?: AppointmentFormClient | null;
   returnTo?: string;
   signalPercentage: number;
   pointEnabled: boolean;

@@ -2,20 +2,20 @@ import { redirect } from "next/navigation";
 import { AppError } from "../../../shared/errors/AppError";
 import { mapSupabaseError } from "../../../shared/errors/mapSupabaseError";
 import { createClientSchema } from "../../../shared/validation/clients";
-import { createServiceClient } from "../../../../lib/supabase/service";
 import { requireDashboardAccessForServerAction } from "../../auth/dashboard-access";
 import {
   createClient,
   replaceClientEmails,
   replaceClientHealthItems,
+  replaceClientAddresses,
   replaceClientPhones,
   updateClient,
-  upsertClientAddresses,
 } from "../repository";
 import {
   buildAddressLine,
   getInitials,
   parseJson,
+  uploadClientAvatar,
   type AddressPayload,
   type EmailPayload,
   type HealthItemPayload,
@@ -235,7 +235,7 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
   }));
 
   if (resolvedAddresses.length > 0) {
-    const { error: addressError } = await upsertClientAddresses(resolvedAddresses);
+    const { error: addressError } = await replaceClientAddresses(tenantId, clientId, resolvedAddresses);
     const mappedAddressError = mapSupabaseError(addressError);
     if (mappedAddressError) throw mappedAddressError;
   }
@@ -263,20 +263,9 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
   }
 
   if (avatarFile instanceof File && avatarFile.size > 0) {
-    const supabase = createServiceClient();
-    const extension = avatarFile.name.split(".").pop() || "png";
-    const filePath = `clients/${clientId}/${Date.now()}.${extension}`;
-    const { error: uploadError } = await supabase.storage
-      .from("client-avatars")
-      .upload(filePath, avatarFile, { upsert: true });
-
-    if (uploadError) {
-      throw new AppError("Falha ao enviar imagem do cliente", "STORAGE_ERROR", 500, uploadError);
-    }
-
-    const { data: publicUrlData } = supabase.storage.from("client-avatars").getPublicUrl(filePath);
+    const avatarUrl = await uploadClientAvatar(clientId, avatarFile);
     const { error: avatarError } = await updateClient(tenantId, clientId, {
-      avatar_url: publicUrlData.publicUrl,
+      avatar_url: avatarUrl,
     });
     const mappedAvatarError = mapSupabaseError(avatarError);
     if (mappedAvatarError) throw mappedAvatarError;

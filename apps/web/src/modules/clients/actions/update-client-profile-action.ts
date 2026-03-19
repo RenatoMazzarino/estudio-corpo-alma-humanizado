@@ -5,6 +5,8 @@ import { fail, ok, type ActionResult } from "../../../shared/errors/result";
 import { updateClientSchema } from "../../../shared/validation/clients";
 import { requireDashboardAccessForServerAction } from "../../auth/dashboard-access";
 import {
+  listClientAddresses,
+  replaceClientAddresses,
   replaceClientEmails,
   replaceClientHealthItems,
   replaceClientPhones,
@@ -14,6 +16,8 @@ import {
   buildAddressLine,
   getInitials,
   parseJson,
+  uploadClientAvatar,
+  type AddressPayload,
   type EmailPayload,
   type HealthItemPayload,
   type PhonePayload,
@@ -63,7 +67,9 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
       : null;
   const phonesJson = formData.get("phones_json");
   const emailsJson = formData.get("emails_json");
+  const addressesJson = formData.get("addresses_json");
   const healthItemsJson = formData.get("health_items_json");
+  const avatarFile = formData.get("avatar");
 
   const parsed = updateClientSchema.safeParse({
     clientId,
@@ -207,6 +213,73 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
     if (mappedEmailError) return fail(mappedEmailError);
   }
 
+  if (addressesJson) {
+    const addresses = parseJson<AddressPayload[]>(addressesJson, []);
+    const normalizedAddresses = addresses.filter((addressEntry) =>
+      [
+        addressEntry.address_cep,
+        addressEntry.address_logradouro,
+        addressEntry.address_numero,
+        addressEntry.address_complemento,
+        addressEntry.address_bairro,
+        addressEntry.address_cidade,
+        addressEntry.address_estado,
+      ].some((value) => (value ?? "").trim().length > 0)
+    );
+    let resolvedAddresses: Parameters<typeof replaceClientAddresses>[2] = [];
+
+    if (normalizedAddresses.length > 0) {
+      const { data: existingAddresses, error: existingAddressesError } = await listClientAddresses(
+        tenantId,
+        parsed.data.clientId
+      );
+      const mappedExistingAddressesError = mapSupabaseError(existingAddressesError);
+      if (mappedExistingAddressesError) return fail(mappedExistingAddressesError);
+
+      const existingNonPrimaryAddresses = (existingAddresses ?? []).filter((addressEntry) => !addressEntry.is_primary);
+      const submittedPrimaryAddress =
+        normalizedAddresses.find((addressEntry) => addressEntry.is_primary) ?? normalizedAddresses[0];
+      const existingPrimaryAddress = (existingAddresses ?? []).find((addressEntry) => addressEntry.is_primary) ?? null;
+
+      resolvedAddresses = [
+        {
+          id: submittedPrimaryAddress?.id ?? existingPrimaryAddress?.id,
+          tenant_id: tenantId,
+          client_id: parsed.data.clientId,
+          label: submittedPrimaryAddress?.label ?? "Principal",
+          is_primary: true,
+          address_cep: submittedPrimaryAddress?.address_cep ?? null,
+          address_logradouro: submittedPrimaryAddress?.address_logradouro ?? null,
+          address_numero: submittedPrimaryAddress?.address_numero ?? null,
+          address_complemento: submittedPrimaryAddress?.address_complemento ?? null,
+          address_bairro: submittedPrimaryAddress?.address_bairro ?? null,
+          address_cidade: submittedPrimaryAddress?.address_cidade ?? null,
+          address_estado: submittedPrimaryAddress?.address_estado ?? null,
+          referencia: submittedPrimaryAddress?.referencia ?? null,
+        },
+        ...existingNonPrimaryAddresses.map((addressEntry) => ({
+          id: addressEntry.id,
+          tenant_id: tenantId,
+          client_id: parsed.data.clientId,
+          label: addressEntry.label ?? "Outro",
+          is_primary: false,
+          address_cep: addressEntry.address_cep ?? null,
+          address_logradouro: addressEntry.address_logradouro ?? null,
+          address_numero: addressEntry.address_numero ?? null,
+          address_complemento: addressEntry.address_complemento ?? null,
+          address_bairro: addressEntry.address_bairro ?? null,
+          address_cidade: addressEntry.address_cidade ?? null,
+          address_estado: addressEntry.address_estado ?? null,
+          referencia: addressEntry.referencia ?? null,
+        })),
+      ];
+    }
+
+    const { error: addressError } = await replaceClientAddresses(tenantId, parsed.data.clientId, resolvedAddresses);
+    const mappedAddressError = mapSupabaseError(addressError);
+    if (mappedAddressError) return fail(mappedAddressError);
+  }
+
   if (healthItemsJson) {
     const items = parseJson<HealthItemPayload[]>(healthItemsJson, []);
     const normalizedItems = items
@@ -229,6 +302,20 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
     if (mappedHealthError) return fail(mappedHealthError);
   }
 
+  if (avatarFile instanceof File && avatarFile.size > 0) {
+    try {
+      const avatarUrl = await uploadClientAvatar(parsed.data.clientId, avatarFile);
+      const { error: avatarError } = await updateClient(tenantId, parsed.data.clientId, {
+        avatar_url: avatarUrl,
+      });
+      const mappedAvatarError = mapSupabaseError(avatarError);
+      if (mappedAvatarError) return fail(mappedAvatarError);
+    } catch (error) {
+      return fail(error instanceof AppError ? error : new AppError("Falha ao enviar imagem do cliente", "STORAGE_ERROR", 500, error));
+    }
+  }
+
+  revalidatePath(`/clientes/${parsed.data.clientId}/editar`);
   revalidatePath(`/clientes/${parsed.data.clientId}`);
   return ok({ id: parsed.data.clientId });
 }

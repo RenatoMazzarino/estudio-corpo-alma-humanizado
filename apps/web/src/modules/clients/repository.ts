@@ -159,6 +159,18 @@ export async function upsertClientAddresses(addresses: ClientAddressInsert[]) {
   return supabase.from("client_addresses").upsert(addresses, { onConflict: "id" });
 }
 
+export async function replaceClientAddresses(
+  tenantId: string,
+  clientId: string,
+  addresses: ClientAddressInsert[]
+): Promise<{ data: ClientAddressRow[] | null; error: PostgrestError | null }> {
+  const supabase = createServiceClient();
+  await supabase.from("client_addresses").delete().eq("tenant_id", tenantId).eq("client_id", clientId);
+  if (addresses.length === 0) return { data: [], error: null };
+  const { data, error } = await supabase.from("client_addresses").insert(addresses).select("*");
+  return { data, error };
+}
+
 export async function listClientPhones(tenantId: string, clientId: string) {
   const supabase = createServiceClient();
   return supabase

@@ -1,6 +1,7 @@
 import { subDays, isAfter } from "date-fns";
 import { listClients } from "../../../src/modules/clients/repository";
 import { listAppointmentsForClients } from "../../../src/modules/appointments/repository";
+import { listClientQuickChannels } from "../../../src/modules/clients/profile-data";
 import { ClientsView } from "./clients-view";
 import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
@@ -37,7 +38,10 @@ export default async function ClientesPage({
   }
 
   const clientIds = clients.map((client) => client.id);
-  const { data: appointmentsData } = await listAppointmentsForClients(tenantId, clientIds);
+  const [{ data: appointmentsData }, quickChannels] = await Promise.all([
+    listAppointmentsForClients(tenantId, clientIds),
+    listClientQuickChannels(tenantId, clients),
+  ]);
   const lastVisitMap = new Map<string, string>();
 
   (appointmentsData ?? []).forEach((appointment) => {
@@ -51,5 +55,13 @@ export default async function ClientesPage({
     lastVisits[key] = value;
   });
 
-  return <ClientsView clients={clients} lastVisits={lastVisits} query={query} filter={filter} />;
+  return (
+    <ClientsView
+      clients={clients}
+      lastVisits={lastVisits}
+      quickChannels={quickChannels}
+      query={query}
+      filter={filter}
+    />
+  );
 }

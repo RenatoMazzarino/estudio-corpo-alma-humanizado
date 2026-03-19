@@ -1,5 +1,7 @@
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { Buffer } from "buffer";
+import { createServiceClient } from "../../../lib/supabase/service";
+import { AppError } from "../../shared/errors/AppError";
 
 export function buildAddressLine(payload: {
   cep?: string | null;
@@ -73,6 +75,22 @@ export function parsePhotoDataUrl(dataUrl: string) {
   const extension = contentType.split("/")[1] ?? "png";
   const buffer = Buffer.from(base64, "base64");
   return { buffer, contentType, extension };
+}
+
+export async function uploadClientAvatar(clientId: string, avatarFile: File) {
+  const supabase = createServiceClient();
+  const extension = avatarFile.name.split(".").pop() || "png";
+  const filePath = `clients/${clientId}/${Date.now()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from("client-avatars")
+    .upload(filePath, avatarFile, { upsert: true });
+
+  if (uploadError) {
+    throw new AppError("Falha ao enviar imagem do cliente", "STORAGE_ERROR", 500, uploadError);
+  }
+
+  const { data: publicUrlData } = supabase.storage.from("client-avatars").getPublicUrl(filePath);
+  return publicUrlData.publicUrl;
 }
 
 export type PhonePayload = {

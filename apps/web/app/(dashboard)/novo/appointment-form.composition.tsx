@@ -51,6 +51,7 @@ export function AppointmentForm({
   clients,
   safeDate,
   initialAppointment,
+  prefilledClient,
   returnTo,
   signalPercentage,
   pointEnabled,
@@ -59,6 +60,16 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const router = useRouter();
   const isEditing = Boolean(initialAppointment);
+  const resolvedPrefilledClient = !initialAppointment ? prefilledClient ?? null : null;
+  const initialSelectedClientId = initialAppointment?.clientId ?? resolvedPrefilledClient?.id ?? null;
+  const initialClientName = initialAppointment?.clientName ?? resolvedPrefilledClient?.name ?? "";
+  const initialClientPhone =
+    initialAppointment?.clientPhone ?? resolvedPrefilledClient?.phone ?? null;
+  const initialClientEmail = resolvedPrefilledClient?.email?.trim().toLowerCase() ?? "";
+  const initialClientCpf = resolvedPrefilledClient?.cpf ?? "";
+  const initialClientFirstName = resolvedPrefilledClient?.public_first_name ?? "";
+  const initialClientLastName = resolvedPrefilledClient?.public_last_name ?? "";
+  const initialClientReference = resolvedPrefilledClient?.internal_reference ?? "";
   const formRef = useRef<HTMLFormElement | null>(null);
   const clientPhoneInputRef = useRef<HTMLInputElement | null>(null);
   const clientCpfInputRef = useRef<HTMLInputElement | null>(null);
@@ -66,7 +77,7 @@ export function AppointmentForm({
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
   const initialTimeRef = useRef(initialAppointment?.time ?? "");
   const selectedTimeRef = useRef(initialAppointment?.time ?? "");
-  const previousClientIdRef = useRef<string | null>(initialAppointment?.clientId ?? null);
+  const previousClientIdRef = useRef<string | null>(initialSelectedClientId);
 
   const [selectedServiceId, setSelectedServiceId] = useState<string>(initialAppointment?.serviceId ?? "");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
@@ -140,20 +151,20 @@ export function AppointmentForm({
   const [selectedDate, setSelectedDate] = useState<string>(initialAppointment?.date ?? "");
   const [selectedTime, setSelectedTime] = useState<string>(initialAppointment?.time ?? "");
   const [clientRecords, setClientRecords] = useState<ClientRecordLite[]>(clients);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(initialAppointment?.clientId ?? null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(initialSelectedClientId);
   const [clientSelectionMode, setClientSelectionMode] = useState<ClientSelectionMode>(
-    initialAppointment?.clientId ? "existing" : "idle"
+    initialSelectedClientId ? "existing" : "idle"
   );
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
-  const [clientName, setClientName] = useState(initialAppointment?.clientName ?? "");
+  const [clientName, setClientName] = useState(initialClientName);
   const [clientPhone, setClientPhone] = useState(
-    initialAppointment?.clientPhone ? formatBrazilPhone(initialAppointment.clientPhone) : ""
+    initialClientPhone ? formatBrazilPhone(initialClientPhone) : ""
   );
-  const [clientCpf, setClientCpf] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientFirstName, setClientFirstName] = useState("");
-  const [clientLastName, setClientLastName] = useState("");
-  const [clientReference, setClientReference] = useState("");
+  const [clientCpf, setClientCpf] = useState(initialClientCpf ? formatCpf(initialClientCpf) : "");
+  const [clientEmail, setClientEmail] = useState(initialClientEmail);
+  const [clientFirstName, setClientFirstName] = useState(initialClientFirstName);
+  const [clientLastName, setClientLastName] = useState(initialClientLastName);
+  const [clientReference, setClientReference] = useState(initialClientReference);
   const [isClientCreateModalOpen, setIsClientCreateModalOpen] = useState(false);
   const [clientCreateError, setClientCreateError] = useState<string | null>(null);
   const [isClientCreateSaving, setIsClientCreateSaving] = useState(false);

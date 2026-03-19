@@ -53,6 +53,7 @@ export default async function NewAppointment(props: PageProps) {
   const { tenantId } = await requireDashboardAccessForPage("/novo");
   const params = await props.searchParams;
   const appointmentId = typeof params.appointmentId === "string" ? params.appointmentId : null;
+  const clientId = typeof params.clientId === "string" ? params.clientId : null;
 
   // Buscar serviços ativos do Tenant
   const [{ data: services }, { data: clients }, appointmentResult, settingsResult, pixKeysResult] = await Promise.all([
@@ -64,6 +65,8 @@ export default async function NewAppointment(props: PageProps) {
   ]);
 
   const appointment = appointmentResult?.data ?? null;
+  const prefilledClient =
+    !appointment && clientId ? (clients ?? []).find((client) => client.id === clientId) ?? null : null;
   const appointmentDate = appointment ? formatDateInBrazil(new Date(appointment.start_time)) : null;
   const safeDate = appointmentDate ?? getSafeDate(params.date);
   const returnTo =
@@ -126,6 +129,7 @@ export default async function NewAppointment(props: PageProps) {
           clients={clients || []}
           safeDate={safeDate}
           initialAppointment={initialAppointment}
+          prefilledClient={prefilledClient}
           returnTo={returnTo}
           signalPercentage={settings?.signal_percentage ?? 30}
           pointEnabled={settings?.mp_point_enabled ?? false}

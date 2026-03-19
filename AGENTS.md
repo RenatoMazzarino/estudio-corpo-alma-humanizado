@@ -288,3 +288,95 @@ Mudancas devem ser recusadas/adiadas quando:
    - padronizar componentes de loading por contexto
      (pagina/secao/inline/bloqueante);
    - nunca deixar `fallback={null}` em fluxo critico de operacao.
+
+## 24) Politica de subagentes (multi-agent)
+
+1. O repo aceita uso de subagentes quando isso reduzir tempo de execucao sem
+   perder coordenacao tecnica.
+2. Subagentes devem ser usados para trabalho paralelo, delimitado e
+   materialmente util.
+3. O agente principal continua responsavel pelo resultado final, integracao,
+   consistencia arquitetural e comunicacao com o usuario.
+4. Nao usar subagentes como substituto de analise local do caminho critico.
+5. Nao delegar tarefa vaga, aberta demais ou sem fronteira clara de arquivos,
+   modulo ou pergunta.
+
+## 25) Quando usar subagentes
+
+Usar subagentes principalmente quando houver:
+
+1. auditoria paralela de areas independentes do repo;
+2. comparacao entre modulos, branches, logs ou contratos;
+3. implementacoes em frentes separadas com baixo risco de conflito;
+4. uma trilha de verificacao em paralelo a uma implementacao local;
+5. necessidade de levantar contexto em um modulo enquanto o agente principal
+   segue em outra frente.
+
+## 26) Quando NAO usar subagentes
+
+1. Mudanca pequena ou de um unico arquivo.
+2. Bug cujo proximo passo depende imediatamente de um unico resultado local.
+3. Refatoracao delicada com forte acoplamento em um mesmo conjunto de arquivos.
+4. Situacao em que delegar aumentaria ruído, duplicacao de leitura ou conflito
+   de escrita.
+
+## 27) Contrato de delegacao
+
+Sempre que subagentes forem usados:
+
+1. definir objetivo concreto, escopo e entrega esperada;
+2. atribuir ownership claro de arquivos/modulos quando houver edicao;
+3. evitar sobreposicao de escrita entre agentes;
+4. informar que ha outros agentes trabalhando no repo e que nao devem reverter
+   mudancas de terceiros;
+5. reservar para o agente principal a integracao final e a decisao de merge
+   logico das mudancas;
+6. validar localmente o resultado integrado antes de considerar concluido.
+
+## 28) Padrao de uso neste repo
+
+1. Em tarefas grandes, o agente principal deve primeiro identificar o caminho
+   critico e manter localmente o que bloqueia o proximo passo.
+2. Subagentes devem ficar com sidecars paralelos:
+   - levantamento de contexto;
+   - verificacao de risco;
+   - implementacao em area isolada;
+   - revisao de docs/testes.
+3. Em escopos de producao, subagentes nao justificam relaxar validacao,
+   observabilidade, testes ou documentacao.
+4. Se houver conflito entre velocidade de paralelizacao e higiene estrutural,
+   prevalece a higiene estrutural.
+
+## 29) Limites do que fica versionado no repo
+
+1. Regras de uso de subagentes devem ficar versionadas em `AGENTS.md` e docs de
+   governanca.
+2. Habilitacao de feature de projeto pode ficar em `.codex/config.toml` do
+   repo, quando for compartilhavel com a equipe.
+3. Configuracoes pessoais e especificas da maquina NAO devem ser versionadas no
+   repo, por exemplo:
+   - trusted projects com caminho absoluto local;
+   - tokens locais;
+   - auth pessoal do desktop/CLI.
+4. O aviso de trusted project deve ser resolvido no arquivo do usuario
+   `C:\\Users\\renat\\.codex\\config.toml`, nao neste repositorio.
+
+## 30) Evolucao assistida de agentes e subagentes
+
+1. Sempre que o agente identificar oportunidade benefica de evoluir a
+   governanca de agentes/subagentes, deve avisar o usuario explicitamente.
+2. Esse aviso deve cobrir qualquer uma das acoes abaixo:
+   - criacao de arquivo de agente/override;
+   - exclusao de arquivo de agente/override;
+   - alteracao de regra, fluxo, padrao ou checklist;
+   - ajuste em configuracao compartilhada de agente no repo;
+   - reorganizacao de habilidades, politicas ou escopos de subagentes.
+3. O agente nao deve assumir automaticamente esse tipo de mudanca como "detalhe
+   interno irrelevante"; deve propor e pedir confirmacao.
+4. A proposta deve ser objetiva e explicar:
+   - o que vale criar, alterar ou remover;
+   - por que isso melhora o fluxo;
+   - se a mudanca e global ou local;
+   - se algo deve ficar no repo ou apenas no config pessoal do usuario.
+5. Se a mudanca for pequena e de baixo risco, o agente ainda deve avisar o
+   usuario; a diferenca e que a proposta pode ser curta.

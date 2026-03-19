@@ -4,6 +4,9 @@
 [features]
 # Needed by workflows that rely on Playwright Interactive in Codex.
 js_repl = true
+# Multi-agent stays enabled at repo level so delegated execution is available
+# consistently for this project.
+multi_agent = true
 
 [[skills.config]]
 path = ".agents/skills/estudio-repo-context/SKILL.md"
