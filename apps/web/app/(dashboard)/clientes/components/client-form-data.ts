@@ -148,6 +148,7 @@ export function createClientFormInitialDataFromSnapshot(
     .filter((item) => item.type === "allergy")
     .map((item) => item.label)
     .filter(Boolean);
+  const allergySet = new Set(allergyTags.map((tag) => tag.trim().toLowerCase()));
 
   const conditionSet = new Set(
     snapshot.healthItems
@@ -157,9 +158,10 @@ export function createClientFormInitialDataFromSnapshot(
   );
 
   for (const tag of snapshot.client.health_tags ?? []) {
-    if (tag?.trim()) {
-      conditionSet.add(tag.trim());
-    }
+    const normalizedTag = tag?.trim();
+    if (!normalizedTag) continue;
+    if (allergySet.has(normalizedTag.toLowerCase())) continue;
+    conditionSet.add(normalizedTag);
   }
 
   return {

@@ -5,6 +5,7 @@ import { fail, ok, type ActionResult } from "../../../shared/errors/result";
 import { updateClientSchema } from "../../../shared/validation/clients";
 import { requireDashboardAccessForServerAction } from "../../auth/dashboard-access";
 import {
+  listClientAddresses,
   replaceClientAddresses,
   replaceClientEmails,
   replaceClientHealthItems,
@@ -226,29 +227,57 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
       ].some((value) => (value ?? "").trim().length > 0)
     );
 
-    const resolvedAddresses = normalizedAddresses.map((addressEntry, index) => ({
-      id: addressEntry.id,
-      tenant_id: tenantId,
-      client_id: parsed.data.clientId,
-      label: addressEntry.label ?? "Principal",
-      is_primary: addressEntry.is_primary ?? index === 0,
-      address_cep: addressEntry.address_cep ?? null,
-      address_logradouro: addressEntry.address_logradouro ?? null,
-      address_numero: addressEntry.address_numero ?? null,
-      address_complemento: addressEntry.address_complemento ?? null,
-      address_bairro: addressEntry.address_bairro ?? null,
-      address_cidade: addressEntry.address_cidade ?? null,
-      address_estado: addressEntry.address_estado ?? null,
-      referencia: addressEntry.referencia ?? null,
-    }));
+    if (normalizedAddresses.length > 0) {
+      const { data: existingAddresses, error: existingAddressesError } = await listClientAddresses(
+        tenantId,
+        parsed.data.clientId
+      );
+      const mappedExistingAddressesError = mapSupabaseError(existingAddressesError);
+      if (mappedExistingAddressesError) return fail(mappedExistingAddressesError);
 
-    const { error: addressError } = await replaceClientAddresses(
-      tenantId,
-      parsed.data.clientId,
-      resolvedAddresses
-    );
-    const mappedAddressError = mapSupabaseError(addressError);
-    if (mappedAddressError) return fail(mappedAddressError);
+      const existingNonPrimaryAddresses = (existingAddresses ?? []).filter((addressEntry) => !addressEntry.is_primary);
+      const submittedPrimaryAddress =
+        normalizedAddresses.find((addressEntry) => addressEntry.is_primary) ?? normalizedAddresses[0];
+      const existingPrimaryAddress =
+        (existingAddresses ?? []).find((addressEntry) => addressEntry.is_primary) ?? null;
+
+      const resolvedAddresses = [
+        {
+          id: submittedPrimaryAddress?.id ?? existingPrimaryAddress?.id,
+          tenant_id: tenantId,
+          client_id: parsed.data.clientId,
+          label: submittedPrimaryAddress?.label ?? "Principal",
+          is_primary: true,
+          address_cep: submittedPrimaryAddress?.address_cep ?? null,
+          address_logradouro: submittedPrimaryAddress?.address_logradouro ?? null,
+          address_numero: submittedPrimaryAddress?.address_numero ?? null,
+          address_complemento: submittedPrimaryAddress?.address_complemento ?? null,
+          address_bairro: submittedPrimaryAddress?.address_bairro ?? null,
+          address_cidade: submittedPrimaryAddress?.address_cidade ?? null,
+          address_estado: submittedPrimaryAddress?.address_estado ?? null,
+          referencia: submittedPrimaryAddress?.referencia ?? null,
+        },
+        ...existingNonPrimaryAddresses.map((addressEntry) => ({
+          id: addressEntry.id,
+          tenant_id: tenantId,
+          client_id: parsed.data.clientId,
+          label: addressEntry.label ?? "Outro",
+          is_primary: false,
+          address_cep: addressEntry.address_cep ?? null,
+          address_logradouro: addressEntry.address_logradouro ?? null,
+          address_numero: addressEntry.address_numero ?? null,
+          address_complemento: addressEntry.address_complemento ?? null,
+          address_bairro: addressEntry.address_bairro ?? null,
+          address_cidade: addressEntry.address_cidade ?? null,
+          address_estado: addressEntry.address_estado ?? null,
+          referencia: addressEntry.referencia ?? null,
+        })),
+      ];
+
+      const { error: addressError } = await replaceClientAddresses(tenantId, parsed.data.clientId, resolvedAddresses);
+      const mappedAddressError = mapSupabaseError(addressError);
+      if (mappedAddressError) return fail(mappedAddressError);
+    }
   }
 
   if (healthItemsJson) {
