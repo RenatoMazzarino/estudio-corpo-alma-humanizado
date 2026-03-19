@@ -1,4 +1,5 @@
 {
+  "$schema": "../../.vscode/schemas/deno-config-file.v1.json",
   "compilerOptions": {
     "strict": true
   },

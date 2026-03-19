@@ -188,7 +188,7 @@ Campos úteis para fallback financeiro:
 - `created_at`
 - `description`
 
-## 3. Fato: dados derivados que já existem no repo, mas não são campos puros de banco
+## 3. Fato: dados derivados do repo que nao sao campos puros de banco
 
 Mapeados a partir de `apps/web/src/modules/clients/profile-data.ts`:
 

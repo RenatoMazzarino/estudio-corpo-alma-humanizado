@@ -20,7 +20,9 @@ Em conflito entre este documento e o codigo, o codigo vence.
 - Agendamento (criacao, estados e regras principais)
 - Atendimento (fluxo operacional e finalizacao)
 - Pagamentos (checkout, sinal, parcial, total, liberado, estorno)
-- Mensagens (automacao obrigatoria para aviso/lembrete 24h + envio manual para contatos nao-lifecycle)
+- Mensagens
+  (automacao obrigatoria para aviso/lembrete 24h + envio manual para contatos
+  nao-lifecycle)
 - IDs e codigos (UUIDs, provider refs, codigo de atendimento)
 
 ## Identificadores e codigos

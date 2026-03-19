@@ -542,7 +542,9 @@ Integracoes em uso:
 1. Supabase (banco + RPCs)
 2. Google Maps Platform (endereco e taxa de deslocamento)
 3. Mercado Pago Checkout Transparente (Pix/cartao + webhook)
-4. WhatsApp (automacao lifecycle + envio manual operacional via Meta Cloud API, webhook, cron e painel
+4. WhatsApp
+   (automacao lifecycle + envio manual operacional via Meta Cloud API,
+   webhook, cron e painel
    `Mensagens`)
 5. Spotify (OAuth + estado/controle de player no atendimento/configuracoes)
 

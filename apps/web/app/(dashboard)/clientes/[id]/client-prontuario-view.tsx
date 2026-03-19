@@ -32,7 +32,7 @@ export function ClientProntuarioView({ snapshot }: { snapshot: ClientDetailSnaps
 
   return (
     <div className="space-y-5 px-4 pb-10 pt-4">
-      <SurfaceCard className="space-y-3 border-white bg-gradient-to-br from-studio-light via-white to-paper">
+      <SurfaceCard className="space-y-3 border-white bg-linear-to-br from-studio-light via-white to-paper">
         <div className="flex items-center gap-2">
           <Stethoscope className="h-4 w-4 text-studio-green" />
           <p className="text-sm font-extrabold text-studio-text">Prontuário de {client.name}</p>

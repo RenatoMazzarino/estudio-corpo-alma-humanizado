@@ -394,7 +394,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   return (
     <>
       <div className="pb-10">
-        <header className="relative overflow-hidden border-b border-line/80 bg-gradient-to-br from-studio-light via-white to-paper">
+        <header className="relative overflow-hidden border-b border-line/80 bg-linear-to-br from-studio-light via-white to-paper">
           <div className="absolute -right-12 top-0 h-44 w-44 rounded-full bg-studio-green/10 blur-3xl" />
           <div className="absolute left-0 top-0 h-px w-full bg-white/70" />
 

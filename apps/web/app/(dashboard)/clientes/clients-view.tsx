@@ -295,7 +295,7 @@ export function ClientsView({
                 </h3>
               </div>
 
-              <div className="rounded-[32px] border border-white bg-white pb-2 pt-1 shadow-soft">
+              <div className="rounded-4xl border border-white bg-white pb-2 pt-1 shadow-soft">
                 {(grouped[letter] ?? []).map((client) => {
                   const lastVisit = lastVisits[client.id];
                   const lastVisitLabel = lastVisit

@@ -1,10 +1,21 @@
 {
+  "files.associations": {
+    ".vercelignore": "ignore",
+    "**/globals.css": "tailwindcss"
+  },
   "eslint.workingDirectories": [
     {
       "mode": "auto"
     }
   ],
-  "css.lint.unknownAtRules": "ignore",
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "/supabase/functions/deno.json"
+      ],
+      "url": "./.vscode/schemas/deno-config-file.v1.json"
+    }
+  ],
   "sqltools.connections": [
     {
       "ssh": "Disabled",

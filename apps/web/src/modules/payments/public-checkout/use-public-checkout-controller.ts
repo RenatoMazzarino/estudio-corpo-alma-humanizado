@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CardFormInstance, MercadoPagoConstructor } from "../../../../app/(public)/agendar/[slug]/booking-flow.types";
 import type { CardOrderResult, PixOrderResult } from "../mercadopago-orders";
