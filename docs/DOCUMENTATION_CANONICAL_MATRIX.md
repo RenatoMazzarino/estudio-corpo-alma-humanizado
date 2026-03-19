@@ -81,6 +81,9 @@ Classificar o que e:
 - `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md`: canonico.
 - `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`: canonico.
 - `docs/runbooks/TESTES_VALIDACAO_LOCAL_E_CI.md`: canonico.
+- `docs/runbooks/WL5_WL10_ROLLOUT_REMOTE_MAIN_2026-03-19.md`: canonico.
+- `docs/runbooks/WHITE_LABEL_TENANT_ONBOARDING_BACKOFFICE_2026-03-19.md`:
+  canonico.
 
 ### Marca e UI system
 

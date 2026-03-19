@@ -190,7 +190,9 @@ export async function createAppointmentImpl(
     }
 
     try {
-      const estimate = await estimateDisplacementFromAddress(displacementAddress);
+      const estimate = await estimateDisplacementFromAddress(displacementAddress, {
+        tenantId,
+      });
       displacementDistanceKmValue = estimate.distanceKm;
       displacementFeeValue =
         parsed.data.displacementFee !== null && parsed.data.displacementFee !== undefined

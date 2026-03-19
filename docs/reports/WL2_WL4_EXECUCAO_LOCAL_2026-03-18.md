@@ -118,4 +118,3 @@ Isso ainda exige:
 Executar o runbook:
 
 - [WHITE_LABEL_ROLLOUT_REMOTE_MAIN_2026-03-18.md](/c:/Users/renat/Projetos_Dev/estudio-corpo-alma-humanizado/docs/runbooks/WHITE_LABEL_ROLLOUT_REMOTE_MAIN_2026-03-18.md)
-

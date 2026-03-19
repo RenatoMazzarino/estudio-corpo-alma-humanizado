@@ -1,6 +1,8 @@
 import "server-only";
 
 import { calculateDisplacementFee, type DisplacementEstimate } from "./rules";
+import { resolveGoogleMapsTenantConfig } from "../../modules/tenancy/provider-config";
+import { registerProviderUsageEvent } from "../../modules/tenancy/provider-metering";
 
 export interface DisplacementAddressInput {
   logradouro?: string | null;
@@ -31,12 +33,24 @@ export function buildDisplacementDestination(address: DisplacementAddressInput):
   return parts.join(", ");
 }
 
-function getGoogleMapsApiKey() {
+async function getGoogleMapsRuntimeConfig(tenantId?: string | null) {
+  if (tenantId && tenantId.trim()) {
+    const tenantConfig = await resolveGoogleMapsTenantConfig(tenantId.trim());
+    return {
+      apiKey: tenantConfig.apiKey,
+      originAddress: tenantConfig.originAddress,
+    };
+  }
+
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key) {
     throw new Error("GOOGLE_MAPS_API_KEY não configurada.");
   }
-  return key;
+
+  return {
+    apiKey: key,
+    originAddress: process.env.DISPLACEMENT_ORIGIN_ADDRESS?.trim() || DEFAULT_DISPLACEMENT_ORIGIN,
+  };
 }
 
 interface DistanceMatrixResponse {
@@ -146,18 +160,67 @@ async function getDrivingDistanceKmViaDistanceMatrix(
   return Number((element.distance.value / 1000).toFixed(2));
 }
 
-export async function getDrivingDistanceKm(destination: string): Promise<number> {
+async function registerGoogleMapsUsage(params: {
+  tenantId?: string | null;
+  destination: string;
+  source: "routes_api" | "distance_matrix";
+}) {
+  const tenantId = params.tenantId?.trim() ?? "";
+  if (!tenantId) return;
+
+  const idempotencyKey =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? `gmaps:${tenantId}:${crypto.randomUUID()}`
+      : `gmaps:${tenantId}:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+
+  await registerProviderUsageEvent({
+    tenantId,
+    providerKey: "google_maps",
+    usageKey: "distance_calculation",
+    quantity: 1,
+    idempotencyKey,
+    metadata: {
+      source: params.source,
+      destination: params.destination,
+    },
+  }).catch((meteringError) => {
+    const message = meteringError instanceof Error ? meteringError.message : String(meteringError);
+    console.error("[google-maps] falha ao registrar metering", {
+      tenantId,
+      source: params.source,
+      message,
+    });
+  });
+}
+
+export async function getDrivingDistanceKm(
+  destination: string,
+  options?: { tenantId?: string | null }
+): Promise<number> {
   if (!destination || destination.trim().length < 6) {
     throw new Error("Endereço incompleto para calcular deslocamento.");
   }
 
-  const key = getGoogleMapsApiKey();
-  const origin = process.env.DISPLACEMENT_ORIGIN_ADDRESS?.trim() || DEFAULT_DISPLACEMENT_ORIGIN;
+  const runtimeConfig = await getGoogleMapsRuntimeConfig(options?.tenantId ?? null);
+  const key = runtimeConfig.apiKey;
+  const origin = runtimeConfig.originAddress;
   try {
-    return await getDrivingDistanceKmViaRoutesApi(origin, destination, key);
+    const distance = await getDrivingDistanceKmViaRoutesApi(origin, destination, key);
+    await registerGoogleMapsUsage({
+      tenantId: options?.tenantId ?? null,
+      destination,
+      source: "routes_api",
+    });
+    return distance;
   } catch (routesError) {
     try {
-      return await getDrivingDistanceKmViaDistanceMatrix(origin, destination, key);
+      const distance = await getDrivingDistanceKmViaDistanceMatrix(origin, destination, key);
+      await registerGoogleMapsUsage({
+        tenantId: options?.tenantId ?? null,
+        destination,
+        source: "distance_matrix",
+      });
+      return distance;
     } catch {
       if (routesError instanceof Error) {
         throw routesError;
@@ -168,9 +231,10 @@ export async function getDrivingDistanceKm(destination: string): Promise<number>
 }
 
 export async function estimateDisplacementFromAddress(
-  address: DisplacementAddressInput
+  address: DisplacementAddressInput,
+  options?: { tenantId?: string | null }
 ): Promise<DisplacementEstimate> {
   const destination = buildDisplacementDestination(address);
-  const distanceKm = await getDrivingDistanceKm(destination);
+  const distanceKm = await getDrivingDistanceKm(destination, options);
   return calculateDisplacementFee(distanceKm);
 }

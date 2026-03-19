@@ -1,4 +1,5 @@
-import { ONESIGNAL_APP_ID, ONESIGNAL_REST_API_KEY, assertPushServerConfig } from "./push-config";
+import { assertPushServerConfig } from "./push-config";
+import { registerProviderUsageEvent } from "../tenancy/provider-metering";
 
 type OneSignalCreateNotificationResponse = {
   id?: string;
@@ -6,6 +7,7 @@ type OneSignalCreateNotificationResponse = {
 };
 
 export type PushDispatchPayload = {
+  tenantId: string;
   externalIds: string[];
   heading: string;
   message: string;
@@ -14,14 +16,14 @@ export type PushDispatchPayload = {
 };
 
 export async function sendPushViaOneSignal(payload: PushDispatchPayload) {
-  assertPushServerConfig();
+  const config = await assertPushServerConfig(payload.tenantId);
 
   if (payload.externalIds.length === 0) {
     return {
       ok: true as const,
       skipped: true as const,
       providerMessageId: null,
-      providerAppId: ONESIGNAL_APP_ID,
+      providerAppId: config.appId,
       response: null,
     };
   }
@@ -30,10 +32,10 @@ export async function sendPushViaOneSignal(payload: PushDispatchPayload) {
     method: "POST",
     headers: {
       "content-type": "application/json; charset=utf-8",
-      authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
+      authorization: `Key ${config.restApiKey}`,
     },
     body: JSON.stringify({
-      app_id: ONESIGNAL_APP_ID,
+      app_id: config.appId,
       target_channel: "push",
       include_aliases: {
         external_id: payload.externalIds,
@@ -59,11 +61,35 @@ export async function sendPushViaOneSignal(payload: PushDispatchPayload) {
     throw new Error(`OneSignal falhou (${response.status}): ${detail}`);
   }
 
+  const meteringIdempotencyKey =
+    typeof payload.data?.event_id === "string" && payload.data.event_id.trim()
+      ? `onesignal:${payload.tenantId}:${payload.data.event_id.trim()}`
+      : `onesignal:${payload.tenantId}:${payload.externalIds.slice().sort().join(",")}:${payload.heading}:${payload.message}`;
+
+  await registerProviderUsageEvent({
+    tenantId: payload.tenantId,
+    providerKey: "onesignal",
+    usageKey: "push_notification_send",
+    quantity: Math.max(1, payload.externalIds.length || 1),
+    idempotencyKey: meteringIdempotencyKey,
+    metadata: {
+      provider_message_id: json?.id ?? null,
+      external_ids_count: payload.externalIds.length,
+    },
+  }).catch((meteringError) => {
+    const message =
+      meteringError instanceof Error ? meteringError.message : String(meteringError);
+    console.error("[onesignal] falha ao registrar metering", {
+      tenantId: payload.tenantId,
+      message,
+    });
+  });
+
   return {
     ok: true as const,
     skipped: false as const,
     providerMessageId: json?.id ?? null,
-    providerAppId: ONESIGNAL_APP_ID,
+    providerAppId: config.appId,
     response: json,
   };
 }

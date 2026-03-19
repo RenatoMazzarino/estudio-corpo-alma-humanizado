@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDashboardAccessForCurrentUser } from "../../../../src/modules/auth/dashboard-access";
-import { isPushNotificationsEnabled } from "../../../../src/modules/push/push-config";
+import {
+  isPushNotificationsEnabled,
+  isPushTransportConfigured,
+} from "../../../../src/modules/push/push-config";
 import {
   insertPushDeliveryAttempt,
   listActivePushSubscriptionsForUser,
@@ -21,6 +24,14 @@ export async function POST() {
     );
   }
 
+  const transportConfigured = await isPushTransportConfigured(access.data.tenantId);
+  if (!transportConfigured) {
+    return NextResponse.json(
+      { ok: false, error: "OneSignal não está configurado para este tenant." },
+      { status: 423 }
+    );
+  }
+
   const subscriptions = await listActivePushSubscriptionsForUser({
     tenantId: access.data.tenantId,
     externalId: access.data.userId,
@@ -32,7 +43,7 @@ export async function POST() {
         ok: false,
         error:
           "Nenhuma assinatura push ativa para este usuário. Autorize notificações no navegador e recarregue a página.",
-        appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() || null,
+        appId: null,
       },
       { status: 409 }
     );
@@ -42,6 +53,7 @@ export async function POST() {
 
   try {
     const dispatch = await sendPushViaOneSignal({
+      tenantId: access.data.tenantId,
       externalIds: [access.data.userId],
       heading: "Push de teste do Estúdio",
       message: "Se você recebeu isso, a inscrição OneSignal está funcionando.",
@@ -100,7 +112,7 @@ export async function POST() {
       {
         ok: false,
         error: message,
-        appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() || null,
+        appId: null,
       },
       { status: 500 }
     );

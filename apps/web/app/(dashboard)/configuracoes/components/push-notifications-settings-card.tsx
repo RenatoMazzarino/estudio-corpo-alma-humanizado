@@ -12,6 +12,7 @@ type PreferenceItem = {
 
 type PushNotificationsSettingsCardProps = {
   pushConfigured: boolean;
+  pushAppId: string | null;
 };
 
 type OneSignalPushChangeEvent = {
@@ -131,14 +132,15 @@ const eventLabels: Record<(typeof PUSH_EVENT_TYPES)[number], string> = {
   "whatsapp.job.status_changed": "Falha/status da automação WhatsApp",
 };
 
-const ONESIGNAL_APP_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ?? "").trim();
-const ONESIGNAL_APP_ID_SHORT = ONESIGNAL_APP_ID
-  ? `${ONESIGNAL_APP_ID.slice(0, 8)}...${ONESIGNAL_APP_ID.slice(-6)}`
-  : "não configurado";
-
 export function PushNotificationsSettingsCard({
   pushConfigured,
+  pushAppId,
 }: PushNotificationsSettingsCardProps) {
+  const normalizedAppId = (pushAppId ?? "").trim();
+  const appIdShort = normalizedAppId
+    ? `${normalizedAppId.slice(0, 8)}...${normalizedAppId.slice(-6)}`
+    : "não configurado";
+
   const [loading, setLoading] = useState(false);
   const [savingEventType, setSavingEventType] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
@@ -294,7 +296,7 @@ export function PushNotificationsSettingsCard({
       }
 
       setTestStatus(
-        `Push de teste enviado com sucesso (${payload.subscriptions} assinatura(s) ativa(s), app ${payload.appId ?? ONESIGNAL_APP_ID_SHORT}).`
+        `Push de teste enviado com sucesso (${payload.subscriptions} assinatura(s) ativa(s), app ${payload.appId ?? appIdShort}).`
       );
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Falha ao disparar push de teste.";
@@ -302,7 +304,7 @@ export function PushNotificationsSettingsCard({
     } finally {
       setSendingTest(false);
     }
-  }, []);
+  }, [appIdShort]);
 
   const handleForceSubscription = useCallback(async () => {
     if (!pushConfigured) return;
@@ -389,7 +391,7 @@ export function PushNotificationsSettingsCard({
 
       {!pushConfigured ? (
         <p className="text-xs text-muted">
-          Push não está configurado para este ambiente. Configure OneSignal (`NEXT_PUBLIC_ONESIGNAL_APP_ID` + `ONESIGNAL_REST_API_KEY`) para ativar.
+          Push não está configurado para este tenant neste ambiente. Configure o provider `onesignal` no backoffice de tenant para ativar.
         </p>
       ) : null}
 
@@ -435,7 +437,7 @@ export function PushNotificationsSettingsCard({
       {pushConfigured ? (
         <div className="space-y-2 rounded-xl border border-dashed border-line p-3">
           <p className="text-[11px] text-muted">
-            App OneSignal em uso neste ambiente: <strong>{ONESIGNAL_APP_ID_SHORT}</strong>
+            App OneSignal em uso neste ambiente: <strong>{appIdShort}</strong>
           </p>
           <p className="text-xs text-muted">
             Assinaturas ativas neste usuário: <strong>{subscriptions.length}</strong>

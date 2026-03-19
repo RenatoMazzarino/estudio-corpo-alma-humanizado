@@ -273,7 +273,10 @@ export function mapButtonSelectionToAction(selection: string) {
   return null;
 }
 
-export function resolvePublicBaseUrlFromWebhookOrigin(webhookOrigin?: string) {
+export function resolvePublicBaseUrlFromWebhookOrigin(
+  webhookOrigin?: string,
+  fallbackBaseUrl?: string | null
+) {
   if (webhookOrigin) {
     try {
       const parsed = new URL(webhookOrigin);
@@ -284,5 +287,17 @@ export function resolvePublicBaseUrlFromWebhookOrigin(webhookOrigin?: string) {
       // fallback abaixo
     }
   }
+
+  if (fallbackBaseUrl) {
+    try {
+      const parsed = new URL(fallbackBaseUrl);
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        return parsed.origin;
+      }
+    } catch {
+      // fallback abaixo
+    }
+  }
+
   return DEFAULT_PUBLIC_BASE_URL;
 }

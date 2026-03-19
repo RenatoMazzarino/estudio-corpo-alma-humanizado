@@ -5,6 +5,7 @@ import {
   buildMetaPaymentLinkSampleData,
   isMetaTemplateSampleCode,
 } from "../../../src/shared/meta-template-demo";
+import { resolveMercadoPagoPublicKey } from "../../../src/modules/payments/mercadopago-access-token";
 import { getPublicPaymentLinkContext } from "../../../src/modules/payments/public-payment-link";
 import PaymentLinkClient from "./payment-link-client";
 
@@ -33,7 +34,6 @@ function PaymentLinkNotFound() {
 export default async function PagamentoPorLinkPage(props: PageProps) {
   const params = await props.params;
   const publicId = params.id.trim();
-  const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY ?? null;
 
   if (isMetaTemplateSampleCode(publicId)) {
     const sample = buildMetaPaymentLinkSampleData();
@@ -51,7 +51,7 @@ export default async function PagamentoPorLinkPage(props: PageProps) {
         remainingAmountLabel={sample.remainingAmountLabel}
         referenceLabel={sample.referenceLabel}
         receiptHref={`/comprovante/pagamento/${publicId}`}
-        mercadoPagoPublicKey={mercadoPagoPublicKey}
+        mercadoPagoPublicKey={null}
         isSettled={false}
         isSample={true}
       />
@@ -62,6 +62,9 @@ export default async function PagamentoPorLinkPage(props: PageProps) {
   if (!context) {
     return <PaymentLinkNotFound />;
   }
+
+  const publicKeyResult = await resolveMercadoPagoPublicKey(context.tenantId);
+  const mercadoPagoPublicKey = publicKeyResult.ok ? publicKeyResult.data : null;
 
   const startDate = new Date(context.startTime);
   const dateTimeLabel = Number.isNaN(startDate.getTime())

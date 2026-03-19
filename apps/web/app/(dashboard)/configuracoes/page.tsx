@@ -3,6 +3,7 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { getSettings, listBusinessHours, listPixPaymentKeys } from "../../../src/modules/settings/repository";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../../src/shared/config";
+import { resolveOneSignalTenantConfig } from "../../../src/modules/tenancy/provider-config";
 import { SettingsForm } from "./settings-form";
 import { requireDashboardAccessForPage } from "../../../src/modules/auth/dashboard-access";
 
@@ -11,14 +12,17 @@ const PIX_KEY_TYPES = ["cnpj", "cpf", "email", "phone", "evp"] as const;
 export default async function ConfiguracoesPage() {
   noStore();
   const { tenantId } = await requireDashboardAccessForPage("/configuracoes");
-  const pushConfigured = Boolean(
-    process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID?.trim() && process.env.ONESIGNAL_REST_API_KEY?.trim()
-  );
-  const [{ data: businessHoursData }, { data: settingsData }, { data: pixKeysData }] = await Promise.all([
+  const [businessHoursResult, settingsResult, pixKeysResult, pushConfigResult] = await Promise.all([
     listBusinessHours(tenantId),
     getSettings(tenantId),
     listPixPaymentKeys(tenantId),
+    resolveOneSignalTenantConfig(tenantId).catch(() => null),
   ]);
+
+  const businessHoursData = businessHoursResult.data;
+  const settingsData = settingsResult.data;
+  const pixKeysData = pixKeysResult.data;
+  const pushConfigured = Boolean(pushConfigResult?.appId && pushConfigResult?.restApiKey);
 
   const normalized = new Map<number, { open_time: string; close_time: string; is_closed: boolean | null }>();
   (businessHoursData ?? []).forEach((item) => {
@@ -102,6 +106,7 @@ export default async function ConfiguracoesPage() {
         attendanceChecklistEnabled={settingsData?.attendance_checklist_enabled ?? true}
         attendanceChecklistItems={attendanceChecklistItems}
         pushConfigured={pushConfigured}
+        pushAppId={pushConfigResult?.appId ?? null}
       />
     </div>
   );

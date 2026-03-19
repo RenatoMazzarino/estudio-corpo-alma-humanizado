@@ -1,6 +1,7 @@
 import { createServiceClient } from "../../../lib/supabase/service";
 import { AppError } from "../../shared/errors/AppError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
+import { registerProviderUsageEvent } from "../tenancy/provider-metering";
 import {
   getPayloadMessage,
   mapProviderStatusToInternal,
@@ -12,8 +13,36 @@ import { extractOrder, resolveOrderPayment, upsertAppointmentPayment } from "./m
 import { recalculateAppointmentPaymentStatus } from "./mercadopago-orders-financial";
 import type { InternalPaymentStatus, PointCardMode, PointOrderStatusResult } from "./mercadopago-orders.types";
 
-export async function getOrderById(orderId: string): Promise<ActionResult<PointOrderStatusResult>> {
-  const tokenResult = resolveMercadoPagoAccessToken();
+async function registerMercadoPagoStatusUsage(params: {
+  tenantId: string;
+  orderId: string;
+  status: string;
+}) {
+  await registerProviderUsageEvent({
+    tenantId: params.tenantId,
+    providerKey: "mercadopago",
+    usageKey: "orders_get_status",
+    quantity: 1,
+    idempotencyKey: `mp_status:${params.tenantId}:${params.orderId}:${params.status}`,
+    metadata: {
+      order_id: params.orderId,
+      status: params.status,
+    },
+  }).catch((meteringError) => {
+    const message = meteringError instanceof Error ? meteringError.message : String(meteringError);
+    console.error("[mercadopago] falha ao registrar metering de status", {
+      tenantId: params.tenantId,
+      orderId: params.orderId,
+      message,
+    });
+  });
+}
+
+export async function getOrderById(
+  orderId: string,
+  tenantId: string
+): Promise<ActionResult<PointOrderStatusResult>> {
+  const tokenResult = await resolveMercadoPagoAccessToken(tenantId);
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -51,6 +80,12 @@ export async function getOrderById(orderId: string): Promise<ActionResult<PointO
       ? "credit"
       : null;
 
+  await registerMercadoPagoStatusUsage({
+    tenantId,
+    orderId: orderData.orderId,
+    status: orderData.providerStatus,
+  });
+
   return ok({
     id: orderData.paymentId,
     order_id: orderData.orderId,
@@ -73,7 +108,7 @@ export async function getPointOrderStatus({
   tenantId: string;
   expectedAppointmentId?: string;
 }): Promise<ActionResult<PointOrderStatusResult>> {
-  const statusResult = await getOrderById(orderId);
+  const statusResult = await getOrderById(orderId, tenantId);
   if (!statusResult.ok) return statusResult;
 
   const statusData = statusResult.data;
@@ -176,7 +211,7 @@ export async function getAppointmentPaymentStatusByMethod({
         : "";
 
     if (providerOrderId) {
-      const statusResult = await getOrderById(providerOrderId);
+      const statusResult = await getOrderById(providerOrderId, tenantId);
       if (!statusResult.ok) return statusResult;
 
       const statusData = statusResult.data;

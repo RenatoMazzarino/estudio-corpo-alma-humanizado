@@ -1,17 +1,26 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveMercadoPagoAccessToken } from "./mercadopago-access-token";
 
-const originalAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+const providerResolverMock = vi.fn();
 
-afterEach(() => {
-  process.env.MERCADOPAGO_ACCESS_TOKEN = originalAccessToken;
+vi.mock("../tenancy/provider-config", () => ({
+  resolveMercadoPagoTenantConfig: (...args: unknown[]) => providerResolverMock(...args),
+}));
+
+beforeEach(() => {
+  providerResolverMock.mockReset();
 });
 
 describe("resolveMercadoPagoAccessToken", () => {
-  it("retorna erro quando token não está configurado", () => {
-    delete process.env.MERCADOPAGO_ACCESS_TOKEN;
+  it("retorna erro quando token não está configurado", async () => {
+    providerResolverMock.mockResolvedValue({
+      accessToken: "",
+      publicKey: null,
+      webhookSecret: null,
+      config: {},
+    });
 
-    const result = resolveMercadoPagoAccessToken();
+    const result = await resolveMercadoPagoAccessToken("tenant-test");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -19,10 +28,15 @@ describe("resolveMercadoPagoAccessToken", () => {
     }
   });
 
-  it("retorna erro quando token TEST- é usado na Orders API", () => {
-    process.env.MERCADOPAGO_ACCESS_TOKEN = "TEST-123456";
+  it("retorna erro quando token TEST- é usado na Orders API", async () => {
+    providerResolverMock.mockResolvedValue({
+      accessToken: "TEST-123456",
+      publicKey: null,
+      webhookSecret: null,
+      config: {},
+    });
 
-    const result = resolveMercadoPagoAccessToken();
+    const result = await resolveMercadoPagoAccessToken("tenant-test");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -30,14 +44,30 @@ describe("resolveMercadoPagoAccessToken", () => {
     }
   });
 
-  it("retorna token normalizado quando token de produção está válido", () => {
-    process.env.MERCADOPAGO_ACCESS_TOKEN = "  APP_USR-abc123  ";
+  it("retorna token normalizado quando token de produção está válido", async () => {
+    providerResolverMock.mockResolvedValue({
+      accessToken: "  APP_USR-abc123  ",
+      publicKey: null,
+      webhookSecret: null,
+      config: {},
+    });
 
-    const result = resolveMercadoPagoAccessToken();
+    const result = await resolveMercadoPagoAccessToken("tenant-test");
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data).toBe("APP_USR-abc123");
+    }
+  });
+
+  it("retorna erro de config quando resolver do tenant falha", async () => {
+    providerResolverMock.mockRejectedValue(new Error("Provider desabilitado"));
+
+    const result = await resolveMercadoPagoAccessToken("tenant-test");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain("Provider desabilitado");
     }
   });
 });

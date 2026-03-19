@@ -38,6 +38,11 @@ Escopo: rotas do App Router em `apps/web/app/api/**/route.ts`
 
 - `GET /api/search`
 - `GET /api/internal/messages/state`
+- `GET /api/internal/tenancy/overview`
+- `GET /api/internal/tenancy/memberships`
+- `POST /api/internal/tenancy/memberships`
+- `GET /api/internal/tenancy/onboarding`
+- `POST /api/internal/tenancy/onboarding`
 - `GET /api/integrations/spotify/connect`
 - `GET /api/integrations/spotify/callback`
 - `GET /api/integrations/spotify/player/state`
@@ -76,11 +81,24 @@ Observação:
 - `DISPLACEMENT_ORIGIN_ADDRESS` (opcional; usado como origem/fallback em regras
   de deslocamento e também em templates WhatsApp)
 
+Regra canônica atual:
+
+- para operações por tenant, a fonte principal é `tenant_provider_configs`
+  (`provider_key = "google_maps"`).
+- os endpoints retornam `400` quando não conseguem resolver tenant.
+- os endpoints retornam `423` quando o provider do tenant está inconsistente.
+
 ### Mercado Pago
 
 - `MERCADOPAGO_ACCESS_TOKEN`
 - `MERCADOPAGO_WEBHOOK_SECRET`
 - `MERCADOPAGO_PUBLIC_KEY` (usada no checkout/front, não pela rota de webhook)
+
+Regra canônica atual:
+
+- fonte principal por tenant: `tenant_provider_configs` (`provider_key = "mercadopago"`).
+- variáveis globais ficam apenas como fallback controlado quando
+  `credential_mode = "environment_fallback"`.
 
 ### WhatsApp automação / Meta
 
@@ -111,6 +129,12 @@ Observação:
 - `NEXT_PUBLIC_ONESIGNAL_APP_ID`
 - `NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID`
 - `ONESIGNAL_REST_API_KEY`
+
+Regra canônica atual:
+
+- fonte principal por tenant: `tenant_provider_configs` (`provider_key = "onesignal"`).
+- variáveis globais ficam apenas como fallback controlado quando
+  `credential_mode = "environment_fallback"`.
 
 Padrão oficial atual:
 
@@ -193,11 +217,14 @@ Função:
 Query params:
 
 - `q` (mínimo 3 caracteres)
+- `tenantId` (opcional; UUID)
+- `tenantSlug` (opcional)
 
 Respostas:
 
 - `200`: `[]` (query curta) ou array de `{ id, placeId, label }`
-- `500`: API key ausente
+- `400`: tenant não resolvido
+- `423`: provider Google Maps não configurado para o tenant
 - `4xx/5xx`: repassa status do provedor (com payload `[]`)
 
 Observações:
@@ -213,12 +240,15 @@ Função:
 Query params:
 
 - `placeId` (obrigatório)
+- `tenantId` (opcional; UUID)
+- `tenantSlug` (opcional)
 
 Respostas:
 
 - `200`: `{ label, cep, logradouro, numero, bairro, cidade, estado }`
 - `400`: `placeId` inválido/ausente
-- `500`: API key ausente
+- `400`: tenant não resolvido
+- `423`: provider Google Maps não configurado para o tenant
 - `4xx/5xx`: falha do provedor Google
 
 Observações:
@@ -233,7 +263,10 @@ Função:
 
 Payload JSON:
 
-- `{ cep?, logradouro?, numero?, complemento?, bairro?, cidade?, estado? }`
+- `{
+  cep?, logradouro?, numero?, complemento?, bairro?, cidade?, estado?,
+  tenantId?, tenantSlug?
+  }`
 
 Respostas:
 
@@ -242,12 +275,16 @@ Respostas:
 - `200` (fallback seguro):
   - `{ distanceKm, fee, rule, source: "fallback_minimum", warning, details }`
 - `400`:
-  - payload inválido / JSON inválido
+  - payload inválido / JSON inválido / tenant não resolvido
+- `423`:
+  - provider Google Maps inconsistente para o tenant
 
 Observação:
 
 - Em falha do Google, a rota retorna taxa mínima provisória para não interromper
   o fluxo público.
+- Em falha de configuração de provider por tenant, a rota falha com `423`
+  (fail-safe), sem fallback silencioso.
 
 ## 2) Mercado Pago (Orders API + webhook)
 
@@ -282,7 +319,7 @@ Respostas principais:
 - `200` `{ ok: true, skipped: ... }` (ignorado por tipo/id/lookup)
 - `401` assinatura inválida
 - `500` erro de configuração
-  (`MERCADOPAGO_ACCESS_TOKEN`/`MERCADOPAGO_WEBHOOK_SECRET`) ou erro de
+  (`tenant_provider_configs` sem credencial válida) ou erro de
   persistência
 
 Efeitos no banco:
@@ -295,6 +332,9 @@ Observações:
 
 - A rota consulta `v1/orders/{id}` e/ou `v1/payments/{id}` no Mercado Pago para
   hidratar status/metadata reais.
+- Assinatura e tokens são resolvidos por candidatos ativos em
+  `tenant_provider_configs`, com fallback ordenado por `tenant_id` quando
+  possível.
 - O projeto usa **Orders API** como implementação do checkout transparente (não
   usar Checkout Pro).
 
@@ -535,6 +575,71 @@ Regras:
   usuário.
 - Registra tentativa em `push_delivery_attempts` com
   `event_type = "push.test.manual"`.
+
+## 3.2) Governança operacional de tenant (white-label)
+
+### `GET /api/internal/tenancy/overview`
+
+Função:
+
+- Retorna snapshot operacional do tenant atual para operação white-label:
+  runtime, providers, health checks, alertas, memberships, onboarding, auditoria
+  e uso/custo de integrações.
+
+Proteção:
+
+- Sessão dashboard.
+- Permissão `whitelabel:read` por papel.
+
+### `GET /api/internal/tenancy/memberships`
+
+Função:
+
+- Lista memberships do tenant com status derivado (`pending|active|suspended`).
+
+Proteção:
+
+- Sessão dashboard.
+- Permissão `whitelabel:read`.
+
+### `POST /api/internal/tenancy/memberships`
+
+Função:
+
+- Opera governança de memberships por tenant:
+  - `bootstrap_owner`
+  - `update_role`
+  - `update_status`
+
+Proteção:
+
+- Sessão dashboard.
+- Permissão `whitelabel:manage`.
+
+### `GET /api/internal/tenancy/onboarding`
+
+Função:
+
+- Lista histórico de runs/steps do onboarding do tenant.
+
+Proteção:
+
+- Sessão dashboard.
+- Permissão `whitelabel:read`.
+
+### `POST /api/internal/tenancy/onboarding`
+
+Função:
+
+- Executa ações de onboarding:
+  - `start`
+  - `step`
+  - `activate` (ativa tenant após checks de owner + providers)
+
+Proteção:
+
+- Sessão dashboard.
+- Permissão `whitelabel:manage`.
 
 ## 4) Spotify (OAuth + player)
 

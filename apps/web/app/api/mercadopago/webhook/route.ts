@@ -4,6 +4,7 @@ import type { Json } from "../../../../lib/supabase/types";
 import { createEventCorrelationId } from "../../../../src/modules/events/outbox";
 import { safeEmitDomainEventToOutbox } from "../../../../src/modules/events/safe-outbox";
 import { recalculateAppointmentPaymentStatus } from "../../../../src/modules/payments/mercadopago-orders";
+import { listMercadoPagoWebhookCandidates } from "../../../../src/modules/tenancy/provider-config";
 import {
   getPaymentId,
   logWebhookError,
@@ -13,34 +14,13 @@ import {
   resolveNotificationType,
   verifyWebhookSignature,
 } from "./mercadopago-webhook.helpers";
-import { resolveWebhookPaymentData } from "./mercadopago-webhook.provider";
+import {
+  resolveWebhookPaymentData,
+  type ResolvedWebhookPaymentData,
+} from "./mercadopago-webhook.provider";
 
 export async function POST(request: Request) {
-  const accessToken = normalizeMercadoPagoToken(process.env.MERCADOPAGO_ACCESS_TOKEN);
-  const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!accessToken) {
-    return NextResponse.json({ ok: false, error: "Missing Mercado Pago token" }, { status: 500 });
-  }
-  if (!webhookSecret) {
-    return NextResponse.json({ ok: false, error: "Missing Mercado Pago webhook secret" }, { status: 500 });
-  }
-
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const signatureCheck = verifyWebhookSignature(request, webhookSecret, body);
-  if (!signatureCheck.valid) {
-    console.warn("[mercadopago-webhook] invalid signature", {
-      reason: signatureCheck.reason,
-      requestId: request.headers.get("x-request-id") ?? null,
-      path: new URL(request.url).pathname,
-      queryDataId: new URL(request.url).searchParams.get("data.id"),
-      hasSignature: Boolean(request.headers.get("x-signature")),
-    });
-    return NextResponse.json(
-      { ok: false, error: "Invalid webhook signature", reason: signatureCheck.reason },
-      { status: 401 }
-    );
-  }
-
   const notificationType = resolveNotificationType(request, body);
   const resourceId = parseMercadoPagoResourceId(getPaymentId(request, body));
 
@@ -49,13 +29,92 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, skipped: "unsupported_notification_type" });
   }
 
-  const resolved = await resolveWebhookPaymentData({
-    accessToken,
-    notificationType,
-    resourceId,
+  const webhookCandidates = await listMercadoPagoWebhookCandidates();
+
+  const candidateSecrets = Array.from(
+    new Set(
+      webhookCandidates
+        .map((candidate) => (candidate.webhookSecret ?? "").trim())
+        .filter((item) => item.length > 0)
+    )
+  );
+
+  if (candidateSecrets.length === 0) {
+    return NextResponse.json(
+      { ok: false, error: "Missing Mercado Pago webhook secret candidates" },
+      { status: 500 }
+    );
+  }
+
+  const signatureValidated = candidateSecrets.some((secret) => {
+    const check = verifyWebhookSignature(request, secret, body);
+    return check.valid;
   });
-  if (resolved.kind === "skip") {
-    return NextResponse.json({ ok: true, skipped: resolved.reason });
+
+  if (!signatureValidated) {
+    console.warn("[mercadopago-webhook] invalid signature", {
+      reason: "all_candidates_failed",
+      requestId: request.headers.get("x-request-id") ?? null,
+      path: new URL(request.url).pathname,
+      queryDataId: new URL(request.url).searchParams.get("data.id"),
+      hasSignature: Boolean(request.headers.get("x-signature")),
+      candidates: candidateSecrets.length,
+    });
+    return NextResponse.json(
+      { ok: false, error: "Invalid webhook signature", reason: "all_candidates_failed" },
+      { status: 401 }
+    );
+  }
+
+  const supabase = createServiceClient();
+  const tenantHintQuery = await supabase
+    .from("appointment_payments")
+    .select("tenant_id")
+    .or(`provider_ref.eq.${resourceId},provider_order_id.eq.${resourceId}`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const tenantHint = tenantHintQuery.data?.tenant_id ?? null;
+  const hintedCandidate = tenantHint
+    ? webhookCandidates.find((candidate) => candidate.tenantId === tenantHint) ?? null
+    : null;
+
+  const orderedCandidates = [
+    ...(hintedCandidate ? [hintedCandidate] : []),
+    ...webhookCandidates.filter((candidate) => !hintedCandidate || candidate.tenantId !== hintedCandidate.tenantId),
+  ];
+
+  if (!orderedCandidates.length) {
+    return NextResponse.json({ ok: false, error: "Missing Mercado Pago token candidates" }, { status: 500 });
+  }
+
+  let resolved: { data: ResolvedWebhookPaymentData; candidateTenantId: string } | null = null;
+  let lastSkipReason = "payment_lookup_failed";
+
+  for (const candidate of orderedCandidates) {
+    const accessToken = normalizeMercadoPagoToken(candidate.accessToken);
+    if (!accessToken) continue;
+
+    const candidateResult = await resolveWebhookPaymentData({
+      accessToken,
+      notificationType,
+      resourceId,
+    });
+
+    if (candidateResult.kind === "ok") {
+      resolved = {
+        ...candidateResult,
+        candidateTenantId: candidate.tenantId,
+      };
+      break;
+    }
+
+    lastSkipReason = candidateResult.reason;
+  }
+
+  if (!resolved) {
+    return NextResponse.json({ ok: true, skipped: lastSkipReason });
   }
 
   const {
@@ -103,8 +162,6 @@ export async function POST(request: Request) {
           : null
       : null;
 
-  const supabase = createServiceClient();
-
   const { data: existing, error: existingError } = await supabase
     .from("appointment_payments")
     .select(
@@ -137,6 +194,18 @@ export async function POST(request: Request) {
 
   const resolvedTenantId = appointment?.tenant_id ?? existing?.tenant_id ?? null;
   const isNewPaymentRecord = !existing;
+
+  if (
+    resolvedTenantId &&
+    resolved.candidateTenantId !== resolvedTenantId
+  ) {
+    logWebhookError("tenant mismatch between provider credential candidate and payment resolution", {
+      resourceId,
+      resolvedTenantId,
+      candidateTenantId: resolved.candidateTenantId,
+      resolvedProviderRef,
+    });
+  }
 
   if (resolvedAppointmentId && resolvedTenantId) {
     const { error: paymentUpsertError } = await supabase.from("appointment_payments").upsert(

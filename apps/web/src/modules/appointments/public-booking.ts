@@ -196,6 +196,8 @@ export async function submitPublicAppointmentAction(
         bairro: parsed.data.addressBairro,
         cidade: parsed.data.addressCidade,
         estado: parsed.data.addressEstado,
+      }, {
+        tenantId,
       });
       displacementFee = estimate.fee;
       displacementDistanceKm = estimate.distanceKm;

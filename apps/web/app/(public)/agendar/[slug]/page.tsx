@@ -2,6 +2,7 @@ import { BookingFlow } from "./booking-flow";
 import { notFound } from "next/navigation";
 import { getSettings, getTenantBySlug } from "../../../../src/modules/settings/repository";
 import { listPublicServices } from "../../../../src/modules/services/repository";
+import { resolveMercadoPagoPublicKey } from "../../../../src/modules/payments/mercadopago-access-token";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -19,13 +20,14 @@ interface PublicService {
 
 export default async function PublicBookingPage(props: PageProps) {
   const params = await props.params;
-  const mercadoPagoPublicKey = process.env.MERCADOPAGO_PUBLIC_KEY ?? null;
 
   // 1. Validar Tenant pelo Slug
   const { data: tenantBySlug } = await getTenantBySlug(params.slug);
   const tenant = tenantBySlug;
 
   if (!tenant) notFound();
+  const publicKeyResult = await resolveMercadoPagoPublicKey(tenant.id);
+  const mercadoPagoPublicKey = publicKeyResult.ok ? publicKeyResult.data : null;
 
   // 2. Buscar Serviços e Settings do Tenant
   const { data: settings } = await getSettings(tenant.id);

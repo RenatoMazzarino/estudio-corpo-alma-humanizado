@@ -2,6 +2,7 @@ import type { Json } from "../../../lib/supabase/types";
 import { normalizePhoneDigits } from "../../shared/phone";
 import { AppError } from "../../shared/errors/AppError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
+import { registerProviderUsageEvent } from "../tenancy/provider-metering";
 import {
   buildIdempotencyKey,
   defaultPixTtlMs,
@@ -23,6 +24,29 @@ import {
 } from "./mercadopago-orders-core";
 import { recalculateAppointmentPaymentStatus } from "./mercadopago-orders-financial";
 import type { CardOrderResult, PixOrderResult, PointCardMode, PointOrderResult } from "./mercadopago-orders.types";
+
+async function registerMercadoPagoUsageEvent(params: {
+  tenantId: string;
+  usageKey: string;
+  idempotencyKey: string;
+  metadata?: Record<string, unknown>;
+}) {
+  await registerProviderUsageEvent({
+    tenantId: params.tenantId,
+    providerKey: "mercadopago",
+    usageKey: params.usageKey,
+    quantity: 1,
+    idempotencyKey: params.idempotencyKey,
+    metadata: params.metadata ?? {},
+  }).catch((meteringError) => {
+    const message = meteringError instanceof Error ? meteringError.message : String(meteringError);
+    console.error("[mercadopago] falha ao registrar metering", {
+      tenantId: params.tenantId,
+      usageKey: params.usageKey,
+      message,
+    });
+  });
+}
 
 export async function createOnlineCardOrderForAppointment({
   appointmentId,
@@ -52,7 +76,7 @@ export async function createOnlineCardOrderForAppointment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const tokenResult = resolveMercadoPagoAccessToken();
+  const tokenResult = await resolveMercadoPagoAccessToken(tenantId);
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -160,6 +184,18 @@ export async function createOnlineCardOrderForAppointment({
     if (!recalcResult.ok) return recalcResult;
   }
 
+  await registerMercadoPagoUsageEvent({
+    tenantId,
+    usageKey: "orders_create_online_card",
+    idempotencyKey: `mp_usage:${idempotencyKey}`,
+    metadata: {
+      appointment_id: appointmentId,
+      order_id: orderData.orderId,
+      payment_id: orderData.paymentId,
+      status: orderData.providerStatus,
+    },
+  });
+
   return ok({
     id: orderData.paymentId,
     order_id: orderData.orderId,
@@ -190,7 +226,7 @@ export async function createPixOrderForAppointment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const tokenResult = resolveMercadoPagoAccessToken();
+  const tokenResult = await resolveMercadoPagoAccessToken(tenantId);
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -285,6 +321,18 @@ export async function createPixOrderForAppointment({
     if (!recalcResult.ok) return recalcResult;
   }
 
+  await registerMercadoPagoUsageEvent({
+    tenantId,
+    usageKey: "orders_create_pix",
+    idempotencyKey: `mp_usage:${idempotencyKey}`,
+    metadata: {
+      appointment_id: appointmentId,
+      order_id: orderData.orderId,
+      payment_id: orderData.paymentId,
+      status: orderData.providerStatus,
+    },
+  });
+
   const expiresAt =
     orderData.expiresAt ?? new Date(new Date(orderData.createdAt).getTime() + defaultPixTtlMs).toISOString();
 
@@ -320,7 +368,7 @@ export async function createPointOrderForAppointment({
   const contextResult = await ensureValidPaymentContext({ appointmentId, tenantId, amount });
   if (!contextResult.ok) return contextResult;
 
-  const tokenResult = resolveMercadoPagoAccessToken();
+  const tokenResult = await resolveMercadoPagoAccessToken(tenantId);
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -419,6 +467,20 @@ export async function createPointOrderForAppointment({
     const recalcResult = await recalculateAppointmentPaymentStatus({ appointmentId, tenantId });
     if (!recalcResult.ok) return recalcResult;
   }
+
+  await registerMercadoPagoUsageEvent({
+    tenantId,
+    usageKey: "orders_create_point",
+    idempotencyKey: `mp_usage:${idempotencyKey}`,
+    metadata: {
+      appointment_id: appointmentId,
+      order_id: orderData.orderId,
+      payment_id: orderData.paymentId,
+      status: orderData.providerStatus,
+      terminal_id: normalizedTerminalId,
+      card_mode: cardMode,
+    },
+  });
 
   return ok({
     id: orderData.paymentId,

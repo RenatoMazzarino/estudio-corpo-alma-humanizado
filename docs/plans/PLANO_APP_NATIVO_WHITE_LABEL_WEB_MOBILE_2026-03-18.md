@@ -4,7 +4,8 @@ Status: planejamento consolidado
 Data base: 2026-03-18  
 Escopo: produto futuro `app nativo + SaaS web` com base compartilhada  
 Perfil de entrega: producao enterprise  
-Premissa do sponsor: nao usar empacotamento web (`Capacitor`, `WebView app shell` ou equivalente)
+Premissa do sponsor: nao usar empacotamento web
+(`Capacitor`, `WebView app shell` ou equivalente)
 
 ## 0) Objetivo executivo
 
@@ -510,7 +511,7 @@ Validacao:
 
 ## 12) Go/No-Go geral
 
-## Go quando:
+## Go quando
 
 1. banco e stack estiverem fechados
 2. multi-tenant estiver endurecido
@@ -518,7 +519,7 @@ Validacao:
 4. Android nativo operar os fluxos principais
 5. web e mobile compartilharem o mesmo dominio e os mesmos dados
 
-## No-Go quando:
+## No-Go quando
 
 1. houver dependencia estrutural de tenant unico
 2. app nativo depender de gambiarra web

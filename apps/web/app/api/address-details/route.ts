@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { resolveGoogleMapsTenantConfig } from "../../../src/modules/tenancy/provider-config";
+import { resolveTenantIdForRequestContext } from "../../../src/modules/tenancy/request-context";
 
 export const dynamic = "force-dynamic";
 
@@ -60,13 +62,33 @@ function mapStateToUf(state?: string | null) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const placeId = searchParams.get("placeId")?.trim() ?? "";
+  const tenantIdFromQuery = searchParams.get("tenantId")?.trim() ?? "";
+  const tenantSlugFromQuery = searchParams.get("tenantSlug")?.trim() ?? "";
   if (!placeId) {
     return NextResponse.json({ error: "placeId inválido" }, { status: 400 });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "API key ausente" }, { status: 500 });
+  const resolvedTenantId = await resolveTenantIdForRequestContext({
+    request,
+    tenantId: tenantIdFromQuery || null,
+    tenantSlug: tenantSlugFromQuery || null,
+  });
+  if (!resolvedTenantId) {
+    return NextResponse.json(
+      { error: "Não foi possível resolver o tenant para detalhes de endereço." },
+      { status: 400 }
+    );
+  }
+
+  let apiKey: string;
+  try {
+    const tenantConfig = await resolveGoogleMapsTenantConfig(resolvedTenantId);
+    apiKey = tenantConfig.apiKey;
+  } catch {
+    return NextResponse.json(
+      { error: "Google Maps não está configurado para este tenant." },
+      { status: 423 }
+    );
   }
 
   const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {

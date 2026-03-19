@@ -12,6 +12,7 @@ import type {
 } from "../booking-flow.types";
 
 type UsePublicBookingLocationParams = {
+  tenantSlug: string;
   isHomeVisit: boolean;
   setIsHomeVisit: (next: boolean) => void;
   homeVisitAllowed: boolean;
@@ -20,6 +21,7 @@ type UsePublicBookingLocationParams = {
 };
 
 export function usePublicBookingLocation({
+  tenantSlug,
   isHomeVisit,
   setIsHomeVisit,
   homeVisitAllowed,
@@ -125,6 +127,7 @@ export function usePublicBookingLocation({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          tenantSlug,
           cep,
           logradouro,
           numero,
@@ -176,6 +179,7 @@ export function usePublicBookingLocation({
     requiresAddress,
     resetDisplacementState,
     showToast,
+    tenantSlug,
   ]);
 
   useEffect(() => {
@@ -207,9 +211,14 @@ export function usePublicBookingLocation({
       setAddressSearchLoading(true);
       setAddressSearchError(null);
       try {
-        const response = await fetch(`/api/address-search?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/address-search?q=${encodeURIComponent(query)}&tenantSlug=${encodeURIComponent(
+            tenantSlug
+          )}`,
+          {
+            signal: controller.signal,
+          }
+        );
         if (!response.ok) {
           throw new Error("Falha na busca");
         }
@@ -226,7 +235,7 @@ export function usePublicBookingLocation({
     };
     void runSearch();
     return () => controller.abort();
-  }, [addressSearchQuery, isAddressSearchModalOpen, showToast]);
+  }, [addressSearchQuery, isAddressSearchModalOpen, showToast, tenantSlug]);
 
   const closeAddressSearchModal = useCallback(() => {
     setIsAddressSearchModalOpen(false);
@@ -242,7 +251,9 @@ export function usePublicBookingLocation({
       setAddressSearchError(null);
       try {
         const response = await fetch(
-          `/api/address-details?placeId=${encodeURIComponent(result.placeId)}`
+          `/api/address-details?placeId=${encodeURIComponent(
+            result.placeId
+          )}&tenantSlug=${encodeURIComponent(tenantSlug)}`
         );
         if (!response.ok) {
           throw new Error("Falha ao carregar endereço");
@@ -270,7 +281,7 @@ export function usePublicBookingLocation({
         setAddressSearchLoading(false);
       }
     },
-    [closeAddressSearchModal, showToast]
+    [closeAddressSearchModal, showToast, tenantSlug]
   );
 
   const handleSelectStudioLocation = useCallback(() => {

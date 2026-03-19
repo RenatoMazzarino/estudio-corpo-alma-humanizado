@@ -353,6 +353,8 @@ export async function updateInternalAppointmentForTenant(
           bairro: resolvedAddress.address_bairro,
           cidade: resolvedAddress.address_cidade,
           estado: resolvedAddress.address_estado,
+        }, {
+          tenantId,
         });
         displacementDistanceKmValue = estimate.distanceKm;
         displacementFeeValue =

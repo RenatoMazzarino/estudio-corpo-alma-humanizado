@@ -103,8 +103,12 @@ Por que essa tabela foi usada:
 Mensagens de prova:
 
 ```text
-NOTICE:  WL1 isolamento OK -> tenant_a dccf4492-9576-479c-8594-2795bd6b81d7, tenant_b 0d3ba87a-4aff-4e54-b70d-32be9101ecd3, phones_a 1, phones_b 1
-NOTICE:  WL1 bloqueio OK -> insert sem tenant_id falhou como esperado: null value in column "tenant_id" of relation "client_phones" violates not-null constraint
+NOTICE:  WL1 isolamento OK -> tenant_a
+dccf4492-9576-479c-8594-2795bd6b81d7, tenant_b
+0d3ba87a-4aff-4e54-b70d-32be9101ecd3, phones_a 1, phones_b 1
+NOTICE:  WL1 bloqueio OK -> insert sem tenant_id falhou como esperado:
+null value in column "tenant_id" of relation "client_phones" violates
+not-null constraint
 ```
 
 Leitura correta:

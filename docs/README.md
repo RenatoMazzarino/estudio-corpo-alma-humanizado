@@ -22,6 +22,10 @@ Este diretório foi organizado em duas camadas:
   profile-first para automação WhatsApp por ambiente.
 - `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`: runbook para operar Vercel no
   VS Code sem conflito de extensoes.
+- `docs/runbooks/WL5_WL10_ROLLOUT_REMOTE_MAIN_2026-03-19.md`: runbook de
+  rollout remoto das fases white-label WL-5..WL-10.
+- `docs/runbooks/WHITE_LABEL_TENANT_ONBOARDING_BACKOFFICE_2026-03-19.md`:
+  checklist operacional de onboarding de tenant sem SQL manual recorrente.
 - `docs/plans/PLANO_ENTERPRISE_REALTIME_EDGE_PUSH_LOADING_2026-03-10.md`: plano
   enterprise de implementacao para realtime, edge functions, push notifications
   e padronizacao de loading UX.
@@ -48,6 +52,8 @@ Este diretório foi organizado em duas camadas:
   fallbacks (mantidos/removidos).
 - `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md`: execução da
   bateria de validação e atualização documental.
+- `docs/reports/WL5_WL10_EXECUCAO_LOCAL_2026-03-19.md`: evidências técnicas da
+  execução local ponta a ponta WL-5..WL-10.
 
 ## 2) Legado da branch Agenda V1 UI (histórico fechado)
 

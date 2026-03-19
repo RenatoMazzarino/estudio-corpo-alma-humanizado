@@ -43,6 +43,7 @@ interface SettingsFormProps {
   attendanceChecklistEnabled: boolean;
   attendanceChecklistItems: string[];
   pushConfigured: boolean;
+  pushAppId: string | null;
 }
 
 const dayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -68,6 +69,7 @@ export function SettingsForm({
   attendanceChecklistEnabled,
   attendanceChecklistItems,
   pushConfigured,
+  pushAppId,
 }: SettingsFormProps) {
   const { toast, showToast } = useToast();
   const [pointDevices, setPointDevices] = useState<PointDeviceItem[]>([]);
@@ -394,7 +396,7 @@ export function SettingsForm({
           onItemsTextChangeAction={setAttendanceChecklistItemsValue}
         />
 
-        <PushNotificationsSettingsCard pushConfigured={pushConfigured} />
+        <PushNotificationsSettingsCard pushConfigured={pushConfigured} pushAppId={pushAppId} />
 
         <input type="hidden" name="mp_point_terminal_id" value={pointTerminalIdValue} />
         <input type="hidden" name="mp_point_terminal_name" value={pointTerminalNameValue} />

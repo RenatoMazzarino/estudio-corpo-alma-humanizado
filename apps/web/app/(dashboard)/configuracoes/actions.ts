@@ -17,6 +17,7 @@ import {
 import { configurePointDeviceToPdv, listPointDevices } from "../../../src/modules/payments/mercadopago-orders";
 import { disconnectSpotifyIntegration } from "../../../src/modules/integrations/spotify/server";
 import { requireDashboardAccessForServerAction } from "../../../src/modules/auth/dashboard-access";
+import { assertTenantPermission } from "../../../src/modules/auth/tenant-permissions";
 
 const DEFAULT_ATTENDANCE_CHECKLIST = [
   "Separar materiais e itens de higiene",
@@ -119,8 +120,18 @@ async function fetchPixKeysForTenant(tenantId: string) {
   return ok(data ?? []);
 }
 
+async function requireSettingsWriteAccess() {
+  const access = await requireDashboardAccessForServerAction();
+  assertTenantPermission({
+    role: access.role,
+    module: "settings",
+    action: "write",
+  });
+  return access;
+}
+
 export async function saveBusinessHours(formData: FormData): Promise<ActionResult<{ ok: true }>> {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   const payload = [];
 
   for (let day = 0; day <= 6; day++) {
@@ -151,7 +162,7 @@ export async function saveBusinessHours(formData: FormData): Promise<ActionResul
 }
 
 export async function saveSettings(formData: FormData): Promise<ActionResult<{ ok: true }>> {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   const buffer_before_minutes = Number(formData.get("buffer_before_minutes"));
   const buffer_after_minutes = Number(formData.get("buffer_after_minutes"));
   const signal_percentage = Number(formData.get("signal_percentage"));
@@ -263,7 +274,7 @@ export async function saveSettings(formData: FormData): Promise<ActionResult<{ o
 }
 
 export async function disconnectSpotify(): Promise<ActionResult<{ ok: true }>> {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   const result = await disconnectSpotifyIntegration(tenantId);
   if (!result.ok) return fail(result.error);
 
@@ -275,8 +286,8 @@ export async function disconnectSpotify(): Promise<ActionResult<{ ok: true }>> {
 export async function fetchPointDevices(): Promise<ActionResult<{
   devices: Array<{ id: string; name: string; model: string | null; external_id: string | null; status: string | null }>;
 }>> {
-  await requireDashboardAccessForServerAction();
-  const result = await listPointDevices();
+  const { tenantId } = await requireSettingsWriteAccess();
+  const result = await listPointDevices({ tenantId });
   if (!result.ok) return fail(result.error);
   return ok({ devices: result.data });
 }
@@ -287,14 +298,14 @@ export async function configurePointTerminal(payload: {
   terminalName?: string | null;
   terminalModel?: string | null;
 }): Promise<ActionResult<{ ok: true }>> {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   const terminalId = payload.terminalId?.trim();
   const externalId = payload.externalId?.trim();
   if (!terminalId || !externalId) {
     return fail(new AppError("Terminal e identificador externo são obrigatórios.", "VALIDATION_ERROR", 400));
   }
 
-  const configureResult = await configurePointDeviceToPdv({ terminalId, externalId });
+  const configureResult = await configurePointDeviceToPdv({ tenantId, terminalId, externalId });
   if (!configureResult.ok) return fail(configureResult.error);
 
   const { error } = await updateSettings(tenantId, {
@@ -328,7 +339,7 @@ export async function addPixKey(payload: {
     }>;
   }>
 > {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   if (!PIX_KEY_TYPES.includes(payload.keyType)) {
     return fail(new AppError("Tipo de chave Pix inválido.", "VALIDATION_ERROR", 400));
   }
@@ -391,7 +402,7 @@ export async function activatePixKey(payload: {
     }>;
   }>
 > {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   const keyId = payload.keyId?.trim();
   if (!keyId) {
     return fail(new AppError("Selecione uma chave Pix válida.", "VALIDATION_ERROR", 400));
@@ -425,7 +436,7 @@ export async function removePixKey(payload: {
     }>;
   }>
 > {
-  const { tenantId } = await requireDashboardAccessForServerAction();
+  const { tenantId } = await requireSettingsWriteAccess();
   const keyId = payload.keyId?.trim();
   if (!keyId) {
     return fail(new AppError("Chave Pix inválida para remoção.", "VALIDATION_ERROR", 400));

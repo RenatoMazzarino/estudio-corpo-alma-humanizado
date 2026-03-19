@@ -1,5 +1,6 @@
 import { AppError } from "../../shared/errors/AppError";
 import { fail, ok, type ActionResult } from "../../shared/errors/result";
+import { registerProviderUsageEvent } from "../tenancy/provider-metering";
 import { getPayloadMessage, parseApiPayload } from "./mercadopago-orders.helpers";
 import { resolveMercadoPagoAccessToken } from "./mercadopago-access-token";
 
@@ -24,14 +25,39 @@ function resolveDeviceArray(payload: Record<string, unknown> | null) {
   return [];
 }
 
+async function registerMercadoPagoPointUsage(params: {
+  tenantId: string;
+  usageKey: string;
+  idempotencyKey: string;
+  metadata?: Record<string, unknown>;
+}) {
+  await registerProviderUsageEvent({
+    tenantId: params.tenantId,
+    providerKey: "mercadopago",
+    usageKey: params.usageKey,
+    quantity: 1,
+    idempotencyKey: params.idempotencyKey,
+    metadata: params.metadata ?? {},
+  }).catch((meteringError) => {
+    const message = meteringError instanceof Error ? meteringError.message : String(meteringError);
+    console.error("[mercadopago] falha ao registrar metering point", {
+      tenantId: params.tenantId,
+      usageKey: params.usageKey,
+      message,
+    });
+  });
+}
+
 export async function listPointDevices({
+  tenantId,
   offset = 0,
   limit = 50,
 }: {
+  tenantId: string;
   offset?: number;
   limit?: number;
-} = {}): Promise<ActionResult<PointDevice[]>> {
-  const tokenResult = resolveMercadoPagoAccessToken();
+}): Promise<ActionResult<PointDevice[]>> {
+  const tokenResult = await resolveMercadoPagoAccessToken(tenantId);
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -91,17 +117,30 @@ export async function listPointDevices({
     })
     .filter((item): item is PointDevice => Boolean(item));
 
+  await registerMercadoPagoPointUsage({
+    tenantId,
+    usageKey: "point_list_devices",
+    idempotencyKey: `mp_point_list:${tenantId}:${offset}:${limit}`,
+    metadata: {
+      devices_count: devices.length,
+      offset,
+      limit,
+    },
+  });
+
   return ok(devices);
 }
 
 export async function configurePointDeviceToPdv({
+  tenantId,
   terminalId,
   externalId,
 }: {
+  tenantId: string;
   terminalId: string;
   externalId: string;
 }): Promise<ActionResult<{ terminalId: string; externalId: string }>> {
-  const tokenResult = resolveMercadoPagoAccessToken();
+  const tokenResult = await resolveMercadoPagoAccessToken(tenantId);
   if (!tokenResult.ok) return tokenResult;
   const accessToken = tokenResult.data;
 
@@ -134,6 +173,16 @@ export async function configurePointDeviceToPdv({
     const message = getPayloadMessage(payload, "Não foi possível configurar a maquininha Point.");
     return fail(new AppError(message, "SUPABASE_ERROR", response.status, payload));
   }
+
+  await registerMercadoPagoPointUsage({
+    tenantId,
+    usageKey: "point_configure_device",
+    idempotencyKey: `mp_point_cfg:${tenantId}:${terminal}:${external}`,
+    metadata: {
+      terminal_id: terminal,
+      external_id: external,
+    },
+  });
 
   return ok({ terminalId: terminal, externalId: external });
 }

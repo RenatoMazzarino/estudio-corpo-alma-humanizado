@@ -2,6 +2,7 @@ import { createServiceClient } from "../../../lib/supabase/service";
 import type { Json } from "../../../lib/supabase/types";
 import { buildAppointmentVoucherPath } from "../../shared/public-links";
 import { resolveClientNames } from "../clients/name-profile";
+import { getTenantRuntimeConfigById } from "../tenancy/runtime";
 import {
   asJsonObject,
   formatAppointmentDateForTemplate,
@@ -81,6 +82,8 @@ interface AppointmentTemplateContext {
   clientId: string | null;
   customerWhatsAppRecipient: string | null;
   clientName: string;
+  studioDisplayName: string;
+  publicBaseUrl: string;
   serviceName: string;
   dateLabel: string;
   timeLabel: string;
@@ -100,8 +103,8 @@ interface AppointmentTemplateContext {
 
 const APPOINTMENT_NOTICE_HEADER_IMAGE_PATH = "/assets/whatsapp/aviso-agendamento-header.jpg";
 
-function resolveAppointmentNoticeHeaderImageUrl() {
-  const base = resolvePublicBaseUrlFromWebhookOrigin();
+function resolveAppointmentNoticeHeaderImageUrl(publicBaseUrl?: string | null) {
+  const base = resolvePublicBaseUrlFromWebhookOrigin(undefined, publicBaseUrl);
   return new URL(APPOINTMENT_NOTICE_HEADER_IMAGE_PATH, `${base}/`).toString();
 }
 
@@ -263,11 +266,24 @@ async function loadAppointmentTemplateContext(
     typeof record.payment_status === "string" && record.payment_status.trim()
       ? record.payment_status.trim().toLowerCase()
       : null;
+  const tenantRuntime = await getTenantRuntimeConfigById(job.tenant_id).catch(
+    () => null
+  );
+  const publicBaseUrl = resolvePublicBaseUrlFromWebhookOrigin(
+    undefined,
+    tenantRuntime?.publicBaseUrl ?? null
+  );
+  const studioDisplayName =
+    tenantRuntime?.branding.displayName?.trim() ||
+    tenantRuntime?.tenant.name?.trim() ||
+    "Estúdio";
 
   return {
     clientId,
     customerWhatsAppRecipient,
     clientName,
+    studioDisplayName,
+    publicBaseUrl,
     serviceName,
     dateLabel,
     timeLabel,
@@ -566,7 +582,9 @@ export async function sendMetaCloudCreatedAppointmentTemplate(
       templateName,
       languageCode: templateLanguage,
     });
-    const headerImageLink = header.requiresImageHeader ? resolveAppointmentNoticeHeaderImageUrl() : null;
+    const headerImageLink = header.requiresImageHeader
+      ? resolveAppointmentNoticeHeaderImageUrl(context.publicBaseUrl)
+      : null;
 
     const requestComponents = [
       ...(headerImageLink
@@ -683,7 +701,9 @@ export async function sendMetaCloudReminderAppointmentTemplate(
     templateName: selection.templateName,
     languageCode: templateLanguage,
   });
-  const headerImageLink = header.requiresImageHeader ? resolveAppointmentNoticeHeaderImageUrl() : null;
+  const headerImageLink = header.requiresImageHeader
+    ? resolveAppointmentNoticeHeaderImageUrl(context.publicBaseUrl)
+    : null;
   const templateComponents = [
     ...(headerImageLink
       ? [
@@ -731,7 +751,13 @@ export async function buildAppointmentVoucherLink(params: {
   appointmentId: string;
   webhookOrigin?: string;
 }) {
-  const base = resolvePublicBaseUrlFromWebhookOrigin(params.webhookOrigin);
+  const tenantRuntime = await getTenantRuntimeConfigById(params.tenantId).catch(
+    () => null
+  );
+  const base = resolvePublicBaseUrlFromWebhookOrigin(
+    params.webhookOrigin,
+    tenantRuntime?.publicBaseUrl ?? null
+  );
   const supabase = createServiceClient();
   let attendanceCode: string | null = null;
 
@@ -759,26 +785,30 @@ export async function buildAppointmentVoucherLink(params: {
 export function buildButtonReplyAutoMessage(params: {
   action: "confirm" | "reschedule" | "talk_to_jana";
   voucherLink: string;
+  studioDisplayName?: string | null;
 }) {
+  const studioDisplayName =
+    params.studioDisplayName?.trim() || "Estúdio";
+  const assistantSignature = `Flora | ${studioDisplayName}`;
   switch (params.action) {
     case "confirm":
       return (
         "Perfeito! Seu agendamento está confirmado ✅\n\n" +
         "Aqui está o seu voucher para facilitar:\n" +
         `${params.voucherLink}\n\n` +
-        "Flora | Estúdio Corpo & Alma Humanizado"
+        assistantSignature
       );
     case "reschedule":
       return (
         "Perfeito! Iniciando seu reagendamento ✅\n\n" +
         "Vou registrar sua solicitação e a Jana/estúdio dará sequência por aqui.\n\n" +
-        "Flora | Estúdio Corpo & Alma Humanizado"
+        assistantSignature
       );
     case "talk_to_jana":
       return (
         "Perfeito! Vou sinalizar que você quer falar com a Jana ✅\n\n" +
         "Ela (ou o estúdio) continua o atendimento por aqui.\n\n" +
-        "Flora | Estúdio Corpo & Alma Humanizado"
+        assistantSignature
       );
     default:
       return "Recebemos sua resposta. Obrigada! 🌿";
@@ -803,10 +833,19 @@ export async function sendMetaCloudInboundActionReply(params: {
   customerWaId: string;
   voucherLink: string;
 }): Promise<InboundReplyDeliveryResult> {
+  const tenantRuntime = await getTenantRuntimeConfigById(params.job.tenant_id).catch(
+    () => null
+  );
+  const studioDisplayName =
+    tenantRuntime?.branding.displayName?.trim() ||
+    tenantRuntime?.tenant.name?.trim() ||
+    "Estúdio";
+
   if (params.action !== "confirm") {
     const replyText = buildButtonReplyAutoMessage({
       action: params.action,
       voucherLink: params.voucherLink,
+      studioDisplayName,
     });
     const outbound = await sendMetaCloudTextMessage({
       to: params.customerWaId,
@@ -892,6 +931,7 @@ export async function sendMetaCloudInboundActionReply(params: {
     const replyText = buildButtonReplyAutoMessage({
       action: params.action,
       voucherLink: params.voucherLink,
+      studioDisplayName,
     });
     const outbound = await sendMetaCloudTextMessage({
       to: params.customerWaId,
@@ -1045,15 +1085,16 @@ export async function applyAppointmentStatusFromInboundReply(params: {
 }
 
 function buildCanceledAppointmentSessionMessage(context: AppointmentTemplateContext) {
+  const assistantSignature = `Flora | ${context.studioDisplayName}`;
   return (
     `Olá, ${context.clientName}! Tudo bem?\n\n` +
-    "Aqui é a Flora, assistente virtual do Estúdio Corpo & Alma Humanizado. 🌿\n\n" +
+    `Aqui é a Flora, assistente virtual do ${context.studioDisplayName}. 🌿\n\n` +
     "⚠️ Estou passando para avisar que o horário abaixo foi cancelado:\n\n" +
     `✨ *Seu cuidado:* ${context.serviceName}\n` +
     `🗓️ *Horário cancelado:* ${context.dateLabel}, às ${context.timeLabel}\n` +
     `📍 *Nosso ponto de encontro:* ${context.locationLine}\n\n` +
     "Se precisar, responda por aqui que ajudamos com um novo horário.\n\n" +
-    "Flora | Estúdio Corpo & Alma Humanizado"
+    assistantSignature
   );
 }
 

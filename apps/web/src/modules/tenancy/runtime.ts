@@ -49,12 +49,24 @@ export type TenantRuntimeConfig = {
     publicAppName: string;
     logoUrl: string | null;
     logoHorizontalUrl: string | null;
+    logoLightUrl: string | null;
+    logoDarkUrl: string | null;
     iconUrl: string | null;
+    faviconUrl: string | null;
+    splashImageUrl: string | null;
     primaryColor: string | null;
     secondaryColor: string | null;
     accentColor: string | null;
     backgroundColor: string | null;
+    surfaceColor: string | null;
+    onPrimaryColor: string | null;
+    onSurfaceColor: string | null;
     surfaceStyle: string | null;
+    headingFontFamily: string | null;
+    bodyFontFamily: string | null;
+    fontStrategy: string;
+    radiusStrategy: string;
+    illustrationStyle: string;
   };
   domains: Array<{
     domain: string;
@@ -121,12 +133,24 @@ function buildDefaultTenantRuntimeConfig(): TenantRuntimeConfig {
       publicAppName: PRIMARY_STUDIO_BRANDING.publicAppName,
       logoUrl: PRIMARY_STUDIO_BRANDING.logoUrl,
       logoHorizontalUrl: PRIMARY_STUDIO_BRANDING.logoHorizontalUrl,
+      logoLightUrl: PRIMARY_STUDIO_BRANDING.logoLightUrl,
+      logoDarkUrl: PRIMARY_STUDIO_BRANDING.logoDarkUrl,
       iconUrl: PRIMARY_STUDIO_BRANDING.iconUrl,
+      faviconUrl: PRIMARY_STUDIO_BRANDING.faviconUrl,
+      splashImageUrl: PRIMARY_STUDIO_BRANDING.splashImageUrl,
       primaryColor: PRIMARY_STUDIO_BRANDING.primaryColor,
       secondaryColor: PRIMARY_STUDIO_BRANDING.secondaryColor,
       accentColor: PRIMARY_STUDIO_BRANDING.accentColor,
       backgroundColor: PRIMARY_STUDIO_BRANDING.backgroundColor,
+      surfaceColor: PRIMARY_STUDIO_BRANDING.surfaceColor,
+      onPrimaryColor: PRIMARY_STUDIO_BRANDING.onPrimaryColor,
+      onSurfaceColor: PRIMARY_STUDIO_BRANDING.onSurfaceColor,
       surfaceStyle: PRIMARY_STUDIO_BRANDING.surfaceStyle,
+      headingFontFamily: PRIMARY_STUDIO_BRANDING.headingFontFamily,
+      bodyFontFamily: PRIMARY_STUDIO_BRANDING.bodyFontFamily,
+      fontStrategy: PRIMARY_STUDIO_BRANDING.fontStrategy,
+      radiusStrategy: PRIMARY_STUDIO_BRANDING.radiusStrategy,
+      illustrationStyle: PRIMARY_STUDIO_BRANDING.illustrationStyle,
     },
     domains: [
       {
@@ -213,12 +237,24 @@ function mapTenantRuntimeConfig(input: RuntimeLookupInput): TenantRuntimeConfig 
       publicAppName: input.branding?.public_app_name ?? fallback.branding.publicAppName,
       logoUrl: input.branding?.logo_url ?? fallback.branding.logoUrl,
       logoHorizontalUrl: input.branding?.logo_horizontal_url ?? fallback.branding.logoHorizontalUrl,
+      logoLightUrl: input.branding?.logo_light_url ?? fallback.branding.logoLightUrl,
+      logoDarkUrl: input.branding?.logo_dark_url ?? fallback.branding.logoDarkUrl,
       iconUrl: input.branding?.icon_url ?? fallback.branding.iconUrl,
+      faviconUrl: input.branding?.favicon_url ?? fallback.branding.faviconUrl,
+      splashImageUrl: input.branding?.splash_image_url ?? fallback.branding.splashImageUrl,
       primaryColor: input.branding?.primary_color ?? fallback.branding.primaryColor,
       secondaryColor: input.branding?.secondary_color ?? fallback.branding.secondaryColor,
       accentColor: input.branding?.accent_color ?? fallback.branding.accentColor,
       backgroundColor: input.branding?.background_color ?? fallback.branding.backgroundColor,
+      surfaceColor: input.branding?.surface_color ?? fallback.branding.surfaceColor,
+      onPrimaryColor: input.branding?.on_primary_color ?? fallback.branding.onPrimaryColor,
+      onSurfaceColor: input.branding?.on_surface_color ?? fallback.branding.onSurfaceColor,
       surfaceStyle: input.branding?.surface_style ?? fallback.branding.surfaceStyle,
+      headingFontFamily: input.branding?.heading_font_family ?? fallback.branding.headingFontFamily,
+      bodyFontFamily: input.branding?.body_font_family ?? fallback.branding.bodyFontFamily,
+      fontStrategy: input.branding?.font_strategy ?? fallback.branding.fontStrategy,
+      radiusStrategy: input.branding?.radius_strategy ?? fallback.branding.radiusStrategy,
+      illustrationStyle: input.branding?.illustration_style ?? fallback.branding.illustrationStyle,
     },
     domains: activeDomains.length > 0 ? activeDomains : fallback.domains,
     featureFlags: (input.featureFlags ?? []).map((entry) => ({
@@ -253,7 +289,7 @@ async function loadTenantRuntimeBy(selector: { id?: string; slug?: string }) {
     supabase
       .from("tenant_branding")
       .select(
-        "tenant_id, display_name, public_app_name, logo_url, logo_horizontal_url, icon_url, primary_color, secondary_color, accent_color, background_color, surface_style, created_at, updated_at"
+        "tenant_id, display_name, public_app_name, logo_url, logo_horizontal_url, logo_light_url, logo_dark_url, icon_url, favicon_url, splash_image_url, primary_color, secondary_color, accent_color, background_color, surface_color, on_primary_color, on_surface_color, surface_style, heading_font_family, body_font_family, font_strategy, radius_strategy, illustration_style, created_at, updated_at"
       )
       .eq("tenant_id", tenantId)
       .maybeSingle(),
@@ -289,6 +325,24 @@ export async function getTenantRuntimeConfigById(tenantId: string) {
   const normalizedTenantId = tenantId.trim();
   if (!normalizedTenantId) return null;
   return loadTenantRuntimeBy({ id: normalizedTenantId });
+}
+
+export async function getTenantRuntimeConfigByDomain(hostname: string) {
+  const normalizedDomain = normalizeTenantDomain(hostname);
+  if (!normalizedDomain) return null;
+
+  const supabase = createServiceClient();
+  const { data: domainRow, error } = await supabase
+    .from("tenant_domains")
+    .select("tenant_id")
+    .eq("domain", normalizedDomain)
+    .eq("is_active", true)
+    .order("is_primary", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !domainRow?.tenant_id) return null;
+  return loadTenantRuntimeBy({ id: domainRow.tenant_id });
 }
 
 export async function isKnownTenantDomain(hostname: string) {

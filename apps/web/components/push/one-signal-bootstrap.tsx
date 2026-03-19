@@ -35,10 +35,9 @@ declare global {
 type OneSignalBootstrapProps = {
   externalId: string;
   tenantId: string;
+  appId: string | null;
+  safariWebId: string | null;
 };
-
-const ONESIGNAL_APP_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID ?? "").trim();
-const ONESIGNAL_SAFARI_WEB_ID = (process.env.NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID ?? "").trim();
 
 async function registerSubscription(params: {
   oneSignalSubscriptionId: string;
@@ -65,14 +64,14 @@ async function unregisterSubscription(oneSignalSubscriptionId: string) {
   });
 }
 
-export function OneSignalBootstrap({ externalId, tenantId }: OneSignalBootstrapProps) {
+export function OneSignalBootstrap({ externalId, tenantId, appId, safariWebId }: OneSignalBootstrapProps) {
   const [scriptReady, setScriptReady] = useState(false);
   const initializedRef = useRef(false);
   const changeListenerBoundRef = useRef(false);
 
   const canBoot = useMemo(
-    () => Boolean(ONESIGNAL_APP_ID && externalId.trim() && tenantId.trim()),
-    [externalId, tenantId]
+    () => Boolean((appId ?? "").trim() && externalId.trim() && tenantId.trim()),
+    [appId, externalId, tenantId]
   );
 
   useEffect(() => {
@@ -85,8 +84,8 @@ export function OneSignalBootstrap({ externalId, tenantId }: OneSignalBootstrapP
 
       try {
         await OneSignal.init({
-          appId: ONESIGNAL_APP_ID,
-          safari_web_id: ONESIGNAL_SAFARI_WEB_ID || undefined,
+          appId: (appId ?? "").trim(),
+          safari_web_id: (safariWebId ?? "").trim() || undefined,
           notifyButton: { enable: false },
           allowLocalhostAsSecureOrigin: true,
         });
@@ -133,7 +132,7 @@ export function OneSignalBootstrap({ externalId, tenantId }: OneSignalBootstrapP
         console.error("[push] Falha ao inicializar OneSignal:", error);
       }
     });
-  }, [canBoot, externalId, scriptReady]);
+  }, [appId, canBoot, externalId, safariWebId, scriptReady]);
 
   if (!canBoot) return null;
 

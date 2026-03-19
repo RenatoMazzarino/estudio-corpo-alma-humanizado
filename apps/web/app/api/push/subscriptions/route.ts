@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDashboardAccessForCurrentUser } from "../../../../src/modules/auth/dashboard-access";
-import { isPushNotificationsEnabled } from "../../../../src/modules/push/push-config";
+import {
+  isPushNotificationsEnabled,
+  isPushTransportConfigured,
+} from "../../../../src/modules/push/push-config";
 import {
   disablePushSubscription,
   ensureDefaultNotificationPreferences,
@@ -29,6 +32,14 @@ export async function POST(request: NextRequest) {
   if (!isPushNotificationsEnabled(access.data.tenantId)) {
     return NextResponse.json(
       { ok: false, error: "Push notifications estão desabilitadas neste ambiente." },
+      { status: 423 }
+    );
+  }
+
+  const transportConfigured = await isPushTransportConfigured(access.data.tenantId);
+  if (!transportConfigured) {
+    return NextResponse.json(
+      { ok: false, error: "OneSignal não está configurado para este tenant." },
       { status: 423 }
     );
   }
@@ -82,6 +93,14 @@ export async function GET() {
   if (!isPushNotificationsEnabled(access.data.tenantId)) {
     return NextResponse.json(
       { ok: false, error: "Push notifications estão desabilitadas neste ambiente." },
+      { status: 423 }
+    );
+  }
+
+  const transportConfigured = await isPushTransportConfigured(access.data.tenantId);
+  if (!transportConfigured) {
+    return NextResponse.json(
+      { ok: false, error: "OneSignal não está configurado para este tenant." },
       { status: 423 }
     );
   }

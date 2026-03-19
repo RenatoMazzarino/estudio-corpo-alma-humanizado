@@ -281,6 +281,7 @@ export async function processNotificationOutbox(params?: { limit?: number }) {
       });
 
       const dispatch = await sendPushViaOneSignal({
+        tenantId: event.tenant_id,
         externalIds,
         heading: pushMessage.heading,
         message: pushMessage.message,

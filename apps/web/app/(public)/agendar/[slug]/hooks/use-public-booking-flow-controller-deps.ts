@@ -144,6 +144,7 @@ export function usePublicBookingFlowControllerDeps({
     resetLocationState,
     enforceStudioLocationOnly,
   } = usePublicBookingLocation({
+    tenantSlug: tenant.slug,
     isHomeVisit,
     setIsHomeVisit,
     homeVisitAllowed: Boolean(selectedService?.accepts_home_visit),
