@@ -361,8 +361,14 @@ export async function getClientDetailSnapshot(
 
   const history = (historyData ?? []) as ClientAppointmentHistoryRow[];
   const appointmentIds = history.map((appointment) => appointment.id);
+  const referralsCountPromise = countClientReferrals(
+    tenantId,
+    client.id,
+    client.name,
+    client.internal_reference
+  );
 
-  const [checkoutsResponse, paymentsResponse, evolutionsResponse, transactionsResponse, referralsCount] =
+  const [checkoutsResponse, paymentsResponse, evolutionsResponse, transactionsResponse] =
     appointmentIds.length > 0
       ? await Promise.all([
           supabase
@@ -388,15 +394,14 @@ export async function getClientDetailSnapshot(
             .select("id, appointment_id, amount, payment_method, type, created_at, description")
             .eq("tenant_id", tenantId)
             .in("appointment_id", appointmentIds),
-          countClientReferrals(tenantId, client.id, client.name, client.internal_reference),
         ])
       : [
           { data: [] as ClientCheckoutSummaryRow[] | null },
           { data: [] as ClientPaymentSummaryRow[] | null },
           { data: [] as AppointmentEvolutionRow[] | null },
           { data: [] as ClientTransactionSummaryRow[] | null },
-          0,
         ];
+  const referralsCount = await referralsCountPromise;
 
   const checkouts = (checkoutsResponse.data ?? []) as ClientCheckoutSummaryRow[];
   const payments = (paymentsResponse.data ?? []) as ClientPaymentSummaryRow[];

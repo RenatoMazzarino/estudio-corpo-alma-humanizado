@@ -1,5 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { AppError } from "../../../shared/errors/AppError";
 import { mapSupabaseError } from "../../../shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../shared/errors/result";
 import { updateClientSchema } from "../../../shared/validation/clients";
@@ -226,6 +225,7 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
         addressEntry.address_estado,
       ].some((value) => (value ?? "").trim().length > 0)
     );
+    let resolvedAddresses: Parameters<typeof replaceClientAddresses>[2] = [];
 
     if (normalizedAddresses.length > 0) {
       const { data: existingAddresses, error: existingAddressesError } = await listClientAddresses(
@@ -238,10 +238,9 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
       const existingNonPrimaryAddresses = (existingAddresses ?? []).filter((addressEntry) => !addressEntry.is_primary);
       const submittedPrimaryAddress =
         normalizedAddresses.find((addressEntry) => addressEntry.is_primary) ?? normalizedAddresses[0];
-      const existingPrimaryAddress =
-        (existingAddresses ?? []).find((addressEntry) => addressEntry.is_primary) ?? null;
+      const existingPrimaryAddress = (existingAddresses ?? []).find((addressEntry) => addressEntry.is_primary) ?? null;
 
-      const resolvedAddresses = [
+      resolvedAddresses = [
         {
           id: submittedPrimaryAddress?.id ?? existingPrimaryAddress?.id,
           tenant_id: tenantId,
@@ -273,11 +272,11 @@ export async function runUpdateClientProfileAction(formData: FormData): Promise<
           referencia: addressEntry.referencia ?? null,
         })),
       ];
-
-      const { error: addressError } = await replaceClientAddresses(tenantId, parsed.data.clientId, resolvedAddresses);
-      const mappedAddressError = mapSupabaseError(addressError);
-      if (mappedAddressError) return fail(mappedAddressError);
     }
+
+    const { error: addressError } = await replaceClientAddresses(tenantId, parsed.data.clientId, resolvedAddresses);
+    const mappedAddressError = mapSupabaseError(addressError);
+    if (mappedAddressError) return fail(mappedAddressError);
   }
 
   if (healthItemsJson) {
