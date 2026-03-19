@@ -25,6 +25,8 @@ Migrations aplicadas:
 
 1. `20260319143000_expand_tenant_branding_contract.sql`
 2. `20260319170000_wl5_wl10_tenant_governance_and_billing.sql`
+3. `20260319183000_finalize_wl10_secondary_tenant_activation.sql`
+4. `20260319185000_fix_secondary_tenant_domains.sql`
 
 Entidades novas:
 
@@ -118,11 +120,20 @@ Resultado:
 3. markdownlint sem erro.
 4. auditoria de env Vercel sem chave obrigatória faltando.
 
-## 4) Pendências externas (não bloqueiam commit)
+## 4) Pendências externas
 
-1. preencher credenciais reais dos providers no tenant secundário.
-2. validar domínio próprio do tenant secundário (se houver).
-3. executar ativação do tenant secundário para `active` após checklist completo.
+Nenhuma pendência aberta após fechamento remoto em `main` (2026-03-19).
+
+Evidências de fechamento:
+
+1. tenant secundário `salao-aurora-demo` em `status = active`.
+2. owner `owner@salaoaurora.demo` ativo.
+3. providers `mercadopago`, `onesignal`, `google_maps`, `whatsapp_meta` em
+   `status = active` e `enabled = true`.
+4. onboarding com etapa `activation` concluída.
+5. domínios de homologação substituídos por aliases Vercel válidos (HTTP 200):
+   - `estudio-corpo-alma-humanizado-web-renato-mazzarinos-projects.vercel.app`
+   - `estudio-corpo-alma-humani-git-504855-renato-mazzarinos-projects.vercel.app`
 
 ## 5) Runbooks associados
 

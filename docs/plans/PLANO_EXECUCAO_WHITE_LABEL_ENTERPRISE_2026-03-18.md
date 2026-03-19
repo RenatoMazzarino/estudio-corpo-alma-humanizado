@@ -26,9 +26,9 @@ Execução local ponta a ponta concluída até WL-10 com evidências em:
 2. `docs/runbooks/WL5_WL10_ROLLOUT_REMOTE_MAIN_2026-03-19.md`
 3. `docs/runbooks/WHITE_LABEL_TENANT_ONBOARDING_BACKOFFICE_2026-03-19.md`
 
-Pendências restantes desta trilha são operacionais externas
-(credenciais/domínios/ativação final do tenant secundário),
-sem bloqueio estrutural de código.
+Pendências desta trilha foram encerradas em 2026-03-19 com execução remota em
+`main` (ativação final do tenant secundário, providers ativos e domínios de
+homologação válidos), sem bloqueio estrutural remanescente.
 
 ## 0.1 Principios obrigatorios para evitar retrabalho mobile
 
