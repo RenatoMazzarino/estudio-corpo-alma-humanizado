@@ -4,6 +4,7 @@ import {
   WHATSAPP_TEMPLATE_LIBRARY,
 } from "./whatsapp-template-library";
 import { META_TEMPLATE_PUBLIC_SAMPLE_CODE } from "../../shared/meta-template-demo";
+import { DEFAULT_PUBLIC_BASE_URL } from "../../shared/config";
 
 describe("whatsapp-template-library", () => {
   it("mantém os 18 templates oficiais (aviso + lembrete 24h + resposta de confirmação)", () => {
@@ -68,7 +69,7 @@ describe("whatsapp-template-library", () => {
       expect.objectContaining({
         type: "url_dynamic",
         buttonText: "VER COMPROVANTE",
-        urlBase: "https://public.corpoealmahumanizado.com.br/comprovante/pagamento/",
+        urlBase: `${DEFAULT_PUBLIC_BASE_URL}/comprovante/pagamento/`,
         sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
       })
     );
@@ -76,7 +77,7 @@ describe("whatsapp-template-library", () => {
       expect.objectContaining({
         type: "url_dynamic",
         buttonText: "PAGAR AGORA",
-        urlBase: "https://public.corpoealmahumanizado.com.br/pagamento/",
+        urlBase: `${DEFAULT_PUBLIC_BASE_URL}/pagamento/`,
         sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
       })
     );
@@ -94,7 +95,7 @@ describe("whatsapp-template-library", () => {
       expect.objectContaining({
         type: "url_dynamic",
         buttonText: "VER VOUCHER",
-        urlBase: "https://public.corpoealmahumanizado.com.br/voucher/",
+        urlBase: `${DEFAULT_PUBLIC_BASE_URL}/voucher/`,
         sampleValue: META_TEMPLATE_PUBLIC_SAMPLE_CODE,
       })
     );

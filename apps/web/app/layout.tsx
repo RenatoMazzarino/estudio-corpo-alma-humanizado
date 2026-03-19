@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Lato, Playfair_Display } from "next/font/google";
 import { ViewportHeightSync } from "../components/viewport-height-sync";
+import { PRIMARY_STUDIO_TENANT_NAME } from "../src/modules/tenancy/defaults";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -17,7 +18,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Estúdio Corpo & Alma",
+  title: PRIMARY_STUDIO_TENANT_NAME,
   description: "Sistema Administrativo Humanizado",
 };
 

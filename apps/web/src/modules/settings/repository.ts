@@ -1,4 +1,4 @@
-import { createPublicClient, createServiceClient } from "../../../lib/supabase/service";
+import { createServiceClient } from "../../../lib/supabase/service";
 import type { Database } from "../../../lib/supabase/types";
 import type { PostgrestError } from "@supabase/supabase-js";
 
@@ -21,7 +21,7 @@ export async function getSettings(tenantId: string) {
 }
 
 export async function getTenantBySlug(slug: string) {
-  const supabase = createPublicClient();
+  const supabase = createServiceClient();
   return supabase.from("tenants").select("id, name, slug").eq("slug", slug).single();
 }
 

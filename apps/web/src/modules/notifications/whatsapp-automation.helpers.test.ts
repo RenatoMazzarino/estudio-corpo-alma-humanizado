@@ -10,6 +10,7 @@ import {
   normalizeMetaStatus,
   resolvePublicBaseUrlFromWebhookOrigin,
 } from "./whatsapp-automation.helpers";
+import { DEFAULT_PUBLIC_BASE_URL } from "../../shared/config";
 
 describe("whatsapp-automation.helpers", () => {
   it("reconhece tipos suportados de job", () => {
@@ -55,8 +56,8 @@ describe("whatsapp-automation.helpers", () => {
   });
 
   it("resolve base URL pública com origem do webhook quando válida", () => {
-    expect(resolvePublicBaseUrlFromWebhookOrigin("https://public.corpoealmahumanizado.com.br/path")).toBe(
-      "https://public.corpoealmahumanizado.com.br"
+    expect(resolvePublicBaseUrlFromWebhookOrigin(`${DEFAULT_PUBLIC_BASE_URL}/path`)).toBe(
+      DEFAULT_PUBLIC_BASE_URL
     );
   });
 

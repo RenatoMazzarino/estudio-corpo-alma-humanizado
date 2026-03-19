@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const auth = await getDashboardApiAccess(request, "/configuracoes");
-  if (!isSameOriginInteractiveRequest(request) || !auth.access.ok) {
+  if (!(await isSameOriginInteractiveRequest(request)) || !auth.access.ok) {
     return buildDashboardLoginRedirect(request, auth.loginPath);
   }
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   const state = randomUUID();
-  const requestOrigin = resolveRequestOrigin(request);
+  const requestOrigin = await resolveRequestOrigin(request);
   const redirectUri = resolveSpotifyRedirectUri(requestOrigin);
   const returnTo = sanitizeSpotifyReturnTo(request.nextUrl.searchParams.get("returnTo"));
 

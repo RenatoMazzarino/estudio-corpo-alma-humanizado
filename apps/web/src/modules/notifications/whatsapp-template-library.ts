@@ -1,4 +1,5 @@
 import { META_TEMPLATE_PUBLIC_SAMPLE_CODE } from "../../shared/meta-template-demo";
+import { buildPublicAppUrl } from "../../shared/config";
 
 export type WhatsAppTemplateLibraryGroup =
   | "appointment_notice_variations"
@@ -47,9 +48,9 @@ export type WhatsAppTemplateDefinition = {
   metaTestUrl: string;
 };
 
-const RECEIPT_URL_BASE = "https://public.corpoealmahumanizado.com.br/comprovante/pagamento/";
-const PAYMENT_URL_BASE = "https://public.corpoealmahumanizado.com.br/pagamento/";
-const VOUCHER_URL_BASE = "https://public.corpoealmahumanizado.com.br/voucher/";
+const RECEIPT_URL_BASE = `${buildPublicAppUrl("/comprovante/pagamento")}/`;
+const PAYMENT_URL_BASE = `${buildPublicAppUrl("/pagamento")}/`;
+const VOUCHER_URL_BASE = `${buildPublicAppUrl("/voucher")}/`;
 const FOOTER_AUTO_MESSAGE = "Mensagem automática. Não é necessário confirmar.";
 const STATUS_ACTIVE_LABEL = "CRIADO E JÁ ATIVO" as const;
 const STATUS_IN_REVIEW_LABEL = "CRIADO E EM ANÁLISE" as const;
@@ -81,7 +82,7 @@ const VOUCHER_BUTTON: WhatsAppTemplateButtonDefinition = {
 const RECEIPT_META_TEST_URL = `${RECEIPT_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
 const PAYMENT_META_TEST_URL = `${PAYMENT_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
 const VOUCHER_META_TEST_URL = `${VOUCHER_URL_BASE}${META_TEMPLATE_PUBLIC_SAMPLE_CODE}`;
-const REMINDER_META_TEST_URL = "https://public.corpoealmahumanizado.com.br/mensagens";
+const REMINDER_META_TEST_URL = buildPublicAppUrl("/mensagens");
 const REMINDER_CONFIRMATION_BUTTONS = [
   { id: "confirmar", text: "CONFIRMAR" },
   { id: "reagendar", text: "REAGENDAR" },

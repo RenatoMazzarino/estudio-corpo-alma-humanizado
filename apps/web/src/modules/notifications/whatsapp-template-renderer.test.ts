@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderWhatsAppTemplateAsText } from "./whatsapp-template-renderer";
+import { DEFAULT_PUBLIC_BASE_URL } from "../../shared/config";
 
 describe("whatsapp-template-renderer", () => {
   it("renderiza body + rodapé + botão para template dinâmico", () => {
@@ -17,7 +18,7 @@ describe("whatsapp-template-renderer", () => {
 
     expect(text).toContain("Olá, *Renata*!");
     expect(text).toContain("Drenagem Linfática");
-    expect(text).toContain("PAGAR AGORA: https://public.corpoealmahumanizado.com.br/pagamento/manual-checkout-001");
+    expect(text).toContain(`PAGAR AGORA: ${DEFAULT_PUBLIC_BASE_URL}/pagamento/manual-checkout-001`);
     expect(text).toContain("Mensagem automática. Não é necessário confirmar.");
   });
 
@@ -59,6 +60,6 @@ describe("whatsapp-template-renderer", () => {
 
     expect(text).toContain("Presença Confirmada!");
     expect(text).toContain("Combinado *Renata*");
-    expect(text).toContain("VER VOUCHER: https://public.corpoealmahumanizado.com.br/voucher/voucher-123");
+    expect(text).toContain(`VER VOUCHER: ${DEFAULT_PUBLIC_BASE_URL}/voucher/voucher-123`);
   });
 });

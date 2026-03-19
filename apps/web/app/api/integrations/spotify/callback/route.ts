@@ -11,9 +11,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function resolveReturnUrl(request: NextRequest, status: "connected" | "error" | "state_invalid") {
+async function resolveReturnUrl(
+  request: NextRequest,
+  status: "connected" | "error" | "state_invalid"
+) {
   const cookieReturn = sanitizeSpotifyReturnTo(request.cookies.get("spotify_oauth_return_to")?.value);
-  const target = new URL(cookieReturn, resolveRequestOrigin(request));
+  const target = new URL(cookieReturn, await resolveRequestOrigin(request));
   target.searchParams.set("spotify", status);
   return target;
 }
@@ -29,7 +32,7 @@ export async function GET(request: NextRequest) {
   const expectedState = request.cookies.get("spotify_oauth_state")?.value;
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    const response = NextResponse.redirect(resolveReturnUrl(request, "state_invalid"));
+    const response = NextResponse.redirect(await resolveReturnUrl(request, "state_invalid"));
     response.cookies.delete("spotify_oauth_state");
     response.cookies.delete("spotify_oauth_return_to");
     return response;
@@ -38,10 +41,10 @@ export async function GET(request: NextRequest) {
   const result = await connectSpotifyFromAuthorizationCode({
     tenantId: auth.access.data.tenantId,
     code,
-    redirectUri: resolveSpotifyRedirectUri(resolveRequestOrigin(request)),
+    redirectUri: resolveSpotifyRedirectUri(await resolveRequestOrigin(request)),
   });
 
-  const response = NextResponse.redirect(resolveReturnUrl(request, result.ok ? "connected" : "error"));
+  const response = NextResponse.redirect(await resolveReturnUrl(request, result.ok ? "connected" : "error"));
   response.cookies.delete("spotify_oauth_state");
   response.cookies.delete("spotify_oauth_return_to");
   return response;

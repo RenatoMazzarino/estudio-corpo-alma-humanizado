@@ -1,5 +1,6 @@
 import { createServiceClient } from "../../../lib/supabase/service";
 import { formatCurrencyBRL } from "../../shared/currency";
+import { DEFAULT_STUDIO_DISPLAY_NAME } from "../../shared/config";
 import { resolveClientNames } from "../clients/name-profile";
 import { resolvePayerEmail, roundCurrencyValue } from "./mercadopago-orders.helpers";
 
@@ -72,7 +73,7 @@ function normalizeClient(clients: AppointmentRecord["clients"]): AppointmentClie
 
 function buildLocationLabel(appointment: AppointmentRecord) {
   if (!appointment.is_home_visit) {
-    return "Estúdio Corpo & Alma Humanizado";
+    return DEFAULT_STUDIO_DISPLAY_NAME;
   }
 
   const addressLine = [

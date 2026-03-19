@@ -1,43 +1,9 @@
 import type { NextRequest } from "next/server";
 import { AppError } from "../../../shared/errors/AppError";
+import { resolveTrustedRequestOrigin } from "../../tenancy/http-origin";
 
-export function resolveRequestOrigin(request: NextRequest) {
-  const host =
-    extractForwardedHeaderValue(request.headers.get("x-forwarded-host")) ??
-    extractForwardedHeaderValue(request.headers.get("host"));
-  const proto =
-    resolveForwardedProto(request.headers.get("x-forwarded-proto")) ??
-    resolveForwardedProto(request.nextUrl.protocol.replace(":", ""));
-
-  if (host && proto && isValidOriginParts(host, proto)) {
-    return `${proto}://${host}`;
-  }
-
-  return request.nextUrl.origin;
-}
-
-function extractForwardedHeaderValue(value: string | null) {
-  if (!value) return null;
-  const firstValue = value
-    .split(",")
-    .map((entry) => entry.trim())
-    .find(Boolean);
-  return firstValue ?? null;
-}
-
-function resolveForwardedProto(value: string | null) {
-  const normalized = extractForwardedHeaderValue(value)?.toLowerCase();
-  if (normalized === "http" || normalized === "https") return normalized;
-  return null;
-}
-
-function isValidOriginParts(host: string, proto: "http" | "https") {
-  try {
-    const url = new URL(`${proto}://${host}`);
-    return url.host.length > 0;
-  } catch {
-    return false;
-  }
+export async function resolveRequestOrigin(request: NextRequest) {
+  return resolveTrustedRequestOrigin(request);
 }
 
 function safeParseUrl(raw: string | null) {
@@ -49,8 +15,8 @@ function safeParseUrl(raw: string | null) {
   }
 }
 
-export function isSameOriginInteractiveRequest(request: NextRequest) {
-  const expectedOrigin = resolveRequestOrigin(request);
+export async function isSameOriginInteractiveRequest(request: NextRequest) {
+  const expectedOrigin = await resolveRequestOrigin(request);
 
   const originHeader = request.headers.get("origin");
   if (originHeader && originHeader.trim() === expectedOrigin) {
