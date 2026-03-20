@@ -31,6 +31,26 @@ Regras aplicadas:
    - desativado para `estudio-platform`
 3. Terminal padrao com Node via NVM (`24.13.0`).
 
+## Plano unificado entre os dois repos
+
+Para evitar drift do plano de reescrita, os dois arquivos abaixo foram
+configurados como hardlink entre os repos:
+
+1. `docs/plans/PLANO_REESCRITA_REPO_ANDROID_NATIVO_2026-03-20.md`
+2. `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`
+
+Resultado pratico:
+
+1. editou em um repo, reflete no outro automaticamente;
+2. apos `checkout/merge/rebase`, o hook local reaplica o hardlink para manter
+   o espelhamento.
+
+Script usado neste repo:
+
+```powershell
+.\scripts\codex\sync-shared-plan-links.ps1
+```
+
 ## Banco local (Docker) e reescrita mobile
 
 Nao e obrigatorio manter Docker/Supabase local ligado o tempo todo para a

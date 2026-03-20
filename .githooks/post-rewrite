@@ -1,0 +1,8 @@
+#!/bin/sh
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -n "$REPO_ROOT" ] && command -v powershell.exe >/dev/null 2>&1; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/codex/sync-shared-plan-links.ps1" >/dev/null 2>&1 || true
+fi
+
+exit 0
