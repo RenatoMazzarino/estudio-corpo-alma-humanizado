@@ -1,662 +1,1034 @@
 # Plano de Reescrita do Repo para Android Nativo
 
-Status: pronto para execucao  
-Data base: 2026-03-20  
-Escopo: reescrever o produto atual como app Android nativo em repo separado  
-Perfil de entrega: producao enterprise, sem mentalidade MVP
+Status: pronto para execucao continua
+Data base: 2026-03-20
+Escopo: reescrever o produto web atual para Android nativo
+Backend alvo: AWS + Aurora PostgreSQL
+Perfil: producao enterprise (sem MVP)
 
-## 0.0) Estado atual real (atualizado com execucao pratica)
+## 0) Resumo executivo
 
-Este plano ja possui bootstrap tecnico executado no repo Android separado.
+Este plano foi reestruturado para remover partes remendadas e ficar
+100% orientado a execucao.
 
-Concluido em ambiente real:
+O que esta fechado:
 
-1. repo Android criado e publicado no GitHub:
-   - `https://github.com/RenatoMazzarino/app_erp_agendamentos`
-   - pasta local: `C:\Users\renat\Projetos_Dev\estudio-platform`
-2. Android Studio instalado e operando no projeto.
-3. stack de build atualizada e validada:
-   - AGP `9.1.0`
-   - Gradle Wrapper `9.3.1`
-   - JDK `21` (Android Studio JBR)
-4. CI Android criada e versionada em:
-   - `.github/workflows/android-ci.yml`
-   - inclui: `assembleDebug`, `testDebugUnitTest`, `lintDebug`
-5. build local validada com sucesso:
-   - `clean`, `assembleDebug`, `installDebug`, `lintDebug`
-6. emulador Android validado:
-   - AVD: `Medium_Phone_API_36.1`
-   - app instalado e aberto via `adb`.
-7. padrao de line endings configurado com:
-   - `.gitattributes`
+1. repo mobile/backend ja existe em:
+   - `C:\Users\renat\Projetos_Dev\estudio-platform`
+2. repo web segue como baseline funcional em:
+   - `C:\Users\renat\Projetos_Dev\estudio-corpo-alma-humanizado`
+3. stack alvo sem troca futura de base:
+   - app: Kotlin + Jetpack Compose
+   - backend: Fastify + TypeScript em ECS
+   - banco: Aurora PostgreSQL
+4. white-label e obrigatorio desde a primeira entrega funcional.
+5. criterio final e paridade de resultado de negocio com o web atual.
 
-Pendencia operacional conhecida (na maquina local):
+## 1) O que foi corrigido nesta versao do plano
 
-1. garantir terminal novo reconhecendo `JAVA_HOME`/`java` sem depender da IDE.
-2. manter `local.properties` fora de versionamento (ja coberto no `.gitignore`).
+Problemas do plano anterior:
 
-## 0) Objetivo executivo
+1. mistura de historico de execucao com plano de entrega.
+2. pouca rastreabilidade de conversao por arquivo.
+3. gates de fase sem contrato operacional unico.
 
-Reescrever a aplicacao operacional atual para Android nativo, mantendo:
+Melhorias desta versao:
 
-1. regras de negocio e contratos do backend atual;
-2. operacao white-label por tenant;
-3. integracoes criticas (WhatsApp, Mercado Pago, Google Maps, Push);
-4. robustez, observabilidade e governanca de producao.
+1. separacao clara entre:
+   - baseline atual
+   - contrato de conversao de arquivos
+   - fases de entrega
+   - criterios de aceite
+2. matriz deterministica de conversao:
+   - `origem web -> destino mobile/backend`
+3. backlog faseado com teste obrigatorio por modulo.
+4. regra de "nenhum arquivo sem destino".
 
-## 0.1) Premissas adotadas neste plano
+## 2) Baseline real de origem e destino
 
-1. stack mobile: `Kotlin + Jetpack Compose`.
-2. backend alvo da reescrita: `AWS + Aurora PostgreSQL`.
-3. o app web atual continua operando apenas durante a transicao,
-   ate o cutover final para AWS + Aurora.
-4. reescrita em repo novo, sem empacotar web em WebView.
-5. execucao continua por gates tecnicos, sem sprint fixa obrigatoria.
+### 2.1 Web de origem (fonte canonica)
 
-## 0.2) Caminho do novo repo
+1. rotas e telas:
+   - `apps/web/app` (`~235` arquivos)
+2. dominios de negocio:
+   - `apps/web/src/modules` (`~129` arquivos)
+3. camada compartilhada:
+   - `apps/web/src/shared`
+4. componentes e shell visual:
+   - `apps/web/components`
+5. APIs internas e webhooks:
+   - `apps/web/app/api`
+6. schema e automacoes:
+   - `supabase/migrations`
+   - `supabase/functions`
 
-Pasta base criada:
+### 2.2 Destino da reescrita
 
-1. `C:\Users\renat\Projetos_Dev`
+1. app Android:
+   - `app/src/main/java/com/erpagendamentos/app`
+2. backend AWS:
+   - `backend/src`
+3. infraestrutura e dados:
+   - `infra/terraform`
 
-Repo criado e oficial:
+## 3) Contrato de conversao por familia de arquivos
 
-1. `app_erp_agendamentos`
-2. pasta local ativa: `C:\Users\renat\Projetos_Dev\estudio-platform`
+Regra central:
 
-## 0.3) Definicao de pronto (DoD final)
+1. toda origem web deve cair em destino mobile, backend ou ambos.
 
-Esta trilha so termina quando:
+### 3.1 Paginas de dashboard
 
-1. app Android executa fluxos core de ponta a ponta em producao;
-2. tenant principal opera sem dependencia funcional do front web;
-3. tenant secundario de homologacao tambem opera no app;
-4. app tem observabilidade, crash tracking e rollback de release;
-5. publicacao na Play Store interna/fechada esta funcional;
-6. runbooks operacionais de suporte mobile estao ativos.
+Origem:
 
-## 0.4) Decisoes fechadas desta trilha
+1. `apps/web/app/(dashboard)/**/page.tsx`
 
-1. banco de dados alvo: `Aurora PostgreSQL` desde o inicio.
-2. nuvem alvo: `AWS` como plataforma principal.
-3. nao adotar estrategia "comeca em outro banco e migra depois".
-4. migracao de dados do estado atual ocorre uma vez, com cutover controlado.
-5. o desenho deve suportar:
-   - varios tenants B2B
-   - app Android do estudio
-   - app iOS futuro
-   - app do cliente final em fase posterior
-6. o backend web atual e contingencia temporaria;
-   backend canonico final da reescrita sera AWS + Aurora.
+Destino:
 
-## 0.5) Decisoes operacionais ja fechadas
+1. app:
+   - `app/.../features/<modulo>/presentation/<Screen>.kt`
+2. backend (quando houver dados):
+   - `backend/src/routes/<modulo>.ts`
 
-1. regiao AWS primaria: `sa-east-1` (Sao Paulo).
-2. regiao secundaria de continuidade/DR: `us-east-1`.
-3. IaC oficial: `Terraform` (sem adoc manual como caminho principal).
-4. stack do backend novo: `TypeScript + Fastify` containerizado em `ECS Fargate`.
-5. estrategia de autenticacao:
-   - destino final: `Amazon Cognito`
-   - transicao: convivencia curta com backend atual apenas durante cutover.
-6. package id Android de producao (base plataforma):
-   - `br.com.estudioplatform.operator`
-   - branding por tenant permanece por configuracao.
-7. politica de dados:
-   - cutover unico para Aurora com reconciliacao completa.
-8. politica de release:
-   - Play Store via trilha interna/fechada antes de producao aberta.
+Regra:
 
-## 1) Arquitetura alvo do app nativo
+1. UI vira Compose.
+2. leitura/escrita sai de Server Actions para API HTTP.
 
-## 1.1) Camadas
+### 3.2 Loading states do dashboard
 
-1. `app`: inicializacao, DI, navegacao, shell de UI.
-2. `core`: auth, networking, storage, observabilidade, design system.
-3. `domain`: casos de uso e regras de negocio.
-4. `data`: repositorios, DTOs, mappers, clients HTTP.
-5. `feature/*`: modulos funcionais por contexto.
+Origem:
 
-## 1.2) Principios tecnicos
+1. `apps/web/app/(dashboard)/**/loading.tsx`
 
-1. regra de negocio fora da UI.
-2. contratos de API versionados e testaveis.
-3. estado previsivel por feature.
-4. suporte offline parcial com fila de sincronizacao.
-5. telemetria por tenant e por fluxo.
+Destino:
 
-## 1.3) Arquitetura alvo de backend/cloud
+1. `app/.../core/designsystem/states/*`
 
-1. API backend:
-   - `ECS Fargate` com deploy containerizado
-   - `ALB` para entrada HTTP
-2. banco:
-   - `Aurora PostgreSQL` (Multi-AZ)
-3. autenticacao:
-   - `Amazon Cognito`
-4. filas e eventos:
-   - `SQS` + `EventBridge`
-5. storage de arquivos:
-   - `S3`
-6. segredos e configuracao:
-   - `Secrets Manager` + `SSM Parameter Store`
-7. observabilidade:
-   - `CloudWatch` + traces (OpenTelemetry)
+Regra:
 
-## 1.4) Regras de banco para evitar retrabalho
+1. loading vira estado padrao reutilizavel.
+2. proibido spinner ad-hoc por tela.
 
-1. `Aurora PostgreSQL` e fonte canonica de dados desde o inicio da reescrita.
-2. nao manter dual-write permanente entre bases.
-3. migracao do estado atual para Aurora deve ter:
-   - inventario de tabelas
-   - script de carga inicial
-   - reconciliacao de contagem e checksums
-   - janela de cutover aprovada
-4. rollback de cutover deve ter ponto de retorno definido antes da virada.
+### 3.3 Paginas publicas
 
-## 2) Estrategia de migracao
+Origem:
 
-## 2.1) Modelo de transicao
+1. `apps/web/app/(public)/**/page.tsx`
+2. `/pagamento`, `/voucher`, `/comprovante`
 
-1. migracao por dominio, nao por tela isolada.
-2. cada fase entrega fluxo funcional e validado.
-3. web segue em operacao durante migracao.
-4. go-live mobile ocorre por rollout controlado.
+Destino:
 
-## 2.2) Reuso do repo atual
+1. app:
+   - `app/.../features/public/*`
+2. backend:
+   - `backend/src/routes/public-*.ts`
 
-1. contratos e regras existentes sao fonte inicial.
-2. APIs internas atuais viram base de contrato mobile.
-3. documentos canonicos do repo atual continuam referencia.
-4. adaptacoes mobile-first entram em paralelo sem quebrar runtime atual.
+Regra:
 
-## 2.3) Regra de transicao de dados (estado atual -> Aurora)
+1. fluxos obrigatorios: `agendar`, `pagamento`, `voucher`, `comprovante`.
 
-1. fase de leitura e mapeamento do schema atual.
-2. construcao de schema alvo no Aurora.
-3. carga inicial completa e validada.
-4. teste de integridade por tenant.
-5. cutover unico para Aurora com plano de reversao.
-6. congelar escrita antiga no momento da virada.
+### 3.4 Endpoints Next (`route.ts`)
 
-## 3) Fase 0 - Kickoff tecnico e inventario
+Origem:
+
+1. `apps/web/app/api/**/route.ts`
+
+Destino:
+
+1. `backend/src/routes/*`
+2. `backend/src/services/*`
+
+Regra:
+
+1. endpoint interno Next deixa de ser runtime final.
+
+### 3.5 Dominios de negocio
+
+Origem:
+
+1. `apps/web/src/modules/<dominio>/**`
+
+Destino:
+
+1. app:
+   - `app/.../features/<dominio>/{domain,data,presentation}`
+2. backend:
+   - `backend/src/routes/<dominio>.ts`
+   - `backend/src/services/<dominio>/*`
+
+Regra:
+
+1. regra de negocio deve ser mantida, sem simplificacao funcional.
+
+### 3.6 Shared e design system
+
+Origem:
+
+1. `apps/web/src/shared/**`
+2. `apps/web/components/ui/**`
+3. `apps/web/components/app-shell.tsx`
+4. `apps/web/components/ui/bottom-nav.tsx`
+
+Destino:
+
+1. `app/.../core/*`
+2. `app/.../core/designsystem/components/*`
+3. `app/.../core/navigation/*`
+
+Regra:
+
+1. contrato comum e sem duplicacao por feature.
+
+### 3.7 Banco, funcoes e testes
+
+Origem:
+
+1. `supabase/migrations/*.sql`
+2. `supabase/functions/**`
+3. `apps/web/tests/**`
+
+Destino:
+
+1. `backend/src/db/migrations/*.sql`
+2. `backend/src/webhooks/*`
+3. `backend/src/jobs/*`
+4. `app/src/test/**`
+5. `app/src/androidTest/**`
+6. `backend/tests/**`
+
+Regra:
+
+1. migracoes no Aurora sem dual-write permanente.
+2. edge functions viram servicos AWS com idempotencia.
+3. testes de paridade por fluxo critico sao obrigatorios.
+
+### 3.8 Navegacao, deeplink e comportamento de back (obrigatorio)
+
+Origem:
+
+1. navegacao App Router em `apps/web/app/**`
+2. links publicos com parametros:
+   - `/agendar/[slug]`
+   - `/pagamento/[id]`
+   - `/voucher/[id]`
+   - `/comprovante/*`
+
+Destino:
+
+1. `app/.../core/navigation/*`
+2. contratos de deeplink por feature em `app/.../features/*/navigation/*`
+
+Regra:
+
+1. toda rota da matriz 1:1 deve ter rota mobile correspondente e deeplink definido.
+2. o comportamento de voltar (back stack) deve ser explicito por fluxo.
+3. proibido depender de navegacao implicita sem contrato documentado.
+
+### 3.9 Contrato de identificadores canonicos (anti-retrabalho)
+
+1. `applicationId` canonico do app: `com.erpagendamentos.app`.
+2. qualquer mudanca de `applicationId`, package raiz ou assinatura
+   so com decisao formal registrada.
+3. nome de repositorio nao substitui `applicationId`.
+4. naming de recursos (AWS, bundle, flavor) deve herdar prefixo
+   controlado por ambiente e tenant.
+
+## 4) Matriz de paridade por modulo
+
+### 4.1 Dashboard interno
+
+1. `/(dashboard)` -> app `features/operations`; backend `routes/dashboard.ts`;
+   status `em implementacao`.
+1. `/(dashboard)/clientes` -> app `features/clients`; backend
+   `routes/clients.ts`; status `em implementacao`.
+1. `/(dashboard)/novo` -> app `features/appointments`; backend
+   `routes/appointments.ts`; status `em mapeamento`.
+1. `/(dashboard)/atendimento` -> app `features/attendance`; backend
+   `routes/attendance.ts`; status `em mapeamento`.
+1. `/(dashboard)/mensagens` -> app `features/messages`; backend
+   `routes/messages.ts`; status `em mapeamento`.
+1. `/(dashboard)/caixa` -> app `features/finance`; backend
+   `routes/finance.ts`; status `em mapeamento`.
+1. `/(dashboard)/catalogo` -> app `features/services`; backend
+   `routes/services.ts`; status `em implementacao`.
+1. `/(dashboard)/configuracoes` -> app `features/settings`; backend
+   `routes/settings.ts`; status `em implementacao`.
+1. `/(dashboard)/bloqueios` -> app `features/schedule_blocks`; backend
+   `routes/schedule-blocks.ts`; status `em implementacao`.
+1. `/(dashboard)/admin` -> app `features/admin`; backend `routes/admin.ts`;
+   status `em implementacao`.
+1. `/(dashboard)/menu` -> app `features/menu`; backend `routes/menu.ts`;
+   status `em implementacao`.
+
+### 4.2 Fluxos publicos obrigatorios
+
+1. `/(public)/agendar/[slug]` -> app `features/public_booking`; backend
+   `routes/appointments.ts`; status `em mapeamento`.
+1. `/pagamento` e `/pagamento/[id]` -> app `features/payments`; backend
+   `routes/payments.ts` (criar); status `em mapeamento`.
+1. `/voucher/[id]` -> app `features/voucher`; backend `routes/payments.ts` e
+   `routes/public-artifacts.ts` (criar); status `em mapeamento`.
+1. `/comprovante/[id]` e `/comprovante/pagamento/[paymentId]` -> app
+   `features/receipt`; backend `routes/payments.ts` e
+   `routes/public-artifacts.ts` (criar); status `em mapeamento`.
+1. paginas legais -> app `features/legal`; backend opcional estatico; status
+   `em mapeamento`.
+
+### 4.3 Integracoes obrigatorias
+
+1. WhatsApp Meta -> origem `app/api/whatsapp/meta/webhook/route.ts`;
+   backend alvo `routes/webhooks-whatsapp.ts` e
+   `jobs/whatsapp-automation.ts`; criterio: automacao, status e retry
+   equivalentes.
+1. Mercado Pago -> origem `app/api/mercadopago/webhook/route.ts`; backend alvo
+   `routes/webhooks-mercadopago.ts` e `services/payments/*`; criterio:
+   idempotencia e conciliacao equivalentes.
+1. Push -> origem `app/api/push/*`; backend alvo `routes/push.ts` e
+   `services/push/*`; criterio: inscricao e entrega equivalentes.
+1. Google Maps -> origem `app/api/address-*`, `app/api/cep`,
+   `app/api/displacement-fee`; backend alvo `routes/address.ts` e
+   `services/maps/*`; criterio: endereco e deslocamento equivalentes.
+1. Spotify -> origem `app/api/integrations/spotify/*`; backend alvo
+   `routes/spotify.ts` e `services/spotify/*`; criterio: login e controle
+   equivalentes.
+
+### 4.4 Dicionario de status da matriz 1:1 (obrigatorio)
+
+1. `nao iniciado`: sem contrato fechado de rota + dados + UX.
+2. `em mapeamento`: origem web e destino mobile/backend catalogados.
+3. `em implementacao`: codigo em progresso com contrato parcial.
+4. `em validacao`: testes e evidencias de paridade em execucao.
+5. `concluido com paridade`: aceite funcional + visual + tecnico aprovado.
+6. `concluido com melhoria`: paridade aprovada e melhoria estrutural comprovada.
+
+Regra:
+
+1. nao usar status ambiguo como `iniciado` sem detalhar estado real.
+
+### 4.5 Criterio de aceite por rota/modulo da matriz
+
+Uma linha da matriz so pode mudar para `concluido com paridade` quando:
+
+1. fluxo principal da rota passa no app Android sem fallback no web.
+2. contratos HTTP do backend estao versionados e validados.
+3. estados de loading/erro/vazio/sucesso estao aplicados no padrao canonico.
+4. navegacao e retorno (back) estao consistentes com o fluxo esperado.
+5. evidencias de paridade visual foram anexadas (capturas e checklist).
+6. qualidade automatizada minima da fase ficou verde.
+
+### 4.6 Evidencias obrigatorias por linha da matriz
+
+1. video curto ou capturas do web e do app lado a lado.
+2. checklist de paridade preenchido para a rota.
+3. payload de request/response de pelo menos um caso feliz e um caso de erro.
+4. log com `correlationId` de uma execucao real no backend.
+
+## 5) Conversao por padrao de arquivo
+
+### 5.1 Rotas de pagina (`page.tsx`)
+
+1. identificar rota em `apps/web/app/**/page.tsx`.
+2. criar `FeatureScreen` em Compose no modulo correspondente.
+3. separar estado, caso de uso e chamada HTTP.
+4. mover acao de servidor para endpoint backend versionado.
+5. adicionar teste unitario do caso de uso e teste de UI da tela critica.
+
+### 5.2 Endpoints (`route.ts`)
+
+1. catalogar endpoint atual e payload.
+2. mover logica para `backend/src/services/<dominio>`.
+3. criar rota em `backend/src/routes/<dominio>.ts`.
+4. padronizar auth, tenant, erro e correlation_id.
+5. adicionar teste de contrato HTTP.
+
+### 5.3 Regras em `src/modules/*`
+
+1. extrair regra para caso de uso no app em `feature/<dominio>/domain`.
+2. garantir regra de persistencia no backend.
+3. remover dependencia de runtime Next client-side.
+4. manter validacoes e erros equivalentes ao web.
+
+### 5.4 Shared/UI
+
+1. mapear `src/shared/*` para `app/core/*`.
+2. mapear `components/ui/*` para `app/core/designsystem/*`.
+3. bloquear duplicacao por checklist de PR.
+
+## 6) Fases de execucao ponta a ponta
+
+Regra operacional:
+
+1. ao concluir um gate, seguir automaticamente para a fase seguinte.
+
+### Fase 0 - Inventario tecnico fechado
 
 Objetivo:
 
-1. congelar escopo de reescrita e baseline tecnica.
-
-Escopo:
-
-1. mapear modulos do web para modulos mobile.
-2. mapear endpoints usados por fluxo core.
-3. mapear eventos, webhooks e jobs que impactam mobile.
-4. mapear lacunas de API mobile-first.
+1. congelar mapa completo de origem web e destino mobile/backend.
 
 Entregaveis:
 
-1. matriz `Fluxo -> Endpoint -> Dependencia`.
+1. matriz atualizada de rotas, modulos e integracoes.
 2. backlog tecnico priorizado por risco.
-3. criterios de corte para primeira release Android.
 
-Go/No-Go:
+Gate de saida:
 
-1. go se 100% dos fluxos core tiverem contrato mapeado.
-2. no-go se existir fluxo core sem dono tecnico.
+1. 100% dos fluxos core com dono e destino.
 
-## 4) Fase 1 - Bootstrap do repo Android
+### Fase 1 - Fundacao Android + backend
 
 Objetivo:
 
-1. criar fundacao robusta do novo repo.
-
-Escopo:
-
-1. projeto Android com `Gradle Kotlin DSL`.
-2. convencoes de modulo e lint.
-3. CI inicial com build, lint e testes.
-4. configuracao de ambientes `dev`, `preview`, `prod`.
+1. manter build/release Android e backend com base estavel.
 
 Entregaveis:
 
-1. estrutura base de modulos.
-2. pipeline CI verde.
-3. arquivo de configuracao por ambiente.
-4. assinatura de build para canais internos.
+1. CI Android verde.
+2. backend Fastify com health e auth baseline.
 
-Go/No-Go:
+Gate de saida:
 
-1. go se build debug/release funcionar no emulador.
-2. no-go se nao houver reproducao local limpa.
+1. `assembleDebug`, `lintDebug`, testes unitarios e health `200`.
 
-Rollback:
-
-1. manter tag `bootstrap-stable` para restauracao rapida.
-
-Status da fase:
-
-1. fase iniciada e tecnicamente fechada no baseline atual.
-2. CI ja ativa no GitHub.
-3. build debug validada em emulador.
-4. falta apenas endurecimento incremental de qualidade conforme Fase 2+.
-
-## 4.1) Fase 1.5 - Fundacao AWS + Aurora (gate obrigatorio)
+### Fase 1.5 - AWS + Aurora
 
 Objetivo:
 
-1. preparar infraestrutura definitiva antes da evolucao funcional mobile.
-
-Escopo:
-
-1. provisionar conta/projeto AWS operacional.
-2. criar VPC, subnets, security groups e IAM base.
-3. subir Aurora PostgreSQL com politicas de backup e HA.
-4. subir stack base de API (ECS/ALB) e observabilidade.
-5. preparar Secrets Manager e Parameter Store por ambiente.
+1. tornar AWS/Aurora ambiente canonico da reescrita.
 
 Entregaveis:
 
-1. ambiente `dev` AWS funcional.
-2. ambiente `preview` AWS funcional.
-3. Aurora provisionado com schema inicial.
-4. pipeline de deploy backend funcional.
+1. infra Terraform em `dev` aplicada.
+2. schema inicial no Aurora.
+3. API conectada ao Aurora.
 
-Go/No-Go:
+Gate de saida:
 
-1. go se ambiente subir com healthcheck e logs centralizados.
-2. no-go se nao houver plano validado de backup e restore do Aurora.
+1. migrations aplicadas e leitura/escrita validada no banco.
 
-## 5) Fase 2 - Core platform (auth, rede, storage, observabilidade)
+### Fase 2 - Core platform
 
 Objetivo:
 
-1. fechar o nucleo tecnico reutilizavel do app.
-
-Escopo:
-
-1. cliente HTTP com retries controlados.
-2. camada de autenticacao e sessao.
-3. storage local seguro para tokens e cache.
-4. crash/error reporting e analytics tecnico.
-5. logger com `tenant_id` e `correlation_id`.
+1. fechar auth, sessao, cliente HTTP e observabilidade.
 
 Entregaveis:
 
-1. SDK interno de API mobile.
-2. interceptors de auth e telemetria.
-3. modulo de erros padronizados.
+1. `BackendApiClient`.
+2. `SessionRepository`.
+3. `SecureSessionStore`.
+4. logs com tenant e correlation_id.
 
-Go/No-Go:
+Gate de saida:
 
-1. go se login e refresh token forem estaveis.
-2. no-go se houver sessao invalida sem tratamento.
+1. login, refresh e logout sem quebra.
 
-## 6) Fase 3 - Contratos API mobile-first
+### Fase 3 - Contratos mobile-first
 
 Objetivo:
 
-1. consolidar contratos estaveis para app nativo.
+1. fechar API de referencia para os modulos.
 
-Escopo:
+Entregavel:
 
-1. auditar endpoints existentes do repo web.
-2. criar ajustes de contrato quando necessario.
-3. padronizar payload de erro e status.
-4. padronizar idempotencia em acoes criticas.
+1. contratos HTTP versionados com testes.
+2. contrato de navegacao/deeplink/back por rota da matriz 1:1.
+3. dicionario de acoes por modulo (create/update/delete/confirm/cancel/etc).
 
-Entregaveis:
+Gate de saida:
 
-1. guia de contratos mobile versionado.
-2. testes de contrato para endpoints core.
-3. lista de endpoints depreciados do web.
+1. clientes, agenda, atendimento e pagamentos com contrato fechado.
+2. cada rota core com comportamento de back definido e validado.
+3. contratos de erro (`code`, `userMessage`, `correlationId`) aplicados.
 
-Go/No-Go:
-
-1. go se clientes, agenda, atendimento e pagamento tiverem contrato fechado.
-2. no-go se fluxo core depender de endpoint instavel.
-
-Criterio adicional obrigatorio:
-
-1. nenhum contrato novo pode acoplar o app Android ao runtime do web atual.
-
-## 7) Fase 4 - Shell de UI nativa e design system
+### Fase 4 - Shell e design system
 
 Objetivo:
 
-1. criar fundacao de UI nativa consistente com a identidade atual.
+1. padronizar UI nativa mantendo identidade do estudio.
 
-Escopo:
+Entregavel:
 
-1. navegacao principal do app.
-2. temas e tokens visuais por tenant.
-3. componentes base reutilizaveis.
-4. estados de loading, empty e error padronizados.
+1. shell, navegacao e estados padronizados.
+2. contrato de tokens visuais (cor, tipografia, espacamento, raio, elevacao).
+3. API canonica de componentes base e variantes (Button/Input/Card/Sheet/Toast/Dialog).
+4. biblioteca de estados canonicos (loading/empty/error/success) reutilizavel.
 
-Entregaveis:
+Gate de saida:
 
-1. design system Compose inicial.
-2. shell com menu e rotas principais.
-3. suporte a branding por tenant no app.
+1. nenhuma tela core com componente duplicado fora do design system.
+2. nenhuma tela core sem estado visual padronizado.
+3. checklist de paridade visual aprovado para os modulos migrados.
 
-Go/No-Go:
-
-1. go se shell estiver responsiva e consistente.
-2. no-go se tema por tenant quebrar contraste/acessibilidade.
-
-## 8) Fase 5 - Modulo Clientes (lista, perfil, edicao)
+### Fase 5 - Clientes
 
 Objetivo:
 
-1. entregar fluxo de clientes completo em nativo.
+1. fechar lista, perfil, criacao, edicao e prontuario basico.
 
-Escopo:
+Gate de saida:
 
-1. lista de clientes com busca e filtros.
-2. perfil completo do cliente.
-3. criacao e edicao de cliente.
-4. acoes rapidas: ligar, WhatsApp, agendar.
+1. operacao real de cliente sem fallback no web.
 
-Entregaveis:
-
-1. telas e casos de uso de clientes.
-2. testes de UI e unitarios do dominio de clientes.
-
-Go/No-Go:
-
-1. go se CRUD e acoes rapidas funcionarem ponta a ponta.
-2. no-go se houver divergencia de dados vs backend.
-
-## 9) Fase 6 - Modulo Agenda
+### Fase 6 - Agenda
 
 Objetivo:
 
-1. entregar visao operacional de agenda no Android.
+1. criar/editar/cancelar agendamento com validacao de conflito.
 
-Escopo:
+Gate de saida:
 
-1. agenda diaria/semanal.
-2. criacao de agendamento interno.
-3. edicao, cancelamento e status.
-4. validacoes de conflito e buffer.
+1. regra de conflito e buffer igual ao web.
 
-Entregaveis:
-
-1. agenda nativa funcional.
-2. testes de regras de conflito.
-
-Go/No-Go:
-
-1. go se fluxo de agendar/editar/cancelar estiver estavel.
-2. no-go se conflito de horario nao for bloqueado corretamente.
-
-## 10) Fase 7 - Modulo Atendimento + Prontuario
+### Fase 7 - Atendimento e prontuario
 
 Objetivo:
 
-1. portar o fluxo clinico principal para o app.
+1. atendimento completo com evolucao e historico.
 
-Escopo:
+Gate de saida:
 
-1. abertura de atendimento.
-2. evolucao textual estruturada.
-3. prontuario consolidado por cliente.
-4. anexos e observacoes internas.
+1. trilha de auditoria ativa para alteracoes clinicas.
 
-Entregaveis:
-
-1. atendimento e prontuario operacionais.
-2. trilha de auditoria das alteracoes.
-
-Go/No-Go:
-
-1. go se evolucao e historico ficarem consistentes.
-2. no-go se perder rastreabilidade de alteracoes.
-
-## 11) Fase 8 - Modulo Pagamentos e comprovantes
+### Fase 8 - Pagamentos, voucher e comprovante
 
 Objetivo:
 
-1. fechar fluxo financeiro no app nativo.
+1. fluxo financeiro completo com reconciliacao.
 
-Escopo:
+Gate de saida:
 
-1. pagamento PIX/cartao via backend oficial.
-2. status financeiro em tempo quase real.
-3. acesso a voucher e comprovantes.
-4. tratamento de falhas e retentativas seguras.
+1. status financeiro sem divergencia com backend.
 
-Entregaveis:
-
-1. jornada de pagamento completa.
-2. reconciliacao com webhook sem inconsistencias.
-
-Go/No-Go:
-
-1. go se status financeiro bater com backend em 100% dos testes.
-2. no-go se houver risco de duplicidade de cobranca.
-
-## 12) Fase 9 - Mensagens, WhatsApp e Push
+### Fase 9 - Mensagens, WhatsApp e push
 
 Objetivo:
 
-1. consolidar comunicacao operacional no app.
+1. comunicacao operacional completa no app.
 
-Escopo:
+Gate de saida:
 
-1. tela de mensagens e timeline.
-2. estado de automacao WhatsApp por agendamento.
-3. push por tenant com preferencia por usuario.
-4. fluxo de inscricao e re-inscricao de push.
+1. push em dispositivo real e automacao WhatsApp observavel.
 
-Entregaveis:
-
-1. envio e monitoramento de comunicacao no app.
-2. push funcional em dispositivo real Android.
-
-Go/No-Go:
-
-1. go se push e WhatsApp forem observaveis e confiaveis.
-2. no-go se canal funcionar sem governanca de erro.
-
-## 13) Fase 10 - Offline, sync e resiliencia
+### Fase 10 - Offline e sync
 
 Objetivo:
 
-1. garantir operacao robusta em condicao real de rede.
+1. resiliencia em rede instavel.
 
-Escopo:
+Gate de saida:
 
-1. cache de leitura para telas criticas.
-2. fila local de acoes com sincronizacao posterior.
-3. politica de conflito e merge.
-4. indicadores de estado de sincronizacao.
+1. fila local com reconciliacao sem perda de dado.
 
-Entregaveis:
-
-1. camada offline parcial para fluxos definidos.
-2. testes de perda e retorno de conectividade.
-
-Go/No-Go:
-
-1. go se dados sincronizarem sem corrupcao.
-2. no-go se acao critica ficar sem reconciliacao.
-
-## 14) Fase 11 - Seguranca, compliance e hardening
+### Fase 11 - Seguranca e hardening
 
 Objetivo:
 
-1. fechar requisitos de seguranca de producao.
+1. reforcar seguranca de runtime e dados.
 
-Escopo:
-
-1. armazenamento seguro de credenciais locais.
-2. pinning e politicas de transporte quando aplicavel.
-3. mascaramento de dados sensiveis em logs.
-4. revisao de permissoes Android.
-
-Entregaveis:
+Gate de saida:
 
 1. checklist de seguranca aprovado.
-2. testes de regressao de auth e autorizacao.
 
-Go/No-Go:
-
-1. go se checklist de seguranca estiver aprovado.
-2. no-go se houver vazamento de dado sensivel.
-
-## 15) Fase 12 - QA final, rollout e operacao
+### Fase 12 - QA final e rollout
 
 Objetivo:
 
-1. liberar app para uso real com risco controlado.
+1. liberar app com risco controlado.
 
-Escopo:
+Gate de saida:
 
-1. beta interno.
-2. piloto com operacao real controlada.
-3. correcoes de alta prioridade.
-4. publicacao em trilha fechada da Play Store.
-5. runbooks de suporte e incidente mobile.
+1. beta interno sem P0/P1 abertos.
+2. matriz 1:1 sem linhas em status ambiguo.
+3. evidencias de paridade visual e funcional anexadas por modulo.
 
-Entregaveis:
-
-1. release candidata aprovada.
-2. release de producao publicada.
-3. operacao monitorada com SLO inicial.
-
-Go/No-Go:
-
-1. go se incidentes P0/P1 estiverem zerados no piloto.
-2. no-go se crash rate superar limite acordado.
-
-## 15.1) Fase 13 - Cutover final para backend AWS/Aurora
+### Fase 13 - Cutover AWS/Aurora
 
 Objetivo:
 
-1. finalizar virada de operacao para stack definitiva.
+1. backend AWS e Aurora como runtime definitivo.
 
-Escopo:
+Gate de saida:
 
-1. executar carga final e reconciliacao.
-2. comutar trafego para backend AWS.
-3. validar fluxo E2E de tenant principal e secundario.
-4. manter janela de observacao com rollback pronto.
+1. tenant principal e tenant secundario operando sem dependencia do web.
 
-Entregaveis:
+## 7) Criterio de pronto por item convertido
 
-1. backend AWS como runtime principal.
-2. Aurora como base canonica ativa.
-3. relatorio de cutover assinado.
+Um item so e considerado pronto quando:
 
-Go/No-Go:
+1. origem web esta mapeada para destino mobile/backend.
+2. regra de negocio equivalente foi implementada.
+3. validacao automatizada minima existe.
+4. observabilidade minima existe (erro e log).
+5. doc operacional foi atualizada quando houve impacto runtime.
+6. comportamento de navegacao/back/deeplink foi validado para o fluxo.
+7. estado de loading, vazio, erro e sucesso foi padronizado.
+8. nao existe duplicacao estrutural relevante naquele recorte.
 
-1. go se reconciliacao de dados estiver 100% aprovada.
-2. no-go se houver divergencia funcional entre tenants.
+## 8) Controle de risco e rollback
 
-## 16) Criterios de validacao por fase
+1. rollback de release Android por trilha da Play Store.
+2. rollback de backend por deploy anterior no ECS.
+3. rollback de dados por snapshot e restore ensaiado do Aurora.
+4. fase seguinte bloqueada quando gate atual falhar.
 
-Em todas as fases, executar no minimo:
+## 9) Estado atual de execucao
 
-1. lint e formatacao do repo Android.
-2. testes unitarios da fase.
-3. smoke test funcional da fase em emulador.
-4. smoke test em dispositivo fisico (S24 Ultra).
-5. validacao de logs sem segredo.
+Ja iniciado:
 
-## 17) Riscos principais e mitigacoes
+1. fundacao Android.
+2. parte do backend (rotas base e auth).
+3. infra AWS em andamento no repo `estudio-platform`.
+4. modulo clientes iniciado no app.
 
-1. acoplamento com backend web atual:
-   mitigacao: contratos mobile-first versionados.
-2. regressao em fluxo financeiro:
-   mitigacao: testes de reconciliacao e idempotencia.
-3. divergencia de UX entre web e app:
-   mitigacao: design system nativo com regra unica por tenant.
-4. sobrecarga de escopo:
-   mitigacao: gates tecnicos obrigatorios por fase.
-5. risco de migracao de dados:
-   mitigacao: cutover unico com reconciliacao e rollback ensaiado.
-6. custo de cloud acima do previsto:
-   mitigacao: chargeback por tenant e monitoramento de custo por servico.
+Nao concluido:
 
-## 18) Rollback de programa
+1. paridade completa dos modulos operacionais.
+2. fluxos publicos finais no app.
+3. migracao e cutover final de dados para Aurora.
 
-1. rollback de release Android por track na Play Store.
-2. web atual permanece como contingencia durante transicao.
-3. qualquer fase bloqueada volta ao ultimo gate aprovado.
-4. mudar para proxima fase sem gate aprovado e proibido.
+## 10) Proximo passo imediato de execucao
 
-## 19) Artefatos obrigatorios de governanca
+1. consolidar status real da matriz 1:1 com dicionario de status fechado.
+2. fechar modulos:
+   - `agenda`
+   - `atendimento`
+   - `mensagens`
+   - `financeiro`
+   - `servicos`
+   - `settings`
+   - `bloqueios`
+   - `admin`
+   - `menu`
+3. fechar fluxos publicos `agendar`, `pagamento`, `voucher` e
+   `comprovante` com paridade completa.
+4. executar trilha paralela 12.x em cada modulo
+   (tokens, componentes, erros, loading, navegacao, reuse-first).
+5. so avancar para cutover final apos evidencias completas por modulo.
 
-1. runbook de build/release Android.
-2. runbook de incidente mobile.
-3. matriz de contratos API mobile.
-4. checklist de onboarding de novo desenvolvedor mobile.
-5. relatorio de validacao final por fase.
-6. runbook de backup/restore Aurora.
-7. runbook de cutover AWS.
-8. relatorio mensal de custo por tenant.
+## 11) Decisoes fechadas e sem pendencia para inicio
 
-## 20) Proximo passo imediato
+1. banco alvo: Aurora PostgreSQL.
+2. nuvem alvo: AWS.
+3. regiao primaria: `sa-east-1`.
+4. autenticacao alvo: Cognito.
+5. white-label obrigatorio desde o inicio.
+6. visual do estudio deve permanecer consistente para a Jana.
+7. `applicationId` canonico Android: `com.erpagendamentos.app`.
+8. package raiz mobile deve permanecer alinhado ao `applicationId`.
+9. naming de ambiente deve seguir `dev`, `preview`, `prod` em app, backend e infra.
 
-Fase 0 e Fase 1 ja estao executadas no baseline inicial.  
-Proximo passo imediato: iniciar Fase 1.5 e Fase 2 em sequencia com gate.
+Com isso, o plano esta executavel sem nova decisao tecnica de base.
 
-Passo imediato do backend/plataforma:
+## 12) Trilha paralela obrigatoria: paridade + melhoria estrutural
 
-1. provisionar stack AWS base e Aurora em `dev`.
-2. criar schema alvo e scripts de migracao inicial.
-3. validar conectividade app -> API -> Aurora.
+Objetivo:
 
-Passo imediato do app Android:
+1. concluir a reescrita com paridade funcional 1:1 com o web.
+2. sair com arquitetura melhor que a origem, sem reproduzir divida tecnica.
 
-1. fechar auth/sessao e client HTTP padrao;
-2. configurar storage seguro para credenciais;
-3. incluir observabilidade tecnica baseline (crash + logs);
-4. abrir primeiro modulo funcional (`clientes`) sobre o core pronto.
+Regra inegociavel:
 
-## 20.1) Modelo de custo por tenant (chargeback)
+1. modulo migrado so fecha quando bater paridade e tambem melhorar higiene.
+2. nao e permitido "copiar problema antigo" para o repo novo.
 
-1. custo base de plataforma:
-   - infra AWS compartilhada
-2. custo por consumo:
-   - Aurora (conexao/armazenamento)
-   - S3 (storage/transferencia)
-   - filas/eventos
-   - provedores externos (Meta, push, mapas, pagamentos)
-3. regra operacional:
-   - registrar uso por tenant
-   - consolidar custo mensal por tenant
-   - aplicar politica comercial por pacote/overage
+## 12.1) Escopo de melhoria obrigatoria por modulo migrado
 
-## 21) Passo a passo operacional ja validado (execucao local)
+Para cada modulo (clientes, agenda, atendimento, mensagens, financeiro, etc.):
 
-Objetivo: permitir repeticao do setup sem tentativa e erro.
+1. mapear regra funcional atual no web.
+2. mapear pontos de duplicacao e acoplamento escondido no web.
+3. implementar no novo repo com:
+   - separacao de camadas
+   - reutilizacao real de componente/utilitario
+   - contrato de erro padronizado
+   - loading padronizado
+4. remover legado sem dono
+   (fallback improvisado, codigo morto, rota antiga sem uso).
 
-1. abrir projeto Android em `C:\Users\renat\Projetos_Dev\estudio-platform`.
-2. sincronizar Gradle e manter AGP/Wrapper atuais do repo.
-3. garantir JDK 21 no Gradle (Android Studio JBR).
-4. validar no terminal:
-   - `.\gradlew.bat clean assembleDebug`
-   - `.\gradlew.bat testDebugUnitTest`
-   - `.\gradlew.bat lintDebug`
-5. subir em emulador:
-   - iniciar AVD `Medium_Phone_API_36.1`
-   - `.\gradlew.bat installDebug`
-6. abrir app instalado:
-   - `adb shell monkey -p com.erpagendamentos.app`
-   - `-c android.intent.category.LAUNCHER 1`
+Gate extra de saida:
 
-## 21.1) Acesso AWS no VS Code (padrao operacional validado)
+1. se o modulo estiver funcional, mas com duplicacao estrutural
+   relevante, fase nao fecha.
 
-1. extensao: AWS Toolkit conectada com profile local.
-2. profile padrao: `profile:estudio_prod_admin`.
-3. regiao padrao: `sa-east-1`.
-4. conta alvo operacional: `8097-7210-6192` (`estudio-prod`).
-5. role alvo: `AdministratorAccess`.
-6. conexoes expiradas devem ser removidas no seletor de conexao
-   para evitar alertas falsos.
+## 12.2) Estrutura alvo de reutilizacao (app + backend)
 
-Se `java` nao for reconhecido no terminal:
+### App Android
 
-1. definir variavel de usuario:
-   - `JAVA_HOME=C:\Program Files\Android\Android Studio\jbr`
-2. adicionar `%JAVA_HOME%\bin` no `Path` de usuario.
-3. fechar/reabrir terminal e validar com `java -version`.
+1. `core/designsystem/components`: componentes base
+   (botao, input, card, chip, sheet, toast, dialog).
+2. `core/designsystem/states`: loading, empty, error, skeleton e retry.
+3. `core/errors`: parser de erro HTTP, mapeador de codigo para
+   mensagem e acao de UX.
+4. `core/network`: cliente HTTP unico, interceptors, correlation id.
+5. `core/session`: token, refresh, logout forcado e estado autenticado.
+6. `features/<modulo>`: apenas composicao do modulo, sem utilitario global duplicado.
+
+### Backend AWS
+
+1. `routes/*`: apenas entrada/saida HTTP e validacao de request.
+2. `services/*`: regra de negocio por dominio.
+3. `db/*`: repositorios e acesso a dados.
+4. `integrations/*`: adapters de provider (WhatsApp, MP, Maps, Spotify, Push).
+5. `errors/*`: catalogo unico de erros, envelope e mapeamento para status HTTP.
+
+Regra:
+
+1. tela nao chama banco diretamente.
+2. route nao concentra regra de negocio.
+3. fallback tecnico so e aceito com telemetria e plano de remocao.
+
+## 12.3) Catalogo de erros v2 (obrigatorio)
+
+Padrao minimo do backend:
+
+1. todo erro retornado deve conter:
+   - `code`
+   - `message`
+   - `userMessage`
+   - `correlationId`
+   - `retryable`
+2. formatar `code` em namespace por dominio:
+   - `AUTH_*`
+   - `CLIENTS_*`
+   - `APPOINTMENTS_*`
+   - `ATTENDANCE_*`
+   - `FINANCE_*`
+   - `INTEGRATIONS_*`
+   - `INFRA_*`
+3. cada `code` deve mapear acao de UX no app:
+   - exibir toast
+   - exibir tela de erro
+   - solicitar reautenticacao
+   - sugerir retry
+
+Padrao minimo do app:
+
+1. erro de rede, auth, validacao, conflito, integracao e
+   indisponibilidade devem ter experiencia distinta.
+2. mensagens tecnicas nao podem vazar para usuario final.
+
+## 12.4) Padronizacao de loading v2 (obrigatoria)
+
+Tipos canonicos de loading:
+
+1. loading de bootstrap de tela.
+2. loading de secao.
+3. loading inline de acao.
+4. loading bloqueante de submit.
+5. loading de refresh/lista.
+6. estado vazio de primeira carga.
+
+Regra de implementacao:
+
+1. todo ponto de carregamento mapeado no web deve existir no app com estado equivalente.
+2. proibido spinner local improvisado quando existir estado canonico.
+
+Inventario minimo de origem (web) para conversao:
+
+1. `apps/web/app/(dashboard)/loading.tsx`
+2. `apps/web/app/(dashboard)/atendimento/[id]/loading.tsx`
+3. `apps/web/app/(dashboard)/clientes/loading.tsx`
+4. `apps/web/app/(dashboard)/mensagens/loading.tsx`
+5. `apps/web/app/(dashboard)/novo/loading.tsx`
+6. `apps/web/app/(public)/agendar/[slug]/loading.tsx`
+7. `apps/web/app/pagamento/loading.tsx`
+8. `apps/web/app/pagamento/[id]/loading.tsx`
+9. `apps/web/app/voucher/[id]/loading.tsx`
+10. `apps/web/app/comprovante/[id]/loading.tsx`
+11. `apps/web/app/comprovante/pagamento/[paymentId]/loading.tsx`
+
+## 12.5) Trilha anti-gambiarra e limpeza de legado
+
+Objetivo:
+
+1. usar a reescrita para resolver emenda antiga e nao carregar
+   passivo para o novo repo.
+
+Checklist por modulo:
+
+1. auditar uso de `legacy*`, `fallback*`, caminhos temporarios e codigo morto.
+2. decidir por item:
+   - manter com contrato explicito
+   - substituir por versao nova
+   - remover
+3. registrar no PR:
+   - o que foi removido
+   - o que ficou e por que
+   - prazo de remocao do que ainda for temporario
+
+No-go:
+
+1. modulo nao fecha com `TODO/FIXME/HACK` sem dono e sem prazo.
+
+## 12.6) Qualidade automatizada minima (novo repo)
+
+App Android:
+
+1. `:app:assembleDebug`
+2. `:app:lintDebug`
+3. `:app:testDebugUnitTest`
+4. `:app:detekt` (obrigatorio ate Fase 4)
+5. `:app:ktlintCheck` (obrigatorio ate Fase 4)
+
+Backend:
+
+1. `pnpm -C backend lint`
+2. `pnpm -C backend check-types`
+3. `pnpm -C backend test`
+4. `pnpm -C backend build`
+
+Infra:
+
+1. `terraform fmt -check`
+2. `terraform validate`
+3. `terraform plan` por ambiente alvo
+
+## 12.7) Definition of Better-than-Web (DoB)
+
+O programa so fecha quando:
+
+1. toda matriz 1:1 estiver em `Concluido com paridade`.
+2. nenhum fluxo core depender de workaround sem governanca.
+3. catalogo de erros v2 estiver aplicado nos modulos core.
+4. loading canonico estiver aplicado em 100% dos pontos mapeados.
+5. duplicacao estrutural relevante estiver tratada no app e backend novos.
+6. docs de execucao, runbook e paridade estiverem sincronizados.
+
+## 12.8) Contrato de tokens visuais (obrigatorio)
+
+Objetivo:
+
+1. impedir deriva visual entre telas e modulos durante a migracao.
+
+Contrato minimo:
+
+1. tokens de cor por semantica: `primary`, `secondary`, `surface`,
+   `background`, `success`, `warning`, `error`, `info`.
+2. tokens de tipografia: `display`, `title`, `body`, `label`, `caption`.
+3. tokens de espacamento: escala unica (`xs/sm/md/lg/xl`).
+4. tokens de raio e elevacao: escala unica para cards, sheets e dialogs.
+5. tokens de estado interativo: `enabled`, `pressed`, `disabled`, `loading`.
+
+Regra:
+
+1. proibido hardcode de cor, fonte e espacamento em tela de feature
+   sem passar pelo tema/token.
+
+## 12.9) API canonica de componentes base
+
+Objetivo:
+
+1. evitar que cada feature invente API propria para componentes iguais.
+
+Componentes base obrigatorios:
+
+1. `AppButton`: variantes `primary`, `secondary`, `ghost`, `danger`, `loading`.
+2. `AppInput`: estados `default`, `focused`, `error`, `disabled`, helper e hint.
+3. `AppCard`: variantes `default`, `outlined`, `elevated`, `interactive`.
+4. `AppSheet`: `modal` e `bottom`.
+5. `AppToast`: `success`, `warning`, `error`, `info`.
+6. `AppDialog`: confirmacao, alerta e acao destrutiva.
+
+Regra:
+
+1. nova tela so pode usar componentes fora desse contrato com
+   justificativa arquitetural registrada.
+
+## 12.10) Matriz de estados por acao (obrigatoria)
+
+Toda acao critica deve declarar explicitamente:
+
+1. estado inicial (idle).
+2. estado de carregamento (loading).
+3. estado de sucesso (success).
+4. estado de erro recuperavel (error retryable).
+5. estado de erro bloqueante (error blocking).
+
+Acoes minimas que precisam da matriz:
+
+1. login/refresh/logout.
+2. create/update/delete de cliente.
+3. create/update/cancel de agendamento.
+4. salvar evolucao de atendimento/prontuario.
+5. criar pagamento/confirmar status/emitir voucher e comprovante.
+
+Regra:
+
+1. toda acao sem matriz de estado e bloqueio de merge.
+
+## 12.11) Navegacao e deep links: checklist de aceite
+
+Para cada fluxo migrado:
+
+1. entrada direta por deep link abre tela correta.
+2. retorno pelo botao back segue caminho esperado.
+3. retorno apos acao concluida nao volta para tela invalida.
+4. abertura por notificacao/whatsapp/push resolve para destino unico.
+5. parametros obrigatorios de rota sao validados.
+
+## 12.12) Evidencia de paridade visual e funcional
+
+Artefatos obrigatorios por modulo:
+
+1. captura do web e do app no mesmo estado (loading, sucesso, erro, vazio).
+2. video curto do fluxo principal ponta a ponta.
+3. checklist de comparacao com veredito por item:
+   - `igual`
+   - `melhor`
+   - `diferente justificado`
+4. log de execucao backend com `correlationId` para o fluxo gravado.
+
+Regra:
+
+1. sem evidencia anexada, modulo nao muda para `concluido com paridade`.
+
+## 12.13) Reuse-first policy (obrigatoria)
+
+Perguntas de gate antes de criar novo codigo:
+
+1. ja existe componente equivalente no `core/designsystem`?
+2. ja existe utilitario equivalente em `core/*`?
+3. ja existe caso de uso/repo que pode ser estendido sem duplicar?
+4. ja existe contrato HTTP reutilizavel com pequena evolucao?
+
+Se qualquer resposta for `sim`:
+
+1. reutilizar/estender primeiro.
+2. criar novo somente com justificativa explicita no PR.
+
+## 12.14) Pacote de trabalho por arquivo (obrigatorio)
+
+Para cada arquivo web convertido, abrir um pacote de trabalho com:
+
+1. arquivo de origem no web.
+2. arquivo(s) destino no app Android.
+3. arquivo(s) destino no backend.
+4. contrato de entrada e saida.
+5. lista de estados de UX (loading/sucesso/erro/vazio).
+6. teste minimo exigido.
+
+Formato obrigatorio do registro:
+
+1. `origem`: caminho completo no web.
+2. `destino_app`: caminho completo no Android.
+3. `destino_backend`: caminho completo no backend.
+4. `paridade`: `igual` ou `melhor`.
+5. `evidencia`: link para captura/video/log.
+6. `status`: valor do dicionario de status da matriz 1:1.
+
+Regra:
+
+1. modulo nao fecha com arquivo critico sem pacote preenchido.
+
+## 12.15) Scorecard quantitativo de aceite (obrigatorio)
+
+Cada modulo migrado deve fechar com score minimo:
+
+1. paridade funcional: `>= 95%`.
+2. paridade visual: `>= 90%`.
+3. reutilizacao de componentes core: `>= 85%`.
+4. cobertura de erros mapeados no catalogo v2: `100%`.
+5. cobertura de pontos de loading mapeados: `100%`.
+
+Regra:
+
+1. score abaixo do minimo bloqueia status `concluido com paridade`.
+
+## 12.16) Matriz de permissoes por acao (obrigatoria)
+
+Toda acao critica deve declarar:
+
+1. papeis autorizados (`owner`, `admin`, `staff`, `viewer`).
+2. comportamento quando sem permissao.
+3. codigo de erro retornado.
+4. estado visual de bloqueio no app.
+
+Acoes minimas com matriz obrigatoria:
+
+1. editar/excluir cliente.
+2. editar/cancelar agendamento.
+3. alterar status financeiro.
+4. disparar automacao sensivel (WhatsApp/push manual).
+5. alterar configuracao de tenant.
+
+## 12.17) Contrato de rastreabilidade de migracao
+
+Cada PR da reescrita deve declarar no topo:
+
+1. modulo alvo.
+2. linhas da matriz 1:1 impactadas.
+3. arquivos web substituidos.
+4. arquivos Android criados/alterados.
+5. arquivos backend criados/alterados.
+6. evidencias anexadas.
+7. scorecard do modulo apos o PR.
+
+Regra:
+
+1. PR sem rastreabilidade completa nao deve ser aprovado.
+
+## 12.18) Integracoes com paridade real (hardening obrigatorio)
+
+Objetivo:
+
+1. garantir que integracoes do web continuem operando no mobile sem perda
+   funcional.
+
+Regra geral por integracao:
+
+1. manter contrato funcional do web.
+2. fechar teste de caso feliz, caso de erro e retentativa.
+3. manter observabilidade com `correlationId`.
+4. manter fallback governado com prazo e dono.
+
+Spotify (obrigatorio):
+
+1. autenticar com OAuth no backend (sem segredo no app).
+2. armazenar e renovar token no backend.
+3. manter comandos de player (`play`, `pause`, `next`, `previous`, volume).
+4. validar comportamento em troca de rede e retomada de sessao.
+5. mapear erros de provider no catalogo v2 (`INTEGRATIONS_SPOTIFY_*`).
+
+## 12.19) Importacao de contatos no modulo Clientes (obrigatorio)
+
+Escopo funcional:
+
+1. importar contatos do dispositivo no app Android.
+2. normalizar telefone, nome e email.
+3. deduplicar por telefone normalizado.
+4. criar cliente e contatos sem quebrar regras de validacao.
+
+Escopo tecnico:
+
+1. permissao Android `READ_CONTACTS` apenas sob demanda (nao no primeiro boot).
+2. fluxo de UX para:
+   - permissao concedida
+   - permissao negada
+   - permissao negada permanentemente
+3. fallback manual: criar cliente sem importar contato.
+
+Gate de aceite:
+
+1. importar lote de contatos com sucesso.
+2. rejeitar/ignorar contatos invalidos sem quebrar a operacao inteira.
+3. exibir feedback claro de quantos contatos foram importados e quantos
+   falharam.
+4. logs com `correlationId` no backend para auditoria.
+
+## 13) Arquivos afins obrigatorios desta empreitada
+
+Este plano deve caminhar junto com:
+
+1. `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`
+2. `docs/runbooks/WORKSPACE_MULTI_REPO_ANDROID_AWS_DB_2026-03-20.md`
+3. `docs/plans/PLANO_ENTERPRISE_REALTIME_EDGE_PUSH_LOADING_2026-03-10.md`
+4. `C:\Users\renat\Projetos_Dev\estudio-platform\docs\CLIENTES_PARIDADE_WEB_MOBILE.md`
+5. `C:\Users\renat\Projetos_Dev\estudio-platform\docs\EXECUCAO_FASE_1_5_E_2_2026-03-20.md`
+
+Regra de manutencao:
+
+1. qualquer evolucao de fase deve atualizar plano + anexo + docs de execucao.
+2. se houver conflito entre plano e execucao, atualizar imediatamente
+   o plano com decisao explicita.

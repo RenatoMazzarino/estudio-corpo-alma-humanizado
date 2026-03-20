@@ -22,6 +22,9 @@ Este diretório foi organizado em duas camadas:
   profile-first para automação WhatsApp por ambiente.
 - `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`: runbook para operar Vercel no
   VS Code sem conflito de extensoes.
+- `docs/runbooks/WORKSPACE_MULTI_REPO_ANDROID_AWS_DB_2026-03-20.md`: runbook
+  oficial para operar os dois repos no mesmo VS Code, com escopo de extensoes,
+  papel do Android Studio e acesso seguro ao Aurora via SSM.
 - `docs/runbooks/WL5_WL10_ROLLOUT_REMOTE_MAIN_2026-03-19.md`: runbook de
   rollout remoto das fases white-label WL-5..WL-10.
 - `docs/runbooks/WHITE_LABEL_TENANT_ONBOARDING_BACKOFFICE_2026-03-19.md`:
@@ -32,6 +35,9 @@ Este diretório foi organizado em duas camadas:
 - `docs/plans/PLANO_REESCRITA_REPO_ANDROID_NATIVO_2026-03-20.md`: plano
   detalhado fase a fase para reescrita do produto como app Android nativo em
   repo separado, mantendo backend e operacao white-label.
+- `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`:
+  anexo tecnico obrigatorio da reescrita com regras de higiene estrutural,
+  padronizacao de loading, catalogo de erros v2 e trilha anti-gambiarra.
 - `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`:
   documento canônico de roadmap/readiness WhatsApp/Meta/coexistência
   (estratégia, não runtime).

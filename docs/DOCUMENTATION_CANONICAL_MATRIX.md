@@ -80,6 +80,7 @@ Classificar o que e:
 
 - `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md`: canonico.
 - `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`: canonico.
+- `docs/runbooks/WORKSPACE_MULTI_REPO_ANDROID_AWS_DB_2026-03-20.md`: canonico.
 - `docs/runbooks/TESTES_VALIDACAO_LOCAL_E_CI.md`: canonico.
 - `docs/runbooks/WL5_WL10_ROLLOUT_REMOTE_MAIN_2026-03-19.md`: canonico.
 - `docs/runbooks/WHITE_LABEL_TENANT_ONBOARDING_BACKOFFICE_2026-03-19.md`:
@@ -96,6 +97,7 @@ Classificar o que e:
 
 - `docs/plans/PLANO_ENTERPRISE_REALTIME_EDGE_PUSH_LOADING_2026-03-10.md`
 - `docs/plans/PLANO_REESCRITA_REPO_ANDROID_NATIVO_2026-03-20.md`
+- `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`
 - `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md`
 - `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`
 
