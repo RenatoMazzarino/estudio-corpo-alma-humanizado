@@ -29,6 +29,9 @@ Este diretório foi organizado em duas camadas:
 - `docs/plans/PLANO_ENTERPRISE_REALTIME_EDGE_PUSH_LOADING_2026-03-10.md`: plano
   enterprise de implementacao para realtime, edge functions, push notifications
   e padronizacao de loading UX.
+- `docs/plans/PLANO_REESCRITA_REPO_ANDROID_NATIVO_2026-03-20.md`: plano
+  detalhado fase a fase para reescrita do produto como app Android nativo em
+  repo separado, mantendo backend e operacao white-label.
 - `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`:
   documento canônico de roadmap/readiness WhatsApp/Meta/coexistência
   (estratégia, não runtime).
