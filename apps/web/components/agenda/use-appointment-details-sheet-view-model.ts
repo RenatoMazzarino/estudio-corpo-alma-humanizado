@@ -225,6 +225,22 @@ export function useAppointmentDetailsSheetViewModel({
     }).trim();
   };
 
+  const buildPaymentChargeMessage = () => {
+    const serviceName = appointment?.service_name ?? "";
+    const paymentLink = buildPaymentLink();
+    const greeting = clientName ? `Olá, ${clientName}!` : "Olá!";
+    const remainingLabel = formatCurrency(remainingAmount);
+    const paymentLinkBlock = paymentLink
+      ? `💰 Valor pendente: ${remainingLabel}\nLink:\n${paymentLink}\n\n`
+      : `💰 Valor pendente: ${remainingLabel}\n\n`;
+
+    return applyAutoMessageTemplate(messageTemplates.payment_charge, {
+      greeting,
+      service_name: serviceName,
+      payment_link_block: paymentLinkBlock,
+    }).trim();
+  };
+
   const buildSignalReceiptMessage = () => {
     const serviceName = appointment?.service_name ?? "";
     const paidValue = formatCurrency(paidAmount);
@@ -301,6 +317,7 @@ export function useAppointmentDetailsSheetViewModel({
     getAutomationStatusLabel,
     openWhatsappWithMessage,
     buildSignalChargeMessage,
+    buildPaymentChargeMessage,
     buildSignalReceiptMessage,
     buildPaidReceiptMessage,
   };

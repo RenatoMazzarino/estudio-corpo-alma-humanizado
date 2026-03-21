@@ -1,54 +1,84 @@
 "use client";
 
 import { useRef } from "react";
-import { Home } from "lucide-react";
+import { Home, MoreHorizontal } from "lucide-react";
 
 interface AppointmentCardProps {
   name: string;
   service: string;
-  durationLabel?: string | null;
   startLabel: string;
   endLabel?: string;
   status?: string | null;
   paymentStatus?: string | null;
   isHomeVisit: boolean;
-  compact?: boolean;
-  hasPreBuffer?: boolean;
-  hasPostBuffer?: boolean;
+  price?: number | null;
+  isVip?: boolean;
+  durationMinutes?: number;
   loading?: boolean;
   onOpenAction: () => void;
   onLongPressAction?: () => void;
   ["data-card"]?: boolean;
 }
 
-const appointmentStatusMap: Record<string, { label: string; dotClass: string }> = {
-  pending: { label: "Pendente", dotClass: "bg-amber-400" },
-  confirmed: { label: "Confirmado", dotClass: "bg-studio-green" },
-  in_progress: { label: "Em andamento", dotClass: "bg-sky-500" },
-  completed: { label: "Concluído", dotClass: "bg-emerald-500" },
-  no_show: { label: "No-show", dotClass: "bg-red-500" },
+const paymentStatusMap: Record<
+  string,
+  { label: string; dotClass: string; textClass: string }
+> = {
+  paid: {
+    label: "Pago",
+    dotClass: "bg-emerald-500",
+    textClass: "text-emerald-600",
+  },
+  partial: {
+    label: "Sinal Pago",
+    dotClass: "bg-amber-500",
+    textClass: "text-amber-600",
+  },
+  pending: {
+    label: "A Receber",
+    dotClass: "bg-amber-500",
+    textClass: "text-amber-600",
+  },
+  waived: {
+    label: "Cortesia",
+    dotClass: "bg-sky-500",
+    textClass: "text-sky-600",
+  },
+  refunded: {
+    label: "Estornado",
+    dotClass: "bg-slate-500",
+    textClass: "text-slate-600",
+  },
 };
 
-const paymentStatusMap: Record<string, { label: string; compactLabel: string; className: string; textClass: string }> = {
-  paid: { label: "PAGO", compactLabel: "PAGO", className: "bg-emerald-50 text-emerald-700", textClass: "text-emerald-600" },
-  partial: { label: "SINAL PAGO", compactLabel: "SINAL", className: "bg-amber-50 text-amber-700", textClass: "text-amber-600" },
-  pending: { label: "A RECEBER", compactLabel: "A RECEBER", className: "bg-gray-100 text-gray-500", textClass: "text-gray-500" },
-  waived: { label: "CORTESIA", compactLabel: "CORTESIA", className: "bg-sky-50 text-sky-700", textClass: "text-sky-600" },
-  refunded: { label: "ESTORNADO", compactLabel: "ESTORN.", className: "bg-slate-100 text-slate-700", textClass: "text-slate-600" },
+const paymentShortLabelMap: Record<string, string> = {
+  paid: "Pago",
+  partial: "Sinal",
+  pending: "A receber",
+  waived: "Cortesia",
+  refunded: "Estorno",
 };
+
+function formatPriceLabel(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) return "R$ --";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
 
 export function AppointmentCard({
   name,
   service,
-  durationLabel,
   startLabel,
   endLabel,
-  status,
   paymentStatus,
   isHomeVisit,
-  compact = false,
-  hasPreBuffer = false,
-  hasPostBuffer = false,
+  price,
+  isVip = false,
+  durationMinutes = 60,
   loading = false,
   onOpenAction,
   onLongPressAction,
@@ -57,25 +87,56 @@ export function AppointmentCard({
   const longPressTimeout = useRef<number | null>(null);
   const startPoint = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
-  const radiusClass = `rounded-2xl${hasPreBuffer ? " rounded-t-none" : ""}${hasPostBuffer ? " rounded-b-none" : ""}`;
-  const statusInfo = status ? appointmentStatusMap[status] : null;
-  const statusLabel = statusInfo?.label ?? "Agendado";
-  const statusDotClass = statusInfo?.dotClass ?? "bg-gray-300";
+
   const paymentInfo = paymentStatus ? paymentStatusMap[paymentStatus] : null;
-  const paymentLabel = paymentInfo?.label ?? "";
-  const paymentCompactLabel = paymentInfo?.compactLabel ?? paymentLabel;
-  const paymentClass = paymentInfo?.className ?? "bg-gray-100 text-gray-500";
-  const paymentTextClass = paymentInfo?.textClass ?? "text-gray-500";
+  const paymentLabel = paymentInfo?.label ?? "A Receber";
+  const paymentShortLabel = paymentShortLabelMap[paymentStatus ?? "pending"] ?? "A receber";
+  const paymentDotClass = paymentInfo?.dotClass ?? "bg-amber-500";
+  const paymentTextClass = paymentInfo?.textClass ?? "text-amber-600";
+  const accentColor = isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)";
+  const density =
+    durationMinutes <= 30
+      ? "micro"
+      : durationMinutes <= 45
+        ? "tight"
+        : durationMinutes <= 75
+          ? "compact"
+          : "full";
+
+  const wrapperPadding =
+    density === "micro"
+      ? "px-2 py-1.5"
+      : density === "tight"
+        ? "px-2.5 py-2"
+        : density === "compact"
+          ? "px-3 py-2.5"
+          : "px-3.5 py-3";
+
+  const nameClass =
+    density === "micro"
+      ? "wl-typo-card-name-xs"
+      : density === "tight"
+        ? "wl-typo-card-name-sm"
+        : density === "compact"
+          ? "wl-typo-card-name-md"
+          : "wl-typo-card-name-lg";
+
+  const serviceClass = "wl-typo-card-service";
+  const timeClass = "wl-typo-card-time";
+  const priceClass = density === "micro" ? "wl-typo-card-status" : "wl-typo-card-price";
+  const paymentClass = "wl-typo-card-status";
+  const vipClass =
+    density === "full"
+      ? "wl-typo-chip inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-600"
+      : "wl-typo-chip inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-600";
+  const homeIconSizeClass = density === "micro" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const homeChipSizeClass =
+    density === "micro" ? "inline-flex h-5 w-5 items-center justify-center" : "inline-flex h-6 w-6 items-center justify-center";
+  const showMetaRow = density !== "micro";
+  const showService = density !== "micro" && density !== "tight";
+  const showDivider = density === "compact" || density === "full";
+  const showPaymentLabel = density !== "micro";
   const timeRange = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
-  const isCompleted = status === "completed";
-  const paddingClass = compact ? "p-2" : "p-3";
-  const nameClass = compact ? "text-[11px]" : "text-sm";
-  const serviceClass = compact ? "text-[10px]" : "text-[11px]";
-  const timeClass = compact ? "text-[10px]" : "text-[11px]";
-  const statusBadgeClass = compact ? "text-[8px] px-1.5 py-0.5" : "text-[9px] px-2 py-1";
-  const gapClass = compact ? "gap-0.5" : "gap-1";
-  const homeTagLabel = compact ? "Dom" : "Domicílio";
-  const homeTagClass = compact ? "text-[8px] px-1.5 py-0.5" : "text-[9px] px-2 py-0.5";
 
   const clearLongPress = () => {
     if (longPressTimeout.current) {
@@ -118,12 +179,8 @@ export function AppointmentCard({
           clearLongPress();
         }
       }}
-      onPointerUp={() => {
-        clearLongPress();
-      }}
-      onPointerCancel={() => {
-        clearLongPress();
-      }}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -131,87 +188,86 @@ export function AppointmentCard({
         }
       }}
       aria-busy={loading}
-      className={`h-full w-full text-left shadow-soft border-l-4 transition group active:scale-[0.99] relative overflow-hidden cursor-pointer ${paddingClass} ${radiusClass} ${
-        isCompleted ? "bg-emerald-50/85 ring-1 ring-emerald-200" : "bg-white"
-      } ${
-        loading ? "opacity-80 cursor-wait" : ""
-      } ${isCompleted ? "border-studio-green" : isHomeVisit ? "border-dom" : "border-studio-green"}`}
-      style={{
-        borderLeftColor: isCompleted
-          ? "var(--color-studio-green)"
-          : isHomeVisit
-            ? "var(--color-dom)"
-            : "var(--color-studio-green)",
-      }}
+      className={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-line border-l-4 bg-white ${wrapperPadding} shadow-soft transition active:scale-[0.99] ${
+        loading ? "opacity-75 cursor-wait" : "cursor-pointer"
+      }`}
+      style={{ borderLeftColor: accentColor }}
     >
       {loading && (
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10">
-          <div
-            className="w-6 h-6 border-2 rounded-full animate-spin"
-            style={{
-              borderColor: "rgba(0,0,0,0.1)",
-              borderTopColor: isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)",
-            }}
-          />
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/70">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/10 border-t-studio-green" />
         </div>
       )}
-      {compact ? (
-        <div className="flex flex-col h-full gap-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 min-w-0">
-              <span className={`w-2 h-2 rounded-full ${statusDotClass}`} title={statusLabel} />
-              <h3 className={`font-extrabold text-studio-text leading-tight truncate ${nameClass}`}>{name}</h3>
-              {isHomeVisit && (
-                <span className={`inline-flex items-center gap-1 rounded-full bg-dom/20 text-dom-strong font-extrabold uppercase tracking-[0.08em] shrink-0 ${homeTagClass}`}>
-                  <Home className="w-3 h-3" /> {homeTagLabel}
+
+      <div className="flex h-full min-h-0 flex-col justify-between">
+        {showMetaRow ? (
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              {isVip ? (
+                <span className={vipClass}>
+                  <Home className="h-2.5 w-2.5" /> VIP
                 </span>
-              )}
+              ) : null}
+              {isHomeVisit ? (
+                <span
+                  className={`${homeChipSizeClass} rounded-md border border-dom/35 bg-dom/15 text-dom-strong`}
+                  title="Domicilio"
+                  aria-label="Domicilio"
+                >
+                  <Home className={homeIconSizeClass} />
+                </span>
+              ) : null}
             </div>
-            {paymentCompactLabel && (
-              <span className={`text-[9px] font-extrabold uppercase tracking-[0.08em] ${paymentTextClass}`}>
-                {paymentCompactLabel}
-              </span>
-            )}
+            <MoreHorizontal className="h-4 w-4 shrink-0 text-muted" />
           </div>
+        ) : null}
 
-          <div className={`flex items-center justify-between gap-2 text-muted ${timeClass}`}>
-            <p className={`font-medium truncate ${serviceClass}`}>
-              {service}
-              {durationLabel ? ` (${durationLabel})` : ""}
-            </p>
-            <span className="font-semibold text-studio-text shrink-0">{timeRange}</span>
-          </div>
-        </div>
-      ) : (
-        <div className={`flex flex-col h-full ${gapClass}`}>
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${statusDotClass}`} title={statusLabel} />
-                <h3 className={`font-extrabold text-studio-text leading-tight line-clamp-1 ${nameClass}`}>{name}</h3>
+        {density === "micro" ? (
+          <div className="min-h-0">
+            <div className="mb-0.5 flex items-center justify-between gap-1.5">
+              <div className="min-w-0 flex items-center gap-1">
+                {isHomeVisit ? (
+                  <span
+                    className={`${homeChipSizeClass} rounded-md border border-dom/35 bg-dom/15 text-dom-strong`}
+                    title="Domicilio"
+                    aria-label="Domicilio"
+                  >
+                    <Home className={homeIconSizeClass} />
+                  </span>
+                ) : null}
+                <h3 className={`truncate leading-tight text-studio-text ${nameClass}`}>{name}</h3>
               </div>
-              <p className={`text-muted line-clamp-1 ${serviceClass}`}>
-                {service}
-                {durationLabel ? ` (${durationLabel})` : ""}
-              </p>
+              <MoreHorizontal className="h-3.5 w-3.5 shrink-0 text-muted" />
             </div>
-            {isHomeVisit && (
-              <span className={`inline-flex items-center gap-1 rounded-full bg-dom/20 text-dom-strong font-extrabold uppercase tracking-[0.08em] ${homeTagClass}`}>
-                <Home className="w-3 h-3" /> {homeTagLabel}
-              </span>
-            )}
+            <div className="flex items-center justify-between gap-2">
+              <p className={`truncate text-muted ${timeClass}`}>{timeRange}</p>
+              <div className="min-w-0 flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${paymentDotClass}`} />
+                <span className={`truncate text-studio-text ${priceClass}`}>{formatPriceLabel(price)}</span>
+                <span className={`truncate ${paymentTextClass} ${paymentClass}`}>{paymentShortLabel}</span>
+              </div>
+            </div>
           </div>
+        ) : (
+          <div className="min-h-0">
+            <h3 className={`leading-tight text-studio-text line-clamp-1 ${nameClass}`}>{name}</h3>
+            {showService ? <p className={`mt-0.5 text-muted line-clamp-1 ${serviceClass}`}>{service}</p> : null}
+            <p className={`${showService ? "mt-1" : "mt-0.5"} text-muted ${timeClass}`}>{timeRange}</p>
+          </div>
+        )}
 
-          <div className={`mt-auto flex items-center justify-between gap-2 text-muted ${timeClass}`}>
-            <span className="font-semibold text-studio-text">{timeRange}</span>
-            {paymentLabel && (
-              <span className={`inline-flex items-center gap-1 rounded-full font-extrabold uppercase tracking-[0.08em] ${statusBadgeClass} ${paymentClass}`}>
-                {paymentLabel}
-              </span>
-            )}
+        {density !== "micro" ? (
+          <div className={`${showDivider ? "mt-2.5 border-t border-line pt-2" : density === "tight" ? "mt-1.5" : "mt-1"}`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${paymentDotClass}`} />
+              <span className={`truncate text-studio-text ${priceClass}`}>{formatPriceLabel(price)}</span>
+              {showPaymentLabel ? (
+                <span className={`truncate ${paymentTextClass} ${paymentClass}`}>{paymentLabel}</span>
+              ) : null}
+            </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </div>
     </div>
   );
 }

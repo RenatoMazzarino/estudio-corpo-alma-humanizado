@@ -65,7 +65,7 @@ export default async function Home({
   searchParams?: Promise<{ created?: string; q?: string }>;
 }) {
   noStore();
-  const { tenantId } = await requireDashboardAccessForPage("/");
+  const { tenantId, displayName, avatarUrl } = await requireDashboardAccessForPage("/");
   const resolvedSearchParams = await searchParams;
   const today = new Date();
   
@@ -147,6 +147,8 @@ export default async function Home({
       signalPercentage={settings?.signal_percentage ?? 30}
       publicBaseUrl={settings?.public_base_url ?? DEFAULT_PUBLIC_BASE_URL}
       messageTemplates={messageTemplates}
+      currentUserName={displayName}
+      currentUserAvatarUrl={avatarUrl}
     />
   );
 }

@@ -40,6 +40,8 @@ export interface MobileAgendaProps {
   signalPercentage?: number;
   publicBaseUrl?: string;
   messageTemplates: AutoMessageTemplates;
+  currentUserName?: string | null;
+  currentUserAvatarUrl?: string | null;
 }
 
 export type AgendaView = "day" | "week" | "month";
@@ -61,6 +63,7 @@ export type DayItem = {
   price?: number | null;
   phone?: string | null;
   address?: string | null;
+  is_vip?: boolean | null;
   block_type?: string | null;
   is_full_day?: boolean | null;
 };

@@ -1,8 +1,8 @@
 "use client";
 
-import { addDays, format } from "date-fns";
+import { addDays, format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Car, ChevronLeft, ChevronRight, Hospital } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Appointment, AvailabilityBlock, DayItem } from "./mobile-agenda.types";
 import { parseAgendaDate } from "./mobile-agenda.helpers";
 
@@ -19,6 +19,10 @@ type MobileAgendaWeekSectionProps = {
   onOpenDayAction: (day: Date) => void;
 };
 
+function formatWeekdayShort(day: Date) {
+  return format(day, "EEE", { locale: ptBR }).replace(".", "").toUpperCase();
+}
+
 export function MobileAgendaWeekSection({
   visible,
   selectedDate,
@@ -27,125 +31,106 @@ export function MobileAgendaWeekSection({
   onChangeSelectedDateAction,
   onOpenDayAction,
 }: MobileAgendaWeekSectionProps) {
+  const startOfWeek = weekDays[0] ?? null;
+  const endOfWeek = weekDays[weekDays.length - 1] ?? null;
+  const rangeLabel =
+    startOfWeek && endOfWeek
+      ? `${format(startOfWeek, "dd")} - ${format(endOfWeek, "dd MMMM", {
+          locale: ptBR,
+        })}`
+      : "";
+
   return (
-    <section className={`${visible ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}>
-      <div className="flex items-center justify-between mb-4">
+    <section className={`${visible ? "block" : "hidden"} animate-in fade-in px-4 pb-0 pt-4`}>
+      <div className="mb-5 flex items-center justify-between">
         <button
           type="button"
           onClick={() => onChangeSelectedDateAction(addDays(selectedDate, -7))}
-          className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-white"
+          aria-label="Semana anterior"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <div className="text-sm font-extrabold text-studio-text capitalize">
-          {weekDays.length > 0
-            ? (() => {
-                const startOfWeek = weekDays[0];
-                const endOfWeek = weekDays[weekDays.length - 1];
-                return startOfWeek && endOfWeek
-                  ? `${format(startOfWeek, "dd MMM", { locale: ptBR })} - ${format(endOfWeek, "dd MMM", {
-                      locale: ptBR,
-                    })}`
-                  : "";
-              })()
-            : ""}
+
+        <div className="text-center">
+          <h2 className="wl-typo-h2 capitalize leading-tight text-studio-text">{rangeLabel}</h2>
+          <p className="wl-typo-body mt-1 text-muted">Visao semanal</p>
         </div>
+
         <button
           type="button"
           onClick={() => onChangeSelectedDateAction(addDays(selectedDate, 7))}
-          className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-white"
+          aria-label="Proxima semana"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-4">
+
+      <div className="space-y-3 pb-16">
         {weekDays.map((day) => {
           const { dayAppointments, dayBlocks } = getDayDataAction(day);
           const hasAppointments = dayAppointments.length > 0;
-          const hasShiftBlock = dayBlocks.some((block) => (block.block_type ?? "") === "shift" && block.is_full_day);
           const partialBlocks = dayBlocks.filter(
             (block) => !((block.block_type ?? "") === "shift" && block.is_full_day)
           );
           const hasBlocks = partialBlocks.length > 0;
+          const isActive = isSameDay(day, selectedDate);
+          const dayNumber = format(day, "dd");
+          const dayShort = formatWeekdayShort(day);
 
-          if (hasAppointments) {
-            return (
-              <button
-                key={day.toISOString()}
-                type="button"
-                onClick={() => onOpenDayAction(day)}
-                className="bg-white p-4 rounded-3xl border-l-4 border-studio-green shadow-soft text-left active:scale-[0.99] transition"
-              >
-                <div className="flex justify-between border-b border-line pb-2 mb-2">
-                  <span className="font-extrabold text-studio-text capitalize">
-                    {format(day, "EEE, dd", { locale: ptBR })}
-                  </span>
-                  <span className="text-xs font-extrabold bg-studio-green/10 text-studio-green px-2 rounded-full">
-                    {dayAppointments.length} atendimentos
+          return (
+            <button
+              key={day.toISOString()}
+              type="button"
+              onClick={() => onOpenDayAction(day)}
+              className={`w-full rounded-xl border bg-white px-4 py-3 text-left shadow-soft transition active:scale-[0.99] ${
+                isActive || hasAppointments ? "border-studio-green/35" : "border-line"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-end gap-2">
+                  <span className="wl-typo-h1 leading-none text-studio-text">{dayNumber}</span>
+                  <span className="wl-typo-label pb-1 text-muted">
+                    {dayShort}.
                   </span>
                 </div>
-                <div className="space-y-2">
-                  {dayAppointments.slice(0, 3).map((appt) => (
-                    <div key={appt.id} className="flex items-center gap-2 text-sm">
-                      <span className="text-xs font-semibold text-muted">
+
+                <div className="wl-typo-body pt-1 text-right text-muted">
+                  {hasAppointments ? (
+                    <>
+                      <p>{dayAppointments.length} agendamentos</p>
+                      <p>{hasBlocks ? `${partialBlocks.length} bloqueio(s)` : " "}</p>
+                    </>
+                  ) : hasBlocks ? (
+                    <p>{partialBlocks.length} bloqueio(s)</p>
+                  ) : (
+                    <p>Livre</p>
+                  )}
+                </div>
+              </div>
+
+              {hasAppointments ? (
+                <div className="mt-3 space-y-2">
+                  {dayAppointments.map((appt) => (
+                    <div
+                      key={appt.id}
+                        className="flex items-center justify-between rounded-xl border border-line bg-studio-bg px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="wl-typo-title truncate text-studio-text">
+                          {appt.clients?.name ?? "Cliente"}
+                        </p>
+                        <p className="wl-typo-body truncate text-muted">{appt.service_name}</p>
+                      </div>
+                      <span className="wl-typo-body ml-2 text-studio-text">
                         {format(parseAgendaDate(appt.start_time), "HH:mm")}
                       </span>
-                      <span className="text-xs text-muted">•</span>
-                      <span className="font-bold text-studio-text truncate">{appt.clients?.name ?? ""}</span>
-                      {appt.is_home_visit && (
-                        <span className="ml-auto flex items-center justify-center w-6 h-6 rounded-full bg-dom/20 text-dom-strong">
-                          <Car className="w-3 h-3" />
-                        </span>
-                      )}
                     </div>
                   ))}
                 </div>
-              </button>
-            );
-          }
-
-          if (hasShiftBlock || hasBlocks) {
-            return (
-              <div
-                key={day.toISOString()}
-                className={`bg-white p-4 rounded-3xl shadow-soft opacity-90 ${
-                  hasBlocks ? "border-l-4 border-amber-400" : "border border-stone-100"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-extrabold text-studio-text capitalize">
-                    {format(day, "EEE, dd", { locale: ptBR })}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {hasShiftBlock && (
-                      <span className="text-xs font-extrabold bg-red-100 text-danger px-2 py-1 rounded-full flex items-center gap-1">
-                        <Hospital className="w-3 h-3" /> PLANTÃO
-                      </span>
-                    )}
-                    {hasBlocks && (
-                      <span className="text-xs font-extrabold bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1">
-                        Bloqueio parcial
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {hasBlocks ? (
-                  <p className="text-xs text-muted mt-2">{partialBlocks.length} bloqueio(s) parcial(is) neste dia.</p>
-                ) : (
-                  <p className="text-xs text-muted mt-2">Plantão programado.</p>
-                )}
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={day.toISOString()}
-              className="bg-studio-light p-4 rounded-3xl border border-dashed border-line text-center"
-            >
-              <span className="font-extrabold text-muted capitalize">{format(day, "EEE, dd", { locale: ptBR })}</span>
-              <p className="text-xs text-muted">Agenda livre</p>
-            </div>
+              ) : null}
+            </button>
           );
         })}
       </div>

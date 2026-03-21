@@ -56,10 +56,12 @@ export function buildAgendaDayData({ day, appointmentsByDay, blocksByDay }: Para
       price: appt.price ?? null,
       phone: appt.clients?.phone ?? null,
       address: appt.clients?.endereco_completo ?? null,
+      is_vip:
+        Array.isArray(appt.clients?.health_tags) &&
+        appt.clients.health_tags.some((tag) => String(tag ?? "").toLowerCase().includes("vip")),
     })),
     ...blockItems,
   ].sort((a, b) => parseAgendaDate(a.start_time).getTime() - parseAgendaDate(b.start_time).getTime());
 
   return { dayAppointments, dayBlocks, items };
 }
-

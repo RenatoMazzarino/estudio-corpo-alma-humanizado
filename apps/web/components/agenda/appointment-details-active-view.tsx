@@ -1,6 +1,21 @@
-import { Bell, CheckCircle2, Eye, MapPin, MessageSquare, StickyNote, ThumbsUp, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Bell,
+  CheckCircle2,
+  ChevronDown,
+  CreditCard,
+  Eye,
+  Gift,
+  MapPin,
+  MessageSquare,
+  ReceiptText,
+  StickyNote,
+  ThumbsUp,
+  Wallet,
+} from "lucide-react";
 
 import { PaymentMethodIcon } from "../ui/payment-method-icon";
+import { WhatsAppIcon } from "../ui/whatsapp-icon";
 
 type PaymentMethod = "pix" | "card" | "cash" | "other";
 
@@ -12,18 +27,11 @@ interface AppointmentDetailsActiveViewProps {
   hasAddress: boolean;
   addressLine: string;
   mapsHref: string | null;
-  attendanceCode: string | null;
-  attendanceCodeHint: string | null;
   createdAutomationStatusLabel: string;
   reminderAutomationStatusLabel: string;
   isConfirmed: boolean;
   confirmedText: string;
-  paymentStatus:
-    | "pending"
-    | "partial"
-    | "paid"
-    | "waived"
-    | "refunded";
+  paymentStatus: "pending" | "partial" | "paid" | "waived" | "refunded";
   signalAmountLabel: string;
   paidAmountLabel: string;
   paymentDateLabel: string;
@@ -43,7 +51,7 @@ interface AppointmentDetailsActiveViewProps {
   onRecordSignalPayment: () => void;
   onRecordFullPayment: () => void;
   onSendSignalChargeMessage: () => void;
-  onSendSignalReceiptMessage: () => void;
+  onSendPaymentChargeMessage: () => void;
   onSendPaidReceiptMessage: () => void;
 }
 
@@ -55,8 +63,6 @@ export function AppointmentDetailsActiveView({
   hasAddress,
   addressLine,
   mapsHref,
-  attendanceCode,
-  attendanceCodeHint,
   createdAutomationStatusLabel,
   reminderAutomationStatusLabel,
   isConfirmed,
@@ -81,343 +87,364 @@ export function AppointmentDetailsActiveView({
   onRecordSignalPayment,
   onRecordFullPayment,
   onSendSignalChargeMessage,
-  onSendSignalReceiptMessage,
+  onSendPaymentChargeMessage,
   onSendPaidReceiptMessage,
 }: AppointmentDetailsActiveViewProps) {
+  const canExpandFinance = paymentStatus === "pending" || paymentStatus === "partial";
+  const [financeExpanded, setFinanceExpanded] = useState(canExpandFinance);
+
+  useEffect(() => {
+    setFinanceExpanded(canExpandFinance);
+  }, [canExpandFinance]);
+
+  const financeSummary = (() => {
+    if (paymentStatus === "pending") {
+      return {
+        title: "Nada pago",
+        subtitleLabel: "Total a cobrar",
+        subtitleValue: remainingAmountLabel,
+      };
+    }
+
+    if (paymentStatus === "partial") {
+      return {
+        title: "Sinal pago",
+        subtitleLabel: "Saldo a cobrar",
+        subtitleValue: remainingAmountLabel,
+      };
+    }
+
+    if (paymentStatus === "paid") {
+      return {
+        title: "Pagamento integral",
+        subtitleLabel: paymentDateLabel ? `Pago em ${paymentDateLabel}` : "Valor pago",
+        subtitleValue: paidAmountLabel,
+      };
+    }
+
+    if (paymentStatus === "waived") {
+      return {
+        title: "Pagamento liberado",
+        subtitleLabel: "Sem cobranca",
+        subtitleValue: "-",
+      };
+    }
+
+    return {
+      title: "Pagamento estornado",
+      subtitleLabel: "Status",
+      subtitleValue: "Estornado",
+    };
+  })();
+
+  const handleRegisterPayment = () => {
+    if (paymentStatus === "pending" && canRegisterSignal) {
+      onRecordSignalPayment();
+      return;
+    }
+    onRecordFullPayment();
+  };
+
+  const hasNotes = internalNotes.trim().length > 0;
+  const gpsChooserHref = hasAddress
+    ? `geo:0,0?q=${encodeURIComponent(addressLine)}`
+    : null;
+
   return (
-    <div className="mt-6 space-y-5">
+    <div className="space-y-4">
       <section>
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-          <MapPin className="w-3.5 h-3.5" />
-          Logística
+        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
+          <MapPin className="h-3.5 w-3.5" />
+          Logistica
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-2xl p-3 border border-line text-center">
-            <span className="text-xs font-bold text-studio-text block">{dateLabel}</span>
-            <span className="text-[10px] font-bold text-muted uppercase">{timeLabel}</span>
-          </div>
-          <div
-            className={`bg-white rounded-2xl p-3 border border-line col-span-2 relative ${
-              isHomeVisit ? "" : "flex items-center justify-center"
-            }`}
-          >
-            {isHomeVisit ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-dom-strong">
-                    Domicílio
-                  </span>
-                </div>
-                {hasAddress && (
-                  <p className="text-xs font-bold text-studio-text truncate pr-8 mt-1">
-                    {addressLine}
-                  </p>
-                )}
-                {hasAddress && mapsHref && (
-                  <a
-                    href={mapsHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-dom-strong shadow-sm border border-line"
-                    aria-label="Abrir rota no mapa"
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                  </a>
-                )}
-              </>
-            ) : (
-              <p className="text-base font-extrabold text-studio-green tracking-wide w-full text-center">
-                Estúdio
-              </p>
-            )}
-          </div>
-        </div>
-        {attendanceCode && (
-          <div className="mt-3 rounded-2xl border border-line bg-paper px-3 py-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                Código de atendimento
-              </span>
-              <code className="text-xs font-extrabold tracking-[0.08em] text-studio-text">
-                {attendanceCode}
-              </code>
+
+        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+            <div>
+              <p className="wl-typo-title text-studio-text">{dateLabel}</p>
+              <p className="wl-typo-body-sm pt-0.5 text-muted">{timeLabel}</p>
             </div>
-            {attendanceCodeHint && (
-              <p className="mt-1 text-[10px] text-muted">{attendanceCodeHint}</p>
-            )}
+            <span className="wl-typo-body-sm rounded-lg border border-line bg-paper px-2 py-1 text-muted">
+              {isHomeVisit ? "Domicilio" : "Estudio"}
+            </span>
           </div>
-        )}
+
+          {isHomeVisit && hasAddress && (
+            <div className="mt-3 flex items-start justify-between gap-3">
+              <div>
+                <p className="wl-typo-title text-studio-text">Endereco</p>
+                <p className="wl-typo-body-sm pt-0.5 leading-5 text-muted">{addressLine}</p>
+              </div>
+              {(gpsChooserHref || mapsHref) && (
+                <a
+                  href={gpsChooserHref ?? mapsHref ?? "#"}
+                  onClick={(event) => {
+                    if (!gpsChooserHref || !mapsHref) return;
+                    event.preventDefault();
+                    window.location.href = gpsChooserHref;
+                    window.setTimeout(() => {
+                      window.open(mapsHref, "_blank", "noopener,noreferrer");
+                    }, 500);
+                  }}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-studio-text"
+                  aria-label="Abrir rota no mapa"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
       <section>
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-          <MessageSquare className="w-3.5 h-3.5" />
-          Comunicação
+        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
+          <MessageSquare className="h-3.5 w-3.5" />
+          Comunicacao
         </div>
 
-        <div className="bg-white rounded-2xl border border-line px-4 py-2 shadow-sm">
-          <div className="flex items-center gap-3 py-3 border-b border-line">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-red-50 text-red-400 flex items-center justify-center">
-                <Bell className="w-4 h-4" />
+        <div className="overflow-hidden rounded-xl border border-line bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-line bg-paper/60 px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <ThumbsUp className="h-4 w-4 text-muted" />
+              <p className="wl-typo-label text-studio-text">Status da cliente</p>
+            </div>
+            <span
+              className={`wl-typo-chip rounded-md border px-2 py-0.5 ${
+                isConfirmed
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-line bg-paper text-muted"
+              }`}
+            >
+              {isConfirmed ? "Confirmado" : "Aguardando"}
+            </span>
+          </div>
+
+          <div className="space-y-3 p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-paper text-muted">
+                <Bell className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-studio-text">Aviso de Agendamento (Automático)</p>
-                <p className="text-[10px] text-muted">{createdAutomationStatusLabel}</p>
+                <p className="wl-typo-title text-studio-text">Aviso de agendamento</p>
+                <p className="wl-typo-body-sm pt-0.5 text-muted">{createdAutomationStatusLabel}</p>
               </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-paper text-muted">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="wl-typo-title text-studio-text">Confirmacao 24h</p>
+                <p className="wl-typo-body-sm pt-0.5 text-muted">{reminderAutomationStatusLabel}</p>
+              </div>
+            </div>
+
+            <div className="wl-typo-body-sm rounded-lg border border-line bg-paper px-3 py-2.5 text-muted">
+              {isConfirmed ? confirmedText : "Aguardando resposta da cliente."}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 py-3 border-b border-line">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-studio-text">Lembrete 24h (Automático)</p>
-                <p className="text-[10px] text-muted">{reminderAutomationStatusLabel}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
-                <ThumbsUp className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-studio-text">Confirmação do Cliente</p>
-                <p className="text-[10px] text-muted">
-                  {isConfirmed ? confirmedText : "Aguardando resposta..."}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onOpenCancelDialog}
-                disabled={actionPending}
-                className="px-3 py-1.5 border border-red-200 text-red-600 rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-            </div>
+          <div className="border-t border-line p-3">
+            <button
+              type="button"
+              onClick={onOpenCancelDialog}
+              disabled={actionPending}
+              className="wl-typo-label h-9 w-full rounded-lg border border-red-200 bg-white text-red-600 transition disabled:opacity-60"
+            >
+              Cancelar agendamento
+            </button>
           </div>
         </div>
       </section>
 
       <section>
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-          <Wallet className="w-3.5 h-3.5" />
+        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
+          <Wallet className="h-3.5 w-3.5" />
           Financeiro
         </div>
 
-        <div className="bg-white rounded-2xl border border-line px-4 py-2 shadow-sm">
-          {paymentStatus === "pending" && (
-            <div className="flex items-center justify-between gap-3 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
+        <div className="overflow-hidden rounded-xl border border-line bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={() => {
+              if (canExpandFinance) {
+                setFinanceExpanded((prev) => !prev);
+              }
+            }}
+            className={`w-full p-4 text-left ${canExpandFinance ? "cursor-pointer" : "cursor-default"}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-paper text-studio-text">
+                  <ReceiptText className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-studio-text">Sinal / Reserva</p>
-                  <p className="text-[10px] text-amber-600 font-semibold">Pendente</p>
-                  <p className="text-[10px] text-muted">Valor do sinal: {signalAmountLabel}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onSendSignalChargeMessage}
-                disabled={actionPending}
-                className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-              >
-                Cobrar Sinal
-              </button>
-            </div>
-          )}
-
-          {paymentStatus === "partial" && (
-            <div className="flex items-center justify-between gap-3 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-studio-text">Sinal / Reserva</p>
-                  <p className="text-[10px] text-emerald-600 font-semibold">
-                    {paymentDateLabel ? `Pago em ${paymentDateLabel}` : "Pago"}
-                  </p>
-                  <p className="text-[10px] text-muted">Valor pago: {paidAmountLabel}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onSendSignalReceiptMessage}
-                disabled={actionPending}
-                className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
-              >
-                Enviar comprovante
-              </button>
-            </div>
-          )}
-
-          {paymentStatus === "paid" && (
-            <div className="flex items-center justify-between gap-3 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-studio-text">Pagamento integral</p>
-                  <p className="text-[10px] text-emerald-600 font-semibold">
-                    {paymentDateLabel ? `Pago integralmente em ${paymentDateLabel}` : "Pago integralmente"}
+                  <p className="wl-typo-h2 leading-none text-studio-text">{financeSummary.title}</p>
+                  <p className="wl-typo-body pt-1 text-muted">
+                    {financeSummary.subtitleLabel}: <span className="font-semibold text-studio-text">{financeSummary.subtitleValue}</span>
                   </p>
                 </div>
               </div>
+
+              {canExpandFinance ? (
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-muted transition-transform ${financeExpanded ? "rotate-180" : "rotate-0"}`}
+                />
+              ) : null}
+            </div>
+          </button>
+
+          {canExpandFinance && financeExpanded && (
+            <div className="border-t border-line p-4">
+              <p className="wl-typo-label mb-3 text-muted">
+                Registrar cobranca (sinal ou total)
+              </p>
+
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onSelectPaymentMethod("pix")}
+                  disabled={actionPending}
+                  className={`rounded-xl border border-line px-2 py-3 text-center transition ${
+                    paymentMethod === "pix" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                  } ${actionPending ? "opacity-60" : ""}`}
+                >
+                  <PaymentMethodIcon method="pix" className="mx-auto h-4 w-4" />
+                  <span className="wl-typo-chip mt-2 block">Pix</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectPaymentMethod("card")}
+                  disabled={actionPending}
+                  className={`rounded-xl border border-line px-2 py-3 text-center transition ${
+                    paymentMethod === "card" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                  } ${actionPending ? "opacity-60" : ""}`}
+                >
+                  <CreditCard className="mx-auto h-4 w-4" />
+                  <span className="wl-typo-chip mt-2 block">Credito</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectPaymentMethod("cash")}
+                  disabled={actionPending}
+                  className={`rounded-xl border border-line px-2 py-3 text-center transition ${
+                    paymentMethod === "cash" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                  } ${actionPending ? "opacity-60" : ""}`}
+                >
+                  <Wallet className="mx-auto h-4 w-4" />
+                  <span className="wl-typo-chip mt-2 block">Dinheiro</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectPaymentMethod("other")}
+                  disabled={actionPending}
+                  className={`rounded-xl border border-line px-2 py-3 text-center transition ${
+                    paymentMethod === "other" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                  } ${actionPending ? "opacity-60" : ""}`}
+                >
+                  <Gift className="mx-auto h-4 w-4" />
+                  <span className="wl-typo-chip mt-2 block">Cortesia</span>
+                </button>
+              </div>
+
+              {showManualRegister && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRegisterPayment}
+                    disabled={actionPending || (!canRegisterSignal && !canRegisterFull) || remainingAmount <= 0}
+                    className="wl-typo-button h-12 rounded-xl bg-studio-green px-3 text-white disabled:opacity-60"
+                  >
+                    Registrar Pagamento
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (paymentStatus === "pending") {
+                        onSendSignalChargeMessage();
+                        return;
+                      }
+                      onSendPaymentChargeMessage();
+                    }}
+                    disabled={actionPending}
+                    className="wl-typo-button flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-studio-text disabled:opacity-60"
+                  >
+                    <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                    Enviar Cobranca
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!canExpandFinance && paymentStatus === "paid" && (
+            <div className="border-t border-line p-4">
               <button
                 type="button"
                 onClick={onSendPaidReceiptMessage}
                 disabled={actionPending}
-                className="px-3 py-1.5 bg-studio-text text-white rounded-full text-[10px] font-extrabold transition disabled:opacity-60"
+                className="wl-typo-label h-10 w-full rounded-xl border border-studio-green bg-studio-light text-studio-green disabled:opacity-60"
               >
-                Enviar comprovante
+                {hasReceiptSent ? "Reenviar recibo" : "Enviar recibo"}
               </button>
             </div>
           )}
 
-          {paymentStatus === "waived" && (
-            <div className="flex items-center justify-between gap-3 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-studio-text">Pagamento liberado</p>
-                  <p className="text-[10px] text-sky-600 font-semibold">
-                    Cobrança dispensada por decisão interna
-                  </p>
-                </div>
-              </div>
-              <span className="px-3 py-1.5 rounded-full bg-sky-50 text-sky-700 text-[10px] font-extrabold">
-                Sem cobrança
+          {!canExpandFinance && (paymentStatus === "waived" || paymentStatus === "refunded") && (
+            <div className="border-t border-line p-4">
+              <button
+                type="button"
+                onClick={onSendPaymentCharge}
+                disabled={actionPending}
+                className="wl-typo-label h-10 w-full rounded-xl border border-line bg-white text-studio-text disabled:opacity-60"
+              >
+                {hasChargeSent ? "Reenviar cobranca" : "Enviar cobranca"}
+              </button>
+            </div>
+          )}
+
+          <div className="border-t border-line px-4 py-3">
+            <div className="flex flex-wrap gap-2">
+              <span className="wl-typo-chip rounded-md border border-line bg-paper px-2 py-1 text-muted">
+                {hasReceiptSent ? "Recibo enviado" : "Recibo pendente"}
               </span>
+              <span className="wl-typo-chip rounded-md border border-line bg-paper px-2 py-1 text-muted">
+                {hasChargeSent ? "Cobranca enviada" : "Cobranca pendente"}
+              </span>
+              {paymentStatus === "pending" && (
+                <span className="wl-typo-chip rounded-md border border-line bg-paper px-2 py-1 text-muted">
+                  Sinal: {signalAmountLabel}
+                </span>
+              )}
+              {paymentStatus === "partial" && (
+                <span className="wl-typo-chip rounded-md border border-line bg-paper px-2 py-1 text-muted">
+                  Falta: {signalRemainingLabel}
+                </span>
+              )}
             </div>
-          )}
-
-          {paymentStatus === "refunded" && (
-            <div className="flex items-center justify-between gap-3 py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-studio-text">Pagamento estornado</p>
-                  <p className="text-[10px] text-slate-600 font-semibold">
-                    Reavalie cobrança complementar, se necessário
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {showManualRegister && (
-            <div className="border-t border-line pt-3">
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                Registrar pagamento manual
-              </p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {([
-                  { key: "pix", label: "Pix", icon: <PaymentMethodIcon method="pix" className="h-3.5 w-3.5" /> },
-                  { key: "card", label: "Cartão", icon: <PaymentMethodIcon method="card" className="h-3.5 w-3.5" /> },
-                  { key: "cash", label: "Dinheiro", icon: <PaymentMethodIcon method="cash" className="h-3.5 w-3.5" /> },
-                ] as const).map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => onSelectPaymentMethod(item.key)}
-                    disabled={actionPending}
-                    className={`h-9 rounded-xl text-[10px] font-extrabold border transition ${
-                      paymentMethod === item.key
-                        ? "border-studio-green bg-studio-light text-studio-green"
-                        : "border-line text-muted hover:bg-paper"
-                    } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
-                    <span className="flex items-center justify-center gap-1.5">
-                      {item.icon}
-                      {item.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <div className={`mt-3 grid gap-2 ${canRegisterSignal && canRegisterFull ? "grid-cols-2" : "grid-cols-1"}`}>
-                {canRegisterSignal && (
-                  <button
-                    type="button"
-                    onClick={onRecordSignalPayment}
-                    disabled={actionPending}
-                    className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                      "border-amber-200 text-amber-700 bg-amber-50"
-                    } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
-                    Registrar sinal ({signalRemainingLabel})
-                  </button>
-                )}
-                {canRegisterFull && (
-                  <button
-                    type="button"
-                    onClick={onRecordFullPayment}
-                    disabled={actionPending || remainingAmount <= 0}
-                    className={`h-10 rounded-xl text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                      "border-studio-green text-studio-green bg-studio-light"
-                    } ${actionPending ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
-                    Pagamento integral ({remainingAmountLabel})
-                  </button>
-                )}
-              </div>
-              <p className="mt-2 text-[10px] text-muted">
-                O valor do sinal segue a porcentagem configurada nas configurações.
-              </p>
-            </div>
-          )}
-
-          <div className="pt-2 flex flex-wrap gap-2">
-            <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-stone-100 text-muted">
-              {hasReceiptSent ? "Recibo enviado" : "Recibo pendente"}
-            </span>
-            <span className="px-2 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-stone-100 text-muted">
-              {hasChargeSent ? "Cobrança enviada" : "Cobrança pendente"}
-            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={onSendPaymentCharge}
-            disabled={actionPending}
-            className="mt-3 w-full h-10 rounded-xl border border-studio-text/10 bg-white text-[10px] font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
-          >
-            {hasChargeSent ? "Reenviar cobrança" : "Enviar cobrança"}
-          </button>
         </div>
       </section>
 
       <section>
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-          <Eye className="w-3.5 h-3.5" />
-          Atenção
+        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
+          <Eye className="h-3.5 w-3.5" />
+          Observacoes
         </div>
-        {internalNotes.trim() && (
-          <div className="bg-yellow-50 border border-yellow-100 p-3 rounded-xl flex gap-3 items-start">
-            <StickyNote className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" />
+
+        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-yellow-700 mb-1">
-                Observação do formulário de agendamento
+              <p className="wl-typo-label text-muted">Notas da sessao</p>
+              <p className="wl-typo-body-sm pt-1 leading-relaxed text-studio-text">
+                {hasNotes ? internalNotes : "Sem observacoes registradas para este atendimento."}
               </p>
-              <p className="text-xs text-yellow-800 leading-relaxed">{internalNotes}</p>
             </div>
           </div>
-        )}
+        </div>
       </section>
     </div>
   );

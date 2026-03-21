@@ -3,6 +3,13 @@
 
 :root {
   --app-dvh: 100dvh;
+  --type-size-h1: 1.75rem;
+  --type-size-h2: 1.375rem;
+  --type-size-title: 1rem;
+  --type-size-body: 0.875rem;
+  --type-size-body-sm: 0.75rem;
+  --type-size-label: 0.75rem;
+  --type-size-chip: 0.6875rem;
 }
 
 @theme {
@@ -33,8 +40,10 @@
   --color-danger: #DC2626;
 
   /* Tipografia */
-  --font-sans: var(--font-lato);
-  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-cormorant);
+  --font-lato: var(--font-inter);
+  --font-playfair: var(--font-cormorant);
   --font-signature: "Qalisha Signature Script";
 
   /* Sombras */
@@ -83,6 +92,10 @@ html {
 
 .safe-top-6 {
   --safe-top-offset: 1.5rem;
+}
+
+.safe-top-4 {
+  --safe-top-offset: 1rem;
 }
 
 .safe-bottom-24 {
@@ -157,4 +170,135 @@ html {
   background-image: radial-gradient(circle at 20px 20px, rgba(44, 51, 51, 0.05) 5px, transparent 6px),
     radial-gradient(circle at 50px 50px, rgba(44, 51, 51, 0.03) 3px, transparent 4px);
   background-size: 80px 80px;
+}
+
+/* White-label typography (fonte vem de vars runtime por tenant) */
+.wl-typo-h1 {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: var(--type-size-h1);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.wl-typo-h2 {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: var(--type-size-h2);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-name-xs {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-name-sm {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-name-md {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-name-lg {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-service {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-time {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-price {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.wl-typo-card-status {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.wl-typo-title {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-title);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.wl-typo-body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-body);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.wl-typo-body-sm {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-body-sm);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.wl-typo-label {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-label);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wl-typo-chip {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-chip);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wl-typo-button {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-body);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
 }

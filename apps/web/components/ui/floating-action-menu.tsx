@@ -113,7 +113,7 @@ export function FloatingActionMenu({
 
         <button
           onClick={() => setOpen((prev) => !prev)}
-          className="w-11 h-11 bg-studio-green text-white rounded-full shadow-xl shadow-green-100 flex items-center justify-center z-50 hover:scale-105 transition active:scale-95 pointer-events-auto"
+          className="z-50 flex h-12 w-12 items-center justify-center rounded-2xl bg-studio-green text-white shadow-xl shadow-studio-green/35 transition hover:scale-105 active:scale-95 pointer-events-auto"
           type="button"
         >
           {open ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}

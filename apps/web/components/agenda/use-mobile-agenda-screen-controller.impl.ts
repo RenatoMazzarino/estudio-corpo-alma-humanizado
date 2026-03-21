@@ -22,6 +22,8 @@ export function useMobileAgendaScreenController({
   signalPercentage = 30,
   publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
   messageTemplates,
+  currentUserName = null,
+  currentUserAvatarUrl = null,
 }: MobileAgendaProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -364,6 +366,8 @@ export function useMobileAgendaScreenController({
     signalPercentage,
     publicBaseUrl,
     messageTemplates,
+    currentUserName,
+    currentUserAvatarUrl,
     closeDetails,
     handleOpenAttendance,
     handleSendSurvey,

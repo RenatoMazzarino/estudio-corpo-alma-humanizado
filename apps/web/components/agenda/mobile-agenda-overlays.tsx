@@ -147,6 +147,12 @@ export function MobileAgendaOverlays({
         onSendPaymentChargeAction={onSendPaymentChargeAction}
         onSendPaymentReceiptAction={onSendPaymentReceiptAction}
         onCancelAppointmentAction={onCancelAppointmentAction}
+        onEditAppointmentAction={(appointmentId) => {
+          const dateParam = format(selectedDate, "yyyy-MM-dd");
+          const returnTo = `/?view=${view}&date=${dateParam}`;
+          onCloseDetailsAction();
+          onEditAction({ id: appointmentId, returnTo });
+        }}
         onRecordPaymentAction={onRecordPaymentAction}
         onSaveEvolutionAction={onSaveEvolutionAction}
         onStructureEvolutionAction={onStructureEvolutionAction}

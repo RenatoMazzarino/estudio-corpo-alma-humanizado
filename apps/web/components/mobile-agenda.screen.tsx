@@ -21,11 +21,12 @@ export function MobileAgenda(props: MobileAgendaProps) {
             headerCompact={controller.headerCompact}
             isOnline={controller.isOnline}
             currentMonth={controller.currentMonth}
+            currentUserName={controller.currentUserName}
+            currentUserAvatarUrl={controller.currentUserAvatarUrl}
             view={controller.view}
             monthPickerYear={controller.monthPickerYear}
             monthLabels={controller.monthLabels}
             isMonthPickerOpen={controller.isMonthPickerOpen}
-            onToggleMonthPickerAction={() => controller.setIsMonthPickerOpen((prev) => !prev)}
             onOpenSearchAction={() => {
               controller.setSearchMode("quick");
               controller.setIsSearchOpen(true);
@@ -61,6 +62,7 @@ export function MobileAgenda(props: MobileAgendaProps) {
             onDayScroll={controller.handleDayScroll}
             onGoToToday={controller.handleGoToToday}
             onOpenAppointment={controller.openDetailsForAppointment}
+            onOpenMonthPickerAction={() => controller.setIsMonthPickerOpen(true)}
             onOpenActionSheet={controller.setActionSheet}
             getDayData={controller.getDayData}
           />

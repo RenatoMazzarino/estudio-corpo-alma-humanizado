@@ -1,11 +1,11 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  User,
-} from "lucide-react";
+import { BookOpenText, EllipsisVertical, Pencil, Trash2, User } from "lucide-react";
 import Image from "next/image";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
+import { WhatsAppIcon } from "../ui/whatsapp-icon";
 import { AppointmentDetailsActiveView } from "./appointment-details-active-view";
 import { AppointmentDetailsCancelDialog } from "./appointment-details-cancel-dialog";
 import { AppointmentDetailsCompletedView } from "./appointment-details-completed-view";
@@ -31,7 +31,12 @@ interface AppointmentDetailsSheetProps {
   onSendPaymentChargeAction: () => void;
   onSendPaymentReceiptAction: (paymentId: string | null) => void;
   onCancelAppointmentAction: (options?: { notifyClient?: boolean }) => void;
-  onRecordPaymentAction?: (payload: { type: "signal" | "full"; amount: number; method: "pix" | "card" | "cash" | "other" }) => void;
+  onEditAppointmentAction?: (appointmentId: string) => void;
+  onRecordPaymentAction?: (payload: {
+    type: "signal" | "full";
+    amount: number;
+    method: "pix" | "card" | "cash" | "other";
+  }) => void;
   onSaveEvolutionAction?: (text: string) => Promise<{ ok: boolean }>;
   onStructureEvolutionAction?: (text: string) => Promise<{ ok: boolean; structuredText: string | null }>;
   onNotifyAction?: (feedback: UserFeedback) => void;
@@ -52,11 +57,15 @@ export function AppointmentDetailsSheet({
   onSendPaymentChargeAction,
   onSendPaymentReceiptAction,
   onCancelAppointmentAction,
+  onEditAppointmentAction,
   onRecordPaymentAction,
   onSaveEvolutionAction,
   onStructureEvolutionAction,
   onNotifyAction,
 }: AppointmentDetailsSheetProps) {
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+
   const {
     portalTarget,
     cancelDialogOpen,
@@ -130,7 +139,7 @@ export function AppointmentDetailsSheet({
     getAutomationStatusLabel,
     openWhatsappWithMessage,
     buildSignalChargeMessage,
-    buildSignalReceiptMessage,
+    buildPaymentChargeMessage,
     buildPaidReceiptMessage,
   } = useAppointmentDetailsSheetViewModel({
     details,
@@ -141,82 +150,177 @@ export function AppointmentDetailsSheet({
     onNotify: onNotifyAction,
   });
 
+  useEffect(() => {
+    if (!actionsMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(target)) {
+        setActionsMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [actionsMenuOpen]);
+
+  useEffect(() => {
+    if (!open) {
+      setActionsMenuOpen(false);
+    }
+  }, [open]);
+
   if (!open || !portalTarget) return null;
 
   return createPortal(
-    <div className="absolute inset-0 z-50 flex items-end justify-center pointer-events-none">
+    <div className="pointer-events-none absolute inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
         aria-label="Fechar detalhes"
         onClick={onCloseAction}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+        className="pointer-events-auto absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]"
       />
 
       <div
         ref={sheetRef}
-        className={`relative w-full max-w-105 rounded-t-3xl bg-white shadow-float flex flex-col max-h-[90vh] pointer-events-auto ${
+        className={`pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden rounded-t-[26px] border border-line/80 bg-white shadow-float ${
           isDragging ? "transition-none" : "transition-transform duration-200"
         }`}
         style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : "translateY(0)" }}
       >
         <div
-          className="flex items-center justify-center px-6 pt-4 pb-2 touch-none"
+          className="touch-none border-b border-line/80 bg-white px-5 pb-3 pt-2"
           onPointerDown={handleDragStart}
           onPointerMove={handleDragMove}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
         >
-          <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-200" />
-        </div>
+          <div className="mx-auto mb-2.5 h-1.5 w-10 rounded-full bg-muted/35" />
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <div className="flex items-center gap-3">
-            {avatarUrl ? (
-              <div className="relative w-12 h-12 rounded-full overflow-hidden border border-line">
-                <Image
-                  src={avatarUrl}
-                  alt={clientName}
-                  fill
-                  sizes="48px"
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold">
-                {clientInitials ? clientInitials : <User className="w-5 h-5" />}
-              </div>
-            )}
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${appointmentStatusDot}`} title="Status do agendamento" />
-                <p className="text-2xl font-serif font-bold text-studio-text truncate">{clientName}</p>
-                {isVip && (
-                  <span className="px-2.5 py-1 rounded-full bg-dom/20 text-dom-strong text-[9px] font-extrabold uppercase tracking-[0.08em]">
-                    VIP
+              {attendanceCode && (
+                <div className="mb-1.5">
+                  <span className="wl-typo-label text-muted">
+                    {attendanceCode}
                   </span>
+                </div>
+              )}
+
+              <div className="flex min-w-0 items-center gap-2.5">
+                {avatarUrl ? (
+                  <div className="relative h-10 w-10 overflow-hidden rounded-full border border-line bg-white">
+                    <Image
+                      src={avatarUrl}
+                      alt={clientName}
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-studio-light font-semibold text-studio-green">
+                    {clientInitials ? clientInitials : <User className="h-4 w-4" />}
+                  </div>
                 )}
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${appointmentStatusDot}`}
+                      title="Status do agendamento"
+                    />
+                    <p className="wl-typo-h1 truncate leading-none text-studio-text">{clientName}</p>
+                    {isVip && (
+                      <span className="wl-typo-chip rounded border border-line bg-paper px-1.5 py-0.5 text-muted">
+                        VIP
+                      </span>
+                    )}
+                  </div>
+                  <p className="wl-typo-body truncate pt-1 text-muted">
+                    {appointment?.service_name ?? ""}{" "}
+                    {appointment?.service_duration_minutes ? `- ${appointment.service_duration_minutes} min` : ""}
+                  </p>
+                  {attendanceCodeHint && <p className="wl-typo-body-sm pt-0.5 text-muted">{attendanceCodeHint}</p>}
+                </div>
               </div>
-              <p className="text-sm text-muted truncate">
-                {appointment?.service_name ?? ""}{" "}
-                {appointment?.service_duration_minutes ? `• ${appointment.service_duration_minutes} min` : ""}
-              </p>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-[0.08em] ${paymentInfo.className}`}
-              >
+
+            <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Abrir WhatsApp"
+                  onClick={() => openWhatsappWithMessage(clientName ? `Ola, ${clientName}!` : "Ola!")}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-studio-text shadow-sm transition hover:bg-paper"
+                >
+                  <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
+                </button>
+                <div ref={actionsMenuRef} className="relative">
+                  <button
+                    type="button"
+                    aria-label="Mais opcoes"
+                    onClick={() => setActionsMenuOpen((prev) => !prev)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-studio-text shadow-sm transition hover:bg-paper"
+                  >
+                    <EllipsisVertical className="h-4 w-4" />
+                  </button>
+                  {actionsMenuOpen && (
+                    <div className="absolute right-0 top-11 z-20 min-w-44 overflow-hidden rounded-xl border border-line bg-white shadow-soft">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          onStartSessionAction();
+                        }}
+                        className="flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left text-sm font-medium text-studio-text transition hover:bg-paper"
+                      >
+                        <BookOpenText className="h-4 w-4" />
+                        Abrir prontuario
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          const appointmentId = details?.appointment?.id ?? null;
+                          if (appointmentId && onEditAppointmentAction) {
+                            onEditAppointmentAction(appointmentId);
+                          }
+                        }}
+                        className="flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left text-sm font-medium text-studio-text transition hover:bg-paper"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Editar agendamento
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          setCancelDialogOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Excluir agendamento
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <span className={`wl-typo-chip rounded-lg px-2.5 py-1 ${paymentInfo.className}`}>
                 {paymentInfo.label}
               </span>
             </div>
           </div>
+        </div>
 
-          {loading && (
-            <div className="mt-6 text-xs text-muted">Carregando detalhes...</div>
-          )}
+        <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
+          {loading && <div className="mt-2 text-xs text-muted">Carregando detalhes...</div>}
 
-          {!loading && details && (
-            isCompleted ? (
+          {!loading && details &&
+            (isCompleted ? (
               <AppointmentDetailsCompletedView
                 actionPending={actionPending}
                 dateLabel={dateLabel}
@@ -225,8 +329,6 @@ export function AppointmentDetailsSheet({
                 isHomeVisit={isHomeVisit}
                 hasAddress={hasAddress}
                 mapsHref={mapsHref}
-                attendanceCode={attendanceCode}
-                attendanceCodeHint={attendanceCodeHint}
                 paymentInfo={{ textClass: paymentInfo.textClass }}
                 paymentStatusLabel={paymentStatusLabel}
                 paidAmountLabel={formatCurrency(paidAmount)}
@@ -264,8 +366,6 @@ export function AppointmentDetailsSheet({
                 hasAddress={hasAddress}
                 addressLine={addressLine}
                 mapsHref={mapsHref}
-                attendanceCode={attendanceCode}
-                attendanceCodeHint={attendanceCodeHint}
                 createdAutomationStatusLabel={getAutomationStatusLabel(createdAutoMessage)}
                 reminderAutomationStatusLabel={getAutomationStatusLabel(reminderAutoMessage)}
                 isConfirmed={isConfirmed}
@@ -302,11 +402,10 @@ export function AppointmentDetailsSheet({
                   })
                 }
                 onSendSignalChargeMessage={() => openWhatsappWithMessage(buildSignalChargeMessage())}
-                onSendSignalReceiptMessage={() => openWhatsappWithMessage(buildSignalReceiptMessage())}
+                onSendPaymentChargeMessage={() => openWhatsappWithMessage(buildPaymentChargeMessage())}
                 onSendPaidReceiptMessage={() => openWhatsappWithMessage(buildPaidReceiptMessage())}
               />
-            )
-          )}
+            ))}
         </div>
 
         {isCompleted && (
@@ -326,12 +425,12 @@ export function AppointmentDetailsSheet({
         )}
 
         {!isCompleted && (
-          <div className="border-t border-line px-6 py-4 bg-white/95 backdrop-blur">
+          <div className="border-t border-line bg-white px-5 py-4">
             <button
               type="button"
               onClick={onStartSessionAction}
               disabled={!details || actionPending}
-              className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-60"
+              className="h-11 w-full rounded-xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-200 transition active:scale-95 disabled:opacity-60"
             >
               Ver atendimento
             </button>

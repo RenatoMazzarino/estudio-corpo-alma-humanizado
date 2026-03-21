@@ -10,6 +10,8 @@ export type DashboardAccessRole = "owner" | "admin" | "staff" | "viewer";
 export type DashboardAccessContext = {
   userId: string;
   email: string;
+  displayName: string;
+  avatarUrl: string | null;
   tenantId: string;
   role: DashboardAccessRole;
   membershipId: string;
@@ -64,6 +66,59 @@ function getDashboardAccessTableClient(): DashboardAccessSupabaseClient {
 function normalizeEmail(value: string | null | undefined) {
   const normalized = (value ?? "").trim().toLowerCase();
   return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeOptionalString(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function resolveDisplayNameFromEmail(email: string) {
+  const localPart = email.split("@")[0] ?? "";
+  const normalized = localPart.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!normalized) return "Usuaria";
+  return toTitleCase(normalized);
+}
+
+function resolveIdentityMetadataValue(user: User, key: string) {
+  if (!Array.isArray(user.identities)) return null;
+  for (const identity of user.identities) {
+    const identityData = (identity as { identity_data?: Record<string, unknown> | null }).identity_data;
+    if (!identityData || typeof identityData !== "object") continue;
+    const value = normalizeOptionalString(identityData[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function resolveDashboardUserDisplay(user: User, normalizedEmail: string) {
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const displayName =
+    normalizeOptionalString(metadata.full_name) ??
+    normalizeOptionalString(metadata.name) ??
+    normalizeOptionalString(metadata.display_name) ??
+    resolveIdentityMetadataValue(user, "name") ??
+    resolveIdentityMetadataValue(user, "full_name") ??
+    resolveDisplayNameFromEmail(normalizedEmail);
+  const avatarUrl =
+    normalizeOptionalString(metadata.avatar_url) ??
+    normalizeOptionalString(metadata.picture) ??
+    resolveIdentityMetadataValue(user, "avatar_url") ??
+    resolveIdentityMetadataValue(user, "picture");
+
+  return {
+    displayName,
+    avatarUrl,
+  };
 }
 
 function sanitizeInternalPath(raw: string | null | undefined, fallback = "/") {
@@ -146,6 +201,7 @@ export async function authorizeDashboardSupabaseUser(user: User): Promise<Dashbo
   if (!email) {
     return { ok: false, reason: "missing_email" };
   }
+  const userDisplay = resolveDashboardUserDisplay(user, email);
 
   const lookup = await ensureDashboardAccessRow(email, user.id);
 
@@ -176,6 +232,8 @@ export async function authorizeDashboardSupabaseUser(user: User): Promise<Dashbo
     data: {
       userId: user.id,
       email,
+      displayName: userDisplay.displayName,
+      avatarUrl: userDisplay.avatarUrl,
       tenantId: membership.tenant_id,
       role: membership.role,
       membershipId: membership.id,
