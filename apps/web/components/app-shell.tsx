@@ -8,9 +8,10 @@ import { BottomNav } from "./ui/bottom-nav";
 
 interface AppShellProps {
   children: ReactNode;
+  themeStyle?: CSSProperties;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, themeStyle }: AppShellProps) {
   const pathname = usePathname();
   const canShowBottomNav = () => {
     const routesWithBottomNav = new Set([
@@ -36,7 +37,7 @@ export function AppShell({ children }: AppShellProps) {
         <div
           id="app-frame"
           className="app-frame bg-studio-bg grid grid-rows-[1fr_auto] relative shadow-2xl min-h-0 overflow-hidden"
-          style={{ "--nav-height": navHeight } as CSSProperties}
+          style={{ "--nav-height": navHeight, ...(themeStyle ?? {}) } as CSSProperties}
         >
           <div
             data-shell-scroll

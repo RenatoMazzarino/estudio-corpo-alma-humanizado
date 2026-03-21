@@ -1,20 +1,20 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Lato, Playfair_Display } from "next/font/google";
+import { Inter, Cormorant_Garamond } from "next/font/google";
 import { ViewportHeightSync } from "../components/viewport-height-sync";
 import { PRIMARY_STUDIO_TENANT_NAME } from "../src/modules/tenancy/defaults";
 
-const lato = Lato({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "700", "900"],
-  variable: "--font-lato",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
 });
 
-const playfair = Playfair_Display({
+const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
-  variable: "--font-playfair",
+  variable: "--font-cormorant",
 });
 
 export const metadata: Metadata = {
@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${lato.variable} ${playfair.variable} font-sans min-h-screen bg-studio-bg text-studio-text`}
+        className={`${inter.variable} ${cormorant.variable} font-sans min-h-screen bg-studio-bg text-studio-text`}
       >
         <ViewportHeightSync />
         {children}

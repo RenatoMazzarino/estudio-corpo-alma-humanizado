@@ -35,9 +35,9 @@ export const PRIMARY_STUDIO_BRANDING = {
   onPrimaryColor: "#FFFFFF",
   onSurfaceColor: "#2F3A2D",
   surfaceStyle: "soft",
-  headingFontFamily: null,
-  bodyFontFamily: null,
-  fontStrategy: "platform_default",
+  headingFontFamily: "Cormorant Garamond",
+  bodyFontFamily: "Inter",
+  fontStrategy: "custom_locked_set",
   radiusStrategy: "soft",
   illustrationStyle: "platform_default",
 } as const;
