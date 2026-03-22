@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { ChevronDown, Eye, MapPin, MessageSquare, Wallet } from "lucide-react";
 import { PaymentMethodIcon } from "../ui/payment-method-icon";
 
@@ -77,48 +77,49 @@ export function AppointmentDetailsCompletedView({
   return (
     <div className="space-y-4">
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <MapPin className="h-3.5 w-3.5" />
-          Logistica
-        </div>
-
-        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg border border-line bg-paper p-2.5 text-center">
-              <p className="wl-typo-title text-studio-text">{dateLabel}</p>
-              <p className="wl-typo-body-sm pt-0.5 text-muted">{timeLabel}</p>
-            </div>
-            <div className="rounded-lg border border-line bg-paper p-2.5 text-center">
-              <p className="wl-typo-title text-studio-text">{durationLabel}</p>
-              <p className="wl-typo-body-sm pt-0.5 text-muted">Duracao</p>
-            </div>
-            <div className="rounded-lg border border-line bg-paper p-2.5 text-center">
-              <p className="wl-typo-title text-studio-text">{isHomeVisit ? "Domicilio" : "Estudio"}</p>
-              <p className="wl-typo-body-sm pt-0.5 text-muted">Local</p>
-            </div>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <MapPin className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Logistica</p>
           </div>
+          <div className="p-4 wl-surface-card-body">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-line bg-paper p-2.5 text-center">
+                <p className="wl-typo-title text-studio-text">{dateLabel}</p>
+                <p className="wl-typo-body-sm pt-0.5 text-muted">{timeLabel}</p>
+              </div>
+              <div className="rounded-lg border border-line bg-paper p-2.5 text-center">
+                <p className="wl-typo-title text-studio-text">{durationLabel}</p>
+                <p className="wl-typo-body-sm pt-0.5 text-muted">Duracao</p>
+              </div>
+              <div className="rounded-lg border border-line bg-paper p-2.5 text-center">
+                <p className="wl-typo-title text-studio-text">{isHomeVisit ? "Domicilio" : "Estudio"}</p>
+                <p className="wl-typo-body-sm pt-0.5 text-muted">Local</p>
+              </div>
+            </div>
 
-          {isHomeVisit && hasAddress && mapsHref && (
-            <a
-              href={mapsHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="wl-typo-chip mt-3 inline-flex h-8 items-center gap-1 rounded-full border border-line bg-white px-3 text-studio-text"
-            >
-              <MapPin className="h-3.5 w-3.5" />
-              Abrir localizacao
-            </a>
-          )}
+            {isHomeVisit && hasAddress && mapsHref && (
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="wl-typo-chip mt-3 inline-flex h-8 items-center gap-1 rounded-full border border-line bg-paper px-3 text-studio-text"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Abrir localizacao
+              </a>
+            )}
+          </div>
         </div>
       </section>
 
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <Wallet className="h-3.5 w-3.5" />
-          Pagamento
-        </div>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <Wallet className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Financeiro</p>
+          </div>
 
-        <div className="overflow-hidden rounded-xl border border-line bg-white shadow-sm">
           <button
             type="button"
             onClick={() => {
@@ -126,25 +127,25 @@ export function AppointmentDetailsCompletedView({
                 setFinanceExpanded((prev) => !prev);
               }
             }}
-            className={`w-full p-4 text-left ${canExpandFinance ? "cursor-pointer" : "cursor-default"}`}
+            className={`w-full p-4 wl-surface-card-body text-left ${canExpandFinance ? "cursor-pointer" : "cursor-default"}`}
           >
             <div className="flex items-center justify-between gap-3">
-              <div className="space-y-1 text-xs">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted">Status</span>
-                  <span className={`font-bold ${paymentInfo.textClass}`}>{paymentStatusLabel}</span>
+                  <span className="wl-typo-body-sm text-muted">Status</span>
+                  <span className={`wl-typo-body-sm-strong ${paymentInfo.textClass}`}>{paymentStatusLabel}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted">Valor pago</span>
-                  <span className="font-semibold text-studio-text">{paidAmountLabel}</span>
+                  <span className="wl-typo-body-sm text-muted">Valor pago</span>
+                  <span className="wl-typo-body-sm-strong text-studio-text">{paidAmountLabel}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted">Metodo</span>
-                  <span className="font-semibold text-studio-text">{latestPaymentMethod}</span>
+                  <span className="wl-typo-body-sm text-muted">Metodo</span>
+                  <span className="wl-typo-body-sm-strong text-studio-text">{latestPaymentMethod}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted">A receber</span>
-                  <span className="font-semibold text-studio-text">{remainingAmountLabel}</span>
+                  <span className="wl-typo-body-sm text-muted">A receber</span>
+                  <span className="wl-typo-body-sm-strong text-studio-text">{remainingAmountLabel}</span>
                 </div>
               </div>
 
@@ -157,7 +158,7 @@ export function AppointmentDetailsCompletedView({
           </button>
 
           {canExpandFinance && financeExpanded && (
-            <div className="border-t border-line p-4">
+            <div className="border-t border-line p-4 wl-surface-card-body">
               <div className="grid grid-cols-3 gap-2">
                 {([
                   { key: "pix", label: "Pix", icon: <PaymentMethodIcon method="pix" className="h-3.5 w-3.5" /> },
@@ -169,7 +170,7 @@ export function AppointmentDetailsCompletedView({
                     type="button"
                     onClick={() => onSelectPaymentMethod(item.key)}
                     disabled={actionPending}
-                    className={`h-9 rounded-lg border text-xs font-extrabold transition ${
+                    className={`wl-typo-label h-9 rounded-lg border transition ${
                       paymentMethod === item.key
                         ? "border-studio-green bg-studio-light text-studio-green"
                         : "border-line text-muted hover:bg-paper"
@@ -188,7 +189,7 @@ export function AppointmentDetailsCompletedView({
                   type="button"
                   onClick={onSendPaymentCharge}
                   disabled={actionPending}
-                  className="wl-typo-label h-10 rounded-lg border border-line bg-white text-studio-text disabled:opacity-60"
+                  className="wl-typo-label h-10 rounded-lg border border-line bg-paper text-studio-text disabled:opacity-60"
                 >
                   {hasChargeSent ? "Reenviar cobranca" : "Enviar cobranca"}
                 </button>
@@ -205,7 +206,7 @@ export function AppointmentDetailsCompletedView({
           )}
 
           {!canExpandFinance && paymentStatus === "paid" && (
-            <div className="border-t border-line p-4">
+            <div className="border-t border-line p-4 wl-surface-card-body">
               <button
                 type="button"
                 onClick={onSendPaymentReceipt}
@@ -217,7 +218,7 @@ export function AppointmentDetailsCompletedView({
             </div>
           )}
 
-          <div className="border-t border-line px-4 py-3">
+          <div className="border-t border-line px-4 py-3 wl-surface-card-body">
             <div className="flex flex-wrap gap-2">
               <span className="wl-typo-chip rounded-md border border-line bg-paper px-2 py-1 text-muted">
                 {hasReceiptSent ? "Recibo enviado" : "Recibo pendente"}
@@ -231,68 +232,72 @@ export function AppointmentDetailsCompletedView({
       </section>
 
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <MessageSquare className="h-3.5 w-3.5" />
-          Avaliacao
-        </div>
-
-        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
-          <div className="grid gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Pesquisa</span>
-              <span className="font-semibold text-studio-text">{hasSurveySent ? "Enviada" : "Pendente"}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Resposta</span>
-              <span className="font-semibold text-studio-text">
-                {surveyScore !== null && surveyScore !== undefined ? `Nota ${surveyScore}` : "Sem resposta"}
-              </span>
-            </div>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <MessageSquare className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Avaliacao</p>
           </div>
+          <div className="p-4 wl-surface-card-body">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <span className="wl-typo-body-sm text-muted">Pesquisa</span>
+                <span className="wl-typo-body-sm-strong text-studio-text">{hasSurveySent ? "Enviada" : "Pendente"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="wl-typo-body-sm text-muted">Resposta</span>
+                <span className="wl-typo-body-sm-strong text-studio-text">
+                  {surveyScore !== null && surveyScore !== undefined ? `Nota ${surveyScore}` : "Sem resposta"}
+                </span>
+              </div>
+            </div>
 
-          <button
-            type="button"
-            onClick={onSendSurvey}
-            disabled={actionPending}
-            className="wl-typo-label mt-3 h-10 w-full rounded-lg border border-line bg-white text-studio-text disabled:opacity-60"
-          >
-            {hasSurveySent ? "Reenviar pesquisa" : "Enviar pesquisa"}
-          </button>
+            <button
+              type="button"
+              onClick={onSendSurvey}
+              disabled={actionPending}
+              className="wl-typo-label mt-3 h-10 w-full rounded-lg border border-line bg-paper text-studio-text disabled:opacity-60"
+            >
+              {hasSurveySent ? "Reenviar pesquisa" : "Enviar pesquisa"}
+            </button>
+          </div>
         </div>
       </section>
 
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <Eye className="h-3.5 w-3.5" />
-          Follow-up e evolucao
-        </div>
-
-        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
-          <div className="grid gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Proximo contato</span>
-              <span className="font-semibold text-studio-text">{followUpDateLabel}</span>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <Eye className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Follow-up e evolucao</p>
+          </div>
+          <div className="p-4 wl-surface-card-body">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <span className="wl-typo-body-sm text-muted">Proximo contato</span>
+                <span className="wl-typo-body-sm-strong text-studio-text">{followUpDateLabel}</span>
+              </div>
+              <p className="wl-typo-body-sm text-muted">{followUpNoteLabel}</p>
             </div>
-            <p className="text-xs text-muted">{followUpNoteLabel}</p>
-          </div>
 
-          <div className="mt-3 rounded-lg border border-line bg-paper p-3">
-            <p className="wl-typo-label text-muted">Evolucao da sessao</p>
-            <p className="max-h-24 overflow-y-auto whitespace-pre-wrap pt-1 text-xs leading-relaxed text-studio-text">
-              {evolutionPreviewText}
-            </p>
-          </div>
+            <div className="mt-3 rounded-lg border border-line bg-paper p-3">
+              <p className="wl-typo-label text-muted">Evolucao da sessao</p>
+              <p className="wl-typo-body-sm max-h-24 overflow-y-auto whitespace-pre-wrap pt-1 leading-relaxed text-studio-text">
+                {evolutionPreviewText}
+              </p>
+            </div>
 
-          <button
-            type="button"
-            onClick={onOpenEvolutionModal}
-            disabled={actionPending}
-            className="wl-typo-label mt-3 h-10 w-full rounded-lg bg-studio-green text-white disabled:opacity-60"
-          >
-            Editar evolucao
-          </button>
+            <button
+              type="button"
+              onClick={onOpenEvolutionModal}
+              disabled={actionPending}
+              className="wl-typo-label mt-3 h-10 w-full rounded-lg bg-studio-green text-white disabled:opacity-60"
+            >
+              Editar evolucao
+            </button>
+          </div>
         </div>
       </section>
     </div>
   );
 }
+
+

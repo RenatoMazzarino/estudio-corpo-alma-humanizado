@@ -17,6 +17,7 @@ export interface Appointment {
   clients: AppointmentClient | null;
   status: string;
   payment_status?: string | null;
+  signal_paid_amount?: number | null;
   is_home_visit?: boolean | null;
   total_duration_minutes?: number | null;
   service_duration_minutes?: number | null;
@@ -45,6 +46,7 @@ export interface MobileAgendaProps {
 }
 
 export type AgendaView = "day" | "week" | "month";
+export type AgendaDayLayoutMode = "v1" | "v2";
 
 export type DayItem = {
   id: string;
@@ -58,6 +60,7 @@ export type DayItem = {
   serviceName: string;
   status: string;
   payment_status?: string | null;
+  signal_paid_amount?: number | null;
   is_home_visit: boolean | null;
   total_duration_minutes: number | null;
   price?: number | null;

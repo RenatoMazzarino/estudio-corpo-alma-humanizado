@@ -2,7 +2,8 @@
 
 import type { PointerEventHandler, RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Calendar, Sparkles, Trash2 } from "lucide-react";
+import { Calendar, CircleAlert, Sparkles, Trash2 } from "lucide-react";
+import { BottomSheetHeaderV2 } from "../ui/bottom-sheet-header-v2";
 
 type AvailabilityScaleSheetProps = {
   open: boolean;
@@ -54,152 +55,169 @@ export function AvailabilityScaleSheet({
   if (!open || !portalTarget) return null;
 
   return createPortal(
-    <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in">
+    <div className="pointer-events-none absolute inset-0 z-50 flex items-end justify-center">
+      <button
+        type="button"
+        aria-label="Fechar gerador de escala"
+        onClick={onCloseAction}
+        className="pointer-events-auto absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]"
+      />
       <div
         ref={sheetRef}
         style={{
           transform: `translateY(${dragOffset}px)`,
           transition: isDragging ? "none" : "transform 0.2s ease",
         }}
-        className="w-full max-w-md bg-white rounded-t-4xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
+        className="pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden wl-radius-sheet wl-surface-modal shadow-float"
       >
-        <div
-          className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
-          onPointerDown={onDragStartAction}
-          onPointerMove={onDragMoveAction}
-          onPointerUp={onDragEndAction}
-          onPointerCancel={onDragEndAction}
-        >
-          <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
-        </div>
+        <BottomSheetHeaderV2
+          title="Gerador de escala"
+          subtitle="Crie bloqueios automaticos por dias pares ou impares."
+          onCloseAction={onCloseAction}
+          onDragStartAction={onDragStartAction}
+          onDragMoveAction={onDragMoveAction}
+          onDragEndAction={onDragEndAction}
+        />
 
-        <div className="px-6 pb-4 pt-2 flex items-center justify-between border-b border-stone-50">
-          <div>
-            <h2 className="text-xl font-black text-studio-dark tracking-tight">Gerador Automático</h2>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mt-0.5">
-              Defina o mês e o padrão da escala
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onCloseAction}
-            className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100 hover:text-red-500 transition-colors"
-            aria-label="Fechar"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="overflow-y-auto p-6 space-y-6 pb-28">
+        <div className="max-h-[68vh] space-y-5 overflow-y-auto px-5 pb-24 pt-5 wl-surface-modal-body">
           <section>
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <Calendar className="w-3.5 h-3.5" />
-              Mês da escala
-            </div>
-            <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
-              <input
-                type="month"
-                value={scaleMonth}
-                onChange={(event) => onChangeScaleMonthAction(event.target.value)}
-                className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:outline-none focus:ring-1 focus:ring-studio-green/40"
-              />
+            <div className="wl-surface-card">
+              <div className="flex items-center gap-2 border-b border-line wl-surface-card-header px-3 py-2.5">
+                <Calendar className="h-3.5 w-3.5 text-studio-text" />
+                <p className="wl-typo-label text-studio-text">Mes da escala</p>
+              </div>
+              <div className="p-3 wl-surface-card-body">
+                <input
+                  id="scale-month-input"
+                  type="month"
+                  value={scaleMonth}
+                  onChange={(event) => onChangeScaleMonthAction(event.target.value)}
+                  className="h-10 w-full rounded-lg border border-line wl-surface-input px-3 wl-typo-body text-studio-text outline-none focus:ring-1 focus:ring-studio-green/35"
+                />
+              </div>
             </div>
           </section>
 
           {isScaleOverviewLoading ? (
-            <div className="text-xs text-muted">Carregando escala do mês...</div>
+            <div className="wl-surface-card">
+              <div className="flex items-center gap-2 border-b border-line wl-surface-card-header px-3 py-2.5">
+                <p className="wl-typo-label text-studio-text">Status</p>
+              </div>
+              <div className="p-3 wl-surface-card-body">
+                <p className="wl-typo-body-sm text-muted">Carregando escala do mes...</p>
+              </div>
+            </div>
           ) : scaleHasShiftBlocks ? (
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
-              <p className="font-bold">Já existe uma escala cadastrada nesse mês.</p>
-              <p>Deseja apagar a escala atual para gerar uma nova?</p>
-              <button
-                type="button"
-                onClick={() => onClearScaleAction(scaleMonth, true)}
-                disabled={loading}
-                className="px-3 py-1.5 rounded-full bg-red-100 text-red-600 text-[10px] font-extrabold uppercase tracking-wide hover:bg-red-200 transition disabled:opacity-60"
-              >
-                Apagar escala
-              </button>
+            <div className="rounded-xl border border-amber-300 bg-amber-50/85 p-3">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                  <CircleAlert className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="wl-typo-label text-amber-800">Conflito de escala</p>
+                  <p className="wl-typo-body-sm pt-1 text-amber-900/90">
+                    Ja existe escala de plantao neste mes. Para editar a escala deste mes, primeiro
+                    apague a escala atual usando o botao &quot;Limpar escala do mes&quot; abaixo.
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             <section>
-              <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                Padrão de plantão
-              </div>
-              <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onSelectScaleTypeAction("odd")}
-                    className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
-                      scaleType === "odd"
-                        ? "bg-studio-text text-white border-studio-text"
-                        : "bg-white text-gray-400 border-stone-100"
-                    }`}
-                  >
-                    Bloquear dias ímpares
-                  </button>
+              <div className="wl-surface-card">
+                <div className="flex items-center gap-2 border-b border-line wl-surface-card-header px-3 py-2.5">
+                  <p className="wl-typo-label text-studio-text">Padrao de escala</p>
+                </div>
+                <div className="grid gap-2 p-3">
                   <button
                     type="button"
                     onClick={() => onSelectScaleTypeAction("even")}
-                    className={`px-3 py-2 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition ${
+                    className={`rounded-xl border px-3 py-3 text-left transition ${
                       scaleType === "even"
-                        ? "bg-studio-text text-white border-studio-text"
-                        : "bg-white text-gray-400 border-stone-100"
+                        ? "border-studio-green/30 bg-studio-light text-studio-text"
+                        : "border-line wl-surface-card-body text-muted hover:bg-paper"
                     }`}
                   >
-                    Bloquear dias pares
+                    <span className="wl-typo-body-strong block">Bloquear dias pares</span>
+                    <span className="wl-typo-body-sm mt-1 block">02, 04, 06, ...</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectScaleTypeAction("odd")}
+                    className={`rounded-xl border px-3 py-3 text-left transition ${
+                      scaleType === "odd"
+                        ? "border-studio-green/30 bg-studio-light text-studio-text"
+                        : "border-line wl-surface-card-body text-muted hover:bg-paper"
+                    }`}
+                  >
+                    <span className="wl-typo-body-strong block">Bloquear dias impares</span>
+                    <span className="wl-typo-body-sm mt-1 block">01, 03, 05, ...</span>
                   </button>
                 </div>
               </div>
             </section>
           )}
 
-          {pendingScaleConfirm && (
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
-              <p className="font-bold">Existem agendamentos neste mês.</p>
-              <p>{pendingScaleConfirm.appointments} dia(s) têm agendamentos. Bloquear não cancela automaticamente.</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={onDismissPendingScaleConfirmAction}
-                  className="px-3 py-1.5 rounded-full border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => onConfirmPendingScaleAction(pendingScaleConfirm.type, scaleMonth)}
-                  className="px-3 py-1.5 rounded-full bg-studio-text text-white text-[10px] font-extrabold uppercase tracking-wide"
-                >
-                  Criar mesmo assim
-                </button>
+          {pendingScaleConfirm ? (
+            <div className="wl-surface-card border border-studio-accent/30">
+              <div className="flex items-center gap-2 border-b border-studio-accent/20 wl-surface-card-header px-3 py-2.5">
+                <p className="wl-typo-label text-studio-text">Conflito com agenda</p>
+              </div>
+              <div className="p-3 wl-surface-card-body">
+                <p className="wl-typo-body-sm text-muted">
+                  {pendingScaleConfirm.appointments} dia(s) com atendimento. Deseja aplicar mesmo assim?
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onDismissPendingScaleConfirmAction}
+                    className="wl-typo-button h-9 rounded-lg border border-studio-accent/30 px-3 text-studio-text"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onConfirmPendingScaleAction(pendingScaleConfirm.type, scaleMonth)}
+                    className="wl-typo-button h-9 rounded-lg bg-studio-green px-3 text-white"
+                  >
+                    Criar mesmo assim
+                  </button>
+                </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          <button
-            onClick={() => onClearScaleAction(scaleMonth)}
-            disabled={loading}
-            className="w-full text-red-500 hover:text-red-700 text-xs font-bold uppercase tracking-wide py-2 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-          >
-            <Trash2 size={14} />
-            Limpar escala do mês
-          </button>
         </div>
 
-        {!scaleHasShiftBlocks && (
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
+        <div className="absolute bottom-0 left-0 right-0 border-t border-line bg-studio-bg/95 p-4 backdrop-blur">
+          {scaleHasShiftBlocks ? (
             <button
+              type="button"
+              onClick={() => onClearScaleAction(scaleMonth)}
+              disabled={loading}
+              className="wl-typo-button inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-700 bg-red-600 text-white shadow-lg shadow-red-500/30 transition hover:bg-red-700 active:scale-[0.99] disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" />
+              Limpar escala do mes
+            </button>
+          ) : (
+            <button
+              type="button"
               onClick={() => onApplyScaleAction(scaleType, scaleMonth)}
               disabled={loading}
-              className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+              className="wl-typo-button inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 transition active:scale-[0.99] disabled:opacity-60"
             >
+              <Sparkles className="h-4 w-4" />
               Aplicar escala
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>,
     portalTarget
   );
 }
+
+
+

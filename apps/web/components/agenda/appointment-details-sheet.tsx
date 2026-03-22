@@ -6,6 +6,7 @@ import { BookOpenText, EllipsisVertical, Pencil, Trash2, User } from "lucide-rea
 import Image from "next/image";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
 import { WhatsAppIcon } from "../ui/whatsapp-icon";
+import { IconActionButton } from "../ui/icon-action-button";
 import { AppointmentDetailsActiveView } from "./appointment-details-active-view";
 import { AppointmentDetailsCancelDialog } from "./appointment-details-cancel-dialog";
 import { AppointmentDetailsCompletedView } from "./appointment-details-completed-view";
@@ -134,7 +135,6 @@ export function AppointmentDetailsSheet({
     followUpNoteLabel,
     evolutionPreviewText,
     paymentDateLabel,
-    attendanceCodeHint,
     formatCurrency,
     getAutomationStatusLabel,
     openWhatsappWithMessage,
@@ -143,7 +143,6 @@ export function AppointmentDetailsSheet({
     buildPaidReceiptMessage,
   } = useAppointmentDetailsSheetViewModel({
     details,
-    attendanceCode,
     signalPercentage,
     publicBaseUrl,
     messageTemplates,
@@ -184,13 +183,13 @@ export function AppointmentDetailsSheet({
 
       <div
         ref={sheetRef}
-        className={`pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden rounded-t-[26px] border border-line/80 bg-white shadow-float ${
+        className={`pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden wl-radius-sheet wl-surface-modal shadow-float ${
           isDragging ? "transition-none" : "transition-transform duration-200"
         }`}
         style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : "translateY(0)" }}
       >
         <div
-          className="touch-none border-b border-line/80 bg-white px-5 pb-3 pt-2"
+          className="touch-none wl-sheet-header-surface px-5 pb-3 pt-2"
           onPointerDown={handleDragStart}
           onPointerMove={handleDragMove}
           onPointerUp={finishDrag}
@@ -200,17 +199,9 @@ export function AppointmentDetailsSheet({
 
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              {attendanceCode && (
-                <div className="mb-1.5">
-                  <span className="wl-typo-label text-muted">
-                    {attendanceCode}
-                  </span>
-                </div>
-              )}
-
               <div className="flex min-w-0 items-center gap-2.5">
                 {avatarUrl ? (
-                  <div className="relative h-10 w-10 overflow-hidden rounded-full border border-line bg-white">
+                  <div className="relative h-10 w-10 overflow-hidden rounded-full border border-line bg-paper">
                     <Image
                       src={avatarUrl}
                       alt={clientName}
@@ -221,61 +212,72 @@ export function AppointmentDetailsSheet({
                     />
                   </div>
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-studio-light font-semibold text-studio-green">
+                  <div className="wl-typo-avatar flex h-10 w-10 items-center justify-center rounded-full border border-line bg-studio-light text-studio-green">
                     {clientInitials ? clientInitials : <User className="h-4 w-4" />}
                   </div>
                 )}
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="grid grid-cols-[0.5rem_minmax(0,1fr)] items-start gap-x-2">
                     <span
-                      className={`h-2 w-2 shrink-0 rounded-full ${appointmentStatusDot}`}
+                      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${appointmentStatusDot}`}
                       title="Status do agendamento"
                     />
-                    <p className="wl-typo-h1 truncate leading-none text-studio-text">{clientName}</p>
-                    {isVip && (
-                      <span className="wl-typo-chip rounded border border-line bg-paper px-1.5 py-0.5 text-muted">
-                        VIP
-                      </span>
-                    )}
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="wl-typo-h1 truncate leading-none text-studio-text">{clientName}</p>
+                        {isVip && (
+                          <span className="wl-typo-chip rounded border border-line bg-paper px-1.5 py-0.5 text-muted">
+                            VIP
+                          </span>
+                        )}
+                      </div>
+                      <p className="wl-typo-body truncate pt-1 text-muted">
+                        {appointment?.service_name ?? ""}{" "}
+                        {appointment?.service_duration_minutes ? `- ${appointment.service_duration_minutes} min` : ""}
+                      </p>
+                      {attendanceCode ? (
+                        <p className="wl-typo-body-sm pt-0.5 text-muted">Codigo do atendimento: {attendanceCode}</p>
+                      ) : null}
+                    </div>
                   </div>
-                  <p className="wl-typo-body truncate pt-1 text-muted">
-                    {appointment?.service_name ?? ""}{" "}
-                    {appointment?.service_duration_minutes ? `- ${appointment.service_duration_minutes} min` : ""}
-                  </p>
-                  {attendanceCodeHint && <p className="wl-typo-body-sm pt-0.5 text-muted">{attendanceCodeHint}</p>}
                 </div>
               </div>
             </div>
 
             <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="Abrir WhatsApp"
+                <IconActionButton
+                  label="Abrir WhatsApp"
+                  icon={<WhatsAppIcon className="h-4 w-4" />}
+                  onPointerDown={(event) => event.stopPropagation()}
                   onClick={() => openWhatsappWithMessage(clientName ? `Ola, ${clientName}!` : "Ola!")}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-studio-text shadow-sm transition hover:bg-paper"
-                >
-                  <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                </button>
+                  className="wl-header-icon-button-strong"
+                />
                 <div ref={actionsMenuRef} className="relative">
-                  <button
-                    type="button"
-                    aria-label="Mais opcoes"
-                    onClick={() => setActionsMenuOpen((prev) => !prev)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-studio-text shadow-sm transition hover:bg-paper"
-                  >
-                    <EllipsisVertical className="h-4 w-4" />
-                  </button>
+                  <IconActionButton
+                    label="Mais opcoes"
+                    icon={<EllipsisVertical className="h-4 w-4" />}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActionsMenuOpen((prev) => !prev);
+                    }}
+                    className="wl-header-icon-button-strong"
+                  />
                   {actionsMenuOpen && (
-                    <div className="absolute right-0 top-11 z-20 min-w-44 overflow-hidden rounded-xl border border-line bg-white shadow-soft">
+                    <div
+                      className="absolute right-0 top-11 z-20 min-w-44 overflow-hidden rounded-xl border border-line wl-surface-card-body shadow-soft"
+                      style={{ color: "var(--color-studio-text)" }}
+                    >
                       <button
                         type="button"
                         onClick={() => {
                           setActionsMenuOpen(false);
                           onStartSessionAction();
                         }}
-                        className="flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left text-sm font-medium text-studio-text transition hover:bg-paper"
+                        className="wl-typo-menu-item flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left transition hover:bg-paper"
+                        style={{ color: "var(--color-studio-text)" }}
                       >
                         <BookOpenText className="h-4 w-4" />
                         Abrir prontuario
@@ -289,7 +291,8 @@ export function AppointmentDetailsSheet({
                             onEditAppointmentAction(appointmentId);
                           }
                         }}
-                        className="flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left text-sm font-medium text-studio-text transition hover:bg-paper"
+                        className="wl-typo-menu-item flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left transition hover:bg-paper"
+                        style={{ color: "var(--color-studio-text)" }}
                       >
                         <Pencil className="h-4 w-4" />
                         Editar agendamento
@@ -300,7 +303,7 @@ export function AppointmentDetailsSheet({
                           setActionsMenuOpen(false);
                           setCancelDialogOpen(true);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                        className="wl-typo-menu-item flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-red-600 transition hover:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4" />
                         Excluir agendamento
@@ -316,8 +319,8 @@ export function AppointmentDetailsSheet({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
-          {loading && <div className="mt-2 text-xs text-muted">Carregando detalhes...</div>}
+        <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4 wl-surface-modal-body">
+          {loading && <div className="wl-typo-body-sm mt-2 text-muted">Carregando detalhes...</div>}
 
           {!loading && details &&
             (isCompleted ? (
@@ -425,12 +428,12 @@ export function AppointmentDetailsSheet({
         )}
 
         {!isCompleted && (
-          <div className="border-t border-line bg-white px-5 py-4">
+          <div className="border-t border-line wl-surface-modal-body px-5 py-4">
             <button
               type="button"
               onClick={onStartSessionAction}
               disabled={!details || actionPending}
-              className="h-11 w-full rounded-xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-200 transition active:scale-95 disabled:opacity-60"
+              className="wl-typo-label h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-green-200 transition active:scale-95 disabled:opacity-60"
             >
               Ver atendimento
             </button>

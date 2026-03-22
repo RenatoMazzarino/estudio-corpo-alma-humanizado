@@ -19,7 +19,6 @@ import {
 
 type Params = {
   details: AttendanceOverview | null;
-  attendanceCode: string | null;
   signalPercentage: number;
   publicBaseUrl: string;
   messageTemplates: AutoMessageTemplates;
@@ -28,7 +27,6 @@ type Params = {
 
 export function useAppointmentDetailsSheetViewModel({
   details,
-  attendanceCode,
   signalPercentage,
   publicBaseUrl,
   messageTemplates,
@@ -153,14 +151,6 @@ export function useAppointmentDetailsSheetViewModel({
   const evolutionPreviewText = latestEvolutionText || "Sem evolução registrada nesta sessão.";
   const paymentDateLabel = paidAt ? format(new Date(paidAt), "dd/MM", { locale: ptBR }) : "";
   const formatCurrency = formatCurrencyBRL;
-  const attendanceClientToken = attendanceCode ? attendanceCode.split("-")[1] ?? null : null;
-  const attendanceCodeHint = attendanceClientToken?.startsWith("N")
-    ? "ID cliente por nome"
-    : attendanceClientToken?.startsWith("T")
-      ? "ID cliente por telefone"
-      : attendanceClientToken?.startsWith("A")
-        ? "ID cliente de apoio"
-        : null;
 
   const openWhatsappWithMessage = (message: string) => {
     const phone = appointment?.clients?.phone ?? "";
@@ -312,7 +302,6 @@ export function useAppointmentDetailsSheetViewModel({
     followUpNoteLabel,
     evolutionPreviewText,
     paymentDateLabel,
-    attendanceCodeHint,
     formatCurrency,
     getAutomationStatusLabel,
     openWhatsappWithMessage,

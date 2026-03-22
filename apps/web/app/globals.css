@@ -10,11 +10,26 @@
   --type-size-body-sm: 0.75rem;
   --type-size-label: 0.75rem;
   --type-size-chip: 0.6875rem;
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+  --radius-sheet: 1.625rem;
+  --surface-header-strong: var(--color-studio-green);
+  --surface-header-soft: rgba(93, 110, 86, 0.15);
+  --surface-header-soft: color-mix(in srgb, var(--color-studio-green) 15%, transparent);
+  --surface-general: #f7f2ea;
+  --surface-card: #faf7f2;
+  --surface-screen: var(--surface-general);
+  --surface-card-header: var(--surface-header-soft);
+  --surface-card-body: var(--surface-card);
+  --surface-modal: var(--surface-general);
+  --surface-modal-body: var(--surface-general);
+  --surface-sheet-header: var(--surface-header-strong);
+  --surface-input: #ffffff;
 }
 
 @theme {
   /* Paleta Oficial Estúdio Corpo & Alma */
-  --color-studio-bg: #FAF9F6;
+  --color-studio-bg: #F7F2EA;
   
   /* Verde Oficial */
   --color-studio-green: #5D6E56;
@@ -33,6 +48,7 @@
   --color-main: #2C3333;
   --color-muted: #868E96;
   --color-line: rgba(44, 51, 51, 0.06);
+  --color-paper: var(--surface-card);
 
   /* Estados */
   --color-ok: #16A34A;
@@ -53,7 +69,7 @@
 
 /* Configurações Globais */
 body {
-  background-color: var(--color-studio-bg);
+  background-color: var(--surface-screen);
   color: var(--color-studio-text);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -181,6 +197,14 @@ html {
   letter-spacing: 0;
 }
 
+.wl-typo-day-number {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
 .wl-typo-h2 {
   font-family: var(--font-serif), ui-serif, Georgia, serif;
   font-size: var(--type-size-h2);
@@ -192,7 +216,7 @@ html {
 .wl-typo-card-name-xs {
   font-family: var(--font-serif), ui-serif, Georgia, serif;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -200,7 +224,7 @@ html {
 .wl-typo-card-name-sm {
   font-family: var(--font-serif), ui-serif, Georgia, serif;
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -208,7 +232,7 @@ html {
 .wl-typo-card-name-md {
   font-family: var(--font-serif), ui-serif, Georgia, serif;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -216,7 +240,7 @@ html {
 .wl-typo-card-name-lg {
   font-family: var(--font-serif), ui-serif, Georgia, serif;
   font-size: 1.375rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.08;
   letter-spacing: 0;
 }
@@ -277,6 +301,63 @@ html {
   letter-spacing: 0;
 }
 
+.wl-typo-body-strong {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-body);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.wl-typo-body-sm-strong {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--type-size-body-sm);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.wl-typo-caption {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+}
+
+.wl-typo-time-major {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.wl-typo-time-minor {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.wl-typo-menu-item {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.wl-typo-avatar {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .wl-typo-label {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: var(--type-size-label);
@@ -301,4 +382,131 @@ html {
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: 0;
+}
+
+/* White-label shape tokens */
+.wl-radius-card {
+  border-radius: var(--radius-card);
+}
+
+.wl-radius-control {
+  border-radius: var(--radius-control);
+}
+
+.wl-radius-sheet {
+  border-top-left-radius: var(--radius-sheet);
+  border-top-right-radius: var(--radius-sheet);
+}
+
+/* Header surface for bottom-sheets with visible contrast from body */
+.wl-sheet-header-surface {
+  background-color: var(--surface-sheet-header) !important;
+  color: #ffffff;
+}
+
+.wl-surface-card-header {
+  background-color: var(--surface-card-header) !important;
+  color: var(--color-studio-text);
+}
+
+.wl-surface-card-body {
+  background-color: var(--surface-card-body);
+}
+
+.wl-surface-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.wl-surface-screen {
+  background-color: var(--surface-screen);
+}
+
+.wl-surface-modal {
+  background-color: var(--surface-modal);
+}
+
+.wl-surface-modal-body {
+  background-color: var(--surface-modal-body);
+}
+
+.wl-surface-input {
+  background-color: var(--surface-input);
+}
+
+.wl-header-icon-button-strong {
+  border: none !important;
+  background-color: #ffffff !important;
+  color: var(--color-studio-green) !important;
+  box-shadow: none !important;
+}
+
+.wl-header-icon-button-strong:hover {
+  background-color: color-mix(in srgb, var(--color-studio-green) 8%, #ffffff) !important;
+  color: var(--color-studio-green-dark) !important;
+}
+
+.wl-header-icon-button-soft {
+  border: none !important;
+  background-color: #ffffff !important;
+  color: var(--color-studio-green) !important;
+  box-shadow: none !important;
+}
+
+.wl-header-icon-button-soft:hover {
+  background-color: color-mix(in srgb, var(--color-studio-green) 8%, #ffffff) !important;
+  color: var(--color-studio-green-dark) !important;
+}
+
+.wl-sheet-header-surface .text-studio-text,
+.wl-sheet-header-surface .text-muted,
+.wl-sheet-header-surface .wl-typo-h1,
+.wl-sheet-header-surface .wl-typo-body,
+.wl-sheet-header-surface .wl-typo-label {
+  color: #ffffff;
+}
+
+.wl-sheet-header-surface .text-muted,
+.wl-sheet-header-surface .wl-typo-body {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.wl-surface-card-header .text-studio-text,
+.wl-surface-card-header .wl-typo-h1,
+.wl-surface-card-header .wl-typo-label {
+  color: #000000;
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.wl-surface-card-header .text-muted,
+.wl-surface-card-header .wl-typo-body {
+  color: rgba(0, 0, 0, 0.72);
+}
+
+@keyframes wl-lotus-ink-flow {
+  0% {
+    stroke: color-mix(in srgb, var(--color-dom) 100%, #ffffff 0%);
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-dom) 26%, transparent));
+  }
+  50% {
+    stroke: color-mix(in srgb, var(--color-dom) 84%, var(--color-studio-accent) 16%);
+    filter: drop-shadow(0 0 12px color-mix(in srgb, var(--color-dom) 42%, transparent));
+  }
+  100% {
+    stroke: color-mix(in srgb, var(--color-dom) 100%, #ffffff 0%);
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-dom) 26%, transparent));
+  }
+}
+
+.wl-lotus-outline-progress {
+  fill: none;
+  stroke: var(--color-dom);
+  stroke-width: 22;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: wl-lotus-ink-flow 2.1s ease-in-out infinite;
 }

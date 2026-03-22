@@ -26,6 +26,7 @@ type MobileAgendaOverlaysProps = {
   portalTarget: HTMLElement | null;
   isActionPending: boolean;
   onCloseActionSheetAction: () => void;
+  onOpenRecordAction: (payload: { id: string; returnTo: string }) => void;
   onEditAction: (payload: { id: string; returnTo: string }) => void;
   onDeleteAction: (payload: { id: string }) => Promise<void>;
   searchOpen: boolean;
@@ -72,6 +73,7 @@ export function MobileAgendaOverlays({
   portalTarget,
   isActionPending,
   onCloseActionSheetAction,
+  onOpenRecordAction,
   onEditAction,
   onDeleteAction,
   searchOpen,
@@ -116,6 +118,7 @@ export function MobileAgendaOverlays({
         portalTarget={portalTarget}
         isActionPending={isActionPending}
         onCloseAction={onCloseActionSheetAction}
+        onOpenRecordAction={(payload) => onOpenRecordAction({ id: payload.id, returnTo: payload.returnTo })}
         onEditAction={onEditAction}
         onDeleteAction={onDeleteAction}
       />

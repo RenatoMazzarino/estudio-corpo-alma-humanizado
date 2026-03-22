@@ -54,7 +54,7 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/menu" className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
+        <Link href="/" className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100">
           <ChevronLeft size={20} />
         </Link>
         <div className="flex items-center gap-2 text-gray-800">

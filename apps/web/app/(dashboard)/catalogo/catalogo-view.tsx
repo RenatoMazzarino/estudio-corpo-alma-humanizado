@@ -260,7 +260,7 @@ export function CatalogoView({
           <div className="flex items-center justify-between mb-6 px-1">
             <div className="flex items-center gap-3">
               <Link
-                href="/menu"
+                href="/"
                 className="p-2 bg-white rounded-full text-gray-600 shadow-sm border border-stone-100 hover:bg-stone-50 transition"
               >
                 <ChevronLeft size={20} />

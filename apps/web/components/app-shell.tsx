@@ -20,7 +20,6 @@ export function AppShell({ children, themeStyle }: AppShellProps) {
       "/clientes/novo",
       "/caixa",
       "/mensagens",
-      "/menu",
       "/catalogo",
       "/configuracoes",
     ]);

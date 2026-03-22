@@ -153,58 +153,60 @@ export function AppointmentDetailsActiveView({
   return (
     <div className="space-y-4">
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <MapPin className="h-3.5 w-3.5" />
-          Logistica
-        </div>
-
-        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-            <div>
-              <p className="wl-typo-title text-studio-text">{dateLabel}</p>
-              <p className="wl-typo-body-sm pt-0.5 text-muted">{timeLabel}</p>
-            </div>
-            <span className="wl-typo-body-sm rounded-lg border border-line bg-paper px-2 py-1 text-muted">
-              {isHomeVisit ? "Domicilio" : "Estudio"}
-            </span>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <MapPin className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Logistica</p>
           </div>
 
-          {isHomeVisit && hasAddress && (
-            <div className="mt-3 flex items-start justify-between gap-3">
+          <div className="p-4 wl-surface-card-body">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="wl-typo-title text-studio-text">Endereco</p>
-                <p className="wl-typo-body-sm pt-0.5 leading-5 text-muted">{addressLine}</p>
+                <p className="wl-typo-title text-studio-text">{dateLabel}</p>
+                <p className="wl-typo-body-sm pt-0.5 text-muted">{timeLabel}</p>
               </div>
-              {(gpsChooserHref || mapsHref) && (
-                <a
-                  href={gpsChooserHref ?? mapsHref ?? "#"}
-                  onClick={(event) => {
-                    if (!gpsChooserHref || !mapsHref) return;
-                    event.preventDefault();
-                    window.location.href = gpsChooserHref;
-                    window.setTimeout(() => {
-                      window.open(mapsHref, "_blank", "noopener,noreferrer");
-                    }, 500);
-                  }}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-white text-studio-text"
-                  aria-label="Abrir rota no mapa"
-                >
-                  <MapPin className="h-3.5 w-3.5" />
-                </a>
-              )}
+              <span className="wl-typo-body-sm rounded-lg border border-line bg-paper px-2 py-1 text-muted">
+                {isHomeVisit ? "Domicilio" : "Estudio"}
+              </span>
             </div>
-          )}
+
+            {isHomeVisit && hasAddress && (
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-line pt-3">
+                <div>
+                  <p className="wl-typo-title text-studio-text">Endereco</p>
+                  <p className="wl-typo-body-sm pt-0.5 leading-5 text-muted">{addressLine}</p>
+                </div>
+                {(gpsChooserHref || mapsHref) && (
+                  <a
+                    href={gpsChooserHref ?? mapsHref ?? "#"}
+                    onClick={(event) => {
+                      if (!gpsChooserHref || !mapsHref) return;
+                      event.preventDefault();
+                      window.location.href = gpsChooserHref;
+                      window.setTimeout(() => {
+                        window.open(mapsHref, "_blank", "noopener,noreferrer");
+                      }, 500);
+                    }}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line wl-surface-card-body text-studio-text"
+                    aria-label="Abrir rota no mapa"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <MessageSquare className="h-3.5 w-3.5" />
-          Comunicacao
-        </div>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <MessageSquare className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Comunicacao</p>
+          </div>
 
-        <div className="overflow-hidden rounded-xl border border-line bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-line bg-paper/60 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-line wl-surface-card-header px-4 py-3">
             <div className="flex items-center gap-2.5">
               <ThumbsUp className="h-4 w-4 text-muted" />
               <p className="wl-typo-label text-studio-text">Status da cliente</p>
@@ -220,7 +222,7 @@ export function AppointmentDetailsActiveView({
             </span>
           </div>
 
-          <div className="space-y-3 p-4">
+          <div className="space-y-3 p-4 wl-surface-card-body">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-paper text-muted">
                 <Bell className="h-4 w-4" />
@@ -246,12 +248,12 @@ export function AppointmentDetailsActiveView({
             </div>
           </div>
 
-          <div className="border-t border-line p-3">
+          <div className="border-t border-line p-3 wl-surface-card-body">
             <button
               type="button"
               onClick={onOpenCancelDialog}
               disabled={actionPending}
-              className="wl-typo-label h-9 w-full rounded-lg border border-red-200 bg-white text-red-600 transition disabled:opacity-60"
+              className="wl-typo-label h-9 w-full rounded-lg border border-red-700 bg-red-600 text-white transition hover:bg-red-700 disabled:opacity-60"
             >
               Cancelar agendamento
             </button>
@@ -260,12 +262,12 @@ export function AppointmentDetailsActiveView({
       </section>
 
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <Wallet className="h-3.5 w-3.5" />
-          Financeiro
-        </div>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <Wallet className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Financeiro</p>
+          </div>
 
-        <div className="overflow-hidden rounded-xl border border-line bg-white shadow-sm">
           <button
             type="button"
             onClick={() => {
@@ -273,7 +275,7 @@ export function AppointmentDetailsActiveView({
                 setFinanceExpanded((prev) => !prev);
               }
             }}
-            className={`w-full p-4 text-left ${canExpandFinance ? "cursor-pointer" : "cursor-default"}`}
+            className={`w-full p-4 wl-surface-card-body text-left ${canExpandFinance ? "cursor-pointer" : "cursor-default"}`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-start gap-3">
@@ -283,7 +285,7 @@ export function AppointmentDetailsActiveView({
                 <div>
                   <p className="wl-typo-h2 leading-none text-studio-text">{financeSummary.title}</p>
                   <p className="wl-typo-body pt-1 text-muted">
-                    {financeSummary.subtitleLabel}: <span className="font-semibold text-studio-text">{financeSummary.subtitleValue}</span>
+                    {financeSummary.subtitleLabel}: <span className="wl-typo-body-strong text-studio-text">{financeSummary.subtitleValue}</span>
                   </p>
                 </div>
               </div>
@@ -297,7 +299,7 @@ export function AppointmentDetailsActiveView({
           </button>
 
           {canExpandFinance && financeExpanded && (
-            <div className="border-t border-line p-4">
+            <div className="border-t border-line p-4 wl-surface-card-body">
               <p className="wl-typo-label mb-3 text-muted">
                 Registrar cobranca (sinal ou total)
               </p>
@@ -308,7 +310,7 @@ export function AppointmentDetailsActiveView({
                   onClick={() => onSelectPaymentMethod("pix")}
                   disabled={actionPending}
                   className={`rounded-xl border border-line px-2 py-3 text-center transition ${
-                    paymentMethod === "pix" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                    paymentMethod === "pix" ? "bg-studio-light text-studio-green" : "wl-surface-card-body text-studio-text"
                   } ${actionPending ? "opacity-60" : ""}`}
                 >
                   <PaymentMethodIcon method="pix" className="mx-auto h-4 w-4" />
@@ -319,7 +321,7 @@ export function AppointmentDetailsActiveView({
                   onClick={() => onSelectPaymentMethod("card")}
                   disabled={actionPending}
                   className={`rounded-xl border border-line px-2 py-3 text-center transition ${
-                    paymentMethod === "card" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                    paymentMethod === "card" ? "bg-studio-light text-studio-green" : "wl-surface-card-body text-studio-text"
                   } ${actionPending ? "opacity-60" : ""}`}
                 >
                   <CreditCard className="mx-auto h-4 w-4" />
@@ -330,7 +332,7 @@ export function AppointmentDetailsActiveView({
                   onClick={() => onSelectPaymentMethod("cash")}
                   disabled={actionPending}
                   className={`rounded-xl border border-line px-2 py-3 text-center transition ${
-                    paymentMethod === "cash" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                    paymentMethod === "cash" ? "bg-studio-light text-studio-green" : "wl-surface-card-body text-studio-text"
                   } ${actionPending ? "opacity-60" : ""}`}
                 >
                   <Wallet className="mx-auto h-4 w-4" />
@@ -341,7 +343,7 @@ export function AppointmentDetailsActiveView({
                   onClick={() => onSelectPaymentMethod("other")}
                   disabled={actionPending}
                   className={`rounded-xl border border-line px-2 py-3 text-center transition ${
-                    paymentMethod === "other" ? "bg-studio-light text-studio-green" : "bg-white text-studio-text"
+                    paymentMethod === "other" ? "bg-studio-light text-studio-green" : "wl-surface-card-body text-studio-text"
                   } ${actionPending ? "opacity-60" : ""}`}
                 >
                   <Gift className="mx-auto h-4 w-4" />
@@ -369,7 +371,7 @@ export function AppointmentDetailsActiveView({
                       onSendPaymentChargeMessage();
                     }}
                     disabled={actionPending}
-                    className="wl-typo-button flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-studio-text disabled:opacity-60"
+                    className="wl-typo-button flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-paper px-3 text-studio-text disabled:opacity-60"
                   >
                     <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
                     Enviar Cobranca
@@ -380,7 +382,7 @@ export function AppointmentDetailsActiveView({
           )}
 
           {!canExpandFinance && paymentStatus === "paid" && (
-            <div className="border-t border-line p-4">
+            <div className="border-t border-line p-4 wl-surface-card-body">
               <button
                 type="button"
                 onClick={onSendPaidReceiptMessage}
@@ -393,19 +395,19 @@ export function AppointmentDetailsActiveView({
           )}
 
           {!canExpandFinance && (paymentStatus === "waived" || paymentStatus === "refunded") && (
-            <div className="border-t border-line p-4">
+            <div className="border-t border-line p-4 wl-surface-card-body">
               <button
                 type="button"
                 onClick={onSendPaymentCharge}
                 disabled={actionPending}
-                className="wl-typo-label h-10 w-full rounded-xl border border-line bg-white text-studio-text disabled:opacity-60"
+                className="wl-typo-label h-10 w-full rounded-xl border border-line bg-paper text-studio-text disabled:opacity-60"
               >
                 {hasChargeSent ? "Reenviar cobranca" : "Enviar cobranca"}
               </button>
             </div>
           )}
 
-          <div className="border-t border-line px-4 py-3">
+          <div className="border-t border-line px-4 py-3 wl-surface-card-body">
             <div className="flex flex-wrap gap-2">
               <span className="wl-typo-chip rounded-md border border-line bg-paper px-2 py-1 text-muted">
                 {hasReceiptSent ? "Recibo enviado" : "Recibo pendente"}
@@ -429,19 +431,20 @@ export function AppointmentDetailsActiveView({
       </section>
 
       <section>
-        <div className="wl-typo-label mb-2 flex items-center gap-2 text-muted">
-          <Eye className="h-3.5 w-3.5" />
-          Observacoes
-        </div>
-
-        <div className="rounded-xl border border-line bg-white p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
-            <div>
-              <p className="wl-typo-label text-muted">Notas da sessao</p>
-              <p className="wl-typo-body-sm pt-1 leading-relaxed text-studio-text">
-                {hasNotes ? internalNotes : "Sem observacoes registradas para este atendimento."}
-              </p>
+        <div className="wl-surface-card shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-line wl-surface-card-header px-4 py-2.5">
+            <Eye className="h-3.5 w-3.5 text-muted" />
+            <p className="wl-typo-label text-studio-text">Observacoes</p>
+          </div>
+          <div className="p-4 wl-surface-card-body">
+            <div className="flex items-start gap-3">
+              <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
+              <div>
+                <p className="wl-typo-label text-muted">Notas do agendamento</p>
+                <p className="wl-typo-body-sm pt-1 leading-relaxed text-studio-text">
+                  {hasNotes ? internalNotes : "Sem observacoes registradas para este agendamento."}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -449,3 +452,5 @@ export function AppointmentDetailsActiveView({
     </div>
   );
 }
+
+

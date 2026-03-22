@@ -38,6 +38,7 @@ interface MonthCalendarProps {
   headerActions?: ReactNode;
   footer?: ReactNode;
   enableSwipe?: boolean;
+  framed?: boolean;
 }
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -56,6 +57,7 @@ export function MonthCalendar({
   headerActions,
   footer,
   enableSwipe = true,
+  framed = true,
 }: MonthCalendarProps) {
   const monthGridDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
@@ -84,19 +86,23 @@ export function MonthCalendar({
     swipeStartRef.current = null;
   };
 
-  const legendNode = legend ? <div className="mt-4">{legend}</div> : null;
+  const legendNode = legend ? <div className="mt-3">{legend}</div> : null;
 
   return (
     <div
-      className={`bg-white rounded-3xl shadow-soft p-4 touch-pan-y ${className}`}
+      className={`touch-pan-y ${
+        framed ? "wl-surface-card rounded-xl border border-line shadow-soft overflow-hidden" : "bg-transparent overflow-hidden"
+      } ${className}`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerCancel}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-extrabold text-studio-text capitalize">
-          {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
+      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 wl-surface-card-header">
+        <div className="min-w-0 text-center flex-1">
+          <p className="wl-typo-h2 capitalize leading-tight text-studio-text">
+            {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {headerActions}
@@ -104,14 +110,14 @@ export function MonthCalendar({
             <button
               type="button"
               onClick={() => onChangeMonthAction?.(addMonths(currentMonth, -1))}
-              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+              className="wl-header-icon-button-soft inline-flex h-9 w-9 items-center justify-center rounded-full transition"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => onChangeMonthAction?.(addMonths(currentMonth, 1))}
-              className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+              className="wl-header-icon-button-soft inline-flex h-9 w-9 items-center justify-center rounded-full transition"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -119,64 +125,65 @@ export function MonthCalendar({
         </div>
       </div>
 
-      {legendPlacement === "top" && legendNode}
+      <div className="px-4 py-4 wl-surface-card-body">
+        {legendPlacement === "top" && legendNode}
 
-      <div className="grid grid-cols-7 gap-1 text-center mb-2 mt-3">
-        {weekdayLabels.map((label, index) => (
-          <div key={`${label}-${index}`} className="text-[10px] font-extrabold text-muted uppercase">
-            {label}
-          </div>
-        ))}
+        <div className="mb-1 grid grid-cols-7 gap-1 text-center">
+          {weekdayLabels.map((label, index) => (
+            <div key={`${label}-${index}`} className="wl-typo-label text-muted">
+              {label}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-y-1.5 text-center">
+          {monthGridDays.map((day) => {
+            const isCurrent = isSameMonth(day, currentMonth);
+            const isDayToday = isToday(day);
+            const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+            const dots = getDayDotsAction?.(day) ?? [];
+            const tone = getDayToneAction?.(day) ?? "none";
+            const disabled = isDayDisabledAction?.(day) ?? false;
+            const toneClass =
+              tone === "shift" && !isSelected && !isDayToday ? "bg-red-50 text-red-600" : "";
+            const todayClass = isDayToday && !isSelected ? "border border-studio-green text-studio-green" : "";
+            const selectedClass = isSelected ? "bg-studio-green text-white shadow-soft" : "";
+
+            return (
+              <div key={day.toISOString()} className="py-0.5">
+                <button
+                  type="button"
+                  onClick={disabled ? undefined : () => onSelectDayAction?.(day)}
+                  disabled={disabled}
+                  className={`mx-auto flex h-10 w-10 flex-col items-center justify-center rounded-lg transition ${
+                    disabled ? "opacity-40 cursor-not-allowed" : ""
+                  } ${
+                    isCurrent ? "text-studio-text" : "text-muted/60"
+                  } ${toneClass} ${todayClass} ${selectedClass}`}
+                >
+                  <span className="wl-typo-body-sm leading-none">{format(day, "d")}</span>
+                  {dots.length > 0 ? (
+                    <span className="mt-1 flex items-center gap-[2px]">
+                      {dots.map((dot, index) => (
+                        <span
+                          key={`${dot.key}-${index}`}
+                          title={dot.title}
+                          className={`h-1 w-1 rounded-full ${dot.className}`}
+                        />
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="mt-1 h-1" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {legendPlacement === "bottom" && legendNode}
+        {footer ? <div className="mt-4 border-t border-stone-100 pt-4">{footer}</div> : null}
       </div>
-
-      <div className="grid grid-cols-7 gap-y-4 gap-x-1 text-center text-sm">
-        {monthGridDays.map((day) => {
-          const isCurrent = isSameMonth(day, currentMonth);
-          const isDayToday = isToday(day);
-          const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
-          const dots = getDayDotsAction?.(day) ?? [];
-          const tone = getDayToneAction?.(day) ?? "none";
-          const disabled = isDayDisabledAction?.(day) ?? false;
-          const toneClass =
-            tone === "shift" && !isSelected && !isDayToday ? "bg-dom/20 text-dom-strong" : "";
-          const todayClass = isDayToday && !isSelected ? "border border-studio-green text-studio-green" : "";
-          const selectedClass = isSelected ? "bg-studio-green text-white shadow-soft" : "";
-
-          return (
-            <button
-              key={day.toISOString()}
-              type="button"
-              onClick={disabled ? undefined : () => onSelectDayAction?.(day)}
-              disabled={disabled}
-              className={`relative flex flex-col items-center ${
-                disabled ? "opacity-40 cursor-not-allowed" : ""
-              }`}
-            >
-              <span
-                className={`w-8 h-8 flex items-center justify-center rounded-full font-extrabold transition ${
-                  isCurrent ? "text-studio-text" : "text-muted/60"
-                } ${toneClass} ${todayClass} ${selectedClass}`}
-              >
-                {format(day, "dd")}
-              </span>
-              {dots.length > 0 && (
-                <div className="absolute -bottom-2 flex items-center gap-1">
-                  {dots.map((dot) => (
-                    <span
-                      key={dot.key}
-                      title={dot.title}
-                      className={`w-1.5 h-1.5 rounded-full ${dot.className}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {legendPlacement === "bottom" && legendNode}
-      {footer ? <div className="mt-4 border-t border-stone-100 pt-4">{footer}</div> : null}
     </div>
   );
 }

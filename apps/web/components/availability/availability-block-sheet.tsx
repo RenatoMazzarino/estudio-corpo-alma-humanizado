@@ -1,10 +1,10 @@
 "use client";
 
-import type { RefObject, PointerEventHandler } from "react";
+import type { PointerEventHandler, RefObject } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, Calendar, Shield } from "lucide-react";
-import { blockTypeOptions } from "./availability-manager.constants";
-import type { BlockType, CreateBlockPayload } from "./availability-manager.types";
+import { Calendar, CircleAlert } from "lucide-react";
+import { BottomSheetHeaderV2 } from "../ui/bottom-sheet-header-v2";
+import type { CreateBlockPayload } from "./availability-manager.types";
 
 type AvailabilityBlockSheetProps = {
   open: boolean;
@@ -13,7 +13,6 @@ type AvailabilityBlockSheetProps = {
   dragOffset: number;
   isDragging: boolean;
   blockDateLabel: string;
-  blockType: BlockType;
   blockDate: string;
   blockFullDay: boolean;
   blockStart: string;
@@ -25,7 +24,6 @@ type AvailabilityBlockSheetProps = {
   onDragStartAction: PointerEventHandler<HTMLDivElement>;
   onDragMoveAction: PointerEventHandler<HTMLDivElement>;
   onDragEndAction: PointerEventHandler<HTMLDivElement>;
-  onSelectBlockTypeAction: (value: BlockType) => void;
   onChangeBlockDateAction: (value: string) => void;
   onToggleBlockFullDayAction: () => void;
   onChangeBlockStartAction: (value: string) => void;
@@ -43,7 +41,6 @@ export function AvailabilityBlockSheet({
   dragOffset,
   isDragging,
   blockDateLabel,
-  blockType,
   blockDate,
   blockFullDay,
   blockStart,
@@ -55,7 +52,6 @@ export function AvailabilityBlockSheet({
   onDragStartAction,
   onDragMoveAction,
   onDragEndAction,
-  onSelectBlockTypeAction,
   onChangeBlockDateAction,
   onToggleBlockFullDayAction,
   onChangeBlockStartAction,
@@ -68,204 +64,181 @@ export function AvailabilityBlockSheet({
   if (!open || !portalTarget) return null;
 
   return createPortal(
-    <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in">
+    <div className="pointer-events-none absolute inset-0 z-50 flex items-end justify-center">
+      <button
+        type="button"
+        aria-label="Fechar novo bloqueio"
+        onClick={onCloseAction}
+        className="pointer-events-auto absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]"
+      />
       <div
         ref={sheetRef}
         style={{
           transform: `translateY(${dragOffset}px)`,
           transition: isDragging ? "none" : "transform 0.2s ease",
         }}
-        className="w-full max-w-md bg-white rounded-t-4xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4"
+        className="pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden wl-radius-sheet wl-surface-modal shadow-float"
       >
-        <div
-          className="pt-3 pb-1 flex justify-center bg-white cursor-grab active:cursor-grabbing"
-          onPointerDown={onDragStartAction}
-          onPointerMove={onDragMoveAction}
-          onPointerUp={onDragEndAction}
-          onPointerCancel={onDragEndAction}
-        >
-          <div className="w-12 h-1.5 bg-stone-200 rounded-full" />
+        <BottomSheetHeaderV2
+          title="Novo bloqueio"
+          subtitle={blockDateLabel}
+          onCloseAction={onCloseAction}
+          onDragStartAction={onDragStartAction}
+          onDragMoveAction={onDragMoveAction}
+          onDragEndAction={onDragEndAction}
+        />
+
+        <div className="max-h-[72vh] space-y-5 overflow-y-auto px-5 pb-24 pt-5 wl-surface-modal-body">
+          <section>
+            <div className="wl-surface-card">
+              <div className="flex items-center gap-2 border-b border-line wl-surface-card-header px-3 py-2.5">
+                <p className="wl-typo-label text-studio-text">Detalhes</p>
+              </div>
+              <div className="p-3 wl-surface-card-body">
+                <label className="wl-typo-body-sm text-muted" htmlFor="block-title-input">
+                  Titulo do bloqueio
+                </label>
+                <input
+                  id="block-title-input"
+                  type="text"
+                  value={blockTitle}
+                  onChange={(event) => onChangeBlockTitleAction(event.target.value)}
+                  placeholder="Ex: Bloqueio interno"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-line wl-surface-input px-3 wl-typo-body text-studio-text outline-none focus:ring-1 focus:ring-studio-green/35"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="wl-surface-card">
+              <div className="flex items-center gap-2 border-b border-line wl-surface-card-header px-3 py-2.5">
+                <p className="wl-typo-label text-studio-text">Data e horario</p>
+              </div>
+              <div className="p-3 wl-surface-card-body">
+                <label className="wl-typo-body-sm text-muted" htmlFor="block-date-input">
+                  Dia do bloqueio
+                </label>
+                <input
+                  id="block-date-input"
+                  type="date"
+                  value={blockDate}
+                  onChange={(event) => onChangeBlockDateAction(event.target.value)}
+                  className="mt-1.5 h-10 w-full rounded-lg border border-line wl-surface-input px-3 wl-typo-body text-studio-text outline-none focus:ring-1 focus:ring-studio-green/35"
+                />
+
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-line wl-surface-card-header px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-paper text-studio-text">
+                      <Calendar className="h-3.5 w-3.5" />
+                    </span>
+                    <div>
+                      <p className="wl-typo-body-strong text-studio-text">Dia inteiro</p>
+                      <p className="wl-typo-body-sm text-muted">Bloqueia a data completa</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onToggleBlockFullDayAction}
+                    className={`h-6 w-11 rounded-full transition-colors ${
+                      blockFullDay ? "bg-studio-green" : "bg-line"
+                    }`}
+                    aria-pressed={blockFullDay}
+                  >
+                    <span
+                      className={`block h-4.5 w-4.5 rounded-full bg-white transition-transform ${
+                        blockFullDay ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {!blockFullDay ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="wl-typo-body-sm text-muted" htmlFor="block-start-input">
+                        Inicio
+                      </label>
+                      <input
+                        id="block-start-input"
+                        type="time"
+                        value={blockStart}
+                        onChange={(event) => onChangeBlockStartAction(event.target.value)}
+                        className="mt-1.5 h-10 w-full rounded-lg border border-line wl-surface-input px-3 wl-typo-body text-studio-text outline-none focus:ring-1 focus:ring-studio-green/35"
+                      />
+                    </div>
+                    <div>
+                      <label className="wl-typo-body-sm text-muted" htmlFor="block-end-input">
+                        Fim
+                      </label>
+                      <input
+                        id="block-end-input"
+                        type="time"
+                        value={blockEnd}
+                        onChange={(event) => onChangeBlockEndAction(event.target.value)}
+                        className="mt-1.5 h-10 w-full rounded-lg border border-line wl-surface-input px-3 wl-typo-body text-studio-text outline-none focus:ring-1 focus:ring-studio-green/35"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          {pendingBlockConfirm ? (
+            <div className="wl-surface-card border border-studio-accent/30">
+              <div className="flex items-center gap-2 border-b border-studio-accent/20 wl-surface-card-header px-3 py-2.5">
+                <p className="wl-typo-label text-studio-text">Conflito com atendimentos</p>
+              </div>
+              <div className="p-3 wl-surface-card-body">
+                <p className="wl-typo-body-sm mt-1 text-muted">
+                  {pendingBlockConfirm.appointments} atendimento(s) serao mantidos. Confirma criar mesmo assim?
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onDismissPendingBlockConfirmAction}
+                    className="wl-typo-button h-9 rounded-lg border border-studio-accent/30 px-3 text-studio-text"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onConfirmPendingBlockAction(pendingBlockConfirm.payload)}
+                    className="wl-typo-button h-9 rounded-lg bg-studio-green px-3 text-white"
+                  >
+                    Criar mesmo assim
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        <div className="px-6 pb-4 pt-2 flex items-center justify-between border-b border-stone-50">
-          <div>
-            <h2 className="text-xl font-black text-studio-dark tracking-tight">Novo Bloqueio</h2>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-wide mt-0.5">{blockDateLabel}</p>
-          </div>
+        <div className="absolute bottom-0 left-0 right-0 border-t border-line bg-studio-bg/95 p-4 backdrop-blur">
           <button
             type="button"
-            onClick={onCloseAction}
-            className="w-9 h-9 bg-stone-50 rounded-full text-gray-400 flex items-center justify-center hover:bg-stone-100 hover:text-red-500 transition-colors"
-            aria-label="Fechar"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="overflow-y-auto p-6 space-y-6 pb-28">
-          <section>
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <Shield className="w-3.5 h-3.5" />
-              Motivo
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              {blockTypeOptions.map((option) => {
-                const isActive = blockType === option.type;
-                return (
-                  <button
-                    key={option.type}
-                    type="button"
-                    onClick={() => onSelectBlockTypeAction(option.type)}
-                    className="flex flex-col items-center gap-2 group"
-                  >
-                    <div
-                      className={`w-14 h-14 rounded-2xl border flex items-center justify-center transition-all ${
-                        isActive
-                          ? `ring-2 ring-offset-2 ${option.active}`
-                          : `bg-white ${option.idle} group-hover:bg-stone-50 group-hover:text-gray-600`
-                      }`}
-                    >
-                      {option.icon}
-                    </div>
-                    <span
-                      className={`text-[9px] font-bold uppercase tracking-wider text-center ${
-                        isActive ? "text-gray-700" : "text-gray-400"
-                      }`}
-                    >
-                      {option.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <Calendar className="w-3.5 h-3.5" />
-              Horário
-            </div>
-            <div className="mb-4">
-              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                Dia do bloqueio
-              </label>
-              <input
-                type="date"
-                value={blockDate}
-                onChange={(event) => onChangeBlockDateAction(event.target.value)}
-                className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:ring-1 focus:ring-studio-green/40 outline-none"
-              />
-            </div>
-            <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-studio-light text-studio-green flex items-center justify-center">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-studio-text block">Dia Inteiro</span>
-                    <span className="text-[10px] text-muted font-bold uppercase tracking-wide">
-                      Bloqueia a data completa
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={onToggleBlockFullDayAction}
-                  className={`w-12 h-7 rounded-full relative transition-colors ${
-                    blockFullDay ? "bg-studio-green" : "bg-stone-300"
-                  }`}
-                  aria-pressed={blockFullDay}
-                >
-                  <span
-                    className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-md transition-transform ${
-                      blockFullDay ? "translate-x-5" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {!blockFullDay && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                      Início
-                    </label>
-                    <input
-                      type="time"
-                      value={blockStart}
-                      onChange={(event) => onChangeBlockStartAction(event.target.value)}
-                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-base font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                      Fim
-                    </label>
-                    <input
-                      type="time"
-                      value={blockEnd}
-                      onChange={(event) => onChangeBlockEndAction(event.target.value)}
-                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-base font-bold text-gray-800 focus:ring-2 focus:ring-studio-green/20 outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted mb-3">
-              <AlertCircle className="w-3.5 h-3.5" />
-              Detalhes
-            </div>
-            <div className="bg-white rounded-2xl border border-line px-4 py-3 shadow-sm">
-              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider ml-1 mb-1.5 block">
-                Título do bloqueio
-              </label>
-              <input
-                type="text"
-                value={blockTitle}
-                onChange={(event) => onChangeBlockTitleAction(event.target.value)}
-                placeholder="Ex: Plantão Home Care"
-                className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-studio-green/20 placeholder-gray-300 transition-all outline-none"
-              />
-            </div>
-          </section>
-
-          {pendingBlockConfirm && (
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 space-y-3">
-              <p className="font-bold">Existem agendamentos no horário.</p>
-              <p>{pendingBlockConfirm.appointments} atendimento(s) serão mantidos e não serão cancelados.</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={onDismissPendingBlockConfirmAction}
-                  className="px-3 py-1.5 rounded-full border border-amber-200 text-amber-700 text-[10px] font-extrabold uppercase tracking-wide"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => onConfirmPendingBlockAction(pendingBlockConfirm.payload)}
-                  className="px-3 py-1.5 rounded-full bg-studio-text text-white text-[10px] font-extrabold uppercase tracking-wide"
-                >
-                  Criar mesmo assim
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-stone-50 bg-opacity-95 backdrop-blur-sm">
-          <button
             onClick={onSubmitAction}
             disabled={loading}
-            className="w-full bg-studio-green hover:bg-studio-dark text-white h-14 rounded-2xl font-bold text-sm uppercase tracking-wide shadow-xl shadow-green-900/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+            className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 transition active:scale-[0.99] disabled:opacity-60"
           >
             Confirmar bloqueio
           </button>
         </div>
+
+        {loading ? (
+          <div className="pointer-events-none absolute left-0 right-0 top-[94px] flex items-center justify-center">
+            <div className="inline-flex items-center gap-1 rounded-full border border-line wl-surface-card-body px-2 py-1">
+              <CircleAlert className="h-3.5 w-3.5 text-muted" />
+              <span className="wl-typo-body-sm text-muted">Salvando...</span>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>,
     portalTarget
   );
 }
+
+
+

@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
+import { format, parseISO } from "date-fns";
+import { HeartPulse, Home, Trash2 } from "lucide-react";
 import { forwardRef, useImperativeHandle } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Shield, Sparkles, Trash2 } from "lucide-react";
-import { MonthCalendar } from "./agenda/month-calendar";
+import { MonthCalendar, type MonthCalendarDot } from "./agenda/month-calendar";
+import { CalendarLegendV2 } from "./ui/calendar-legend-v2";
+import { SectionCard, SectionCardBody, SectionCardEmptyState, SectionCardHeader } from "./ui/section-card";
 import { Toast, useToast } from "./ui/toast";
 import { blockTypeMeta, formatBlockTime } from "./availability/availability-manager.constants";
 import { AvailabilityBlockSheet } from "./availability/availability-block-sheet";
@@ -14,6 +15,11 @@ import { useAvailabilityManagerController } from "./availability/use-availabilit
 
 export interface AvailabilityManagerHandle {
   openBlockModal: (date?: Date) => void;
+}
+
+function getClientName(input: { clients?: { name?: string | null } | null }) {
+  const value = input.clients?.name?.trim();
+  return value && value.length > 0 ? value : "Cliente";
 }
 
 export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(function AvailabilityManager(_, ref) {
@@ -28,121 +34,149 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
     [controller.openBlockModal]
   );
 
+  const calendarLegend = (
+    <CalendarLegendV2
+      items={[
+        { key: "appointments", label: "Atendimento", dotClassName: "bg-studio-green" },
+        { key: "home", label: "Domicilio", dotClassName: "bg-dom" },
+        { key: "shift", label: "Plantao", dotClassName: "bg-red-500" },
+        { key: "partial", label: "Parcial", dotClassName: "bg-amber-500" },
+      ]}
+    />
+  );
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Toast toast={toast} />
 
-      <MonthCalendar
-        currentMonth={controller.currentMonthDate}
-        selectedDate={controller.selectedDate}
-        onChangeMonthAction={controller.handleMonthChange}
-        onSelectDayAction={controller.setSelectedDate}
-        headerActions={
-          <div className="flex items-center gap-2">
+      <div className="wl-surface-card shadow-soft">
+        <MonthCalendar
+          framed={false}
+          currentMonth={controller.currentMonthDate}
+          selectedDate={controller.selectedDate}
+          onChangeMonthAction={controller.handleMonthChange}
+          onSelectDayAction={controller.setSelectedDate}
+          headerActions={
             <button
               type="button"
               onClick={controller.openScaleModal}
-              className="h-9 w-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition shadow-sm"
-              aria-label="Gerador de escala"
+              className="wl-header-icon-button-soft inline-flex h-9 w-9 items-center justify-center rounded-full transition"
+              aria-label="Abrir gerador de escala"
             >
-              <Sparkles className="w-4 h-4" />
+              <HeartPulse className="h-4 w-4" />
             </button>
-          </div>
-        }
-        getDayToneAction={(day) => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayBlocks = controller.blocksByDate.get(key) ?? [];
-          return dayBlocks.some((block) => (block.block_type ?? "personal") === "shift") ? "shift" : "none";
-        }}
-        getDayDotsAction={(day) => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayBlocks = controller.blocksByDate.get(key) ?? [];
-          const dayAppointments = controller.appointmentsByDate.get(key) ?? [];
-          const hasHome = dayAppointments.some((appt) => appt.is_home_visit);
-          const hasAppointments = dayAppointments.length > 0;
-          const dayTypes = new Set(dayBlocks.map((block) => (block.block_type ?? "personal") as BlockType));
-          const dots = [];
-          if (hasAppointments) dots.push({ key: "appointments", className: "bg-studio-green" });
-          if (hasHome) dots.push({ key: "home", className: "bg-dom" });
-          if (dayTypes.has("shift")) dots.push({ key: "shift", className: "bg-red-500" });
-          if (dayTypes.has("personal")) dots.push({ key: "personal", className: "bg-amber-500" });
-          if (dayTypes.has("vacation")) dots.push({ key: "vacation", className: "bg-teal-500" });
-          if (dayTypes.has("administrative")) dots.push({ key: "administrative", className: "bg-gray-400" });
-          return dots;
-        }}
-        legend={
-          <div className="flex justify-center">
-            <div className="flex flex-wrap items-center gap-3 rounded-full bg-stone-50 border border-stone-100 px-4 py-2 text-[11px] text-muted">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Legenda:</span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-studio-green" />
-                atendimentos
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-dom" />
-                domicílio
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                plantão
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                parcial
-              </span>
-            </div>
-          </div>
-        }
-        legendPlacement="bottom"
-        footer={
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
-                <Shield className="w-4 h-4 text-gray-500" />
-                Detalhes do dia
-              </div>
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">
-                {format(controller.selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR })}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">Bloqueios cadastrados para o dia selecionado.</p>
-            </div>
+          }
+          getDayDotsAction={(day) => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayAppointments = controller.appointmentsByDate.get(key) ?? [];
+            const dayBlocks = controller.blocksByDate.get(key) ?? [];
+            const hasHomeVisit = dayAppointments.some((item) => item.is_home_visit);
+            const hasShiftBlock = dayBlocks.some(
+              (item) => (item.block_type ?? "personal") === "shift" && Boolean(item.is_full_day)
+            );
+            const hasPartialBlock = dayBlocks.some(
+              (item) => !((item.block_type ?? "personal") === "shift" && Boolean(item.is_full_day))
+            );
 
-            {controller.selectedBlocks.length === 0 ? (
-              <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-4 text-xs text-gray-500">
-                Nenhum bloqueio cadastrado para este dia.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {controller.selectedBlocks.map((block) => {
-                  const meta = blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
-                  const timeClass = block.is_full_day ? meta.accentClass : "text-amber-600";
-                  return (
-                    <div key={block.id} className="flex items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-stone-100 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${meta.iconClass}`}>
-                          {meta.icon}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-gray-700">{block.title}</div>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${timeClass}`}>
-                            {formatBlockTime(block)}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => controller.handleDeleteBlock(block.id)}
-                        className="w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-stone-50 flex items-center justify-center"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            const dots: MonthCalendarDot[] = [];
+            if (dayAppointments.length > 0) {
+              dots.push({ key: "appointments", className: "bg-studio-green", title: "Atendimento" });
+            }
+            if (hasHomeVisit) dots.push({ key: "home", className: "bg-dom", title: "Domicilio" });
+            if (hasShiftBlock) dots.push({ key: "shift", className: "bg-red-500", title: "Plantao" });
+            if (hasPartialBlock) dots.push({ key: "partial", className: "bg-amber-500", title: "Parcial" });
+            return dots;
+          }}
+          legend={calendarLegend}
+          legendPlacement="bottom"
+        />
+
+        {controller.isOverviewLoading ? (
+          <div className="border-t border-line px-4 py-3 wl-surface-card-body">
+            <p className="wl-typo-body-sm text-muted">Carregando agenda do mes...</p>
           </div>
-        }
-      />
+        ) : (
+          <>
+            {controller.selectedBlocks.length === 0 && controller.selectedAppointments.length === 0 ? (
+              <section className="border-t border-line px-4 py-4">
+                <SectionCard>
+                  <SectionCardHeader title="Dia selecionado" />
+                  <SectionCardBody className="p-3">
+                    <SectionCardEmptyState message="Sem bloqueios e agendamentos para este dia." className="wl-surface-card-body" />
+                  </SectionCardBody>
+                </SectionCard>
+              </section>
+            ) : null}
+
+            {controller.selectedBlocks.length > 0 ? (
+              <section className="border-t border-line px-4 py-4">
+                <SectionCard>
+                  <SectionCardHeader title="Bloqueios do dia" />
+                  <SectionCardBody className="space-y-2 p-3">
+                    {controller.selectedBlocks.map((block) => {
+                      const meta =
+                        blockTypeMeta[(block.block_type ?? "personal") as BlockType] ?? blockTypeMeta.personal;
+                      return (
+                        <article key={block.id} className="wl-radius-card border border-line wl-surface-card-body p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <span
+                                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center wl-radius-control ${meta.iconClass}`}
+                              >
+                                {meta.icon}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="wl-typo-title truncate text-studio-text">{block.title}</p>
+                                <p className="wl-typo-body-sm pt-0.5 text-muted">{formatBlockTime(block)}</p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => controller.handleDeleteBlock(block.id)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line text-muted transition hover:text-red-600"
+                              aria-label="Remover bloqueio"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </SectionCardBody>
+                </SectionCard>
+              </section>
+            ) : null}
+
+            {controller.selectedAppointments.length > 0 ? (
+              <section className="border-t border-line px-4 py-4">
+                <SectionCard>
+                  <SectionCardHeader title="Agendamentos do dia" />
+                  <SectionCardBody className="space-y-2 p-3">
+                    {controller.selectedAppointments.map((item) => {
+                      const startLabel = format(parseISO(item.start_time), "HH:mm");
+                      return (
+                        <article key={item.id} className="wl-radius-card border border-line wl-surface-card-body px-3 py-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="wl-typo-title truncate text-studio-text">{getClientName(item)}</p>
+                              <p className="wl-typo-body-sm truncate pt-0.5 text-muted">{item.service_name}</p>
+                            </div>
+                            <div className="flex items-center gap-1 text-studio-text">
+                              {item.is_home_visit ? <Home className="h-3.5 w-3.5 text-dom-strong" /> : null}
+                              <span className="wl-typo-body-sm-strong">{startLabel}</span>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </SectionCardBody>
+                </SectionCard>
+              </section>
+            ) : null}
+          </>
+        )}
+      </div>
 
       <AvailabilityBlockSheet
         open={controller.isModalOpen}
@@ -151,7 +185,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         dragOffset={controller.blockDragOffset}
         isDragging={controller.isBlockDragging}
         blockDateLabel={controller.blockDateLabel}
-        blockType={controller.blockType}
         blockDate={controller.blockDate}
         blockFullDay={controller.blockFullDay}
         blockStart={controller.blockStart}
@@ -163,7 +196,6 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
         onDragStartAction={controller.handleBlockDragStart}
         onDragMoveAction={controller.handleBlockDragMove}
         onDragEndAction={controller.handleBlockDragEnd}
-        onSelectBlockTypeAction={controller.setBlockType}
         onChangeBlockDateAction={controller.setBlockDate}
         onToggleBlockFullDayAction={() => controller.setBlockFullDay((prev) => !prev)}
         onChangeBlockStartAction={controller.setBlockStart}

@@ -10,9 +10,21 @@ export interface AvailabilityBlock {
   reason?: string | null;
 }
 
+export interface MonthOverviewAppointment {
+  id: string;
+  start_time: string;
+  service_name: string;
+  is_home_visit?: boolean | null;
+  status?: string | null;
+  total_duration_minutes?: number | null;
+  clients?: {
+    name?: string | null;
+  } | null;
+}
+
 export interface MonthOverview {
   blocks: AvailabilityBlock[];
-  appointments: { id: string; start_time: string; service_name: string; is_home_visit?: boolean | null }[];
+  appointments: MonthOverviewAppointment[];
 }
 
 export interface CreateBlockPayload {

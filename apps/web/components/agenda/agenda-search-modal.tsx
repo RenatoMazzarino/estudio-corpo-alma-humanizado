@@ -56,8 +56,8 @@ export function AgendaSearchModal({
 
   return (
     <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-6">
-      <div className="bg-white w-full max-h-[80vh] rounded-3xl shadow-float overflow-hidden flex flex-col">
-        <div className="sticky top-0 bg-white px-6 pt-5 pb-4 shadow-soft z-10">
+      <div className="wl-surface-modal w-full max-h-[80vh] rounded-3xl shadow-float overflow-hidden flex flex-col border border-line">
+        <div className="sticky top-0 wl-sheet-header-surface px-6 pt-5 pb-4 shadow-soft z-10">
           <div className="flex items-center gap-3">
             <IconButton
               size="sm"
@@ -71,7 +71,7 @@ export function AgendaSearchModal({
               value={searchTerm}
               onChange={(event) => onSearchTermChangeAction(event.target.value)}
               placeholder="Buscar em tudo..."
-              className="flex-1 bg-transparent text-sm text-studio-text placeholder:text-muted focus:outline-none"
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-white/75 focus:outline-none"
             />
             <button
               type="button"
@@ -81,7 +81,7 @@ export function AgendaSearchModal({
               Buscar
             </button>
           </div>
-          <p className="text-[11px] text-muted mt-2">Digite ao menos 3 letras para ver resultados.</p>
+          <p className="text-[11px] text-white/80 mt-2">Digite ao menos 3 letras para ver resultados.</p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 pt-6 pb-8">

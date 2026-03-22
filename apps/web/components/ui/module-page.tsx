@@ -18,7 +18,7 @@ export function ModulePage({
   contentClassName = "",
 }: ModulePageProps) {
   return (
-    <div className={`flex min-h-0 flex-1 flex-col bg-studio-bg ${className}`}>
+    <div className={`flex min-h-0 flex-1 flex-col wl-surface-screen ${className}`}>
       <div className={`relative z-30 ${headerClassName}`}>{header}</div>
       <div className={`flex min-h-0 flex-1 flex-col ${contentClassName}`}>{children}</div>
     </div>

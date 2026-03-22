@@ -12,11 +12,18 @@ import { createShiftBlocks, clearMonthBlocks } from "../../app/(dashboard)/admin
 import { createAvailabilityBlock, deleteAvailabilityBlock, getMonthOverview } from "../../app/(dashboard)/bloqueios/actions";
 import { extractDateKeyFromIsoLike } from "../../src/shared/datetime";
 import { feedbackById, feedbackFromError } from "../../src/shared/feedback/user-feedback";
-import type { AvailabilityBlock, BlockType, CreateBlockPayload, MonthOverview } from "./availability-manager.types";
+import type {
+  AvailabilityBlock,
+  BlockType,
+  CreateBlockPayload,
+  MonthOverview,
+  MonthOverviewAppointment,
+} from "./availability-manager.types";
 
 export function useAvailabilityManagerController(showToast: (feedback: ReturnType<typeof feedbackById> | ReturnType<typeof feedbackFromError>) => void) {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isOverviewLoading, setIsOverviewLoading] = useState(false);
   const [overview, setOverview] = useState<MonthOverview>({ blocks: [], appointments: [] });
   const [loading, setLoading] = useState(false);
   const [scaleType, setScaleType] = useState<"even" | "odd">("even");
@@ -64,11 +71,18 @@ export function useAvailabilityManagerController(showToast: (feedback: ReturnTyp
 
   useEffect(() => {
     async function loadOverview() {
-      const data = await getMonthOverview(selectedMonth);
-      setOverview(data);
+      setIsOverviewLoading(true);
+      try {
+        const data = await getMonthOverview(selectedMonth);
+        setOverview(data);
+      } catch (error) {
+        showToast(feedbackFromError(error, "agenda"));
+      } finally {
+        setIsOverviewLoading(false);
+      }
     }
     loadOverview();
-  }, [selectedMonth]);
+  }, [selectedMonth, showToast]);
 
   useEffect(() => {
     if (!isScaleModalOpen) return;
@@ -112,7 +126,7 @@ export function useAvailabilityManagerController(showToast: (feedback: ReturnTyp
   }, [overview.blocks]);
 
   const appointmentsByDate = useMemo(() => {
-    const grouped = new Map<string, MonthOverview["appointments"]>();
+    const grouped = new Map<string, MonthOverviewAppointment[]>();
     overview.appointments.forEach((appt) => {
       const key = format(parseISO(appt.start_time), "yyyy-MM-dd");
       const list = grouped.get(key) ?? [];
@@ -124,6 +138,10 @@ export function useAvailabilityManagerController(showToast: (feedback: ReturnTyp
 
   const selectedKey = format(selectedDate, "yyyy-MM-dd");
   const selectedBlocks = blocksByDate.get(selectedKey) ?? [];
+  const selectedAppointments = useMemo(() => {
+    const appointments = appointmentsByDate.get(selectedKey) ?? [];
+    return [...appointments].sort((left, right) => left.start_time.localeCompare(right.start_time));
+  }, [appointmentsByDate, selectedKey]);
   const blockDateLabel = useMemo(() => {
     if (!blockDate) return format(selectedDate, "EEEE, dd 'de' MMM", { locale: ptBR });
     const parsed = parseISO(`${blockDate}T00:00:00`);
@@ -332,9 +350,11 @@ export function useAvailabilityManagerController(showToast: (feedback: ReturnTyp
   return {
     selectedDate,
     currentMonthDate,
+    isOverviewLoading,
     blocksByDate,
     appointmentsByDate,
     selectedBlocks,
+    selectedAppointments,
     blockDateLabel,
     scaleHasShiftBlocks,
     portalTarget,

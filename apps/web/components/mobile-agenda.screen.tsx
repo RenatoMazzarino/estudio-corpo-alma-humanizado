@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useEffect, useRef, useState } from "react";
 import { ModulePage } from "./ui/module-page";
 import { MobileAgendaDaySection } from "./agenda/mobile-agenda-day-section";
 import { MobileAgendaWeekSection } from "./agenda/mobile-agenda-week-section";
@@ -9,9 +10,56 @@ import { MobileAgendaOverlays } from "./agenda/mobile-agenda-overlays";
 import { AvailabilityManager } from "./availability-manager";
 import type { MobileAgendaProps } from "./agenda/mobile-agenda.types";
 import { useMobileAgendaScreenController } from "./agenda/use-mobile-agenda-screen-controller";
+import type { AgendaDayLayoutMode } from "./agenda/mobile-agenda.types";
+import { BlockingOverlay } from "./ui/loading-system";
 
 export function MobileAgenda(props: MobileAgendaProps) {
   const controller = useMobileAgendaScreenController(props);
+  const [dayLayoutMode, setDayLayoutMode] = useState<AgendaDayLayoutMode>("v1");
+  const [isLoadingPreviewVisible, setIsLoadingPreviewVisible] = useState(false);
+  const loadingPreviewTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (loadingPreviewTimeoutRef.current) {
+        window.clearTimeout(loadingPreviewTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const triggerLoadingPreview = () => {
+    if (loadingPreviewTimeoutRef.current) {
+      window.clearTimeout(loadingPreviewTimeoutRef.current);
+    }
+    setIsLoadingPreviewVisible(true);
+    loadingPreviewTimeoutRef.current = window.setTimeout(() => {
+      setIsLoadingPreviewVisible(false);
+      loadingPreviewTimeoutRef.current = null;
+    }, 2800);
+  };
+
+  const openRecordFromCard = (payload: { id: string; returnTo: string }) => {
+    controller.setActionSheet(null);
+    controller.router.push(`/atendimento/${payload.id}?return=${encodeURIComponent(payload.returnTo)}`);
+  };
+
+  const editFromCard = (payload: { id: string; returnTo: string }) => {
+    controller.setActionSheet(null);
+    controller.router.push(`/novo?appointmentId=${payload.id}&returnTo=${encodeURIComponent(payload.returnTo)}`);
+  };
+
+  const deleteFromCard = async (payload: { id: string }) => {
+    controller.setIsActionPending(true);
+    const result = await controller.cancelAppointment(payload.id);
+    if (!result.ok) {
+      controller.showToast(controller.feedbackFromError(result.error, "agenda"));
+    } else {
+      controller.showToast(controller.feedbackById("appointment_deleted"));
+      controller.setActionSheet(null);
+      controller.router.refresh();
+    }
+    controller.setIsActionPending(false);
+  };
 
   return (
     <>
@@ -24,14 +72,18 @@ export function MobileAgenda(props: MobileAgendaProps) {
             currentUserName={controller.currentUserName}
             currentUserAvatarUrl={controller.currentUserAvatarUrl}
             view={controller.view}
+            dayLayoutMode={dayLayoutMode}
             monthPickerYear={controller.monthPickerYear}
             monthLabels={controller.monthLabels}
             isMonthPickerOpen={controller.isMonthPickerOpen}
+            onCloseMonthPickerAction={() => controller.setIsMonthPickerOpen(false)}
             onOpenSearchAction={() => {
               controller.setSearchMode("quick");
               controller.setIsSearchOpen(true);
             }}
+            onTriggerLoadingPreviewAction={triggerLoadingPreview}
             onSetViewAction={controller.setViewAndSync}
+            onSetDayLayoutModeAction={setDayLayoutMode}
             onPrevYearAction={() => controller.setMonthPickerYear((prev) => prev - 1)}
             onNextYearAction={() => controller.setMonthPickerYear((prev) => prev + 1)}
             onSelectMonthAction={(monthIndex) => {
@@ -45,7 +97,7 @@ export function MobileAgenda(props: MobileAgendaProps) {
         }
         contentClassName="relative"
       >
-        <main className="relative bg-studio-bg overflow-x-hidden">
+        <main className="relative wl-surface-screen overflow-x-hidden">
           <MobileAgendaDaySection
             visible={controller.view === "day"}
             monthDays={controller.monthDays}
@@ -63,16 +115,25 @@ export function MobileAgenda(props: MobileAgendaProps) {
             onGoToToday={controller.handleGoToToday}
             onOpenAppointment={controller.openDetailsForAppointment}
             onOpenMonthPickerAction={() => controller.setIsMonthPickerOpen(true)}
-            onOpenActionSheet={controller.setActionSheet}
+            dayLayoutMode={dayLayoutMode}
+            signalPercentage={controller.signalPercentage}
+            onOpenRecordFromCard={openRecordFromCard}
+            onEditFromCard={editFromCard}
+            onDeleteFromCard={deleteFromCard}
             getDayData={controller.getDayData}
           />
 
           <MobileAgendaWeekSection
             visible={controller.view === "week"}
             selectedDate={controller.selectedDate}
+            signalPercentage={controller.signalPercentage}
             weekDays={controller.weekDays}
             getDayDataAction={controller.getDayData}
             onChangeSelectedDateAction={controller.setSelectedDate}
+            onOpenAppointmentAction={controller.openDetailsForAppointment}
+            onOpenRecordFromCard={openRecordFromCard}
+            onEditFromCard={editFromCard}
+            onDeleteFromCard={deleteFromCard}
             onOpenDayAction={(day) => {
               controller.setSelectedDate(day);
               controller.setViewAndSync("day", day);
@@ -83,6 +144,12 @@ export function MobileAgenda(props: MobileAgendaProps) {
           <section className={`${controller.view === "month" ? "block" : "hidden"} p-6 pb-0 animate-in fade-in`}>
             <AvailabilityManager ref={controller.availabilityRef} />
           </section>
+
+          <BlockingOverlay
+            visible={isLoadingPreviewVisible}
+            label="Carregando experiencia personalizada..."
+            variant="brand-draw"
+          />
         </main>
       </ModulePage>
 
@@ -92,23 +159,9 @@ export function MobileAgenda(props: MobileAgendaProps) {
         portalTarget={controller.portalTarget}
         isActionPending={controller.isActionPending}
         onCloseActionSheetAction={() => controller.setActionSheet(null)}
-        onEditAction={(payload) => {
-          const nextReturn = payload.returnTo;
-          controller.setActionSheet(null);
-          controller.router.push(`/novo?appointmentId=${payload.id}&returnTo=${encodeURIComponent(nextReturn)}`);
-        }}
-        onDeleteAction={async (payload) => {
-          controller.setIsActionPending(true);
-          const result = await controller.cancelAppointment(payload.id);
-          if (!result.ok) {
-            controller.showToast(controller.feedbackFromError(result.error, "agenda"));
-          } else {
-            controller.showToast(controller.feedbackById("appointment_deleted"));
-            controller.setActionSheet(null);
-            controller.router.refresh();
-          }
-          controller.setIsActionPending(false);
-        }}
+        onOpenRecordAction={openRecordFromCard}
+        onEditAction={editFromCard}
+        onDeleteAction={deleteFromCard}
         searchOpen={controller.isSearchOpen}
         searchTerm={controller.searchTerm}
         isSearching={controller.isSearching}

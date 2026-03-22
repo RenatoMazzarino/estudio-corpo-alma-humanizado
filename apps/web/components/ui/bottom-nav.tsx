@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, Menu, MessageCircle, Users, Wallet } from "lucide-react";
+import { Calendar, MessageCircle, Users, Wallet } from "lucide-react";
 
 interface BottomNavProps {
   className?: string;
@@ -39,10 +39,6 @@ export function BottomNav({ className = "" }: BottomNavProps) {
       <Link href="/caixa" className={itemClass("/caixa")}>
         <Wallet size={18} />
         <span className={labelClass("/caixa")}>Financeiro</span>
-      </Link>
-      <Link href="/menu" className={itemClass("/menu")}>
-        <Menu size={18} />
-        <span className={labelClass("/menu")}>Menu</span>
       </Link>
     </nav>
   );

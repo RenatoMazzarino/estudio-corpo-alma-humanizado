@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Coffee, Shield, Stethoscope, Umbrella } from "lucide-react";
+import { BriefcaseBusiness, Coffee, HeartPulse, Umbrella } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { AvailabilityBlock, BlockType } from "./availability-manager.types";
 
@@ -8,32 +8,32 @@ export const blockTypeMeta: Record<
   { label: string; color: string; icon: ReactNode; iconClass: string; accentClass: string }
 > = {
   shift: {
-    label: "Plantão",
-    color: "bg-red-50 text-red-600 border-red-100",
-    icon: <Stethoscope className="w-4 h-4" />,
-    iconClass: "bg-red-100 text-red-600",
-    accentClass: "text-red-600",
+    label: "Plantao",
+    color: "border-studio-green/25 bg-studio-light text-studio-green",
+    icon: <HeartPulse className="h-4 w-4" />,
+    iconClass: "bg-studio-light text-studio-green",
+    accentClass: "text-studio-green",
   },
   personal: {
     label: "Pessoal",
-    color: "bg-amber-50 text-amber-700 border-amber-100",
-    icon: <Coffee className="w-4 h-4" />,
-    iconClass: "bg-amber-100 text-amber-700",
-    accentClass: "text-amber-600",
+    color: "border-studio-accent/30 bg-paper text-studio-text",
+    icon: <Coffee className="h-4 w-4" />,
+    iconClass: "bg-paper text-studio-accent",
+    accentClass: "text-studio-accent",
   },
   vacation: {
-    label: "Férias",
-    color: "bg-teal-50 text-teal-700 border-teal-200",
-    icon: <Umbrella className="w-4 h-4" />,
-    iconClass: "bg-teal-100 text-teal-700",
-    accentClass: "text-teal-600",
+    label: "Ferias",
+    color: "border-dom/35 bg-dom/10 text-dom-strong",
+    icon: <Umbrella className="h-4 w-4" />,
+    iconClass: "bg-dom/15 text-dom-strong",
+    accentClass: "text-dom-strong",
   },
   administrative: {
     label: "Admin",
-    color: "bg-gray-100 text-gray-600 border-gray-200",
-    icon: <Shield className="w-4 h-4" />,
-    iconClass: "bg-gray-100 text-gray-600",
-    accentClass: "text-gray-500",
+    color: "border-line bg-paper text-muted",
+    icon: <BriefcaseBusiness className="h-4 w-4" />,
+    iconClass: "bg-paper text-muted",
+    accentClass: "text-muted",
   },
 };
 
@@ -46,36 +46,36 @@ export const blockTypeOptions: Array<{
 }> = [
   {
     type: "shift",
-    label: "Home Care",
-    active: "ring-dom/50 text-dom-strong bg-dom/20 border-dom/35",
-    idle: "border-stone-100 text-gray-400",
-    icon: <Stethoscope className="w-6 h-6" />,
+    label: "Plantao",
+    active: "ring-studio-green/25 text-studio-green bg-studio-light border-studio-green/25",
+    idle: "border-line text-muted",
+    icon: <HeartPulse className="h-6 w-6" />,
   },
   {
     type: "personal",
     label: "Pessoal",
-    active: "ring-amber-400/50 text-amber-600 bg-amber-50 border-amber-100",
-    idle: "border-stone-100 text-gray-400",
-    icon: <Coffee className="w-6 h-6" />,
+    active: "ring-studio-accent/25 text-studio-text bg-paper border-studio-accent/35",
+    idle: "border-line text-muted",
+    icon: <Coffee className="h-6 w-6" />,
   },
   {
     type: "vacation",
-    label: "Férias",
-    active: "ring-teal-400/50 text-teal-600 bg-teal-50 border-teal-100",
-    idle: "border-stone-100 text-gray-400",
-    icon: <Umbrella className="w-6 h-6" />,
+    label: "Ferias",
+    active: "ring-dom/25 text-dom-strong bg-dom/10 border-dom/30",
+    idle: "border-line text-muted",
+    icon: <Umbrella className="h-6 w-6" />,
   },
   {
     type: "administrative",
-    label: "Outro",
-    active: "ring-gray-300 text-gray-600 bg-stone-100 border-stone-200",
-    idle: "border-stone-100 text-gray-400",
-    icon: <Shield className="w-6 h-6" />,
+    label: "Admin",
+    active: "ring-studio-text/15 text-studio-text bg-paper border-line",
+    idle: "border-line text-muted",
+    icon: <BriefcaseBusiness className="h-6 w-6" />,
   },
 ];
 
 export function formatBlockTime(block: AvailabilityBlock) {
-  if (block.is_full_day) return "Dia todo";
+  if (block.is_full_day) return "Dia inteiro";
   const start = format(parseISO(block.start_time), "HH:mm");
   const end = format(parseISO(block.end_time), "HH:mm");
   return `${start} - ${end}`;

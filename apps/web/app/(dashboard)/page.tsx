@@ -19,6 +19,7 @@ interface Appointment {
   start_time: string;
   status: string;
   finished_at: string | null;
+  signal_paid_amount: number | null;
   is_home_visit: boolean | null;
   total_duration_minutes: number | null;
   service_duration_minutes?: number | null;

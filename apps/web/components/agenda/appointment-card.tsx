@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { Home, MoreHorizontal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BadgeCheck, BookOpenText, Home, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 interface AppointmentCardProps {
   name: string;
@@ -10,53 +10,27 @@ interface AppointmentCardProps {
   endLabel?: string;
   status?: string | null;
   paymentStatus?: string | null;
+  signalPaidAmount?: number | null;
+  signalPercentage?: number;
   isHomeVisit: boolean;
   price?: number | null;
   isVip?: boolean;
   durationMinutes?: number;
   loading?: boolean;
   onOpenAction: () => void;
+  onOpenRecordAction?: () => void;
+  onEditAction?: () => void;
+  onDeleteAction?: () => void;
   onLongPressAction?: () => void;
   ["data-card"]?: boolean;
 }
 
-const paymentStatusMap: Record<
-  string,
-  { label: string; dotClass: string; textClass: string }
-> = {
-  paid: {
-    label: "Pago",
-    dotClass: "bg-emerald-500",
-    textClass: "text-emerald-600",
-  },
-  partial: {
-    label: "Sinal Pago",
-    dotClass: "bg-amber-500",
-    textClass: "text-amber-600",
-  },
-  pending: {
-    label: "A Receber",
-    dotClass: "bg-amber-500",
-    textClass: "text-amber-600",
-  },
-  waived: {
-    label: "Cortesia",
-    dotClass: "bg-sky-500",
-    textClass: "text-sky-600",
-  },
-  refunded: {
-    label: "Estornado",
-    dotClass: "bg-slate-500",
-    textClass: "text-slate-600",
-  },
-};
-
-const paymentShortLabelMap: Record<string, string> = {
-  paid: "Pago",
-  partial: "Sinal",
-  pending: "A receber",
-  waived: "Cortesia",
-  refunded: "Estorno",
+const paymentStatusMap: Record<string, { dotClass: string }> = {
+  paid: { dotClass: "bg-emerald-500" },
+  partial: { dotClass: "bg-amber-500" },
+  pending: { dotClass: "bg-amber-500" },
+  waived: { dotClass: "bg-sky-500" },
+  refunded: { dotClass: "bg-slate-500" },
 };
 
 function formatPriceLabel(value: number | null | undefined) {
@@ -74,26 +48,33 @@ export function AppointmentCard({
   service,
   startLabel,
   endLabel,
+  status,
   paymentStatus,
+  signalPaidAmount = null,
+  signalPercentage = 30,
   isHomeVisit,
   price,
   isVip = false,
   durationMinutes = 60,
   loading = false,
   onOpenAction,
+  onOpenRecordAction,
+  onEditAction,
+  onDeleteAction,
   onLongPressAction,
   "data-card": dataCard,
 }: AppointmentCardProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimeout = useRef<number | null>(null);
   const startPoint = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const paymentInfo = paymentStatus ? paymentStatusMap[paymentStatus] : null;
-  const paymentLabel = paymentInfo?.label ?? "A Receber";
-  const paymentShortLabel = paymentShortLabelMap[paymentStatus ?? "pending"] ?? "A receber";
-  const paymentDotClass = paymentInfo?.dotClass ?? "bg-amber-500";
-  const paymentTextClass = paymentInfo?.textClass ?? "text-amber-600";
   const accentColor = isHomeVisit ? "var(--color-dom)" : "var(--color-studio-green)";
+  const normalizedStatus = (status ?? "").toLowerCase();
+  const isCompleted = normalizedStatus === "completed";
+  const canShowActionsMenu = Boolean(onOpenRecordAction || onEditAction || onDeleteAction);
+
   const density =
     durationMinutes <= 30
       ? "micro"
@@ -121,22 +102,105 @@ export function AppointmentCard({
           ? "wl-typo-card-name-md"
           : "wl-typo-card-name-lg";
 
-  const serviceClass = "wl-typo-card-service";
   const timeClass = "wl-typo-card-time";
-  const priceClass = density === "micro" ? "wl-typo-card-status" : "wl-typo-card-price";
-  const paymentClass = "wl-typo-card-status";
+  const priceClass = "wl-typo-card-status";
   const vipClass =
-    density === "full"
-      ? "wl-typo-chip inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-600"
-      : "wl-typo-chip inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-600";
+    "wl-typo-chip inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-600";
   const homeIconSizeClass = density === "micro" ? "h-3 w-3" : "h-3.5 w-3.5";
-  const homeChipSizeClass =
-    density === "micro" ? "inline-flex h-5 w-5 items-center justify-center" : "inline-flex h-6 w-6 items-center justify-center";
-  const showMetaRow = density !== "micro";
   const showService = density !== "micro" && density !== "tight";
   const showDivider = density === "compact" || density === "full";
-  const showPaymentLabel = density !== "micro";
   const timeRange = endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+  const menuButtonSizeClass = density === "micro" ? "h-5 w-5" : "h-6 w-6";
+  const menuIconSizeClass = density === "micro" ? "h-3.5 w-3.5" : "h-4 w-4";
+
+  const statusSealClass =
+    normalizedStatus === "in_progress"
+      ? "text-sky-500 animate-pulse drop-shadow-[0_0_6px_rgba(59,130,246,0.45)]"
+      : normalizedStatus === "confirmed" || normalizedStatus === "completed"
+        ? "text-emerald-600"
+        : "text-slate-500";
+  const statusSealTitle =
+    normalizedStatus === "in_progress"
+      ? "Em atendimento"
+      : normalizedStatus === "confirmed" || normalizedStatus === "completed"
+        ? "Confirmado"
+        : "Aguardando confirmacao";
+  const cardSurfaceStyle = isCompleted
+    ? {
+        backgroundColor: "color-mix(in srgb, var(--color-studio-green) 12%, var(--surface-card-body))",
+        borderColor: "color-mix(in srgb, var(--color-studio-green) 30%, var(--color-line))",
+      }
+    : null;
+
+  const totalAmount = typeof price === "number" && Number.isFinite(price) ? price : null;
+  const normalizedSignalPaidAmount =
+    typeof signalPaidAmount === "number" && Number.isFinite(signalPaidAmount) ? signalPaidAmount : null;
+  const inferredPartialPaid =
+    totalAmount !== null
+      ? Number(((totalAmount * Math.min(Math.max(signalPercentage, 0), 100)) / 100).toFixed(2))
+      : null;
+  const partialPaidAmount =
+    normalizedSignalPaidAmount !== null && normalizedSignalPaidAmount > 0 ? normalizedSignalPaidAmount : inferredPartialPaid;
+  const defaultPaymentDotClass = paymentStatusMap[paymentStatus ?? "pending"]?.dotClass ?? "bg-amber-500";
+
+  const paymentView = (() => {
+    switch (paymentStatus) {
+      case "paid":
+        return {
+          dotClass: "bg-emerald-500",
+          amountClass: "text-emerald-600",
+          amountLabel: formatPriceLabel(totalAmount),
+        };
+      case "partial":
+        return {
+          dotClass: "bg-amber-500",
+          amountClass: "text-amber-600",
+          amountLabel:
+            totalAmount !== null && partialPaidAmount !== null
+              ? `${formatPriceLabel(partialPaidAmount)} de ${formatPriceLabel(totalAmount)}`
+              : formatPriceLabel(totalAmount),
+        };
+      case "pending":
+        return {
+          dotClass: "bg-amber-500",
+          amountClass: "text-studio-text",
+          amountLabel: formatPriceLabel(totalAmount),
+        };
+      case "waived":
+        return {
+          dotClass: "bg-sky-500",
+          amountClass: "text-sky-600",
+          amountLabel: "Cortesia",
+        };
+      case "refunded":
+        return {
+          dotClass: "bg-slate-500",
+          amountClass: "text-slate-600",
+          amountLabel: "Estornado",
+        };
+      default:
+        return {
+          dotClass: defaultPaymentDotClass,
+          amountClass: "text-studio-text",
+          amountLabel: formatPriceLabel(totalAmount),
+        };
+    }
+  })();
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [menuOpen]);
 
   const clearLongPress = () => {
     if (longPressTimeout.current) {
@@ -149,6 +213,29 @@ export function AppointmentCard({
   const triggerLongPress = () => {
     suppressClick.current = true;
     onLongPressAction?.();
+  };
+
+  const handleToggleMenu = () => {
+    if (canShowActionsMenu) {
+      setMenuOpen((prev) => !prev);
+      return;
+    }
+    onLongPressAction?.();
+  };
+
+  const handleOpenRecord = () => {
+    setMenuOpen(false);
+    onOpenRecordAction?.();
+  };
+
+  const handleEdit = () => {
+    setMenuOpen(false);
+    onEditAction?.();
+  };
+
+  const handleDelete = () => {
+    setMenuOpen(false);
+    onDeleteAction?.();
   };
 
   return (
@@ -188,85 +275,122 @@ export function AppointmentCard({
         }
       }}
       aria-busy={loading}
-      className={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-line border-l-4 bg-white ${wrapperPadding} shadow-soft transition active:scale-[0.99] ${
-        loading ? "opacity-75 cursor-wait" : "cursor-pointer"
+      className={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-line border-l-4 wl-surface-card-body ${wrapperPadding} shadow-soft transition active:scale-[0.99] ${
+        loading ? "cursor-wait opacity-75" : "cursor-pointer"
       }`}
-      style={{ borderLeftColor: accentColor }}
+      style={{
+        borderLeftColor: accentColor,
+        ...(cardSurfaceStyle ?? {}),
+      }}
     >
       {loading && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/70">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-paper/80">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/10 border-t-studio-green" />
         </div>
       )}
 
       <div className="flex h-full min-h-0 flex-col justify-between">
-        {showMetaRow ? (
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              {isVip ? (
-                <span className={vipClass}>
-                  <Home className="h-2.5 w-2.5" /> VIP
-                </span>
-              ) : null}
+        <div className="min-h-0">
+          <div className="relative flex items-start justify-between gap-2">
+            <div className="min-w-0 flex items-center gap-1.5">
+              <h3
+                className={`min-w-0 flex-1 truncate leading-tight text-studio-text ${nameClass}`}
+                style={{ fontFamily: "var(--font-serif), ui-serif, Georgia, serif" }}
+              >
+                {name}
+              </h3>
+              <span className="inline-flex shrink-0" title={statusSealTitle} aria-label={statusSealTitle}>
+                <BadgeCheck className={`h-4 w-4 ${statusSealClass}`} />
+              </span>
               {isHomeVisit ? (
-                <span
-                  className={`${homeChipSizeClass} rounded-md border border-dom/35 bg-dom/15 text-dom-strong`}
-                  title="Domicilio"
-                  aria-label="Domicilio"
-                >
-                  <Home className={homeIconSizeClass} />
+                <span className="inline-flex shrink-0" title="Domicilio" aria-label="Domicilio">
+                  <Home className={`${homeIconSizeClass} text-muted`} />
                 </span>
               ) : null}
             </div>
-            <MoreHorizontal className="h-4 w-4 shrink-0 text-muted" />
+
+            <button
+              type="button"
+              aria-label="Abrir acoes do agendamento"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handleToggleMenu();
+              }}
+              className={`inline-flex ${menuButtonSizeClass} shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-paper hover:text-studio-text`}
+            >
+              <MoreHorizontal className={menuIconSizeClass} />
+            </button>
+
+            {menuOpen && canShowActionsMenu ? (
+              <div
+                ref={actionsMenuRef}
+                className="absolute right-0 top-8 z-20 min-w-44 overflow-hidden rounded-xl border border-line wl-surface-card-body text-studio-text shadow-soft"
+              >
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleOpenRecord();
+                  }}
+                  className="wl-typo-menu-item flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left text-studio-text transition hover:bg-paper"
+                >
+                  <BookOpenText className="h-4 w-4" />
+                  Abrir prontuario
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleEdit();
+                  }}
+                  className="wl-typo-menu-item flex w-full items-center gap-2.5 border-b border-line px-3 py-2.5 text-left text-studio-text transition hover:bg-paper"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Editar agendamento
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleDelete();
+                  }}
+                  className="wl-typo-menu-item flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-red-600 transition hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir agendamento
+                </button>
+              </div>
+            ) : null}
           </div>
-        ) : null}
+
+          {density !== "micro" && isVip ? <span className={`${vipClass} mt-1`}>VIP</span> : null}
+
+          {density === "micro" ? null : showService ? (
+            <p className="mt-0.5 line-clamp-1 text-muted wl-typo-card-service">{service}</p>
+          ) : null}
+
+          <p className={`${density === "micro" ? "mt-0.5" : showService ? "mt-1" : "mt-0.5"} text-muted ${timeClass}`}>
+            {timeRange}
+          </p>
+        </div>
 
         {density === "micro" ? (
-          <div className="min-h-0">
-            <div className="mb-0.5 flex items-center justify-between gap-1.5">
-              <div className="min-w-0 flex items-center gap-1">
-                {isHomeVisit ? (
-                  <span
-                    className={`${homeChipSizeClass} rounded-md border border-dom/35 bg-dom/15 text-dom-strong`}
-                    title="Domicilio"
-                    aria-label="Domicilio"
-                  >
-                    <Home className={homeIconSizeClass} />
-                  </span>
-                ) : null}
-                <h3 className={`truncate leading-tight text-studio-text ${nameClass}`}>{name}</h3>
-              </div>
-              <MoreHorizontal className="h-3.5 w-3.5 shrink-0 text-muted" />
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className={`truncate text-muted ${timeClass}`}>{timeRange}</p>
-              <div className="min-w-0 flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${paymentDotClass}`} />
-                <span className={`truncate text-studio-text ${priceClass}`}>{formatPriceLabel(price)}</span>
-                <span className={`truncate ${paymentTextClass} ${paymentClass}`}>{paymentShortLabel}</span>
-              </div>
-            </div>
+          <div className="mt-0.5 flex items-center justify-between gap-2">
+            <span className={`h-1.5 w-1.5 rounded-full ${paymentView.dotClass}`} />
+            <span className={`truncate ${paymentView.amountClass} ${priceClass}`}>{paymentView.amountLabel}</span>
           </div>
         ) : (
-          <div className="min-h-0">
-            <h3 className={`leading-tight text-studio-text line-clamp-1 ${nameClass}`}>{name}</h3>
-            {showService ? <p className={`mt-0.5 text-muted line-clamp-1 ${serviceClass}`}>{service}</p> : null}
-            <p className={`${showService ? "mt-1" : "mt-0.5"} text-muted ${timeClass}`}>{timeRange}</p>
-          </div>
-        )}
-
-        {density !== "micro" ? (
           <div className={`${showDivider ? "mt-2.5 border-t border-line pt-2" : density === "tight" ? "mt-1.5" : "mt-1"}`}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${paymentDotClass}`} />
-              <span className={`truncate text-studio-text ${priceClass}`}>{formatPriceLabel(price)}</span>
-              {showPaymentLabel ? (
-                <span className={`truncate ${paymentTextClass} ${paymentClass}`}>{paymentLabel}</span>
-              ) : null}
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${paymentView.dotClass}`} />
+              <span className={`truncate ${paymentView.amountClass} ${priceClass}`}>{paymentView.amountLabel}</span>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
