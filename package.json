@@ -21,7 +21,7 @@
     "markdownlint-cli2": "^0.21.0",
     "prettier": "^3.7.4",
     "supabase": "^2.75.0",
-    "turbo": "2.8.3",
+    "turbo": "2.8.20",
     "typescript": "5.9.2",
     "vercel": "^50.28.0"
   },
