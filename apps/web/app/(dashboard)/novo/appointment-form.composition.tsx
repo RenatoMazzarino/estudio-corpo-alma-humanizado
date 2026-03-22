@@ -1,6 +1,7 @@
 "use client";
 
-import { parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentFormSections } from "./components/appointment-form-sections";
@@ -31,7 +32,7 @@ import {
   createAppointment,
   createClientFromAppointmentDraft,
   updateAppointment,
-} from "./appointment-actions"; // Ação importada do arquivo renomeado
+} from "./appointment-actions"; // Acao importada do arquivo renomeado
 import { Toast, useToast } from "../../../components/ui/toast";
 import { formatCep } from "../../../src/shared/address/cep";
 import { formatCpf, normalizeCpfDigits } from "../../../src/shared/cpf";
@@ -45,6 +46,8 @@ import type {
 } from "./appointment-form.types";
 
 const formatCountdown = formatMinutesSeconds;
+const CREATE_FLOW_STEPS = ["client", "service", "agenda", "finance"] as const;
+type CreateFlowStep = (typeof CREATE_FLOW_STEPS)[number];
 
 export function AppointmentForm({
   services,
@@ -75,9 +78,11 @@ export function AppointmentForm({
   const clientCpfInputRef = useRef<HTMLInputElement | null>(null);
   const clientCreateFirstNameInputRef = useRef<HTMLInputElement | null>(null);
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
+  const [activeCreateStep, setActiveCreateStep] = useState<CreateFlowStep>("client");
   const initialTimeRef = useRef(initialAppointment?.time ?? "");
   const selectedTimeRef = useRef(initialAppointment?.time ?? "");
   const previousClientIdRef = useRef<string | null>(initialSelectedClientId);
+  const [isFooterSummaryExpanded, setIsFooterSummaryExpanded] = useState(false);
 
   const [selectedServiceId, setSelectedServiceId] = useState<string>(initialAppointment?.serviceId ?? "");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
@@ -275,7 +280,6 @@ export function AppointmentForm({
   );
   const selectedServiceBufferMinutes = Math.max(0, Number(selectedService?.custom_buffer_minutes ?? 0));
   const selectedServiceTotalMinutes = (selectedService?.duration_minutes ?? 0) + selectedServiceBufferMinutes;
-
   useEffect(() => {
     selectedTimeRef.current = selectedTime;
   }, [selectedTime]);
@@ -538,6 +542,8 @@ export function AppointmentForm({
     handleStartChargeCard,
     handleVerifyChargeCardNow,
     handleBeginImmediateCharge,
+    handleConfirmManualCharge,
+    handleOpenCheckoutAfterConfirmation,
     handleSwitchChargeToAttendance,
     handleConfirmationSheetClose,
     handleSchedule,
@@ -590,8 +596,85 @@ export function AppointmentForm({
     showToast,
   });
 
+  const createStepLabelMap: Record<CreateFlowStep, string> = {
+    client: "Cliente",
+    service: "Servico",
+    agenda: "Agenda",
+    finance: "Financeiro",
+  };
+  const activeCreateStepIndex = CREATE_FLOW_STEPS.indexOf(activeCreateStep);
+  const canAdvanceFromCreateStep =
+    activeCreateStep === "client"
+      ? isStep2Unlocked
+      : activeCreateStep === "service"
+        ? isStep3Unlocked
+          : activeCreateStep === "agenda"
+            ? isStep4Unlocked
+            : activeCreateStep === "finance"
+              ? canOpenConfirmation
+              : true;
+
+  const handleBackCreateStep = () => {
+    if (activeCreateStepIndex <= 0) return;
+    const previousStep = CREATE_FLOW_STEPS[activeCreateStepIndex - 1];
+    if (previousStep) setActiveCreateStep(previousStep);
+  };
+
+  const handleAdvanceCreateStep = () => {
+    if (!canAdvanceFromCreateStep) {
+      const message =
+        activeCreateStep === "client"
+          ? "Selecione um cliente antes de continuar."
+          : activeCreateStep === "service"
+            ? "Defina servico, local e endereco para continuar."
+            : activeCreateStep === "agenda"
+              ? "Selecione data e horario para continuar."
+              : "Finalize os dados financeiros para confirmar o agendamento.";
+      showToast({
+        title: "Novo agendamento",
+        message,
+        tone: "warning",
+        durationMs: 2600,
+      });
+      return;
+    }
+    const nextStep = CREATE_FLOW_STEPS[activeCreateStepIndex + 1];
+    if (nextStep) setActiveCreateStep(nextStep);
+  };
+
+  const handleCreatePrimaryAction = () => {
+    if (activeCreateStep !== "finance") {
+      handleAdvanceCreateStep();
+      return;
+    }
+    if (collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver") {
+      void handleOpenCheckoutAfterConfirmation();
+      return;
+    }
+    handleSchedule();
+  };
+
+  const handleOpenFooterReview = () => {
+    if (!canOpenConfirmation) {
+      showToast({
+        title: "Novo agendamento",
+        message: "Finalize os dados financeiros para revisar e confirmar.",
+        tone: "warning",
+        durationMs: 2600,
+      });
+      return;
+    }
+    setIsFooterSummaryExpanded(true);
+  };
+
+  useEffect(() => {
+    if (activeCreateStep !== "finance" && isFooterSummaryExpanded) {
+      setIsFooterSummaryExpanded(false);
+    }
+  }, [activeCreateStep, isFooterSummaryExpanded]);
+
   return (
-    <form ref={formRef} action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className={isEditing ? "space-y-6" : "flex h-full min-h-0 flex-col"}>
       <Toast toast={toast} />
       <AppointmentHiddenFields
         isEditing={isEditing}
@@ -624,7 +707,51 @@ export function AppointmentForm({
         effectiveDisplacementFee={effectiveDisplacementFee}
         displacementDistanceKm={displacementEstimate?.distanceKm ?? null}
       />
+
+      {!isEditing ? (
+        <header className="z-30 -mx-6 bg-studio-green text-white safe-top safe-top-6 px-6 pb-0 pt-5">
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push(returnTo ?? "/")}
+              className="wl-header-icon-button-strong inline-flex h-9 w-9 items-center justify-center rounded-full transition"
+              aria-label="Voltar"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <h1 className="wl-typo-card-name-md text-white font-bold">Agendamento Interno</h1>
+          </div>
+
+          <div className="border-b border-white/25 pb-0.5">
+            <div className="no-scrollbar flex items-center gap-6 overflow-x-auto">
+              {CREATE_FLOW_STEPS.map((step) => {
+                const isActive = activeCreateStep === step;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => setActiveCreateStep(step)}
+                    className={`relative pb-2 text-[13px] font-semibold transition-colors ${
+                      isActive ? "text-white" : "text-white/75 hover:text-white"
+                    }`}
+                  >
+                    {createStepLabelMap[step]}
+                    <span
+                      className={`absolute inset-x-0 -bottom-px h-0.5 bg-white transition-opacity ${
+                        isActive ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </header>
+      ) : null}
+
+      <div className={isEditing ? "space-y-6" : "min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 pt-4"}>
       <AppointmentFormSections
+        showClientStep={isEditing || activeCreateStep === "client"}
         clientStepProps={{
           sectionCardClass,
           sectionNumberClass,
@@ -644,6 +771,8 @@ export function AppointmentForm({
           isClientSelectionPending,
           shouldShowClientContactFields,
           clientPhone,
+          clientEmail,
+          clientReference,
           isClientPhoneReadOnly: clientSelectionMode === "existing",
           missingWhatsappWarning,
           shouldShowCpfField,
@@ -682,7 +811,7 @@ export function AppointmentForm({
           onLinkExistingClientByCpfAction: handleLinkExistingClientByCpf,
           onChangeCpfAfterConflictAction: handleChangeCpfAfterConflict,
         }}
-        showStep2={isStep2Unlocked}
+        showStep2={isEditing ? isStep2Unlocked : activeCreateStep === "service" && isStep2Unlocked}
         serviceLocationStepProps={{
           sectionCardClass,
           sectionNumberClass,
@@ -735,7 +864,7 @@ export function AppointmentForm({
           onShowAddressSelectionListAction: setShowAddressSelectionList,
         }}
         whenStepProps={{
-          visible: isStep3Unlocked,
+          visible: isEditing ? isStep3Unlocked : activeCreateStep === "agenda" && isStep3Unlocked,
           isEditing,
           sectionCardClass,
           sectionNumberClass,
@@ -761,7 +890,7 @@ export function AppointmentForm({
           selectedTime,
           onSelectTime: setSelectedTime,
         }}
-        showFinanceStep={!isEditing && isStep4Unlocked}
+        showFinanceStep={!isEditing && activeCreateStep === "finance" && isStep4Unlocked}
         financeStepProps={{
           sectionCardClass,
           sectionNumberClass,
@@ -960,17 +1089,27 @@ export function AppointmentForm({
             onStartChargeCardAction: (mode) => handleStartChargeCard(mode),
             onVerifyChargeCardNowAction: handleVerifyChargeCardNow,
             onSwitchChargeToAttendanceAction: handleSwitchChargeToAttendance,
+            onEditPaymentAction: () => {
+              setIsSendPromptOpen(false);
+              setConfirmationSheetStep("review");
+              setChargeFlowError(null);
+              setChargePixPayment(null);
+              setChargePointPayment(null);
+              setActiveCreateStep("finance");
+            },
+            onConfirmManualChargeAction: handleConfirmManualCharge,
             onClearChargeFlowErrorAction: () => setChargeFlowError(null),
             onBeginImmediateChargeAction: handleBeginImmediateCharge,
             onScheduleAction: handleSchedule,
           },
         }}
         notesAndSubmitProps={{
-          showNotes: isEditing || isStep4Unlocked,
-          showSubmit: isStep4Unlocked,
+          showNotes: isEditing || activeCreateStep === "finance",
+          showSubmit: isEditing ? isStep4Unlocked : false,
           isEditing,
           sectionCardClass,
-          labelClass,
+          sectionNumberClass,
+          sectionHeaderTextClass,
           inputClass,
           internalNotes,
           onChangeInternalNotesAction: setInternalNotes,
@@ -978,6 +1117,130 @@ export function AppointmentForm({
           onOpenConfirmationPromptAction: handleOpenConfirmationPrompt,
         }}
       />
+
+      {!isEditing && activeCreateStep === "service" && !isStep2Unlocked ? (
+        <section className={`${sectionCardClass} overflow-hidden`}>
+          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+            <h2 className={`${sectionHeaderTextClass} leading-none`}>Servico e local</h2>
+          </div>
+          <div className="px-4 py-4 wl-surface-card-body">
+            <p className="text-sm text-muted">Selecione um cliente para liberar esta etapa.</p>
+          </div>
+        </section>
+      ) : null}
+
+      {!isEditing && activeCreateStep === "agenda" && !isStep3Unlocked ? (
+        <section className={`${sectionCardClass} overflow-hidden`}>
+          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+            <h2 className={`${sectionHeaderTextClass} leading-none`}>Dia</h2>
+          </div>
+          <div className="px-4 py-4 wl-surface-card-body">
+            <p className="text-sm text-muted">
+              Defina servico, local e endereco confirmado (quando for domicilio) para liberar o dia.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {!isEditing && activeCreateStep === "finance" && !isStep4Unlocked ? (
+        <section className={`${sectionCardClass} overflow-hidden`}>
+          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+            <h2 className={`${sectionHeaderTextClass} leading-none`}>Financeiro</h2>
+          </div>
+          <div className="px-4 py-4 wl-surface-card-body">
+            <p className="text-sm text-muted">Selecione data e horario antes de configurar financeiro.</p>
+          </div>
+        </section>
+      ) : null}
+
+      </div>
+
+      {!isEditing ? (
+        <div className="shrink-0 -mx-6 border-t border-line bg-[rgba(247,242,234,0.96)] px-6 pb-3 pt-3 safe-bottom">
+          <div className="mb-2 flex items-center justify-end">
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-[0.12em] text-muted">Total</div>
+              <div className="mt-1 text-[16px] font-semibold text-studio-text">
+                R$ {scheduleTotal.toFixed(2).replace(".", ",")}
+              </div>
+            </div>
+          </div>
+          <div
+            id="novo-agendamento-resumo-expandido"
+            className={`overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out ${
+              isFooterSummaryExpanded ? "mb-3 max-h-72 opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <div className="space-y-2 rounded-xl border border-line bg-white/70 px-3 py-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted">Cliente</span>
+                <span className="font-semibold text-studio-text">{clientDisplayPreviewLabel || "Cliente"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted">Servico</span>
+                <span className="font-semibold text-studio-text">{selectedService?.name || "--"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted">Dia</span>
+                <span className="font-semibold text-studio-text">
+                  {selectedDate ? format(parseISO(`${selectedDate}T00:00:00`), "dd/MM/yyyy") : "--"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted">Horario</span>
+                <span className="font-semibold text-studio-text">{selectedTime || "--:--"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted">Local</span>
+                <span className="font-semibold text-studio-text">
+                  {isHomeVisit ? `Domicilio${addressLabel ? ` - ${addressLabel}` : ""}` : "Estudio"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-line pt-2">
+                <span className="text-muted">Cobranca</span>
+                <span className="font-semibold text-studio-text">
+                  {collectionTimingDraft === "charge_now" ? "No agendamento" : "No atendimento"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-3">
+            <button
+              type="button"
+              onClick={handleBackCreateStep}
+              disabled={activeCreateStepIndex <= 0}
+              className={`h-12 rounded-[18px] border border-line px-4 text-[13px] font-semibold ${
+                activeCreateStepIndex <= 0 ? "bg-stone-200 text-stone-500" : "bg-white text-studio-text"
+              }`}
+            >
+              Voltar
+            </button>
+            {activeCreateStep === "finance" && !isFooterSummaryExpanded ? (
+              <button
+                type="button"
+                onClick={handleOpenFooterReview}
+                className="h-12 rounded-[18px] bg-studio-green px-5 text-[13px] font-semibold text-white shadow-[0_10px_22px_-14px_rgba(11,28,19,.6)]"
+              >
+                Revisar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCreatePrimaryAction}
+                className="h-12 rounded-[18px] bg-studio-green px-5 text-[13px] font-semibold text-white shadow-[0_10px_22px_-14px_rgba(11,28,19,.6)]"
+              >
+                {activeCreateStep === "finance"
+                  ? collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver"
+                    ? "Confirmar e abrir checkout"
+                    : isCourtesyDraft
+                      ? "Confirmar e agendar cortesia"
+                      : "Confirmar e agendar"
+                  : "Continuar"}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

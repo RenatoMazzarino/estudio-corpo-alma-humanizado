@@ -50,7 +50,7 @@ function formatTimeInBrazil(date: Date) {
 }
 
 export default async function NewAppointment(props: PageProps) {
-  const { tenantId } = await requireDashboardAccessForPage("/novo");
+  const { tenantId, displayName, avatarUrl } = await requireDashboardAccessForPage("/novo");
   const params = await props.searchParams;
   const appointmentId = typeof params.appointmentId === "string" ? params.appointmentId : null;
   const clientId = typeof params.clientId === "string" ? params.clientId : null;
@@ -107,23 +107,25 @@ export default async function NewAppointment(props: PageProps) {
       : null;
 
   return (
-    <div className="-mx-4 -mt-4">
-      <AppHeader
-        label="Agendamento Interno"
-        title={appointment ? "Editar Agendamento" : "Novo Agendamento"}
-        subtitle={appointment ? "Atualize os detalhes do atendimento." : "Preencha os detalhes do atendimento."}
-        leftSlot={
-          <Link
-            href={returnTo}
-            className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
-            aria-label="Voltar"
-          >
-            <ChevronLeft size={20} />
-          </Link>
-        }
-      />
+    <div className="-mx-4 -mt-4 h-full">
+      {appointment ? (
+        <AppHeader
+          label="Agendamento Interno"
+          title="Editar Agendamento"
+          subtitle="Atualize os detalhes do atendimento."
+          leftSlot={
+            <Link
+              href={returnTo}
+              className="w-10 h-10 rounded-full bg-studio-light text-studio-green flex items-center justify-center hover:bg-studio-green hover:text-white transition"
+              aria-label="Voltar"
+            >
+              <ChevronLeft size={20} />
+            </Link>
+          }
+        />
+      ) : null}
 
-      <main className="p-6 pb-28">
+      <main className={appointment ? "p-6 pb-6" : "flex h-full min-h-0 flex-col px-6 pb-0"}>
         <AppointmentForm
           services={services || []}
           clients={clients || []}
@@ -131,6 +133,8 @@ export default async function NewAppointment(props: PageProps) {
           initialAppointment={initialAppointment}
           prefilledClient={prefilledClient}
           returnTo={returnTo}
+          currentUserName={displayName}
+          currentUserAvatarUrl={avatarUrl}
           signalPercentage={settings?.signal_percentage ?? 30}
           pointEnabled={settings?.mp_point_enabled ?? false}
           pointTerminalName={settings?.mp_point_terminal_name ?? ""}

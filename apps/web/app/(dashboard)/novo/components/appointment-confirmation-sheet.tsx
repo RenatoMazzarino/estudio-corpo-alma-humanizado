@@ -66,6 +66,8 @@ type AppointmentConfirmationSheetProps = {
   onStartChargeCardAction: (mode: "debit" | "credit") => void | Promise<void>;
   onVerifyChargeCardNowAction: () => void | Promise<void>;
   onSwitchChargeToAttendanceAction: () => void | Promise<void>;
+  onEditPaymentAction: () => void;
+  onConfirmManualChargeAction: () => void | Promise<void>;
   onClearChargeFlowErrorAction: () => void;
   onBeginImmediateChargeAction: () => void | Promise<void>;
   onScheduleAction: () => void;
@@ -114,6 +116,8 @@ export function AppointmentConfirmationSheet({
   onStartChargeCardAction,
   onVerifyChargeCardNowAction,
   onSwitchChargeToAttendanceAction,
+  onEditPaymentAction,
+  onConfirmManualChargeAction,
   onClearChargeFlowErrorAction,
   onBeginImmediateChargeAction,
   onScheduleAction,
@@ -287,11 +291,19 @@ export function AppointmentConfirmationSheet({
             <div className={`grid gap-2 ${chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 ? "grid-cols-2" : "grid-cols-1"}`}>
               <button
                 type="button"
-                onClick={() => void onSwitchChargeToAttendanceAction()}
-                disabled={finishingChargeFlow}
+                onClick={onEditPaymentAction}
+                disabled={runningChargeAction || finishingChargeFlow}
                 className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-70"
               >
-                {finishingChargeFlow ? "Finalizando..." : "Cobrar no atendimento"}
+                Alterar pagamento
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSwitchChargeToAttendanceAction()}
+                disabled={runningChargeAction || finishingChargeFlow}
+                className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-70"
+              >
+                {finishingChargeFlow ? "Finalizando..." : "Cancelar cobranca e cobrar no atendimento"}
               </button>
               {chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 && (
                 <button
@@ -307,6 +319,15 @@ export function AppointmentConfirmationSheet({
                 </button>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => void onConfirmManualChargeAction()}
+              disabled={runningChargeAction || finishingChargeFlow}
+              className="h-12 w-full rounded-2xl border border-studio-green bg-studio-light text-xs font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
+            >
+              Registrar confirmacao manual
+            </button>
           </div>
         ) : (
           <div className="space-y-4">

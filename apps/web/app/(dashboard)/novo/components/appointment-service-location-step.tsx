@@ -1,7 +1,7 @@
 "use client";
 
-import type { ChangeEventHandler, ReactNode } from "react";
-import { Building2, Car, ChevronDown, X } from "lucide-react";
+import { useEffect, useState, type ChangeEventHandler, type ReactNode } from "react";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 
 type ServiceOption = {
   id: string;
@@ -31,6 +31,15 @@ type AppointmentServiceLocationStepProps = {
   children?: ReactNode;
 };
 
+function SummaryLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-b-0">
+      <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted">{label}</span>
+      <span className="text-sm font-semibold text-studio-text text-right">{value || "--"}</span>
+    </div>
+  );
+}
+
 export function AppointmentServiceLocationStep({
   sectionCardClass,
   sectionNumberClass,
@@ -51,141 +60,151 @@ export function AppointmentServiceLocationStep({
   onSelectHomeVisitLocationAction,
   children,
 }: AppointmentServiceLocationStepProps) {
+  const [isServiceAccordionOpen, setIsServiceAccordionOpen] = useState(true);
+
+  useEffect(() => {
+    if (!selectedService) {
+      setIsServiceAccordionOpen(true);
+      return;
+    }
+    setIsServiceAccordionOpen(true);
+  }, [selectedServiceId, selectedService]);
+
+  useEffect(() => {
+    // Default local to Estudio whenever a home-visit capable service is selected and no explicit choice exists.
+    if (!selectedService || !canHomeVisit || hasLocationChoice) return;
+    onSelectStudioLocationAction();
+  }, [selectedService, canHomeVisit, hasLocationChoice, onSelectStudioLocationAction]);
+
+  const serviceTitle = selectedService
+    ? `Servico: ${selectedService.name}`
+    : "Servico";
+
+  const localTitle = "Atendimento domiciliar";
+  const showHomeVisitBody = Boolean(selectedService && canHomeVisit && isHomeVisit);
+
   return (
-    <section className={sectionCardClass}>
-      <div className="flex items-center gap-2 mb-4">
-        <div className={sectionNumberClass}>2</div>
-        <h2 className={sectionHeaderTextClass}>O que e onde?</h2>
-      </div>
-
-      <div className="mb-6">
-        <label className={labelClass}>Procedimento</label>
-        {!selectedService ? (
-          <div className="relative">
-            <select
-              name="serviceId"
-              value={selectedServiceId}
-              onChange={onServiceChangeAction}
-              className={selectClass}
-              required
-            >
-              <option value="" disabled>
-                Selecione...
-              </option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} ({service.duration_minutes} min)
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-muted absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+    <div className="space-y-4">
+      <section className={`${sectionCardClass} overflow-hidden`}>
+        <div
+          className={`flex h-11 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header ${
+            selectedService ? "cursor-pointer" : ""
+          }`}
+          onClick={() => {
+            if (!selectedService) return;
+            setIsServiceAccordionOpen((prev) => !prev);
+          }}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <div className={sectionNumberClass}>2</div>
+            <h2 className={`${sectionHeaderTextClass} leading-none truncate`}>{serviceTitle}</h2>
           </div>
-        ) : (
-          <>
-            <input type="hidden" name="serviceId" value={selectedServiceId} />
-            <div className="mt-1 rounded-2xl border border-studio-green/15 bg-studio-green/5 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-studio-green">
-                    Procedimento selecionado
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-studio-text leading-snug">{selectedService.name}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onClearSelectedServiceAction}
-                  className="shrink-0 w-9 h-9 rounded-xl border border-studio-green/20 bg-white text-studio-green hover:bg-studio-light transition flex items-center justify-center"
-                  aria-label="Trocar procedimento"
-                  title="Trocar procedimento"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
 
-              <div className="mt-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5">
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-start justify-between gap-3">
-                    <span className="font-semibold text-muted">Procedimento</span>
-                    <span className="min-w-0 text-right font-semibold text-studio-text leading-snug">
-                      {selectedService.name}
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-muted">Tempo do serviço</span>
-                    <span className="font-semibold text-studio-text">{selectedService.duration_minutes} min</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-muted">Tempo total</span>
-                    <span className="font-semibold text-studio-text">{selectedServiceTotalMinutes} min</span>
-                  </li>
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-muted">Aceita domiciliar?</span>
-                    <span className="font-semibold text-studio-text">
-                      {selectedService.accepts_home_visit ? "Sim" : "Não"}
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between gap-3 border-t border-stone-100 pt-2">
-                    <span className="font-semibold text-muted">Valor</span>
-                    <span className="font-semibold text-studio-text">R$ {displayedPrice || "0,00"}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div>
-        <label className={labelClass}>Local</label>
-        {!selectedService ? (
-          <p className="text-[11px] text-muted ml-1 mt-2">Selecione primeiro o procedimento.</p>
-        ) : canHomeVisit ? (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onSelectStudioLocationAction}
-              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
-                hasLocationChoice && !isHomeVisit
-                  ? "border-studio-green bg-green-50 text-studio-green"
-                  : "border-stone-100 bg-stone-50 text-gray-400"
-              }`}
-            >
-              <Building2 className="w-5 h-5" />
-              No Estúdio
-            </button>
-
-            <button
-              type="button"
-              onClick={onSelectHomeVisitLocationAction}
-              className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border ${
-                hasLocationChoice && isHomeVisit
-                  ? "border-dom bg-dom/20 text-dom-strong"
-                  : "border-stone-100 bg-stone-50 text-gray-400"
-              }`}
-            >
-              <Car className="w-5 h-5" />
-              Em Domicílio
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-2">
+          <div className="flex items-center gap-1.5">
+            {selectedService ? (
               <button
                 type="button"
-                onClick={onSelectStudioLocationAction}
-                className="py-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs font-extrabold uppercase transition-all border border-studio-green bg-green-50 text-studio-green"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onClearSelectedServiceAction();
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-studio-green transition hover:bg-paper"
+                aria-label="Limpar servico"
+                title="Limpar servico"
               >
-                <Building2 className="w-5 h-5" />
-                No Estúdio
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : null}
+            {selectedService ? (
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-studio-green">
+                {isServiceAccordionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className={`space-y-3 px-4 py-4 wl-surface-card-body ${selectedService && !isServiceAccordionOpen ? "hidden" : "block"}`}>
+          {!selectedService ? (
+            <div>
+              <label className={labelClass}>Procedimento</label>
+              <div className="relative">
+                <select
+                  name="serviceId"
+                  value={selectedServiceId}
+                  onChange={onServiceChangeAction}
+                  className={selectClass}
+                  required
+                >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} ({service.duration_minutes} min)
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <input type="hidden" name="serviceId" value={selectedServiceId} />
+              <div className="px-0.5">
+                <SummaryLine label="Duracao base" value={`${selectedService.duration_minutes} min`} />
+                <SummaryLine label="Tempo total" value={`${selectedServiceTotalMinutes} min`} />
+                <SummaryLine label="Valor base" value={`R$ ${displayedPrice || "0,00"}`} />
+                <SummaryLine label="Domicilio" value={selectedService.accepts_home_visit ? "Permitido" : "Nao permitido"} />
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className={`${sectionCardClass} overflow-hidden`}>
+        <div className="flex h-11 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header !bg-dom/20">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className={`${sectionHeaderTextClass} leading-none text-dom-strong`}>{localTitle}</h2>
+          </div>
+
+          {selectedService && canHomeVisit ? (
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-semibold uppercase tracking-wide ${isHomeVisit ? "text-dom-strong" : "text-muted"}`}>
+                {isHomeVisit ? "Ligado" : "Desligado"}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isHomeVisit}
+                onClick={() => {
+                  if (isHomeVisit) {
+                    onSelectStudioLocationAction();
+                  } else {
+                    onSelectHomeVisitLocationAction();
+                  }
+                }}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
+                  isHomeVisit ? "border-dom bg-dom" : "border-line bg-white"
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                    isHomeVisit ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
               </button>
             </div>
-            <p className="text-[11px] text-muted ml-1 mt-2">Serviço sem opção domiciliar.</p>
-          </>
-        )}
-        <input type="hidden" name="is_home_visit" value={isHomeVisit && hasLocationChoice ? "on" : ""} />
+          ) : selectedService ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Indisponivel neste servico</span>
+          ) : (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Selecione servico</span>
+          )}
+        </div>
 
-        {children}
-      </div>
-    </section>
+        <input type="hidden" name="is_home_visit" value={isHomeVisit ? "on" : ""} />
+
+        {showHomeVisitBody ? <div className="space-y-3 px-4 py-4 wl-surface-card-body">{children}</div> : null}
+      </section>
+    </div>
   );
 }

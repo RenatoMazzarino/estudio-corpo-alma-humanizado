@@ -51,6 +51,8 @@ export interface AppointmentFormProps {
   initialAppointment?: InitialAppointment | null;
   prefilledClient?: AppointmentFormClient | null;
   returnTo?: string;
+  currentUserName?: string | null;
+  currentUserAvatarUrl?: string | null;
   signalPercentage: number;
   pointEnabled: boolean;
   pointTerminalName: string;

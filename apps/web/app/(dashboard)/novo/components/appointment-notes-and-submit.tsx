@@ -7,7 +7,8 @@ type AppointmentNotesAndSubmitProps = {
   showSubmit: boolean;
   isEditing: boolean;
   sectionCardClass: string;
-  labelClass: string;
+  sectionNumberClass: string;
+  sectionHeaderTextClass: string;
   inputClass: string;
   internalNotes: string;
   onChangeInternalNotesAction: (value: string) => void;
@@ -20,7 +21,8 @@ export function AppointmentNotesAndSubmit({
   showSubmit,
   isEditing,
   sectionCardClass,
-  labelClass,
+  sectionNumberClass,
+  sectionHeaderTextClass,
   inputClass,
   internalNotes,
   onChangeInternalNotesAction,
@@ -29,20 +31,25 @@ export function AppointmentNotesAndSubmit({
 }: AppointmentNotesAndSubmitProps) {
   return (
     <>
-      {showNotes && (
-        <section className={sectionCardClass}>
-          <label className={labelClass}>Observações internas do agendamento</label>
-          <textarea
-            name="internalNotes"
-            rows={2}
-            value={internalNotes}
-            onChange={(event) => onChangeInternalNotesAction(event.target.value)}
-            className={`${inputClass} resize-none`}
-            placeholder="Ex: Cliente prefere pressão leve..."
-          />
-          <p className="text-[10px] text-muted mt-1 ml-1">Aparece no atendimento.</p>
+      {showNotes ? (
+        <section className={`${sectionCardClass} overflow-hidden`}>
+          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+            <div className={sectionNumberClass}>5</div>
+            <h2 className={`${sectionHeaderTextClass} leading-none`}>Observacoes</h2>
+          </div>
+          <div className="space-y-3 px-4 py-4 wl-surface-card-body">
+            <textarea
+              name="internalNotes"
+              rows={2}
+              value={internalNotes}
+              onChange={(event) => onChangeInternalNotesAction(event.target.value)}
+              className={`${inputClass} resize-none`}
+              placeholder="Observacao do agendamento (ex.: ajustes de atendimento). Para historico da cliente, use o modulo Prontuario."
+            />
+            <p className="text-[10px] text-muted ml-1">Use este campo apenas para observacoes deste agendamento.</p>
+          </div>
         </section>
-      )}
+      ) : null}
 
       {isEditing ? (
         <button
@@ -64,7 +71,7 @@ export function AppointmentNotesAndSubmit({
           }`}
         >
           <Check className="w-5 h-5" />
-          Ir para confirmação
+          Ir para confirmacao
         </button>
       ) : null}
     </>

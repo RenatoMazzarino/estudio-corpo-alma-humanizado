@@ -1,8 +1,9 @@
 "use client";
 
-import { Phone, X } from "lucide-react";
+import { Phone } from "lucide-react";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
+import { BottomSheetHeaderV2 } from "../../../../components/ui/bottom-sheet-header-v2";
 
 type ClientCreateModalProps = {
   portalTarget: HTMLElement | null;
@@ -66,118 +67,133 @@ export function ClientCreateModal({
   if (!portalTarget || !open) return null;
 
   return createPortal(
-    <div className="absolute inset-0 z-50 flex items-end justify-center overflow-hidden overscroll-contain bg-black/40 px-5 py-5">
-      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-white p-5 shadow-float">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Cliente</p>
-            <h3 className="text-lg font-serif text-studio-text">Cadastrar cliente</h3>
-            <p className="mt-1 text-xs text-muted">Defina nome interno, nome público e dados de contato.</p>
+    <div className="pointer-events-none absolute inset-0 z-50 flex items-end justify-center">
+      <button
+        type="button"
+        aria-label="Fechar novo cliente"
+        onClick={onCloseAction}
+        className="pointer-events-auto absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]"
+      />
+      <div className="pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden wl-radius-sheet wl-surface-modal shadow-float">
+        <BottomSheetHeaderV2
+          title="Novo cliente"
+          subtitle="Cadastre dados para usar no agendamento agora."
+          onCloseAction={onCloseAction}
+        />
+
+        <div className="max-h-[72vh] space-y-4 overflow-y-auto px-5 pb-24 pt-5 wl-surface-modal-body">
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+          ) : null}
+
+          <div className="overflow-hidden rounded-2xl border border-line wl-surface-card">
+            <div className="border-b border-line px-3 py-2.5 wl-surface-card-header">
+              <p className="wl-typo-label text-studio-text">Dados basicos</p>
+            </div>
+            <div className="space-y-3 px-3 py-3 wl-surface-card-body">
+              <div>
+                <label className={labelClass}>Primeiro nome</label>
+                <input
+                  ref={firstNameInputRef}
+                  type="text"
+                  value={firstName}
+                  onChange={(event) => onFirstNameChangeAction(event.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Sobrenome</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(event) => onLastNameChangeAction(event.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Referencia interna</label>
+                <input
+                  type="text"
+                  value={reference}
+                  onChange={(event) => onReferenceChangeAction(event.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={onCloseAction}
-            disabled={saving}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-studio-light text-studio-green disabled:opacity-60"
-          >
-            <X className="h-4 w-4" />
-          </button>
+
+          <div className="overflow-hidden rounded-2xl border border-line wl-surface-card">
+            <div className="border-b border-line px-3 py-2.5 wl-surface-card-header">
+              <p className="wl-typo-label text-studio-text">Contato</p>
+            </div>
+            <div className="space-y-3 px-3 py-3 wl-surface-card-body">
+              <div>
+                <label className={labelClass}>WhatsApp</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <input
+                    ref={phoneInputRef}
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="(00) 00000-0000"
+                    value={phone}
+                    onChange={(event) => onPhoneChangeAction(event.target.value)}
+                    className={inputWithIconClass}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Email</label>
+                <input
+                  type="email"
+                  inputMode="email"
+                  placeholder="cliente@exemplo.com"
+                  value={email}
+                  onChange={(event) => onEmailChangeAction(event.target.value)}
+                  className={inputClass}
+                />
+                {showInvalidEmailHint ? <p className="ml-1 mt-2 text-[11px] text-red-600">Informe um email valido.</p> : null}
+              </div>
+
+              <div>
+                <label className={labelClass}>CPF (opcional)</label>
+                <input
+                  ref={cpfInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  value={cpf}
+                  onChange={(event) => onCpfChangeAction(event.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-line wl-surface-card">
+            <div className="border-b border-line px-3 py-2.5 wl-surface-card-header">
+              <p className="wl-typo-label text-studio-text">Pre-visualizacao</p>
+            </div>
+            <div className="space-y-2 px-3 py-3 wl-surface-card-body">
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome interno</p>
+              <p className="text-sm font-semibold text-studio-text">{internalPreview}</p>
+              <p className="pt-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome publico</p>
+              <p className="text-sm font-semibold text-studio-text">{publicPreview}</p>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>}
-
-          <div>
-            <label className={labelClass}>Primeiro nome</label>
-            <input
-              ref={firstNameInputRef}
-              type="text"
-              value={firstName}
-              onChange={(event) => onFirstNameChangeAction(event.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Sobrenome (completo)</label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(event) => onLastNameChangeAction(event.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Referência</label>
-            <input
-              type="text"
-              value={reference}
-              onChange={(event) => onReferenceChangeAction(event.target.value)}
-              className={inputClass}
-            />
-            <p className="ml-1 mt-1 text-[10px] text-muted">Uso interno. Não aparece em mensagens e telas públicas.</p>
-          </div>
-
-          <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">Prévia do nome no sistema</p>
-            <p className="mt-1 text-sm font-semibold text-studio-text">{internalPreview}</p>
-            <p className="mt-2 text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
-              Nome público (voucher/comprovante/agendamento online)
-            </p>
-            <p className="mt-1 text-sm font-semibold text-studio-text">{publicPreview}</p>
-          </div>
-
-          <div>
-            <label className={labelClass}>WhatsApp</label>
-            <div className="relative">
-              <Phone className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-              <input
-                ref={phoneInputRef}
-                type="tel"
-                inputMode="numeric"
-                placeholder="(00) 00000-0000"
-                value={phone}
-                onChange={(event) => onPhoneChangeAction(event.target.value)}
-                className={inputWithIconClass}
-              />
-            </div>
-            <p className="ml-1 mt-2 text-[11px] text-muted">Se preencher, será salvo como telefone principal e WhatsApp do cliente.</p>
-          </div>
-
-          <div>
-            <label className={labelClass}>Email</label>
-            <input
-              type="email"
-              inputMode="email"
-              placeholder="cliente@exemplo.com"
-              value={email}
-              onChange={(event) => onEmailChangeAction(event.target.value)}
-              className={inputClass}
-            />
-            {showInvalidEmailHint && <p className="ml-1 mt-2 text-[11px] text-red-600">Informe um email válido.</p>}
-          </div>
-
-          <div>
-            <label className={labelClass}>CPF (Opcional)</label>
-            <input
-              ref={cpfInputRef}
-              type="text"
-              inputMode="numeric"
-              placeholder="000.000.000-00"
-              maxLength={14}
-              value={cpf}
-              onChange={(event) => onCpfChangeAction(event.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="absolute bottom-0 left-0 right-0 border-t border-line bg-studio-bg/95 p-4 backdrop-blur">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={onCloseAction}
               disabled={saving}
-              className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-60"
+              className="wl-typo-button h-11 w-full rounded-xl border border-line bg-white text-studio-text disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -185,7 +201,7 @@ export function ClientCreateModal({
               type="button"
               onClick={onSaveAction}
               disabled={saving}
-              className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10 disabled:opacity-70"
+              className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 disabled:opacity-70"
             >
               {saving ? "Salvando..." : "Salvar cliente"}
             </button>

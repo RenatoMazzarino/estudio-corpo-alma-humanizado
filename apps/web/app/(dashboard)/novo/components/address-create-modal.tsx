@@ -107,275 +107,247 @@ export function AddressCreateModal({
 }: AddressCreateModalProps) {
   if (!portalTarget || !open) return null;
 
+  const isFormStep = step === "form";
+  const activeLookupStep = step === "search" ? "search" : "cep";
+
   return createPortal(
-    <div className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-5 py-5 overflow-hidden overscroll-contain">
-      <div className="w-full max-w-md max-h-full overflow-y-auto bg-white rounded-3xl shadow-float border border-line p-5">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <p className="text-[11px] font-extrabold text-muted uppercase tracking-widest">Endereço</p>
-            <h3 className="text-lg font-serif text-studio-text">
-              {step === "chooser"
-                ? "Cadastrar endereço"
-                : step === "cep"
-                  ? "Buscar por CEP"
-                  : step === "search"
-                    ? "Buscar por endereço"
-                    : "Confirmar endereço"}
+    <div className="absolute inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/45 px-4 py-6">
+      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl wl-surface-modal shadow-float">
+        <div className="wl-sheet-header-surface flex items-start justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-white/85">Endereco</p>
+            <h3 className="wl-typo-card-name-sm truncate text-white">
+              {isFormStep ? "Confirmar endereco" : "Buscar endereco"}
             </h3>
-            <p className="text-xs text-muted mt-1">
-              {step === "chooser"
-                ? "Escolha como deseja localizar o endereço."
-                : step === "form"
-                  ? resolvedClientId
-                    ? "Revise os dados e salve o endereço para este cliente."
-                    : "Revise os dados. O endereço será salvo junto com o agendamento."
-                  : "Preencha e confirme para continuar."}
+            <p className="pt-1 text-xs text-white/85">
+              {isFormStep
+                ? resolvedClientId
+                  ? "Revise os dados e salve para este cliente."
+                  : "Revise os dados e continue o agendamento."
+                : "Selecione o modo de busca e complete os dados."}
             </p>
           </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-studio-green transition hover:bg-paper"
+            aria-label="Fechar"
+            title="Fechar"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {step !== "chooser" && (
-          <button
-            type="button"
-            onClick={onBackToChooser}
-            className="mb-4 text-[11px] font-extrabold uppercase tracking-wide text-dom-strong"
-          >
-            Voltar
-          </button>
-        )}
-
-        {step === "chooser" && (
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={onOpenCepStep}
-              className="w-full rounded-2xl border border-dom/45 bg-white px-4 py-3 text-left hover:border-dom/55 hover:bg-dom/10 transition"
-            >
-              <span className="text-[10px] font-extrabold uppercase text-dom-strong tracking-wide">
-                Buscar por CEP
-              </span>
-              <span className="block text-xs text-dom-strong/80 mt-1">
-                Digite o CEP e revise os dados antes de salvar.
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={onOpenSearchStep}
-              className="w-full rounded-2xl border border-dom/45 bg-white px-4 py-3 text-left hover:border-dom/55 hover:bg-dom/10 transition"
-            >
-              <span className="text-[10px] font-extrabold uppercase text-dom-strong tracking-wide">
-                Buscar por endereço
-              </span>
-              <span className="block text-xs text-dom-strong/80 mt-1">
-                Digite rua/bairro e escolha o endereço correto.
-              </span>
-            </button>
-          </div>
-        )}
-
-        {step === "cep" && (
-          <div>
-            <div className="mb-4">
-              <label className={labelClass}>CEP</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={cepDraft}
-                onChange={(event) => onCepDraftChange(event.target.value)}
-                className={inputClass}
-              />
-              {cepDraftStatus === "error" && (
-                <p className="text-[11px] text-red-500 mt-2 ml-1">CEP inválido. Verifique e tente novamente.</p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  const found = await onCepDraftLookup();
-                  if (!found) return;
-                  onApplyAddressDraftFields(found);
-                  onOpenFormStep();
-                }}
-                disabled={cepDraftStatus === "loading"}
-                className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-              >
-                {cepDraftStatus === "loading" ? "Buscando..." : "Buscar CEP"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === "search" && (
-          <div>
-            <div className="mb-3">
-              <label className={labelClass}>Endereço</label>
-              <div className="relative">
-                <Search className="w-4 h-4 text-muted absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={addressSearchQuery}
-                  onChange={(event) => onAddressSearchQueryChange(event.target.value)}
-                  className={inputWithIconClass}
-                />
-              </div>
-              <p className="text-[10px] text-muted mt-2 ml-1">Ex: Rua das Acácias, 120, Moema</p>
-              {addressSearchError && <p className="text-[11px] text-red-500 mt-2 ml-1">{addressSearchError}</p>}
-            </div>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {addressSearchLoading && <p className="text-[11px] text-muted">Buscando endereços...</p>}
-              {!addressSearchLoading && addressSearchQuery.trim().length < 3 && (
-                <p className="text-[11px] text-muted">Digite pelo menos 3 caracteres para iniciar.</p>
-              )}
-              {!addressSearchLoading && addressSearchQuery.trim().length >= 3 && addressSearchResults.length === 0 && (
-                <p className="text-[11px] text-muted">Nenhum endereço encontrado.</p>
-              )}
-              {addressSearchResults.map((result) => (
+        <div className="max-h-[72vh] space-y-4 overflow-y-auto px-4 py-4 wl-surface-modal-body">
+          {!isFormStep ? (
+            <>
+              <div className="flex items-center gap-5 border-b border-line">
                 <button
-                  key={result.id}
                   type="button"
-                  onClick={async () => {
-                    const ok = await onSelectAddressSearchResult(result);
-                    if (ok) onOpenFormStep();
-                  }}
-                  className="w-full text-left px-4 py-3 rounded-2xl border border-stone-100 hover:border-stone-200 hover:bg-stone-50 transition"
+                  onClick={onOpenCepStep}
+                  className={`relative pb-2 text-[13px] font-semibold transition-colors ${
+                    activeLookupStep === "cep" ? "text-studio-green" : "text-muted hover:text-studio-green"
+                  }`}
                 >
-                  <p className="text-sm font-semibold text-studio-text">{result.label}</p>
+                  Buscar por CEP
+                  <span
+                    className={`absolute inset-x-0 -bottom-px h-0.5 bg-studio-green transition-opacity ${
+                      activeLookupStep === "cep" ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {step === "form" && (
-          <div className="space-y-3">
-            {addressSaveError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {addressSaveError}
+                <button
+                  type="button"
+                  onClick={onOpenSearchStep}
+                  className={`relative pb-2 text-[13px] font-semibold transition-colors ${
+                    activeLookupStep === "search" ? "text-studio-green" : "text-muted hover:text-studio-green"
+                  }`}
+                >
+                  Buscar por endereco
+                  <span
+                    className={`absolute inset-x-0 -bottom-px h-0.5 bg-studio-green transition-opacity ${
+                      activeLookupStep === "search" ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                </button>
               </div>
-            )}
 
-            <div>
-              <label className={labelClass}>Identificação</label>
-              <input
-                type="text"
-                value={addressLabel}
-                onChange={(event) => onAddressLabelChange(event.target.value)}
-                className={inputClass}
-                placeholder="Principal"
-              />
-            </div>
-
-            <div className="rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={clientAddressesCount === 0 ? true : addressIsPrimaryDraft}
-                  onChange={(event) => onAddressIsPrimaryDraftChange(event.target.checked)}
-                  disabled={clientAddressesCount === 0}
-                  className="h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
-                />
+              {activeLookupStep === "cep" ? (
                 <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wide text-studio-text">
-                    Definir como endereço principal
-                  </p>
-                  <p className="text-[10px] text-muted">
-                    {clientAddressesCount === 0
-                      ? "Primeiro endereço do cliente será principal automaticamente."
-                      : "O endereço principal será selecionado por padrão nos próximos agendamentos."}
-                  </p>
+                  <div className="mb-4">
+                    <label className={labelClass}>CEP</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={cepDraft}
+                      onChange={(event) => onCepDraftChange(event.target.value)}
+                      className={inputClass}
+                    />
+                    {cepDraftStatus === "error" ? (
+                      <p className="ml-1 mt-2 text-[11px] text-red-600">CEP invalido. Verifique e tente novamente.</p>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const found = await onCepDraftLookup();
+                      if (!found) return;
+                      onApplyAddressDraftFields(found);
+                      onOpenFormStep();
+                    }}
+                    disabled={cepDraftStatus === "loading"}
+                    className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 disabled:opacity-70"
+                  >
+                    {cepDraftStatus === "loading" ? "Buscando..." : "Buscar CEP"}
+                  </button>
                 </div>
-              </label>
-            </div>
+              ) : (
+                <div>
+                  <div className="mb-3">
+                    <label className={labelClass}>Endereco</label>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                      <input
+                        type="text"
+                        value={addressSearchQuery}
+                        onChange={(event) => onAddressSearchQueryChange(event.target.value)}
+                        className={inputWithIconClass}
+                      />
+                    </div>
+                    <p className="ml-1 mt-2 text-[10px] text-muted">Ex: Rua das Acacias, 120, Moema</p>
+                    {addressSearchError ? <p className="ml-1 mt-2 text-[11px] text-red-600">{addressSearchError}</p> : null}
+                  </div>
 
-            <div>
-              <label className={labelClass}>CEP</label>
-              <input
-                type="text"
-                value={cep}
-                onChange={(event) => onCepChange(event.target.value)}
-                inputMode="numeric"
-                className={inputClass}
-              />
-            </div>
+                  <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                    {addressSearchLoading ? <p className="text-[11px] text-muted">Buscando enderecos...</p> : null}
+                    {!addressSearchLoading && addressSearchQuery.trim().length < 3 ? (
+                      <p className="text-[11px] text-muted">Digite pelo menos 3 caracteres para iniciar.</p>
+                    ) : null}
+                    {!addressSearchLoading && addressSearchQuery.trim().length >= 3 && addressSearchResults.length === 0 ? (
+                      <p className="text-[11px] text-muted">Nenhum endereco encontrado.</p>
+                    ) : null}
 
-            <div>
-              <label className={labelClass}>Rua / Avenida</label>
-              <input
-                type="text"
-                value={logradouro}
-                onChange={(event) => onLogradouroChange(event.target.value)}
-                className={inputClass}
-              />
-            </div>
+                    {addressSearchResults.map((result) => (
+                      <button
+                        key={result.id}
+                        type="button"
+                        onClick={async () => {
+                          const ok = await onSelectAddressSearchResult(result);
+                          if (ok) onOpenFormStep();
+                        }}
+                        className="w-full rounded-xl border border-line bg-white px-4 py-3 text-left transition hover:bg-paper"
+                      >
+                        <p className="text-sm font-semibold text-studio-text">{result.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
+              {addressSaveError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{addressSaveError}</div>
+              ) : null}
 
-            <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className={labelClass}>Número</label>
-                <input type="text" value={numero} onChange={(event) => onNumeroChange(event.target.value)} className={inputClass} />
-              </div>
-              <div className="col-span-2">
-                <label className={labelClass}>Complemento</label>
+                <label className={labelClass}>Identificacao</label>
                 <input
                   type="text"
-                  value={complemento}
-                  onChange={(event) => onComplementoChange(event.target.value)}
+                  value={addressLabel}
+                  onChange={(event) => onAddressLabelChange(event.target.value)}
                   className={inputClass}
+                  placeholder="Principal"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={labelClass}>Bairro</label>
-                <input type="text" value={bairro} onChange={(event) => onBairroChange(event.target.value)} className={inputClass} />
+              <div className="rounded-xl border border-line bg-studio-bg px-4 py-3">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={clientAddressesCount === 0 ? true : addressIsPrimaryDraft}
+                    onChange={(event) => onAddressIsPrimaryDraftChange(event.target.checked)}
+                    disabled={clientAddressesCount === 0}
+                    className="h-4 w-4 rounded border-stone-300 text-studio-green focus:ring-studio-green"
+                  />
+                  <div>
+                    <p className="text-[11px] font-extrabold uppercase tracking-wide text-studio-text">Definir como principal</p>
+                    <p className="text-[10px] text-muted">
+                      {clientAddressesCount === 0
+                        ? "Primeiro endereco sera principal automaticamente."
+                        : "Endereco principal sera usado por padrao nos proximos agendamentos."}
+                    </p>
+                  </div>
+                </label>
               </div>
+
               <div>
-                <label className={labelClass}>Cidade</label>
-                <input type="text" value={cidade} onChange={(event) => onCidadeChange(event.target.value)} className={inputClass} />
+                <label className={labelClass}>CEP</label>
+                <input type="text" value={cep} onChange={(event) => onCepChange(event.target.value)} inputMode="numeric" className={inputClass} />
+              </div>
+
+              <div>
+                <label className={labelClass}>Rua / Avenida</label>
+                <input type="text" value={logradouro} onChange={(event) => onLogradouroChange(event.target.value)} className={inputClass} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className={labelClass}>Numero</label>
+                  <input type="text" value={numero} onChange={(event) => onNumeroChange(event.target.value)} className={inputClass} />
+                </div>
+                <div className="col-span-2">
+                  <label className={labelClass}>Complemento</label>
+                  <input type="text" value={complemento} onChange={(event) => onComplementoChange(event.target.value)} className={inputClass} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={labelClass}>Bairro</label>
+                  <input type="text" value={bairro} onChange={(event) => onBairroChange(event.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Cidade</label>
+                  <input type="text" value={cidade} onChange={(event) => onCidadeChange(event.target.value)} className={inputClass} />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Estado (UF)</label>
+                <input
+                  type="text"
+                  value={estado}
+                  onChange={(event) => onEstadoChange(event.target.value)}
+                  maxLength={2}
+                  className={`${inputClass} uppercase`}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={onBackToChooser}
+                  disabled={addressSavePending}
+                  className="wl-typo-button h-11 w-full rounded-xl border border-line bg-white text-studio-text disabled:opacity-70"
+                >
+                  Voltar para busca
+                </button>
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={addressSavePending}
+                  className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 disabled:opacity-70"
+                >
+                  {addressSavePending ? "Salvando..." : "Salvar endereco"}
+                </button>
               </div>
             </div>
-
-            <div>
-              <label className={labelClass}>Estado (UF)</label>
-              <input
-                type="text"
-                value={estado}
-                onChange={(event) => onEstadoChange(event.target.value)}
-                maxLength={2}
-                className={`${inputClass} uppercase`}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onBackToChooser}
-                disabled={addressSavePending}
-                className="w-full h-12 rounded-2xl bg-white border border-line text-studio-text font-extrabold text-xs uppercase tracking-wide disabled:opacity-70"
-              >
-                Buscar novamente
-              </button>
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={addressSavePending}
-                className="w-full h-12 rounded-2xl bg-studio-green text-white font-extrabold text-xs uppercase tracking-wide shadow-lg shadow-green-900/10 disabled:opacity-70"
-              >
-                {addressSavePending ? "Salvando..." : "Salvar endereço"}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>,
     portalTarget

@@ -459,6 +459,106 @@ export function useAppointmentConfirmationFlow({
     setFinishingChargeFlow,
   ]);
 
+  const handleConfirmManualCharge = useCallback(async () => {
+    if (!chargeBookingState) return;
+    if (chargeNowMethodDraft === null || chargeNowMethodDraft === "waiver") return;
+
+    const mappedMethod: "pix" | "card" | "cash" | "other" =
+      chargeNowMethodDraft === "pix_mp"
+        ? "pix"
+        : chargeNowMethodDraft === "card"
+          ? "card"
+          : chargeNowMethodDraft === "cash"
+            ? "cash"
+            : "other";
+
+    setRunningChargeAction(true);
+    setChargeFlowError(null);
+
+    try {
+      const paymentResult = await recordBookingChargePayment({
+        appointmentId: chargeBookingState.appointmentId,
+        method: mappedMethod,
+        amount: chargeNowDraftAmount,
+      });
+
+      if (!paymentResult.ok) {
+        const errorMessage =
+          typeof paymentResult.error?.message === "string" && paymentResult.error.message.trim().length > 0
+            ? paymentResult.error.message
+            : "Nao foi possivel registrar a confirmacao manual da cobranca.";
+        setChargeFlowError(errorMessage);
+        return;
+      }
+
+      await refreshChargeBookingState(chargeBookingState.appointmentId);
+      await handleChargePaymentResolved();
+    } finally {
+      setRunningChargeAction(false);
+    }
+  }, [
+    chargeBookingState,
+    chargeNowDraftAmount,
+    chargeNowMethodDraft,
+    handleChargePaymentResolved,
+    refreshChargeBookingState,
+    setChargeFlowError,
+    setRunningChargeAction,
+  ]);
+
+  const handleOpenCheckoutAfterConfirmation = useCallback(async () => {
+    if (!formRef.current) return;
+
+    if (!canOpenConfirmation) {
+      showToast({
+        title: "Finalize o financeiro",
+        message:
+          "Escolha quando cobrar e, se for cobranca no agendamento, defina a forma de pagamento e o valor para liberar a confirmacao.",
+        tone: "warning",
+        durationMs: 3200,
+      });
+      return;
+    }
+
+    if (isLocationChoiceRequired && !hasLocationChoice) {
+      showToast({
+        title: "Local do atendimento",
+        message: "Escolha se o atendimento sera no estudio ou em domicilio para continuar.",
+        tone: "warning",
+        durationMs: 2600,
+      });
+      return;
+    }
+
+    if (!formRef.current.reportValidity()) return;
+
+    setChargePixPayment(null);
+    setChargePixAttempt(0);
+    setChargePixRemainingSeconds(0);
+    setChargePointPayment(null);
+    setChargePointAttempt(0);
+    setChargeFlowError(null);
+    setConfirmationSheetStep("review");
+    setIsSendPromptOpen(true);
+
+    await handleBeginImmediateCharge();
+  }, [
+    canOpenConfirmation,
+    formRef,
+    handleBeginImmediateCharge,
+    hasLocationChoice,
+    isLocationChoiceRequired,
+    setChargeFlowError,
+    setChargePixAttempt,
+    setChargePixPayment,
+    setChargePixRemainingSeconds,
+    setChargePointAttempt,
+    setChargePointPayment,
+    setConfirmationSheetStep,
+    setIsSendPromptOpen,
+    showToast,
+  ]);
+
   const handleConfirmationSheetClose = useCallback(() => {
     if (confirmationSheetStep === "charge_payment" && chargeBookingState) {
       void handleSwitchChargeToAttendance();
@@ -546,6 +646,8 @@ export function useAppointmentConfirmationFlow({
     handleStartChargeCard,
     handleVerifyChargeCardNow,
     handleBeginImmediateCharge,
+    handleConfirmManualCharge,
+    handleOpenCheckoutAfterConfirmation,
     handleSwitchChargeToAttendance,
     handleConfirmationSheetClose,
     handleSchedule,

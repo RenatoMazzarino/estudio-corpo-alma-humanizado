@@ -11,6 +11,7 @@ import { AppointmentNotesAndSubmit } from "./appointment-notes-and-submit";
 
 type Props = {
   clientStepProps: ComponentProps<typeof AppointmentClientStep>;
+  showClientStep?: boolean;
   showStep2: boolean;
   serviceLocationStepProps: ComponentProps<typeof AppointmentServiceLocationStep>;
   homeVisitDetailsProps: ComponentProps<typeof AppointmentHomeVisitDetails>;
@@ -23,6 +24,7 @@ type Props = {
 
 export function AppointmentFormSections({
   clientStepProps,
+  showClientStep = true,
   showStep2,
   serviceLocationStepProps,
   homeVisitDetailsProps,
@@ -34,7 +36,7 @@ export function AppointmentFormSections({
 }: Props) {
   return (
     <>
-      <AppointmentClientStep {...clientStepProps} />
+      {showClientStep && <AppointmentClientStep {...clientStepProps} />}
 
       {showStep2 && (
         <AppointmentServiceLocationStep {...serviceLocationStepProps}>
