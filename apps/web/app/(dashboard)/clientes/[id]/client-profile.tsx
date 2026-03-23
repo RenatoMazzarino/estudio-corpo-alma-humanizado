@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 
 import { Chip } from "../../../../components/ui/chip";
-import { SurfaceCard } from "../../../../components/ui/surface-card";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import {
@@ -37,6 +36,14 @@ import {
   buildClientWhatsAppHref,
   buildNewAppointmentHref,
 } from "../../../../src/modules/clients/contact-links";
+import {
+  appointmentFormButtonDangerClass,
+  appointmentFormButtonSecondaryClass,
+  appointmentFormHeaderIconButtonClass,
+  appointmentFormScreenHeaderClass,
+  appointmentFormScreenHeaderTabsClass,
+  appointmentFormScreenHeaderTopRowClass,
+} from "../../novo/appointment-form.styles";
 import type {
   ClientDetailSnapshot,
   ClientPaymentMethodSummary,
@@ -126,7 +133,7 @@ function ActionIconLink({
   tone?: "default" | "green";
 }) {
   const className =
-    "inline-flex h-12 min-w-12 items-center justify-center rounded-2xl border px-3 transition active:scale-95 " +
+    "inline-flex h-11 min-w-11 items-center justify-center rounded-xl border px-3 transition active:scale-95 " +
     (tone === "green"
       ? "border-studio-green/15 bg-white text-studio-green hover:bg-studio-green hover:text-white"
       : "border-line bg-white text-studio-text hover:bg-paper");
@@ -166,16 +173,16 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <SurfaceCard className="overflow-hidden p-0">
-      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+    <div className="wl-surface-card overflow-hidden">
+      <div className="wl-surface-card-header flex h-10 items-center justify-between border-b border-line px-3">
         <div className="flex items-center gap-2 text-studio-green">
           {icon}
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted">{title}</p>
+          <p className="wl-typo-card-name-sm text-studio-text">{title}</p>
         </div>
         {action}
       </div>
       <div>{children}</div>
-    </SurfaceCard>
+    </div>
   );
 }
 
@@ -246,27 +253,38 @@ function DeleteClientDialog({
 
   return (
     <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/35 backdrop-blur-sm">
-      <button type="button" className="absolute inset-0" aria-label="Fechar exclusão" onClick={onCloseAction} />
-      <div className="relative z-10 mx-6 w-full max-w-sm rounded-[28px] bg-white p-5 shadow-float">
-        <button
-          type="button"
-          onClick={onCloseAction}
-          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted"
-          aria-label="Fechar"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <h3 className="text-sm font-extrabold text-studio-text">Excluir cliente?</h3>
-        <p className="mt-2 text-sm text-muted">
-          {clientName} será removido(a) do cadastro. Use esta ação apenas quando tiver certeza.
-        </p>
-        <div className="mt-4 flex gap-2">
-          <button type="button" onClick={onCloseAction} className="flex-1 rounded-full border border-line px-3 py-2 text-[11px] font-extrabold text-studio-text">
-            Manter
-          </button>
-          <button type="button" onClick={onConfirmAction} disabled={deleting} className="flex-1 rounded-full bg-red-600 px-3 py-2 text-[11px] font-extrabold text-white transition disabled:opacity-60">
-            {deleting ? "Excluindo..." : "Excluir"}
-          </button>
+      <button type="button" className="absolute inset-0" aria-label="Fechar exclusao" onClick={onCloseAction} />
+      <div className="relative z-10 mx-6 w-full max-w-sm overflow-hidden rounded-2xl wl-surface-modal shadow-float">
+        <div className="wl-sheet-header-surface px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="wl-typo-card-name-md text-white">Excluir cliente?</h3>
+            <button
+              type="button"
+              onClick={onCloseAction}
+              className={appointmentFormHeaderIconButtonClass}
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="wl-surface-modal-body px-4 py-4">
+          <p className="text-sm text-muted">
+            {clientName} sera removido(a) do cadastro. Use esta acao apenas quando tiver certeza.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" onClick={onCloseAction} className={appointmentFormButtonSecondaryClass}>
+              Manter
+            </button>
+            <button
+              type="button"
+              onClick={onConfirmAction}
+              disabled={deleting}
+              className={appointmentFormButtonDangerClass}
+            >
+              {deleting ? "Excluindo..." : "Excluir"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -394,16 +412,13 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   return (
     <>
       <div className="pb-10">
-        <header className="relative overflow-hidden border-b border-line/80 bg-linear-to-br from-studio-light via-white to-paper">
-          <div className="absolute -right-12 top-0 h-44 w-44 rounded-full bg-studio-green/10 blur-3xl" />
-          <div className="absolute left-0 top-0 h-px w-full bg-white/70" />
-
-          <div className="relative px-4 pb-6 pt-4">
-            <div className="flex items-center justify-between gap-3">
+        <header className={`${appointmentFormScreenHeaderClass} sticky top-0 z-30 -mx-4 -mt-4`}>
+          <div className="px-4 pb-4">
+            <div className={`${appointmentFormScreenHeaderTopRowClass} justify-between`}>
               <button
                 type="button"
                 onClick={() => router.push("/clientes")}
-                className="inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-line bg-white/90 px-3 text-studio-text transition hover:bg-white"
+                className={appointmentFormHeaderIconButtonClass}
                 aria-label="Voltar para clientes"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -413,31 +428,31 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                 <button
                   type="button"
                   onClick={() => setMenuOpen((current) => !current)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/90 text-studio-text transition hover:bg-white"
+                  className={appointmentFormHeaderIconButtonClass}
                   aria-label="Abrir ações do cliente"
                 >
                   <EllipsisVertical className="h-4 w-4" />
                 </button>
 
                 {menuOpen ? (
-                  <div className="absolute right-0 top-12 z-20 w-52 rounded-2xl border border-line bg-white p-2 shadow-float">
+                  <div className="absolute right-0 top-10 z-20 min-w-52 overflow-hidden rounded-xl border border-line wl-surface-card-body shadow-soft">
                     <Link
                       href={editHref}
                       onClick={() => setMenuOpen(false)}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper"
+                      className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper"
                     >
                       <PencilLine className="h-4 w-4" />
                       Editar cadastro
                     </Link>
-                    <button type="button" onClick={handleShare} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper">
+                    <button type="button" onClick={handleShare} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper">
                       <Share2 className="h-4 w-4" />
                       Compartilhar perfil
                     </button>
-                    <Link href={prontuarioHref} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper" onClick={() => setMenuOpen(false)}>
+                    <Link href={prontuarioHref} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper" onClick={() => setMenuOpen(false)}>
                       <FileText className="h-4 w-4" />
                       Abrir prontuário
                     </Link>
-                    <button type="button" onClick={handleCopyPhone} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-studio-text transition hover:bg-paper">
+                    <button type="button" onClick={handleCopyPhone} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper">
                       <Copy className="h-4 w-4" />
                       Copiar telefone
                     </button>
@@ -447,7 +462,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                         setMenuOpen(false);
                         setDeleteOpen(true);
                       }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-[13px] font-extrabold text-red-600 transition hover:bg-red-50"
+                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-bold text-red-600 transition hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
                       Excluir cliente
@@ -457,7 +472,15 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               </div>
             </div>
 
-            <div className="mt-5 flex items-start gap-4">
+            <div className={appointmentFormScreenHeaderTabsClass}>
+              <div className="flex items-center gap-2 pb-2">
+                {client.is_vip ? <Chip tone="success">VIP</Chip> : null}
+                {client.needs_attention ? <Chip tone="danger">Atencao</Chip> : null}
+                {client.is_minor ? <Chip tone="warning">Menor</Chip> : null}
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-start gap-4">
               <div className="relative flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-full bg-studio-green text-xl font-serif font-bold text-white shadow-soft ring-4 ring-white/80">
                 {client.avatar_url ? (
                   <Image src={client.avatar_url} alt={client.name} fill sizes="72px" className="object-cover" unoptimized />
@@ -468,9 +491,6 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="truncate text-2xl font-serif text-studio-text">{client.name}</h1>
-                  {client.is_vip && <Chip tone="success">VIP</Chip>}
-                  {client.needs_attention && <Chip tone="danger">Atenção</Chip>}
-                  {client.is_minor && <Chip tone="warning">Menor</Chip>}
                 </div>
                 <p className="mt-1 text-sm font-semibold text-muted">Cliente desde {formatShortDate(client.created_at)}</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
@@ -737,3 +757,5 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     </>
   );
 }
+
+
