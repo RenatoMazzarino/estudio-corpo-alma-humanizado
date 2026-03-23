@@ -20,7 +20,7 @@ export default async function ClientesPage({
 }: {
   searchParams: Promise<{ q?: string; filter?: string }>;
 }) {
-  const { tenantId } = await requireDashboardAccessForPage("/clientes");
+  const { tenantId, displayName, avatarUrl } = await requireDashboardAccessForPage("/clientes");
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q || "";
   const filter = resolvedSearchParams?.filter || "all";
@@ -62,6 +62,8 @@ export default async function ClientesPage({
       quickChannels={quickChannels}
       query={query}
       filter={filter}
+      currentUserName={displayName}
+      currentUserAvatarUrl={avatarUrl}
     />
   );
 }
