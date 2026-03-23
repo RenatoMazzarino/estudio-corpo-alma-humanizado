@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 function hasValidPhone(value?: string | null) {
   if (!value) return true;
@@ -18,110 +18,140 @@ function hasValidCep(value?: string | null) {
   return digits.length === 8;
 }
 
-export const createClientSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  phone: z.string().optional().nullable().refine(hasValidPhone, "Telefone inválido (com DDD)"),
-  is_vip: z.boolean().optional(),
-  needs_attention: z.boolean().optional(),
-  preferences_notes: z.string().optional().nullable(),
-  contraindications: z.string().optional().nullable(),
-  clinical_history: z.string().optional().nullable(),
-  anamnese_url: z.string().url().optional().nullable(),
-  marketing_opt_in: z.boolean().optional(),
-  is_minor: z.boolean().optional(),
-  guardian_name: z.string().optional().nullable(),
-  guardian_phone: z.string().optional().nullable().refine(hasValidPhone, "Telefone inválido (com DDD)"),
-  guardian_cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
-  observacoes_gerais: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
-  public_first_name: z.string().optional().nullable(),
-  public_last_name: z.string().optional().nullable(),
-  internal_reference: z.string().optional().nullable(),
-  birth_date: z.string().optional().nullable(),
-  cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
-  endereco_completo: z.string().optional().nullable(),
-  address_cep: z.string().optional().nullable().refine(hasValidCep, "CEP inválido"),
-  address_logradouro: z.string().optional().nullable(),
-  address_numero: z.string().optional().nullable(),
-  address_complemento: z.string().optional().nullable(),
-  address_bairro: z.string().optional().nullable(),
-  address_cidade: z.string().optional().nullable(),
-  address_estado: z.string().optional().nullable(),
-  profissao: z.string().optional().nullable(),
-  como_conheceu: z.string().optional().nullable(),
-  health_tags: z.array(z.string()).optional().nullable(),
-}).superRefine((data, ctx) => {
-  if (data.is_minor) {
-    if (!data.guardian_name || data.guardian_name.trim().length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["guardian_name"],
-        message: "Responsável é obrigatório para menor de idade.",
-      });
+export const createClientSchema = z
+  .object({
+    client_code: z.string().optional().nullable(),
+    name: z.string().min(1, "Nome é obrigatório"),
+    public_name: z.string().optional().nullable(),
+    system_name: z.string().optional().nullable(),
+    short_name: z.string().optional().nullable(),
+    phone: z.string().optional().nullable().refine(hasValidPhone, "Telefone inválido (com DDD)"),
+    is_vip: z.boolean().optional(),
+    needs_attention: z.boolean().optional(),
+    preferences_notes: z.string().optional().nullable(),
+    contraindications: z.string().optional().nullable(),
+    clinical_history: z.string().optional().nullable(),
+    anamnese_url: z.string().url().optional().nullable(),
+    anamnese_form_status: z.enum(["nao_enviado", "enviado", "respondido"]).optional().nullable(),
+    anamnese_form_sent_at: z.string().optional().nullable(),
+    anamnese_form_answered_at: z.string().optional().nullable(),
+    marketing_opt_in: z.boolean().optional(),
+    is_minor: z.boolean().optional(),
+    is_minor_override: z.boolean().optional().nullable(),
+    guardian_name: z.string().optional().nullable(),
+    guardian_phone: z
+      .string()
+      .optional()
+      .nullable()
+      .refine(hasValidPhone, "Telefone inválido (com DDD)"),
+    guardian_cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
+    guardian_relationship: z.string().optional().nullable(),
+    observacoes_gerais: z.string().optional().nullable(),
+    email: z.string().email().optional().nullable(),
+    public_first_name: z.string().optional().nullable(),
+    public_last_name: z.string().optional().nullable(),
+    internal_reference: z.string().optional().nullable(),
+    birth_date: z.string().optional().nullable(),
+    cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
+    endereco_completo: z.string().optional().nullable(),
+    address_cep: z.string().optional().nullable().refine(hasValidCep, "CEP inválido"),
+    address_logradouro: z.string().optional().nullable(),
+    address_numero: z.string().optional().nullable(),
+    address_complemento: z.string().optional().nullable(),
+    address_bairro: z.string().optional().nullable(),
+    address_cidade: z.string().optional().nullable(),
+    address_estado: z.string().optional().nullable(),
+    profissao: z.string().optional().nullable(),
+    como_conheceu: z.string().optional().nullable(),
+    health_tags: z.array(z.string()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.is_minor) {
+      if (!data.guardian_name || data.guardian_name.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardian_name"],
+          message: "Responsável é obrigatório para menor de idade.",
+        });
+      }
+      if (!data.guardian_phone || data.guardian_phone.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardian_phone"],
+          message: "Telefone do responsável é obrigatório.",
+        });
+      }
     }
-    if (!data.guardian_phone || data.guardian_phone.trim().length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["guardian_phone"],
-        message: "Telefone do responsável é obrigatório.",
-      });
-    }
-  }
-});
+  });
 
 export const updateClientNotesSchema = z.object({
   clientId: z.string().uuid(),
   notes: z.string().optional().nullable(),
 });
 
-export const updateClientSchema = z.object({
-  clientId: z.string().uuid(),
-  name: z.string().min(1, "Nome é obrigatório"),
-  phone: z.string().optional().nullable().refine(hasValidPhone, "Telefone inválido (com DDD)"),
-  is_vip: z.boolean().optional(),
-  needs_attention: z.boolean().optional(),
-  preferences_notes: z.string().optional().nullable(),
-  contraindications: z.string().optional().nullable(),
-  clinical_history: z.string().optional().nullable(),
-  anamnese_url: z.string().url().optional().nullable(),
-  marketing_opt_in: z.boolean().optional(),
-  is_minor: z.boolean().optional(),
-  guardian_name: z.string().optional().nullable(),
-  guardian_phone: z.string().optional().nullable().refine(hasValidPhone, "Telefone inválido (com DDD)"),
-  guardian_cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
-  observacoes_gerais: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable(),
-  public_first_name: z.string().optional().nullable(),
-  public_last_name: z.string().optional().nullable(),
-  internal_reference: z.string().optional().nullable(),
-  birth_date: z.string().optional().nullable(),
-  cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
-  endereco_completo: z.string().optional().nullable(),
-  address_cep: z.string().optional().nullable().refine(hasValidCep, "CEP inválido"),
-  address_logradouro: z.string().optional().nullable(),
-  address_numero: z.string().optional().nullable(),
-  address_complemento: z.string().optional().nullable(),
-  address_bairro: z.string().optional().nullable(),
-  address_cidade: z.string().optional().nullable(),
-  address_estado: z.string().optional().nullable(),
-  profissao: z.string().optional().nullable(),
-  como_conheceu: z.string().optional().nullable(),
-  health_tags: z.array(z.string()).optional().nullable(),
-}).superRefine((data, ctx) => {
-  if (data.is_minor) {
-    if (!data.guardian_name || data.guardian_name.trim().length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["guardian_name"],
-        message: "Responsável é obrigatório para menor de idade.",
-      });
+export const updateClientSchema = z
+  .object({
+    clientId: z.string().uuid(),
+    client_code: z.string().optional().nullable(),
+    name: z.string().min(1, "Nome é obrigatório"),
+    public_name: z.string().optional().nullable(),
+    system_name: z.string().optional().nullable(),
+    short_name: z.string().optional().nullable(),
+    phone: z.string().optional().nullable().refine(hasValidPhone, "Telefone inválido (com DDD)"),
+    is_vip: z.boolean().optional(),
+    needs_attention: z.boolean().optional(),
+    preferences_notes: z.string().optional().nullable(),
+    contraindications: z.string().optional().nullable(),
+    clinical_history: z.string().optional().nullable(),
+    anamnese_url: z.string().url().optional().nullable(),
+    anamnese_form_status: z.enum(["nao_enviado", "enviado", "respondido"]).optional().nullable(),
+    anamnese_form_sent_at: z.string().optional().nullable(),
+    anamnese_form_answered_at: z.string().optional().nullable(),
+    marketing_opt_in: z.boolean().optional(),
+    is_minor: z.boolean().optional(),
+    is_minor_override: z.boolean().optional().nullable(),
+    guardian_name: z.string().optional().nullable(),
+    guardian_phone: z
+      .string()
+      .optional()
+      .nullable()
+      .refine(hasValidPhone, "Telefone inválido (com DDD)"),
+    guardian_cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
+    guardian_relationship: z.string().optional().nullable(),
+    observacoes_gerais: z.string().optional().nullable(),
+    email: z.string().email().optional().nullable(),
+    public_first_name: z.string().optional().nullable(),
+    public_last_name: z.string().optional().nullable(),
+    internal_reference: z.string().optional().nullable(),
+    birth_date: z.string().optional().nullable(),
+    cpf: z.string().optional().nullable().refine(hasValidCpf, "CPF inválido"),
+    endereco_completo: z.string().optional().nullable(),
+    address_cep: z.string().optional().nullable().refine(hasValidCep, "CEP inválido"),
+    address_logradouro: z.string().optional().nullable(),
+    address_numero: z.string().optional().nullable(),
+    address_complemento: z.string().optional().nullable(),
+    address_bairro: z.string().optional().nullable(),
+    address_cidade: z.string().optional().nullable(),
+    address_estado: z.string().optional().nullable(),
+    profissao: z.string().optional().nullable(),
+    como_conheceu: z.string().optional().nullable(),
+    health_tags: z.array(z.string()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.is_minor) {
+      if (!data.guardian_name || data.guardian_name.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardian_name"],
+          message: "Responsável é obrigatório para menor de idade.",
+        });
+      }
+      if (!data.guardian_phone || data.guardian_phone.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guardian_phone"],
+          message: "Telefone do responsável é obrigatório.",
+        });
+      }
     }
-    if (!data.guardian_phone || data.guardian_phone.trim().length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["guardian_phone"],
-        message: "Telefone do responsável é obrigatório.",
-      });
-    }
-  }
-});
+  });

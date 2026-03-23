@@ -5,6 +5,7 @@ import { requireDashboardAccessForPage } from "../../../../../src/modules/auth/d
 import { getClientDetailSnapshot } from "../../../../../src/modules/clients/profile-data";
 import { createClientFormInitialDataFromSnapshot } from "../../components/client-form-data";
 import { ClientFormScreen } from "../../components/client-form-screen";
+import { searchClientsByName } from "../../novo/actions";
 import { updateClientProfile } from "../actions";
 
 interface PageProps {
@@ -31,6 +32,7 @@ export default async function EditClientPage(props: PageProps) {
         submitMode="imperative"
         initialData={createClientFormInitialDataFromSnapshot(snapshot)}
         submitActionAction={updateClientProfile}
+        searchClientsByNameAction={searchClientsByName}
         successRedirectHref={`/clientes/${snapshot.client.id}`}
       />
     </ModulePage>

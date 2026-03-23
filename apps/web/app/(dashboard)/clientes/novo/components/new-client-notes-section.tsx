@@ -1,5 +1,11 @@
 "use client";
 
+import { StickyNote } from "lucide-react";
+import {
+  appointmentFormSectionHeaderPrimaryClass,
+  appointmentFormSectionHeaderTextClass,
+} from "../../../novo/appointment-form.styles";
+
 type NewClientNotesSectionProps = {
   notes: string;
   onChangeNotesAction: (value: string) => void;
@@ -8,8 +14,11 @@ type NewClientNotesSectionProps = {
 export function NewClientNotesSection({ notes, onChangeNotesAction }: NewClientNotesSectionProps) {
   return (
     <section className="wl-surface-card overflow-hidden">
-      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
-        <p className="wl-typo-card-name-sm font-bold text-studio-text">Observacoes internas</p>
+      <div className={appointmentFormSectionHeaderPrimaryClass}>
+        <div className="flex items-center gap-2">
+          <StickyNote className="h-4 w-4 text-studio-green" />
+          <h3 className={appointmentFormSectionHeaderTextClass}>Observacoes internas</h3>
+        </div>
       </div>
       <div className="px-3 py-3">
         <textarea

@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { Edit2, Save, StickyNote } from "lucide-react";
 
-import { SurfaceCard } from "../../../../components/ui/surface-card";
+import {
+  appointmentFormButtonPrimaryClass,
+  appointmentFormButtonSecondaryClass,
+  appointmentFormHeaderIconButtonClass,
+} from "../../novo/appointment-form.styles";
 import { updateClientNotes } from "./actions";
 
 interface NotesSectionProps {
@@ -29,42 +33,40 @@ export function NotesSection({ clientId, initialNotes }: NotesSectionProps) {
   };
 
   return (
-    <SurfaceCard className="overflow-hidden p-0">
-      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+    <div className="wl-surface-card overflow-hidden">
+      <div className="wl-surface-card-header flex h-10 items-center justify-between border-b border-line px-3">
         <div className="flex items-center gap-2">
           <StickyNote className="h-4 w-4 text-studio-green" />
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted">
-            Observações internas
-          </p>
+          <p className="wl-typo-card-name-sm text-studio-text">Observacoes internas</p>
         </div>
-        {!isEditing && (
+        {!isEditing ? (
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="inline-flex items-center gap-1 text-xs font-extrabold text-studio-green hover:underline"
+            className={appointmentFormHeaderIconButtonClass}
+            aria-label="Editar observacoes internas"
           >
-            <Edit2 className="h-3.5 w-3.5" />
-            Editar
+            <Edit2 className="h-4 w-4" />
           </button>
-        )}
+        ) : null}
       </div>
 
-      <div className="p-4">
+      <div className="wl-surface-card-body px-4 py-4">
         {isEditing ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <textarea
-              className="min-h-34 w-full rounded-2xl border border-line bg-paper/70 p-4 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20"
+              className="min-h-36 w-full rounded-xl border border-line wl-surface-input p-4 text-sm text-studio-text outline-none transition focus:ring-2 focus:ring-studio-green/20"
               rows={6}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Escreva aqui observações internas do cliente..."
+              placeholder="Registre observacoes internas deste cliente..."
               autoFocus
             />
-            <div className="flex justify-end gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-xs font-extrabold text-muted transition hover:text-studio-text"
+                className={appointmentFormButtonSecondaryClass}
                 disabled={isSaving}
               >
                 Cancelar
@@ -73,24 +75,25 @@ export function NotesSection({ clientId, initialNotes }: NotesSectionProps) {
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-xl bg-studio-green px-4 py-2 text-xs font-extrabold text-white shadow-soft transition hover:bg-studio-green-dark disabled:opacity-60"
+                className={`${appointmentFormButtonPrimaryClass} inline-flex gap-2`}
               >
                 <Save className="h-3.5 w-3.5" />
-                {isSaving ? "Salvando..." : "Salvar alterações"}
+                {isSaving ? "Salvando..." : "Salvar alteracoes"}
               </button>
             </div>
           </div>
         ) : (
           <button
             type="button"
-            className="w-full rounded-2xl border border-line bg-paper/60 p-4 text-left text-sm text-studio-text transition hover:bg-paper"
+            className="w-full rounded-xl border border-line bg-white p-4 text-left text-sm text-studio-text transition hover:bg-paper"
             onClick={() => setIsEditing(true)}
             title="Clique para editar"
           >
-            {notes || "Nenhuma observação registrada. Toque para adicionar."}
+            {notes || "Nenhuma observacao registrada. Toque para adicionar."}
           </button>
         )}
       </div>
-    </SurfaceCard>
+    </div>
   );
 }
+

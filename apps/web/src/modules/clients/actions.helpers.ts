@@ -66,6 +66,16 @@ export function normalizeBirthday(raw?: string | null) {
   return null;
 }
 
+export function normalizeDateTimeLocal(raw?: string | null) {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
 export function parsePhotoDataUrl(dataUrl: string) {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!match) return null;
@@ -119,11 +129,17 @@ export type AddressPayload = {
   address_cidade?: string | null;
   address_estado?: string | null;
   referencia?: string | null;
+  place_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type HealthItemPayload = {
   label: string;
-  type: "allergy" | "condition" | "tag";
+  type: "allergy" | "condition" | "contraindication" | "tag";
+  notes?: string | null;
+  severity?: "leve" | "moderada" | "alta" | null;
+  is_active?: boolean;
 };
 
 export type ImportAddressPayload = {

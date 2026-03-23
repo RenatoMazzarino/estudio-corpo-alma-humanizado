@@ -1,6 +1,11 @@
 "use client";
 
 import { Mail, Phone, Plus, Trash2 } from "lucide-react";
+import {
+  appointmentFormHeaderIconButtonClass,
+  appointmentFormSectionHeaderPrimaryClass,
+  appointmentFormSectionHeaderTextClass,
+} from "../../../novo/appointment-form.styles";
 import { formatBrazilPhone } from "../../../../../src/shared/phone";
 import type { EmailEntry, PhoneEntry } from "./new-client.types";
 
@@ -28,28 +33,31 @@ export function NewClientContactChannelsSection({
   return (
     <>
       <section className="wl-surface-card overflow-hidden">
-        <div className="flex h-10 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header">
-          <p className="wl-typo-card-name-sm font-bold text-studio-text">Telefones</p>
+        <div className={appointmentFormSectionHeaderPrimaryClass}>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-studio-green" />
+            <h3 className={appointmentFormSectionHeaderTextClass}>Telefones</h3>
+          </div>
           <button
             type="button"
             onClick={() =>
               onChangePhonesAction([
                 ...phones,
-                { id: createIdAction(), label: "Outro", number: "", isPrimary: false, isWhatsapp: false },
+                { id: createIdAction(), label: "outro", number: "", isPrimary: false, isWhatsapp: false },
               ])
             }
-            className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
+            className={appointmentFormHeaderIconButtonClass}
             aria-label="Adicionar telefone"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
           </button>
         </div>
 
         <div className="space-y-3 px-3 py-3">
           {phones.map((phone) => (
-            <div key={phone.id} className="rounded-xl border border-line wl-surface-card-body p-3 space-y-2">
+            <div key={phone.id} className="space-y-2 rounded-xl border border-line wl-surface-card-body p-3">
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-muted" />
+                <Phone className="h-4 w-4 text-muted" />
                 <input
                   value={phone.number}
                   onChange={(event) =>
@@ -66,31 +74,47 @@ export function NewClientContactChannelsSection({
                 <button
                   type="button"
                   onClick={() => onChangePhonesAction(phones.filter((item) => item.id !== phone.id))}
-                  className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
+                  className={appointmentFormHeaderIconButtonClass}
+                  aria-label="Remover telefone"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
+
               <div className="flex flex-wrap gap-2">
-                <input
+                <select
                   value={phone.label}
                   onChange={(event) =>
                     onChangePhonesAction(
-                      phones.map((item) => (item.id === phone.id ? { ...item, label: event.target.value } : item))
+                      phones.map((item) =>
+                        item.id === phone.id ? { ...item, label: event.target.value as PhoneEntry["label"] } : item
+                      )
                     )
                   }
-                  placeholder="Etiqueta"
                   className="min-w-[136px] flex-1 rounded-xl border border-line wl-surface-input px-3 py-2 text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => onSetPhonePrimaryAction(phone.id)}
-                  className={`rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
+                >
+                  <option value="principal">Principal</option>
+                  <option value="recado">Recado</option>
+                  <option value="trabalho">Trabalho</option>
+                  <option value="outro">Outro</option>
+                </select>
+
+                <label
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
                     phone.isPrimary ? "border-studio-green bg-studio-green text-white" : "border-line bg-white text-muted"
                   }`}
                 >
+                  <input
+                    type="checkbox"
+                    checked={phone.isPrimary}
+                    onChange={(event) => {
+                      if (event.target.checked) onSetPhonePrimaryAction(phone.id);
+                    }}
+                    className="h-4 w-4 accent-[var(--color-studio-green)]"
+                  />
                   Principal
-                </button>
+                </label>
+
                 <button
                   type="button"
                   onClick={() => onSetPhoneWhatsappAction(phone.id)}
@@ -107,25 +131,28 @@ export function NewClientContactChannelsSection({
       </section>
 
       <section className="wl-surface-card overflow-hidden">
-        <div className="flex h-10 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header">
-          <p className="wl-typo-card-name-sm font-bold text-studio-text">Emails</p>
+        <div className={appointmentFormSectionHeaderPrimaryClass}>
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-studio-green" />
+            <h3 className={appointmentFormSectionHeaderTextClass}>Emails</h3>
+          </div>
           <button
             type="button"
             onClick={() =>
-              onChangeEmailsAction([...emails, { id: createIdAction(), label: "Outro", email: "", isPrimary: false }])
+              onChangeEmailsAction([...emails, { id: createIdAction(), label: "outro", email: "", isPrimary: false }])
             }
-            className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
+            className={appointmentFormHeaderIconButtonClass}
             aria-label="Adicionar email"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
           </button>
         </div>
 
         <div className="space-y-3 px-3 py-3">
           {emails.map((email) => (
-            <div key={email.id} className="rounded-xl border border-line wl-surface-card-body p-3 space-y-2">
+            <div key={email.id} className="space-y-2 rounded-xl border border-line wl-surface-card-body p-3">
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted" />
+                <Mail className="h-4 w-4 text-muted" />
                 <input
                   value={email.email}
                   onChange={(event) =>
@@ -139,31 +166,45 @@ export function NewClientContactChannelsSection({
                 <button
                   type="button"
                   onClick={() => onChangeEmailsAction(emails.filter((item) => item.id !== email.id))}
-                  className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
+                  className={appointmentFormHeaderIconButtonClass}
+                  aria-label="Remover email"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
+
               <div className="flex flex-wrap gap-2">
-                <input
+                <select
                   value={email.label}
                   onChange={(event) =>
                     onChangeEmailsAction(
-                      emails.map((item) => (item.id === email.id ? { ...item, label: event.target.value } : item))
+                      emails.map((item) =>
+                        item.id === email.id ? { ...item, label: event.target.value as EmailEntry["label"] } : item
+                      )
                     )
                   }
-                  placeholder="Etiqueta"
                   className="min-w-[136px] flex-1 rounded-xl border border-line wl-surface-input px-3 py-2 text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => onSetEmailPrimaryAction(email.id)}
-                  className={`rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
+                >
+                  <option value="principal">Principal</option>
+                  <option value="trabalho">Trabalho</option>
+                  <option value="outro">Outro</option>
+                </select>
+
+                <label
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
                     email.isPrimary ? "border-studio-green bg-studio-green text-white" : "border-line bg-white text-muted"
                   }`}
                 >
+                  <input
+                    type="checkbox"
+                    checked={email.isPrimary}
+                    onChange={(event) => {
+                      if (event.target.checked) onSetEmailPrimaryAction(email.id);
+                    }}
+                    className="h-4 w-4 accent-[var(--color-studio-green)]"
+                  />
                   Principal
-                </button>
+                </label>
               </div>
             </div>
           ))}

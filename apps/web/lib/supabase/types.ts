@@ -723,6 +723,9 @@ export type Database = {
           id: string
           is_primary: boolean
           label: string
+          latitude: number | null
+          longitude: number | null
+          place_id: string | null
           referencia: string | null
           tenant_id: string
           updated_at: string
@@ -740,6 +743,9 @@ export type Database = {
           id?: string
           is_primary?: boolean
           label?: string
+          latitude?: number | null
+          longitude?: number | null
+          place_id?: string | null
           referencia?: string | null
           tenant_id: string
           updated_at?: string
@@ -757,6 +763,9 @@ export type Database = {
           id?: string
           is_primary?: boolean
           label?: string
+          latitude?: number | null
+          longitude?: number | null
+          place_id?: string | null
           referencia?: string | null
           tenant_id?: string
           updated_at?: string
@@ -778,6 +787,32 @@ export type Database = {
           },
         ]
       }
+      client_code_counters: {
+        Row: {
+          last_value: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          last_value?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          last_value?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_code_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_emails: {
         Row: {
           client_id: string
@@ -786,6 +821,7 @@ export type Database = {
           id: string
           is_primary: boolean
           label: string | null
+          normalized_email: string | null
           tenant_id: string
           updated_at: string
         }
@@ -796,6 +832,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           label?: string | null
+          normalized_email?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -806,6 +843,7 @@ export type Database = {
           id?: string
           is_primary?: boolean
           label?: string | null
+          normalized_email?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -831,7 +869,10 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          is_active: boolean
           label: string
+          notes: string | null
+          severity: string | null
           tenant_id: string
           type: string
           updated_at: string
@@ -840,7 +881,10 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          is_active?: boolean
           label: string
+          notes?: string | null
+          severity?: string | null
           tenant_id: string
           type: string
           updated_at?: string
@@ -849,7 +893,10 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          is_active?: boolean
           label?: string
+          notes?: string | null
+          severity?: string | null
           tenant_id?: string
           type?: string
           updated_at?: string
@@ -879,6 +926,7 @@ export type Database = {
           is_primary: boolean
           is_whatsapp: boolean
           label: string | null
+          normalized_number: string | null
           number_e164: string | null
           number_raw: string
           tenant_id: string
@@ -891,6 +939,7 @@ export type Database = {
           is_primary?: boolean
           is_whatsapp?: boolean
           label?: string | null
+          normalized_number?: string | null
           number_e164?: string | null
           number_raw: string
           tenant_id: string
@@ -903,6 +952,7 @@ export type Database = {
           is_primary?: boolean
           is_whatsapp?: boolean
           label?: string | null
+          normalized_number?: string | null
           number_e164?: string | null
           number_raw?: string
           tenant_id?: string
@@ -934,9 +984,14 @@ export type Database = {
           address_estado: string | null
           address_logradouro: string | null
           address_numero: string | null
+          anamnese_form_answered_at: string | null
+          anamnese_form_sent_at: string | null
+          anamnese_form_status: string | null
           anamnese_url: string | null
+          archived_at: string | null
           avatar_url: string | null
           birth_date: string | null
+          client_code: string | null
           clinical_history: string | null
           como_conheceu: string | null
           contraindications: string | null
@@ -948,11 +1003,13 @@ export type Database = {
           guardian_cpf: string | null
           guardian_name: string | null
           guardian_phone: string | null
+          guardian_relationship: string | null
           health_tags: string[] | null
           id: string
           initials: string | null
           internal_reference: string | null
           is_minor: boolean
+          is_minor_override: boolean | null
           is_vip: boolean
           marketing_opt_in: boolean
           name: string
@@ -964,7 +1021,11 @@ export type Database = {
           profissao: string | null
           public_first_name: string | null
           public_last_name: string | null
+          public_name: string | null
+          short_name: string | null
+          system_name: string | null
           tenant_id: string
+          updated_at: string
         }
         Insert: {
           address_bairro?: string | null
@@ -974,9 +1035,14 @@ export type Database = {
           address_estado?: string | null
           address_logradouro?: string | null
           address_numero?: string | null
+          anamnese_form_answered_at?: string | null
+          anamnese_form_sent_at?: string | null
+          anamnese_form_status?: string | null
           anamnese_url?: string | null
+          archived_at?: string | null
           avatar_url?: string | null
           birth_date?: string | null
+          client_code?: string | null
           clinical_history?: string | null
           como_conheceu?: string | null
           contraindications?: string | null
@@ -988,11 +1054,13 @@ export type Database = {
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
+          guardian_relationship?: string | null
           health_tags?: string[] | null
           id?: string
           initials?: string | null
           internal_reference?: string | null
           is_minor?: boolean
+          is_minor_override?: boolean | null
           is_vip?: boolean
           marketing_opt_in?: boolean
           name: string
@@ -1004,7 +1072,11 @@ export type Database = {
           profissao?: string | null
           public_first_name?: string | null
           public_last_name?: string | null
+          public_name?: string | null
+          short_name?: string | null
+          system_name?: string | null
           tenant_id: string
+          updated_at?: string
         }
         Update: {
           address_bairro?: string | null
@@ -1014,9 +1086,14 @@ export type Database = {
           address_estado?: string | null
           address_logradouro?: string | null
           address_numero?: string | null
+          anamnese_form_answered_at?: string | null
+          anamnese_form_sent_at?: string | null
+          anamnese_form_status?: string | null
           anamnese_url?: string | null
+          archived_at?: string | null
           avatar_url?: string | null
           birth_date?: string | null
+          client_code?: string | null
           clinical_history?: string | null
           como_conheceu?: string | null
           contraindications?: string | null
@@ -1028,11 +1105,13 @@ export type Database = {
           guardian_cpf?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
+          guardian_relationship?: string | null
           health_tags?: string[] | null
           id?: string
           initials?: string | null
           internal_reference?: string | null
           is_minor?: boolean
+          is_minor_override?: boolean | null
           is_vip?: boolean
           marketing_opt_in?: boolean
           name?: string
@@ -1044,7 +1123,11 @@ export type Database = {
           profissao?: string | null
           public_first_name?: string | null
           public_last_name?: string | null
+          public_name?: string | null
+          short_name?: string | null
+          system_name?: string | null
           tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2948,6 +3031,10 @@ export type Database = {
             }
             Returns: string
           }
+      generate_next_client_code: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       normalize_phone_digits: { Args: { value: string }; Returns: string }
       remove_pix_payment_key_and_rebalance: {
         Args: { p_key_id: string; p_tenant_id: string }

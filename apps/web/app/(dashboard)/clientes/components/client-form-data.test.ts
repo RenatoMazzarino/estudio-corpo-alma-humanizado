@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { createClientFormInitialDataFromSnapshot } from "./client-form-data";
 import type { ClientDetailSnapshot } from "../../../../src/modules/clients/profile-data";
 
@@ -11,6 +11,10 @@ function createSnapshot(overrides?: Partial<ClientDetailSnapshot>): ClientDetail
       public_first_name: "Maria",
       public_last_name: "Souza",
       internal_reference: null,
+      client_code: null,
+      public_name: null,
+      system_name: null,
+      short_name: null,
       avatar_url: null,
       birth_date: null,
       data_nascimento: null,
@@ -19,13 +23,18 @@ function createSnapshot(overrides?: Partial<ClientDetailSnapshot>): ClientDetail
       needs_attention: false,
       marketing_opt_in: false,
       is_minor: false,
+      is_minor_override: null,
       guardian_name: null,
       guardian_phone: null,
       guardian_cpf: null,
+      guardian_relationship: null,
       preferences_notes: null,
       contraindications: null,
       clinical_history: null,
       anamnese_url: null,
+      anamnese_form_status: "nao_enviado",
+      anamnese_form_sent_at: null,
+      anamnese_form_answered_at: null,
       observacoes_gerais: null,
       profissao: null,
       como_conheceu: null,
@@ -71,6 +80,9 @@ function createSnapshot(overrides?: Partial<ClientDetailSnapshot>): ClientDetail
       observations: null,
       legacyNotes: null,
       anamneseUrl: null,
+      initialFormStatus: "nao_enviado",
+      initialFormSentAt: null,
+      initialFormAnsweredAt: null,
       healthTags: [],
       healthItems: [],
     },
@@ -83,7 +95,7 @@ describe("createClientFormInitialDataFromSnapshot", () => {
     const snapshot = createSnapshot({
       client: {
         ...createSnapshot().client,
-        health_tags: ["Dipirona", "Hipertensão"],
+        health_tags: ["Dipirona", "Hipertensao"],
       },
       healthItems: [
         {
@@ -92,6 +104,9 @@ describe("createClientFormInitialDataFromSnapshot", () => {
           tenant_id: "tenant-1",
           type: "allergy",
           label: "Dipirona",
+          notes: null,
+          severity: null,
+          is_active: true,
           created_at: "",
           updated_at: "",
         },
@@ -101,6 +116,26 @@ describe("createClientFormInitialDataFromSnapshot", () => {
     const initialData = createClientFormInitialDataFromSnapshot(snapshot);
 
     expect(initialData.allergyTags).toEqual(["Dipirona"]);
-    expect(initialData.conditionTags).toEqual(["Hipertensão"]);
+    expect(initialData.conditionTags).toEqual(["Hipertensao"]);
+  });
+
+  it("hidrata status estruturado da anamnese e override manual de menor", () => {
+    const snapshot = createSnapshot({
+      client: {
+        ...createSnapshot().client,
+        is_minor: false,
+        is_minor_override: true,
+        anamnese_form_status: "respondido",
+        anamnese_form_sent_at: "2026-03-20T10:00:00.000Z",
+        anamnese_form_answered_at: "2026-03-20T10:15:00.000Z",
+      },
+    });
+
+    const initialData = createClientFormInitialDataFromSnapshot(snapshot);
+
+    expect(initialData.isMinorOverride).toBe(true);
+    expect(initialData.anamneseFormStatus).toBe("respondido");
+    expect(initialData.anamneseFormSentAt).toBeTruthy();
+    expect(initialData.anamneseFormAnsweredAt).toBeTruthy();
   });
 });

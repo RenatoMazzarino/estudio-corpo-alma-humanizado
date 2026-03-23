@@ -17,7 +17,6 @@ export function AppShell({ children, themeStyle }: AppShellProps) {
     const routesWithBottomNav = new Set([
       "/",
       "/clientes",
-      "/clientes/novo",
       "/caixa",
       "/mensagens",
       "/catalogo",

@@ -26,7 +26,12 @@ export async function listClients(
   const safeQuery = query?.replace(/[%_,]/g, "").trim();
   if (safeQuery) {
     dbQuery = dbQuery.or(
-      [`name.ilike.%${safeQuery}%`, `phone.ilike.%${safeQuery}%`].join(",")
+      [
+        `name.ilike.%${safeQuery}%`,
+        `public_name.ilike.%${safeQuery}%`,
+        `system_name.ilike.%${safeQuery}%`,
+        `phone.ilike.%${safeQuery}%`,
+      ].join(",")
     );
   }
   if (filter === "vip") {

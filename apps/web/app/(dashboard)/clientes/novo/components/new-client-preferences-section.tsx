@@ -1,5 +1,11 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
+import {
+  appointmentFormSectionHeaderPrimaryClass,
+  appointmentFormSectionHeaderTextClass,
+} from "../../../novo/appointment-form.styles";
+
 type NewClientPreferencesSectionProps = {
   isVip: boolean;
   needsAttention: boolean;
@@ -19,8 +25,11 @@ export function NewClientPreferencesSection({
 }: NewClientPreferencesSectionProps) {
   return (
     <section className="wl-surface-card overflow-hidden">
-      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
-        <p className="wl-typo-card-name-sm font-bold text-studio-text">Preferencias do atendimento</p>
+      <div className={appointmentFormSectionHeaderPrimaryClass}>
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-studio-green" />
+          <h3 className={appointmentFormSectionHeaderTextClass}>Comercial e relacionamento</h3>
+        </div>
       </div>
 
       <div className="space-y-2 px-3 py-3">

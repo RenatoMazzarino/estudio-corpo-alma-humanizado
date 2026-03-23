@@ -1,12 +1,14 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { differenceInYears } from "date-fns";
+import { Camera, ChevronLeft, ImagePlus, Trash2, UserRound } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
+import { FooterRail } from "../../../../components/ui/footer-rail";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { formatCpf } from "../../../../src/shared/cpf";
@@ -17,6 +19,8 @@ import {
 import {
   appointmentFormButtonPrimaryClass,
   appointmentFormHeaderIconButtonClass,
+  appointmentFormSectionHeaderPrimaryClass,
+  appointmentFormSectionHeaderTextClass,
   appointmentFormScreenHeaderTopRowClass,
 } from "../../novo/appointment-form.styles";
 import { NewClientAddressSection } from "../novo/components/new-client-address-section";
@@ -26,8 +30,14 @@ import { NewClientHealthSection } from "../novo/components/new-client-health-sec
 import { NewClientMinorSection } from "../novo/components/new-client-minor-section";
 import { NewClientNotesSection } from "../novo/components/new-client-notes-section";
 import { NewClientPreferencesSection } from "../novo/components/new-client-preferences-section";
-import type { AddressEntry, EmailEntry, PhoneEntry } from "../novo/components/new-client.types";
+import type {
+  AddressEntry,
+  ClinicalItemFormEntry,
+  EmailEntry,
+  PhoneEntry,
+} from "../novo/components/new-client.types";
 import {
+  createDefaultAddressEntry,
   createDefaultEmailEntry,
   createDefaultPhoneEntry,
   type ClientFormInitialData,
@@ -67,26 +77,6 @@ function normalizePhone(raw: string) {
   };
 }
 
-function syncPrimaryEmail(
-  emails: EmailEntry[],
-  nextValue: string
-): EmailEntry[] {
-  if (emails.length === 0) {
-    return [{ ...createDefaultEmailEntry(), email: nextValue }];
-  }
-
-  let changed = false;
-  const next = emails.map((email, index) => {
-    if (email.isPrimary || (!changed && index === 0)) {
-      changed = true;
-      return { ...email, email: nextValue };
-    }
-    return email;
-  });
-
-  return next;
-}
-
 export function ClientFormScreen({
   mode,
   title,
@@ -103,33 +93,47 @@ export function ClientFormScreen({
   const { toast, showToast } = useToast();
   const [firstName, setFirstName] = useState(initialData.firstName);
   const [lastName, setLastName] = useState(initialData.lastName);
+  const [clientCode] = useState(initialData.clientCode);
+  const [publicName, setPublicName] = useState(initialData.publicName);
   const [reference, setReference] = useState(initialData.reference);
   const [birthDate, setBirthDate] = useState(initialData.birthDate);
   const [cpf, setCpf] = useState(initialData.cpf);
   const [isVip, setIsVip] = useState(initialData.isVip);
   const [needsAttention, setNeedsAttention] = useState(initialData.needsAttention);
   const [marketingOptIn, setMarketingOptIn] = useState(initialData.marketingOptIn);
-  const [isMinor, setIsMinor] = useState(initialData.isMinor);
+  const [isMinorOverride, setIsMinorOverride] = useState<boolean | null>(initialData.isMinorOverride);
   const [guardianName, setGuardianName] = useState(initialData.guardianName);
   const [guardianPhone, setGuardianPhone] = useState(initialData.guardianPhone);
   const [guardianCpf, setGuardianCpf] = useState(initialData.guardianCpf);
+  const [guardianRelationship, setGuardianRelationship] = useState(initialData.guardianRelationship);
   const [preferencesNotes, setPreferencesNotes] = useState(initialData.preferencesNotes);
-  const [contraindications, setContraindications] = useState(initialData.contraindications);
   const [clinicalHistory, setClinicalHistory] = useState(initialData.clinicalHistory);
   const [anamneseUrl, setAnamneseUrl] = useState(initialData.anamneseUrl);
+  const [anamneseFormStatus, setAnamneseFormStatus] = useState(initialData.anamneseFormStatus);
+  const [anamneseFormSentAt, setAnamneseFormSentAt] = useState(initialData.anamneseFormSentAt);
+  const [anamneseFormAnsweredAt, setAnamneseFormAnsweredAt] = useState(initialData.anamneseFormAnsweredAt);
   const [observacoesGerais, setObservacoesGerais] = useState(initialData.observacoesGerais);
   const [profissao, setProfissao] = useState(initialData.profissao);
   const [comoConheceu, setComoConheceu] = useState(initialData.comoConheceu);
-  const [allergyTags, setAllergyTags] = useState<string[]>(initialData.allergyTags);
-  const [conditionTags, setConditionTags] = useState<string[]>(initialData.conditionTags);
+  const [allergyItems, setAllergyItems] = useState<ClinicalItemFormEntry[]>(initialData.allergyItems);
+  const [conditionItems, setConditionItems] = useState<ClinicalItemFormEntry[]>(initialData.conditionItems);
+  const [contraindicationItems, setContraindicationItems] = useState<ClinicalItemFormEntry[]>(
+    initialData.contraindicationItems
+  );
   const [allergyInput, setAllergyInput] = useState("");
   const [conditionInput, setConditionInput] = useState("");
+  const [contraindicationInput, setContraindicationInput] = useState("");
   const [phones, setPhones] = useState<PhoneEntry[]>(initialData.phones.length > 0 ? initialData.phones : [createDefaultPhoneEntry()]);
   const [emails, setEmails] = useState<EmailEntry[]>(initialData.emails.length > 0 ? initialData.emails : [createDefaultEmailEntry()]);
-  const [address, setAddress] = useState<AddressEntry>(initialData.address);
-  const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [addresses, setAddresses] = useState<AddressEntry[]>(
+    initialData.addresses.length > 0 ? initialData.addresses : [createDefaultAddressEntry()]
+  );
+  const [cepStatusByAddressId, setCepStatusByAddressId] = useState<
+    Record<string, "idle" | "loading" | "error" | "success">
+  >({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(initialData.avatarUrl);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
   const [suggestions, setSuggestions] = useState<ClientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,10 +143,22 @@ export function ClientFormScreen({
     [firstName, lastName, reference]
   );
 
-  const publicDisplayName = useMemo(
-    () => [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
-    [firstName, lastName]
-  );
+  const shortDisplayName = useMemo(() => firstName.trim(), [firstName]);
+
+  const publicDisplayName = useMemo(() => {
+    const trimmedPublicName = publicName.trim();
+    if (trimmedPublicName.length > 0) return trimmedPublicName;
+    return [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
+  }, [publicName, firstName, lastName]);
+
+  const isMinorAuto = useMemo(() => {
+    if (!birthDate) return initialData.isMinor;
+    const parsedDate = new Date(`${birthDate}T12:00:00`);
+    if (Number.isNaN(parsedDate.getTime())) return initialData.isMinor;
+    return differenceInYears(new Date(), parsedDate) < 18;
+  }, [birthDate, initialData.isMinor]);
+
+  const isMinor = isMinorOverride ?? isMinorAuto;
 
   const initials = useMemo(() => {
     if (!internalDisplayName.trim()) return "CA";
@@ -155,6 +171,11 @@ export function ClientFormScreen({
   );
 
   useEffect(() => {
+    if (removeAvatar) {
+      setAvatarPreviewUrl(null);
+      return;
+    }
+
     if (!avatarFile) {
       setAvatarPreviewUrl(initialData.avatarUrl);
       return;
@@ -163,10 +184,10 @@ export function ClientFormScreen({
     const objectUrl = URL.createObjectURL(avatarFile);
     setAvatarPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [avatarFile, initialData.avatarUrl]);
+  }, [avatarFile, initialData.avatarUrl, removeAvatar]);
 
   useEffect(() => {
-    if (!searchClientsByNameAction || mode !== "create") {
+    if (!searchClientsByNameAction) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -185,13 +206,60 @@ export function ClientFormScreen({
     }, 300);
 
     return () => clearTimeout(handle);
-  }, [internalDisplayName, mode, searchClientsByNameAction]);
+  }, [internalDisplayName, searchClientsByNameAction]);
 
-  const handleAddTag = (value: string, setTags: Dispatch<SetStateAction<string[]>>, clear: () => void) => {
+  useEffect(() => {
+    if (anamneseFormAnsweredAt && anamneseFormStatus !== "respondido") {
+      setAnamneseFormStatus("respondido");
+      return;
+    }
+    if (
+      anamneseFormSentAt &&
+      anamneseFormStatus === "nao_enviado" &&
+      !anamneseFormAnsweredAt
+    ) {
+      setAnamneseFormStatus("enviado");
+    }
+  }, [anamneseFormAnsweredAt, anamneseFormSentAt, anamneseFormStatus]);
+
+  const createClinicalItem = (label: string): ClinicalItemFormEntry => ({
+    id: createId(),
+    label,
+    notes: "",
+    severity: null,
+    isActive: true,
+  });
+
+  const handleAddClinicalItem = (
+    value: string,
+    setItems: Dispatch<SetStateAction<ClinicalItemFormEntry[]>>,
+    clear: () => void
+  ) => {
     const next = value.trim();
     if (!next) return;
-    setTags((prev) => (prev.includes(next) ? prev : [...prev, next]));
+    setItems((prev) =>
+      prev.some((item) => item.label.toLowerCase() === next.toLowerCase())
+        ? prev
+        : [...prev, createClinicalItem(next)]
+    );
     clear();
+  };
+
+  const handleRemoveClinicalItem = (
+    label: string,
+    setItems: Dispatch<SetStateAction<ClinicalItemFormEntry[]>>
+  ) => {
+    setItems((prev) => prev.filter((item) => item.label !== label));
+  };
+
+  const handleUpdateClinicalItem = (
+    label: string,
+    setItems: Dispatch<SetStateAction<ClinicalItemFormEntry[]>>,
+    update: Partial<ClinicalItemFormEntry>
+  ) => {
+    setItems((prev) =>
+      prev.map((item) => (item.label === label ? { ...item, ...update } : item))
+    );
   };
 
   const handlePhonePrimary = (id: string) => {
@@ -206,26 +274,78 @@ export function ClientFormScreen({
     setEmails((prev) => prev.map((email) => ({ ...email, isPrimary: email.id === id })));
   };
 
-  const handleCepLookup = async () => {
-    const normalized = normalizeCep(address.cep);
+  const handleAddAddress = () => {
+    setAddresses((prev) => {
+      const hasPrimary = prev.some((entry) => entry.isPrimary);
+      return [
+        ...prev,
+        {
+          ...createDefaultAddressEntry(),
+          id: createId(),
+          label: "outro",
+          isPrimary: !hasPrimary,
+        },
+      ];
+    });
+  };
+
+  const handleRemoveAddress = (id: string) => {
+    setAddresses((prev) => {
+      const next = prev.filter((entry) => entry.id !== id);
+      if (next.length === 0) {
+        return [createDefaultAddressEntry()];
+      }
+      if (!next.some((entry) => entry.isPrimary)) {
+        const [first, ...rest] = next;
+        if (!first) return [createDefaultAddressEntry()];
+        return [{ ...first, isPrimary: true }, ...rest];
+      }
+      return next;
+    });
+    setCepStatusByAddressId((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const handleChangeAddress = (id: string, nextAddress: AddressEntry) => {
+    setAddresses((prev) => prev.map((entry) => (entry.id === id ? nextAddress : entry)));
+  };
+
+  const handleSetPrimaryAddress = (id: string) => {
+    setAddresses((prev) => prev.map((entry) => ({ ...entry, isPrimary: entry.id === id })));
+  };
+
+  const handleCepLookup = async (addressId: string) => {
+    const targetAddress = addresses.find((item) => item.id === addressId);
+    if (!targetAddress) return;
+
+    const normalized = normalizeCep(targetAddress.cep);
     if (normalized.length !== 8) {
-      setCepStatus("error");
+      setCepStatusByAddressId((prev) => ({ ...prev, [addressId]: "error" }));
       return;
     }
-    setCepStatus("loading");
+    setCepStatusByAddressId((prev) => ({ ...prev, [addressId]: "loading" }));
     const result = await fetchAddressByCep(normalized);
     if (!result) {
-      setCepStatus("error");
+      setCepStatusByAddressId((prev) => ({ ...prev, [addressId]: "error" }));
       return;
     }
-    setAddress((prev) => ({
-      ...prev,
-      logradouro: result.logradouro,
-      bairro: result.bairro,
-      cidade: result.cidade,
-      estado: result.estado,
-    }));
-    setCepStatus("success");
+    setAddresses((prev) =>
+      prev.map((item) =>
+        item.id === addressId
+          ? {
+              ...item,
+              logradouro: result.logradouro,
+              bairro: result.bairro,
+              cidade: result.cidade,
+              estado: result.estado,
+            }
+          : item
+      )
+    );
+    setCepStatusByAddressId((prev) => ({ ...prev, [addressId]: "success" }));
   };
 
   const phonesPayload = useMemo(() => {
@@ -253,33 +373,52 @@ export function ClientFormScreen({
       }));
   }, [emails]);
 
+  const primaryAddress = useMemo(
+    () => addresses.find((addressEntry) => addressEntry.isPrimary) ?? addresses[0] ?? null,
+    [addresses]
+  );
+
   const addressesPayload = useMemo(() => {
-    const hasData = [
-      address.cep,
-      address.logradouro,
-      address.numero,
-      address.complemento,
-      address.bairro,
-      address.cidade,
-      address.estado,
-    ].some((value) => value.trim().length > 0);
+    return addresses
+      .filter((addressEntry) =>
+        [
+          addressEntry.cep,
+          addressEntry.logradouro,
+          addressEntry.numero,
+          addressEntry.complemento,
+          addressEntry.bairro,
+          addressEntry.cidade,
+          addressEntry.estado,
+        ].some((value) => value.trim().length > 0)
+      )
+      .map((addressEntry, index) => ({
+        id: addressEntry.id,
+        label: addressEntry.label || (index === 0 ? "Principal" : "Outro"),
+        is_primary: addressEntry.isPrimary,
+        address_cep: addressEntry.cep || null,
+        address_logradouro: addressEntry.logradouro || null,
+        address_numero: addressEntry.numero || null,
+        address_complemento: addressEntry.complemento || null,
+        address_bairro: addressEntry.bairro || null,
+        address_cidade: addressEntry.cidade || null,
+        address_estado: addressEntry.estado || null,
+      }));
+  }, [addresses]);
 
-    if (!hasData) return [];
+  const allergyTags = useMemo(
+    () => allergyItems.map((item) => item.label.trim()).filter(Boolean),
+    [allergyItems]
+  );
 
-    return [
-      {
-        label: address.label,
-        is_primary: true,
-        address_cep: address.cep || null,
-        address_logradouro: address.logradouro || null,
-        address_numero: address.numero || null,
-        address_complemento: address.complemento || null,
-        address_bairro: address.bairro || null,
-        address_cidade: address.cidade || null,
-        address_estado: address.estado || null,
-      },
-    ];
-  }, [address]);
+  const conditionTags = useMemo(
+    () => conditionItems.map((item) => item.label.trim()).filter(Boolean),
+    [conditionItems]
+  );
+
+  const contraindicationTags = useMemo(
+    () => contraindicationItems.map((item) => item.label.trim()).filter(Boolean),
+    [contraindicationItems]
+  );
 
   const healthTagsCombined = useMemo(() => {
     const combined = [...allergyTags, ...conditionTags];
@@ -288,10 +427,29 @@ export function ClientFormScreen({
 
   const healthItemsPayload = useMemo(() => {
     return [
-      ...allergyTags.map((tag) => ({ type: "allergy", label: tag })),
-      ...conditionTags.map((tag) => ({ type: "condition", label: tag })),
+      ...allergyItems.map((item) => ({
+        type: "allergy",
+        label: item.label.trim(),
+        notes: item.notes.trim() || null,
+        severity: item.severity,
+        is_active: item.isActive,
+      })),
+      ...conditionItems.map((item) => ({
+        type: "condition",
+        label: item.label.trim(),
+        notes: item.notes.trim() || null,
+        severity: item.severity,
+        is_active: item.isActive,
+      })),
+      ...contraindicationItems.map((item) => ({
+        type: "contraindication",
+        label: item.label.trim(),
+        notes: item.notes.trim() || null,
+        severity: item.severity,
+        is_active: item.isActive,
+      })),
     ];
-  }, [allergyTags, conditionTags]);
+  }, [allergyItems, conditionItems, contraindicationItems]);
 
   const handleImperativeSubmit = async (event: FormEvent<HTMLFormElement>) => {
     if (submitMode !== "imperative") return;
@@ -303,7 +461,7 @@ export function ClientFormScreen({
       const result = await submitActionAction(formData);
 
       if (result && typeof result === "object" && "ok" in result && !result.ok) {
-        showToast(result.error.message ?? "Não foi possível salvar o cadastro do cliente.", "error");
+        showToast(result.error.message ?? "NÃ£o foi possÃ­vel salvar o cadastro do cliente.", "error");
         return;
       }
 
@@ -312,17 +470,23 @@ export function ClientFormScreen({
       router.push(redirectHref);
       router.refresh();
     } catch {
-      showToast("Não foi possível salvar o cadastro do cliente.", "error");
+      showToast("NÃ£o foi possÃ­vel salvar o cadastro do cliente.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const formId = mode === "create" ? "client-create-form" : "client-edit-form";
+
   return (
-    <div className="-mx-4 -mt-4 h-full min-h-0">
-      <header className="z-30 min-h-27 bg-studio-green text-white safe-top safe-top-4 px-4 pb-0 pt-4">
+    <div className="-mx-4 -mt-4 flex h-full min-h-0 flex-col">
+      <header className="z-30 min-h-27 bg-studio-green text-white safe-top safe-top-4 px-5 pb-0 pt-4">
         <div className={appointmentFormScreenHeaderTopRowClass}>
-          <Link href={backHref} className={appointmentFormHeaderIconButtonClass} aria-label="Voltar">
+          <Link
+            href={backHref}
+            className={appointmentFormHeaderIconButtonClass}
+            aria-label="Voltar"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
@@ -333,8 +497,9 @@ export function ClientFormScreen({
         <div className="border-b border-white/25 pb-1" />
       </header>
 
-      <main className="min-h-0 overflow-y-auto px-4 pb-28 pt-4">
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4">
         <form
+          id={formId}
           action={
             submitMode === "form-action"
               ? (submitActionAction as (formData: FormData) => void | Promise<void>)
@@ -345,72 +510,178 @@ export function ClientFormScreen({
         >
           {initialData.clientId ? <input type="hidden" name="clientId" value={initialData.clientId} /> : null}
           <input type="hidden" name="name" value={internalDisplayName} />
+          <input type="hidden" name="client_code" value={clientCode.trim()} />
+          <input type="hidden" name="public_name" value={publicDisplayName} />
+          <input type="hidden" name="system_name" value={internalDisplayName} />
+          <input type="hidden" name="short_name" value={shortDisplayName} />
           <input type="hidden" name="public_first_name" value={firstName.trim()} />
           <input type="hidden" name="public_last_name" value={lastName.trim()} />
           <input type="hidden" name="internal_reference" value={reference.trim()} />
+          <input type="hidden" name="is_minor" value={isMinor ? "on" : ""} />
+          <input
+            type="hidden"
+            name="is_minor_override"
+            value={isMinorOverride === null ? "auto" : isMinorOverride ? "on" : "off"}
+          />
+          <input type="hidden" name="guardian_relationship" value={guardianRelationship.trim()} />
           <input type="hidden" name="email" value={primaryEmailValue} />
           <input type="hidden" name="phones_json" value={JSON.stringify(phonesPayload)} />
           <input type="hidden" name="emails_json" value={JSON.stringify(emailsPayload)} />
           <input type="hidden" name="addresses_json" value={JSON.stringify(addressesPayload)} />
-          <input type="hidden" name="health_tags" value={healthTagsCombined.join(", ")} />
+          <input type="hidden" name="address_cep" value={primaryAddress?.cep ?? ""} />
+          <input type="hidden" name="address_logradouro" value={primaryAddress?.logradouro ?? ""} />
+          <input type="hidden" name="address_numero" value={primaryAddress?.numero ?? ""} />
+          <input type="hidden" name="address_complemento" value={primaryAddress?.complemento ?? ""} />
+          <input type="hidden" name="address_bairro" value={primaryAddress?.bairro ?? ""} />
+          <input type="hidden" name="address_cidade" value={primaryAddress?.cidade ?? ""} />
+          <input type="hidden" name="address_estado" value={primaryAddress?.estado ?? ""} />
+          <input type="hidden" name="contraindications" value={contraindicationTags.join(", ")} />
+          <input type="hidden" name="health_tags" value={[...healthTagsCombined, ...contraindicationTags].join(", ")} />
           <input type="hidden" name="health_items_json" value={JSON.stringify(healthItemsPayload)} />
+          <input type="hidden" name="remove_avatar" value={removeAvatar ? "on" : ""} />
+          <p className="text-xs text-muted">Campos com * sao obrigatorios.</p>
 
-          <section className="wl-surface-card space-y-4 overflow-hidden px-3 py-3">
-            <div className="-mx-3 -mt-3 mb-1 flex h-12 items-center border-b border-line px-3 wl-surface-card-header">
-              <h2 className="wl-typo-card-name-md font-bold text-studio-text">Dados principais</h2>
+          <section className="wl-surface-card overflow-hidden">
+            <div className={appointmentFormSectionHeaderPrimaryClass}>
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-studio-green" />
+                <h2 className={appointmentFormSectionHeaderTextClass}>Foto de perfil</h2>
+              </div>
             </div>
+            <div className="px-3 py-3">
+              <div className="flex items-center gap-4">
+                <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-line bg-studio-light font-serif text-xl text-studio-green">
+                  {avatarPreviewUrl ? (
+                    <Image src={avatarPreviewUrl} alt="Preview" fill sizes="80px" className="object-cover" unoptimized />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <label
+                    htmlFor="client-avatar-input"
+                    className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-studio-text transition hover:bg-paper"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {avatarPreviewUrl ? "Trocar foto" : "Adicionar foto"}
+                  </label>
+                  <input
+                    id="client-avatar-input"
+                    type="file"
+                    name="avatar"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const selectedFile = event.target.files?.[0] ?? null;
+                      setAvatarFile(selectedFile);
+                      setRemoveAvatar(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarFile(null);
+                      setAvatarPreviewUrl(null);
+                      setRemoveAvatar(true);
+                    }}
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!avatarPreviewUrl}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Remover foto
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
 
-            <div className="flex items-center gap-4">
-              <label className="relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-studio-light font-serif text-xl text-studio-green">
-                {avatarPreviewUrl ? (
-                  <Image src={avatarPreviewUrl} alt="Preview" fill sizes="80px" className="object-cover" unoptimized />
-                ) : (
-                  initials
-                )}
-                <input
-                  type="file"
-                  name="avatar"
-                  accept="image/*"
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
-                />
-              </label>
-              <div className="flex-1">
-                <label className="text-xs font-extrabold uppercase tracking-widest text-muted">Primeiro nome</label>
-                <input
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  placeholder="Ex: Renato"
-                  className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  required
-                />
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input
-                    value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
-                    placeholder="Sobrenome"
-                    className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                    required
-                  />
-                  <input
-                    value={reference}
-                    onChange={(event) => setReference(event.target.value)}
-                    placeholder="Referência (uso interno)"
-                    className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
-                  />
+          <section className="wl-surface-card overflow-hidden">
+            <div className={appointmentFormSectionHeaderPrimaryClass}>
+                <div className="flex items-center gap-2">
+                  <UserRound className="h-4 w-4 text-studio-green" />
+                  <h2 className={appointmentFormSectionHeaderTextClass}>Perfil e identificacao</h2>
                 </div>
-                <div className="mt-2 rounded-xl border border-line wl-surface-card-body px-3 py-2">
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                    Nome no sistema
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-studio-text">
-                    {internalDisplayName || "Primeiro Nome (Referência)"}
-                  </p>
-                  <p className="mt-2 text-[10px] text-muted">Nome público (mensagens/telas públicas)</p>
-                  <p className="text-sm font-semibold text-studio-text">
-                    {publicDisplayName || "Primeiro Nome Sobrenome"}
-                  </p>
+              </div>
+
+            <div className="divide-y divide-line px-3 py-3">
+              <div className="pb-3">
+                <div className="rounded-xl border border-line bg-studio-light/60 p-3">
+                  <div className="mb-2">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Codigo do cliente</label>
+                    <input
+                      value={clientCode}
+                      readOnly
+                      placeholder="Gerado automaticamente"
+                      className="mt-1 w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm font-semibold text-muted"
+                    />
+                    <p className="mt-1 text-xs text-muted">Gerado automaticamente e nao editavel.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Primeiro nome *</label>
+                      <input
+                        value={firstName}
+                        onChange={(event) => setFirstName(event.target.value)}
+                        placeholder="Ex: Renato"
+                        className="mt-1 w-full rounded-xl border border-line wl-surface-input px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Sobrenome *</label>
+                      <input
+                        value={lastName}
+                        onChange={(event) => setLastName(event.target.value)}
+                        placeholder="Sobrenome"
+                        className="mt-1 w-full rounded-xl border border-line wl-surface-input px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-2">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Referencia interna</label>
+                    <input
+                      value={reference}
+                      onChange={(event) => setReference(event.target.value)}
+                      placeholder="Referencia (uso interno)"
+                      className="mt-1 w-full rounded-xl border border-line wl-surface-input px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                    />
+                  </div>
+
+                  <div className="mt-2">
+                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome publico</label>
+                    <input
+                      value={publicName}
+                      onChange={(event) => setPublicName(event.target.value)}
+                      placeholder="Exibicao em mensagens e telas publicas"
+                      className="mt-1 w-full rounded-xl border border-line wl-surface-input px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                    />
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome curto</p>
+                      <p className="mt-1 text-sm font-semibold text-studio-text">
+                        {shortDisplayName || "Primeiro nome"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome no sistema</p>
+                      <p className="mt-1 text-sm font-semibold text-studio-text">
+                        {internalDisplayName || "Primeiro Nome (Referencia)"}
+                      </p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome publico final</p>
+                      <p className="mt-1 text-sm font-semibold text-studio-text">
+                        {publicDisplayName || "Primeiro Nome Sobrenome"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
                 {showSuggestions && (
                   <div className="mt-2 space-y-1 rounded-2xl border border-line bg-white p-2 shadow-soft">
                     {suggestions.map((client) => (
@@ -426,16 +697,9 @@ export function ClientFormScreen({
                     ))}
                   </div>
                 )}
-                {mode === "create" ? (
-                  <p className="mt-2 text-[11px] text-muted">
-                    Se já existir, escolha na lista para evitar duplicidade.
-                  </p>
-                ) : null}
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+              <div className="pt-3">
                 <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Data de nascimento</label>
                 <input
                   name="data_nascimento"
@@ -445,7 +709,8 @@ export function ClientFormScreen({
                   className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
                 />
               </div>
-              <div>
+
+              <div className="pt-3">
                 <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">CPF (opcional)</label>
                 <input
                   name="cpf"
@@ -455,16 +720,7 @@ export function ClientFormScreen({
                   className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Email principal</label>
-              <input
-                value={primaryEmailValue}
-                onChange={(event) => setEmails((current) => syncPrimaryEmail(current, event.target.value))}
-                placeholder="cliente@email.com"
-                className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
-              />
             </div>
           </section>
 
@@ -480,37 +736,62 @@ export function ClientFormScreen({
           />
 
           <NewClientAddressSection
-            address={address}
-            cepStatus={cepStatus}
-            onChangeAddressAction={setAddress}
-            onLookupCepAction={() => void handleCepLookup()}
+            addresses={addresses}
+            cepStatusByAddressId={cepStatusByAddressId}
+            onAddAddressAction={handleAddAddress}
+            onRemoveAddressAction={handleRemoveAddress}
+            onChangeAddressAction={handleChangeAddress}
+            onSetPrimaryAddressAction={handleSetPrimaryAddress}
+            onLookupCepAction={(addressId) => void handleCepLookup(addressId)}
           />
 
           <NewClientHealthSection
-            allergyTags={allergyTags}
-            conditionTags={conditionTags}
+            allergyItems={allergyItems}
+            conditionItems={conditionItems}
+            contraindicationItems={contraindicationItems}
             allergyInput={allergyInput}
             conditionInput={conditionInput}
-            contraindications={contraindications}
+            contraindicationInput={contraindicationInput}
             preferencesNotes={preferencesNotes}
             clinicalHistory={clinicalHistory}
             anamneseUrl={anamneseUrl}
-            onAddAllergyTagAction={() => handleAddTag(allergyInput, setAllergyTags, () => setAllergyInput(""))}
-            onRemoveAllergyTagAction={(tag) =>
-              setAllergyTags((prev) => prev.filter((item) => item !== tag))
+            anamneseFormStatus={anamneseFormStatus}
+            anamneseFormSentAt={anamneseFormSentAt}
+            anamneseFormAnsweredAt={anamneseFormAnsweredAt}
+            onAddAllergyTagAction={() =>
+              handleAddClinicalItem(allergyInput, setAllergyItems, () => setAllergyInput(""))
             }
+            onRemoveAllergyTagAction={(tag) => handleRemoveClinicalItem(tag, setAllergyItems)}
             onChangeAllergyInputAction={setAllergyInput}
             onAddConditionTagAction={() =>
-              handleAddTag(conditionInput, setConditionTags, () => setConditionInput(""))
+              handleAddClinicalItem(conditionInput, setConditionItems, () => setConditionInput(""))
             }
-            onRemoveConditionTagAction={(tag) =>
-              setConditionTags((prev) => prev.filter((item) => item !== tag))
-            }
+            onRemoveConditionTagAction={(tag) => handleRemoveClinicalItem(tag, setConditionItems)}
             onChangeConditionInputAction={setConditionInput}
-            onChangeContraindicationsAction={setContraindications}
+            onAddContraindicationTagAction={() =>
+              handleAddClinicalItem(contraindicationInput, setContraindicationItems, () =>
+                setContraindicationInput("")
+              )
+            }
+            onRemoveContraindicationTagAction={(tag) =>
+              handleRemoveClinicalItem(tag, setContraindicationItems)
+            }
+            onChangeContraindicationInputAction={setContraindicationInput}
+            onChangeAllergyItemAction={(tag, update) =>
+              handleUpdateClinicalItem(tag, setAllergyItems, update)
+            }
+            onChangeConditionItemAction={(tag, update) =>
+              handleUpdateClinicalItem(tag, setConditionItems, update)
+            }
+            onChangeContraindicationItemAction={(tag, update) =>
+              handleUpdateClinicalItem(tag, setContraindicationItems, update)
+            }
             onChangePreferencesNotesAction={setPreferencesNotes}
             onChangeClinicalHistoryAction={setClinicalHistory}
             onChangeAnamneseUrlAction={setAnamneseUrl}
+            onChangeAnamneseFormStatusAction={setAnamneseFormStatus}
+            onChangeAnamneseFormSentAtAction={setAnamneseFormSentAt}
+            onChangeAnamneseFormAnsweredAtAction={setAnamneseFormAnsweredAt}
           />
 
           <NewClientPreferencesSection
@@ -527,10 +808,14 @@ export function ClientFormScreen({
             guardianName={guardianName}
             guardianPhone={guardianPhone}
             guardianCpf={guardianCpf}
-            onChangeIsMinorAction={setIsMinor}
+            guardianRelationship={guardianRelationship}
+            isMinorAuto={isMinorAuto}
+            isMinorOverride={isMinorOverride}
             onChangeGuardianNameAction={setGuardianName}
             onChangeGuardianPhoneAction={setGuardianPhone}
             onChangeGuardianCpfAction={setGuardianCpf}
+            onChangeGuardianRelationshipAction={setGuardianRelationship}
+            onChangeIsMinorOverrideAction={setIsMinorOverride}
           />
 
           <NewClientNotesSection
@@ -544,19 +829,28 @@ export function ClientFormScreen({
             onChangeProfessionAction={setProfissao}
             onChangeReferralSourceAction={setComoConheceu}
           />
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`${appointmentFormButtonPrimaryClass} w-full`}
-          >
-            {isSubmitting ? "Salvando..." : submitLabel}
-          </button>
         </form>
       </main>
+
+      <FooterRail
+        className="-mx-4"
+        surfaceClassName="bg-[rgba(247,242,234,0.96)]"
+        paddingXClassName="px-4"
+        rowClassName="grid grid-cols-1"
+      >
+        <button
+          type="submit"
+          form={formId}
+          disabled={isSubmitting}
+          className={`${appointmentFormButtonPrimaryClass} w-full`}
+        >
+          {isSubmitting ? "Salvando..." : submitLabel}
+        </button>
+      </FooterRail>
 
       <Toast toast={toast} />
     </div>
   );
 }
+
 

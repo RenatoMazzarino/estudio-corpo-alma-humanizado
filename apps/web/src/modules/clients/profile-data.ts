@@ -117,6 +117,9 @@ export type ClientAnamnesisSnapshot = {
   observations: string | null;
   legacyNotes: string | null;
   anamneseUrl: string | null;
+  initialFormStatus: "nao_enviado" | "enviado" | "respondido";
+  initialFormSentAt: string | null;
+  initialFormAnsweredAt: string | null;
   healthTags: string[];
   healthItems: ClientHealthItemRow[];
 };
@@ -570,6 +573,12 @@ export async function getClientDetailSnapshot(
       observations: client.observacoes_gerais,
       legacyNotes: client.notes,
       anamneseUrl: client.anamnese_url,
+      initialFormStatus:
+        client.anamnese_form_status === "enviado" || client.anamnese_form_status === "respondido"
+          ? client.anamnese_form_status
+          : "nao_enviado",
+      initialFormSentAt: client.anamnese_form_sent_at,
+      initialFormAnsweredAt: client.anamnese_form_answered_at,
       healthTags: Array.isArray(client.health_tags) ? client.health_tags : [],
       healthItems: healthItems ?? [],
     },

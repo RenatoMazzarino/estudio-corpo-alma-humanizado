@@ -14,6 +14,7 @@ import {
 import {
   buildAddressLine,
   getInitials,
+  normalizeDateTimeLocal,
   parseJson,
   uploadClientAvatar,
   type AddressPayload,
@@ -24,7 +25,11 @@ import {
 
 export async function runCreateClientAction(formData: FormData): Promise<void> {
   const { tenantId } = await requireDashboardAccessForServerAction();
+  const client_code = (formData.get("client_code") as string | null) || null;
   const name = formData.get("name") as string | null;
+  const public_name = (formData.get("public_name") as string | null) || null;
+  const system_name = (formData.get("system_name") as string | null) || null;
+  const short_name = (formData.get("short_name") as string | null) || null;
   const phoneField = (formData.get("phone") as string | null) || null;
   const is_vip = formData.get("is_vip") === "on";
   const needs_attention = formData.get("needs_attention") === "on";
@@ -32,11 +37,24 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
   const contraindications = (formData.get("contraindications") as string | null) || null;
   const clinical_history = (formData.get("clinical_history") as string | null) || null;
   const anamnese_url = (formData.get("anamnese_url") as string | null) || null;
+  const anamnese_form_status = (formData.get("anamnese_form_status") as string | null) || null;
+  const anamnese_form_sent_at = normalizeDateTimeLocal((formData.get("anamnese_form_sent_at") as string | null) || null);
+  const anamnese_form_answered_at = normalizeDateTimeLocal(
+    (formData.get("anamnese_form_answered_at") as string | null) || null
+  );
   const marketing_opt_in = formData.get("marketing_opt_in") === "on";
   const is_minor = formData.get("is_minor") === "on";
+  const is_minor_override_raw = formData.get("is_minor_override");
+  const is_minor_override =
+    is_minor_override_raw === "on"
+      ? true
+      : is_minor_override_raw === "off"
+      ? false
+      : null;
   const guardian_name = (formData.get("guardian_name") as string | null) || null;
   const guardian_phone = (formData.get("guardian_phone") as string | null) || null;
   const guardian_cpf = (formData.get("guardian_cpf") as string | null) || null;
+  const guardian_relationship = (formData.get("guardian_relationship") as string | null) || null;
   const observacoes_gerais = formData.has("observacoes_gerais")
     ? ((formData.get("observacoes_gerais") as string | null) || null)
     : undefined;
@@ -89,7 +107,11 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
   const address_estado = primaryAddress?.address_estado ?? addressEstadoField;
 
   const parsed = createClientSchema.safeParse({
+    client_code,
     name,
+    public_name,
+    system_name,
+    short_name,
     phone,
     is_vip,
     needs_attention,
@@ -97,11 +119,16 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
     contraindications,
     clinical_history,
     anamnese_url,
+    anamnese_form_status,
+    anamnese_form_sent_at,
+    anamnese_form_answered_at,
     marketing_opt_in,
     is_minor,
+    is_minor_override,
     guardian_name,
     guardian_phone,
     guardian_cpf,
+    guardian_relationship,
     observacoes_gerais,
     email,
     public_first_name,
@@ -126,7 +153,11 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
   }
 
   const { data, error } = await createClient({
-    name: parsed.data.name,
+    name: parsed.data.system_name ?? parsed.data.name,
+    client_code: null,
+    public_name: parsed.data.public_name,
+    system_name: parsed.data.system_name,
+    short_name: parsed.data.short_name,
     phone: parsed.data.phone,
     is_vip: parsed.data.is_vip ?? false,
     needs_attention: parsed.data.needs_attention ?? false,
@@ -134,11 +165,16 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
     contraindications: parsed.data.contraindications,
     clinical_history: parsed.data.clinical_history,
     anamnese_url: parsed.data.anamnese_url,
+    anamnese_form_status: parsed.data.anamnese_form_status,
+    anamnese_form_sent_at: parsed.data.anamnese_form_sent_at,
+    anamnese_form_answered_at: parsed.data.anamnese_form_answered_at,
     marketing_opt_in: parsed.data.marketing_opt_in ?? false,
     is_minor: parsed.data.is_minor ?? false,
+    is_minor_override: parsed.data.is_minor_override ?? null,
     guardian_name: parsed.data.guardian_name,
     guardian_phone: parsed.data.guardian_phone,
     guardian_cpf: parsed.data.guardian_cpf,
+    guardian_relationship: parsed.data.guardian_relationship,
     observacoes_gerais: parsed.data.observacoes_gerais,
     email: parsed.data.email,
     public_first_name: parsed.data.public_first_name,
@@ -182,6 +218,7 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
     label: phone.label ?? null,
     number_raw: phone.number_raw,
     number_e164: phone.number_e164 ?? null,
+    normalized_number: (phone.number_e164 ?? phone.number_raw).replace(/\D/g, "") || null,
     is_primary: phone.is_primary ?? index === 0,
     is_whatsapp: phone.is_whatsapp ?? false,
   }));
@@ -205,6 +242,7 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
     client_id: clientId,
     label: emailEntry.label ?? null,
     email: emailEntry.email,
+    normalized_email: emailEntry.email.trim().toLowerCase(),
     is_primary: emailEntry.is_primary ?? index === 0,
   }));
   if (resolvedEmails.length > 0 && !resolvedEmails.some((emailEntry) => emailEntry.is_primary)) {
@@ -219,10 +257,10 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
   }
 
   const resolvedAddresses = addresses.map((address, index) => ({
-    id: address.id,
+    id: crypto.randomUUID(),
     tenant_id: tenantId,
     client_id: clientId,
-    label: address.label ?? "Principal",
+    label: address.label ?? (index === 0 ? "principal" : "outro"),
     is_primary: address.is_primary ?? index === 0,
     address_cep: address.address_cep ?? null,
     address_logradouro: address.address_logradouro ?? null,
@@ -234,6 +272,11 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
     referencia: address.referencia ?? null,
   }));
 
+  if (resolvedAddresses.length > 0 && !resolvedAddresses.some((addressEntry) => addressEntry.is_primary)) {
+    const firstAddress = resolvedAddresses[0];
+    if (firstAddress) firstAddress.is_primary = true;
+  }
+
   if (resolvedAddresses.length > 0) {
     const { error: addressError } = await replaceClientAddresses(tenantId, clientId, resolvedAddresses);
     const mappedAddressError = mapSupabaseError(addressError);
@@ -244,6 +287,9 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
     .map((item) => ({
       label: item.label?.trim(),
       type: item.type,
+      notes: item.notes ?? null,
+      severity: item.severity ?? null,
+      is_active: item.is_active ?? true,
     }))
     .filter((item) => item.label && item.label.length > 0) as HealthItemPayload[];
 
@@ -256,6 +302,9 @@ export async function runCreateClientAction(formData: FormData): Promise<void> {
         client_id: clientId,
         label: item.label,
         type: item.type,
+        notes: item.notes,
+        severity: item.severity,
+        is_active: item.is_active,
       }))
     );
     const mappedHealthError = mapSupabaseError(healthError);
