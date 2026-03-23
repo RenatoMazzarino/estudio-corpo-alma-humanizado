@@ -23,7 +23,7 @@ export function BottomNav({ className = "" }: BottomNavProps) {
 
   return (
     <FooterRail
-      className={`[--footer-action-row-height:2.4rem] [--footer-rail-padding-y:0.55rem] z-40 w-full border-white/20 ${className}`}
+      className={`z-40 w-full border-white/20 ${className}`}
       surfaceClassName="!bg-studio-green"
       paddingXClassName="px-2"
       rowClassName="flex items-center justify-around"
