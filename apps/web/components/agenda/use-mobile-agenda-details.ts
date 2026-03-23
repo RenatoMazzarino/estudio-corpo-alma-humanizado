@@ -71,35 +71,17 @@ export function useMobileAgendaDetails({
         detailsOverlayHideTimeoutRef.current = null;
       }
 
-      let timeoutId: number | null = null;
       let resolvedData: AttendanceOverview | null = null;
 
       try {
-        for (let attempt = 0; attempt < 6; attempt += 1) {
-          if (timeoutId) {
-            window.clearTimeout(timeoutId);
-            timeoutId = null;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const data = await getAttendance(appointmentId);
+          if (data) {
+            resolvedData = data;
+            break;
           }
-
-          try {
-            const data = await Promise.race([
-              getAttendance(appointmentId),
-              new Promise<null>((_, reject) => {
-                timeoutId = window.setTimeout(() => reject(new Error("details_timeout")), 2400);
-              }),
-            ]);
-            if (data) {
-              resolvedData = data;
-              break;
-            }
-          } catch {
-            if (attempt === 1) {
-              router.refresh();
-            }
-          }
-
-          if (attempt < 5) {
-            await new Promise((resolve) => window.setTimeout(resolve, 300 + attempt * 120));
+          if (attempt < 2) {
+            await new Promise((resolve) => window.setTimeout(resolve, 350 + attempt * 150));
           }
         }
 
@@ -116,9 +98,6 @@ export function useMobileAgendaDetails({
         );
         setDetailsData(null);
       } finally {
-        if (timeoutId) {
-          window.clearTimeout(timeoutId);
-        }
         setDetailsLoading(false);
         setLoadingAppointmentId(null);
         detailsOverlayHideTimeoutRef.current = window.setTimeout(() => {
@@ -127,7 +106,7 @@ export function useMobileAgendaDetails({
         }, 220);
       }
     },
-    [router, showToast]
+    [showToast]
   );
 
   const openDetailsForAppointment = useCallback((appointmentId: string) => {

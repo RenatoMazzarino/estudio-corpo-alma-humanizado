@@ -47,7 +47,7 @@ const toneStyles: Record<ActionTone, { pill: string; icon: string; label: string
 export function FloatingActionMenu({
   actions,
   rightClassName = "right-3",
-  bottomOffset = "calc(var(--nav-height, var(--footer-rail-height, 4.75rem)) + 1.75rem)",
+  bottomOffset = "calc(var(--nav-height, var(--footer-rail-height, 4.25rem)) + 0.75rem)",
 }: FloatingActionMenuProps) {
   const [overlayEl, setOverlayEl] = useState<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);

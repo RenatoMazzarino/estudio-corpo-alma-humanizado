@@ -14,8 +14,11 @@
   --radius-control: 0.5rem;
   --radius-sheet: 1.625rem;
   --footer-action-row-height: 2.75rem;
-  --footer-rail-padding-y: 1rem;
-  --footer-rail-height: calc(var(--footer-action-row-height) + (var(--footer-rail-padding-y) * 2));
+  --footer-rail-padding-top: 0.625rem;
+  --footer-rail-padding-bottom: 0.875rem;
+  --footer-rail-height: calc(
+    var(--footer-action-row-height) + var(--footer-rail-padding-top) + var(--footer-rail-padding-bottom)
+  );
   --surface-header-strong: var(--color-studio-green);
   --surface-header-soft: rgba(93, 110, 86, 0.15);
   --surface-header-soft: color-mix(in srgb, var(--color-studio-green) 15%, transparent);
@@ -466,8 +469,8 @@ html {
 .wl-footer-rail {
   border-top: 1px solid var(--color-line);
   background-color: var(--surface-modal-body);
-  padding-top: var(--footer-rail-padding-y);
-  padding-bottom: calc(env(safe-area-inset-bottom) + var(--footer-rail-padding-y));
+  padding-top: var(--footer-rail-padding-top);
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--footer-rail-padding-bottom));
 }
 
 .wl-footer-rail-row {

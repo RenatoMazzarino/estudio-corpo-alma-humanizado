@@ -1,5 +1,6 @@
 import { createServiceClient } from "../supabase/service";
 import type { Database, Json } from "../supabase/types";
+import type { PostgrestError } from "@supabase/supabase-js";
 import type {
   AttendanceOverview,
   AttendanceRow,
@@ -60,24 +61,57 @@ function getBrazilDayKey(dateTime: string) {
   }).format(new Date(dateTime));
 }
 
+const ATTENDANCE_APPOINTMENT_SELECT_FULL = `id, attendance_code, service_name, start_time, finished_at, status, payment_status, signal_status, signal_required_amount, signal_paid_amount, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
+       address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
+        clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
+       services ( duration_minutes, price )`;
+
+const ATTENDANCE_APPOINTMENT_SELECT_LEGACY = `id, attendance_code, service_name, start_time, finished_at, status, payment_status, price, is_home_visit,
+       clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo ),
+       services ( duration_minutes, price )`;
+
+function isMissingSchemaFieldError(error: PostgrestError | null) {
+  if (!error) return false;
+  const code = String((error as { code?: string }).code ?? "");
+  if (code === "42703" || code === "PGRST204") return true;
+  const message = String(error.message ?? "").toLowerCase();
+  return message.includes("does not exist") || message.includes("column");
+}
+
 export async function getAttendanceOverview(tenantId: string, appointmentId: string): Promise<AttendanceOverview | null> {
   const supabase = createServiceClient();
 
-  const { data: appointmentData, error: appointmentError } = await supabase
+  const { data: fullData, error: fullError } = await supabase
     .from("appointments")
-    .select(
-      `id, attendance_code, service_name, start_time, finished_at, status, payment_status, signal_status, signal_required_amount, signal_paid_amount, price, displacement_fee, displacement_distance_km, is_home_visit, total_duration_minutes, actual_duration_minutes, internal_notes,
-       address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado,
-        clients ( id, name, initials, avatar_url, is_vip, phone, health_tags, endereco_completo, address_cep, address_logradouro, address_numero, address_complemento, address_bairro, address_cidade, address_estado ),
-       services ( duration_minutes, price )`
-    )
+    .select(ATTENDANCE_APPOINTMENT_SELECT_FULL)
     .eq("id", appointmentId)
     .eq("tenant_id", tenantId)
     .single();
 
+  let appointmentData: Record<string, unknown> | null = (fullData as Record<string, unknown> | null) ?? null;
+  let appointmentError: PostgrestError | null = fullError;
+
+  if (isMissingSchemaFieldError(fullError)) {
+    const legacyResponse = await supabase
+      .from("appointments")
+      .select(ATTENDANCE_APPOINTMENT_SELECT_LEGACY)
+      .eq("id", appointmentId)
+      .eq("tenant_id", tenantId)
+      .single();
+    appointmentData = (legacyResponse.data as Record<string, unknown> | null) ?? null;
+    appointmentError = legacyResponse.error;
+
+    if (!legacyResponse.error && legacyResponse.data) {
+      console.warn("[attendance] fallback para select legacy no getAttendanceOverview", {
+        appointmentId,
+        tenantId,
+      });
+    }
+  }
+
   if (appointmentError || !appointmentData) return null;
 
-  const appointment = normalizeClient(appointmentData) as unknown as AppointmentDetails & {
+  const appointment = normalizeClient(appointmentData as { clients: unknown }) as unknown as AppointmentDetails & {
     services?: { duration_minutes: number | null; price: number | null } | null | Array<{
       duration_minutes: number | null;
       price: number | null;
