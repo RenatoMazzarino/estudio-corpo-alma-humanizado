@@ -30,6 +30,7 @@ import {
 
 import { Chip } from "../../../../components/ui/chip";
 import { Toast, useToast } from "../../../../components/ui/toast";
+import { WhatsAppIcon } from "../../../../components/ui/whatsapp-icon";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
 import {
   buildClientPhoneHref,
@@ -40,6 +41,7 @@ import {
   appointmentFormButtonDangerClass,
   appointmentFormButtonSecondaryClass,
   appointmentFormHeaderIconButtonClass,
+  appointmentFormScreenHeaderTopRowClass,
 } from "../../novo/appointment-form.styles";
 import type {
   ClientDetailSnapshot,
@@ -64,6 +66,14 @@ const longDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "numeric",
   month: "long",
   year: "numeric",
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
 });
 
 function getInitials(name: string) {
@@ -94,6 +104,19 @@ function formatBirthDateWithAge(value: string | null | undefined) {
   return longDateFormatter.format(date) + " (" + age + " anos)";
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return dateTimeFormatter.format(date);
+}
+
+function formatAnamneseStatus(value: "nao_enviado" | "enviado" | "respondido") {
+  if (value === "respondido") return "Respondido";
+  if (value === "enviado") return "Enviado";
+  return "Nao enviado";
+}
+
 function buildAddressLine(parts: Array<string | null | undefined>) {
   const filtered = parts.map((value) => value?.trim()).filter(Boolean);
   return filtered.length > 0 ? filtered.join(", ") : null;
@@ -115,7 +138,22 @@ function getLegacyAddress(snapshot: ClientDetailSnapshot) {
 }
 
 function formatStars(value: number) {
-  return "â­".repeat(Math.max(1, Math.min(5, value)));
+  const normalized = Math.max(0, Math.min(5, value));
+  return `${normalized}/5`;
+}
+
+function formatChannelLabel(value: string | null | undefined) {
+  if (!value) return "Outro";
+  const trimmed = value.trim();
+  if (!trimmed) return "Outro";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+function formatClinicalSeverity(value: string | null | undefined) {
+  if (value === "alta") return "Alta";
+  if (value === "moderada") return "Moderada";
+  if (value === "leve") return "Leve";
+  return "Nao definida";
 }
 
 function ActionIconLink({
@@ -130,15 +168,16 @@ function ActionIconLink({
   tone?: "default" | "green";
 }) {
   const className =
-    "inline-flex h-11 min-w-11 items-center justify-center rounded-xl border px-3 transition active:scale-95 " +
+    "inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border px-2 text-xs font-semibold transition active:scale-95 " +
     (tone === "green"
-      ? "border-studio-green/15 bg-white text-studio-green hover:bg-studio-green hover:text-white"
-      : "border-line bg-white text-studio-text hover:bg-paper");
+      ? "border-white/30 bg-white/20 text-white hover:bg-white/30"
+      : "border-white/25 bg-white/10 text-white hover:bg-white/20");
 
   if (!href) {
     return (
-      <span className={className + " cursor-not-allowed opacity-35"} aria-label={label + " indisponÃ­vel"}>
+      <span className={className + " cursor-not-allowed opacity-45"} aria-label={label + " indisponivel"}>
         {icon}
+        {label}
       </span>
     );
   }
@@ -147,6 +186,7 @@ function ActionIconLink({
     return (
       <Link href={href} className={className} aria-label={label} title={label} prefetch={false}>
         {icon}
+        {label}
       </Link>
     );
   }
@@ -154,6 +194,7 @@ function ActionIconLink({
   return (
     <a href={href} className={className} aria-label={label} title={label} target="_blank" rel="noreferrer">
       {icon}
+      {label}
     </a>
   );
 }
@@ -206,20 +247,40 @@ function SectionRow({
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: ReactNode }) {
+function HeaderMetricInline({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-paper/70 p-3">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">{label}</p>
+    <div className="flex h-[76px] flex-col items-center justify-center px-3 py-2 text-center">
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">{label}</p>
       <div className="mt-1 text-sm font-semibold text-studio-text">{value}</div>
     </div>
   );
 }
 
-function HeaderMetricInline({ label, value }: { label: string; value: ReactNode }) {
+function MetricsStripCard({
+  sessions,
+  lastVisit,
+  loyalty,
+}: {
+  sessions: ReactNode;
+  lastVisit: ReactNode;
+  loyalty: ReactNode;
+}) {
   return (
-    <div className="px-3 py-2.5 text-center">
+    <div className="wl-surface-card overflow-hidden rounded-none border-x-0 border-t-0">
+      <div className="grid grid-cols-3 divide-x divide-line">
+        <HeaderMetricInline label="Sessoes" value={sessions} />
+        <HeaderMetricInline label="Ultima visita" value={lastVisit} />
+        <HeaderMetricInline label="Fidelidade" value={loyalty} />
+      </div>
+    </div>
+  );
+}
+
+function NameMetaField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div>
       <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">{label}</p>
-      <div className="mt-1 text-sm font-semibold text-studio-text">{value}</div>
+      <p className="mt-1 text-sm font-semibold text-studio-text">{value}</p>
     </div>
   );
 }
@@ -237,6 +298,69 @@ function PaymentMethodBar({ method }: { method: ClientPaymentMethodSummary }) {
           style={{ width: Math.max(method.percentage, method.percentage > 0 ? 12 : 0) + "%" }}
         />
       </div>
+    </div>
+  );
+}
+
+function FinancialListRow({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted">{label}</p>
+      <div className={accent ? "text-base font-bold text-studio-text" : "text-sm font-semibold text-studio-text"}>{value}</div>
+    </div>
+  );
+}
+
+function ClinicalItemsList({
+  emptyText,
+  toneClass,
+  items,
+}: {
+  emptyText: string;
+  toneClass: string;
+  items: Array<{ id: string; label: string; notes: string | null; severity: string | null; is_active: boolean | null }>;
+}) {
+  if (items.length === 0) {
+    return <p className="text-sm text-muted">{emptyText}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <div key={item.id} className={`rounded-xl border p-3 ${toneClass}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-studio-text">{item.label}</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] ${
+                  item.is_active === false
+                    ? "bg-studio-light text-muted"
+                    : "bg-emerald-50 text-emerald-700"
+                }`}
+              >
+                {item.is_active === false ? "Inativo" : "Ativo"}
+              </span>
+              <span className="inline-flex rounded-md bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-studio-text">
+                {formatClinicalSeverity(item.severity)}
+              </span>
+            </div>
+          </div>
+          {item.notes ? (
+            <div className="mt-2 border-t border-line/70 pt-2">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted">Observacoes</p>
+              <p className="mt-1 text-sm text-muted">{item.notes}</p>
+            </div>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }
@@ -304,11 +428,11 @@ function HistoryItem({ entry }: { entry: ClientProntuarioEntry }) {
         <div>
           <p className="text-sm font-extrabold text-studio-text">{entry.serviceName}</p>
           <p className="text-xs text-muted">
-            {formatShortDate(entry.startTime)} â€¢ {entry.isHomeVisit ? "DomicÃ­lio" : "EstÃºdio"}
+            {formatShortDate(entry.startTime)} - {entry.isHomeVisit ? "Domicilio" : "Estudio"}
           </p>
         </div>
         <Chip tone={entry.status === "completed" ? "success" : "dom"}>
-          {entry.status === "completed" ? "ConcluÃ­do" : entry.status || "Registrado"}
+          {entry.status === "completed" ? "Concluido" : entry.status || "Registrado"}
         </Chip>
       </div>
       {entry.evolutionText ? (
@@ -316,7 +440,7 @@ function HistoryItem({ entry }: { entry: ClientProntuarioEntry }) {
       ) : entry.internalNotes ? (
         <p className="mt-2 line-clamp-3 text-sm leading-6 text-studio-text">{entry.internalNotes}</p>
       ) : (
-        <p className="mt-2 text-sm text-muted">Sem evoluÃ§Ã£o textual registrada nesta sessÃ£o.</p>
+        <p className="mt-2 text-sm text-muted">Sem evolucao textual registrada nesta sessao.</p>
       )}
     </div>
   );
@@ -339,12 +463,22 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   const scheduleHref = buildNewAppointmentHref(client.id, "/clientes/" + client.id);
   const prontuarioHref = "/clientes/" + client.id + "/prontuario";
   const editHref = "/clientes/" + client.id + "/editar";
-  const publicName = [client.public_first_name, client.public_last_name].filter(Boolean).join(" ") || null;
+  const firstName = client.public_first_name?.trim() || "-";
+  const lastName = client.public_last_name?.trim() || "-";
+  const publicName =
+    client.public_name?.trim() || [client.public_first_name, client.public_last_name].filter(Boolean).join(" ") || null;
+  const internalName = client.system_name?.trim() || client.name?.trim() || "-";
+  const shortName = client.short_name?.trim() || firstName;
+  const clientCode = client.client_code?.trim() || "-";
+  const internalReference = client.internal_reference?.trim() || "-";
   const birthDate = client.birth_date ?? client.data_nascimento ?? null;
   const legacyAddress = getLegacyAddress(snapshot);
   const paymentMethods = finance.paymentMethods;
   const recentHistory = history.slice(0, 6);
   const healthTags = [...anamnesis.healthTags];
+  const allergyItems = healthItems.filter((item) => item.type === "allergy");
+  const conditionItems = healthItems.filter((item) => item.type === "condition" || item.type === "tag");
+  const contraindicationItems = healthItems.filter((item) => item.type === "contraindication");
   const lastVisitLabel = recentHistory[0] ? formatShortDate(recentHistory[0].start_time) : "-";
 
   useEffect(() => {
@@ -368,7 +502,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         await navigator.share({
-          title: "Cliente â€¢ " + client.name,
+          title: "Cliente - " + client.name,
           text: "Perfil interno de " + client.name,
           url,
         });
@@ -377,7 +511,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
       }
       showToast("Link do perfil pronto para compartilhar.", "success");
     } catch {
-      showToast("NÃ£o foi possÃ­vel compartilhar agora.", "error");
+      showToast("Nao foi possivel compartilhar agora.", "error");
     }
   };
 
@@ -385,7 +519,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     setMenuOpen(false);
     const phone = primaryPhone?.number_raw ?? client.phone ?? "";
     if (!phone || !navigator.clipboard?.writeText) {
-      showToast("Telefone principal indisponÃ­vel para cÃ³pia.", "info");
+      showToast("Telefone principal indisponivel para copia.", "info");
       return;
     }
 
@@ -393,7 +527,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
       await navigator.clipboard.writeText(phone);
       showToast("Telefone principal copiado.", "success");
     } catch {
-      showToast("NÃ£o foi possÃ­vel copiar o telefone.", "error");
+      showToast("Nao foi possivel copiar o telefone.", "error");
     }
   };
 
@@ -405,7 +539,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         showToast(result.error.message ?? "Falha ao excluir cliente.", "error");
         return;
       }
-      showToast("Cliente excluÃ­do com sucesso.", "success");
+      showToast("Cliente excluido com sucesso.", "success");
       router.push("/clientes");
       router.refresh();
     } catch {
@@ -419,8 +553,8 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   return (
     <>
       <div className="pb-10">
-        <header className="sticky top-0 z-30 -mx-4 -mt-4 bg-studio-green text-white safe-top safe-top-4 px-4 pb-3 pt-4">
-          <div className="flex items-start justify-between gap-3">
+        <header className="sticky top-0 z-30 -mx-4 -mt-4 min-h-27 bg-studio-green text-white safe-top safe-top-4 px-5 pb-0 pt-4">
+          <div className={`${appointmentFormScreenHeaderTopRowClass} items-start justify-between`}>
             <div className="flex min-w-0 items-start gap-2.5">
               <button
                 type="button"
@@ -440,14 +574,10 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               </div>
 
               <div className="min-w-0">
-                <h1 className="truncate wl-typo-card-name-md text-white">{client.name}</h1>
-                <p className="mt-0.5 text-xs text-white/85">Cliente desde {formatShortDate(client.created_at)}</p>
-                {publicName ? <p className="truncate text-[11px] text-white/75">{publicName}</p> : null}
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {client.is_vip ? <Chip tone="success">VIP</Chip> : null}
-                  {client.needs_attention ? <Chip tone="danger">Atencao</Chip> : null}
-                  {client.is_minor ? <Chip tone="warning">Menor</Chip> : null}
-                </div>
+                <h1 className="truncate wl-typo-card-name-lg text-white">{client.name}</h1>
+                <p className="mt-0.5 text-sm font-semibold text-white/90">
+                  Cliente desde {formatShortDate(client.created_at)}
+                </p>
               </div>
             </div>
 
@@ -499,87 +629,84 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            <div className="flex flex-col items-center gap-1">
-              <ActionIconLink href={callHref} label="Ligar" icon={<Phone className="h-4 w-4" />} />
-              <span className="text-[10px] font-semibold text-white/85">Ligar</span>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <ActionIconLink href={whatsappHref} label="Mensagem" icon={<MessageCircle className="h-4 w-4" />} tone="green" />
-              <span className="text-[10px] font-semibold text-white/85">Mensagem</span>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <ActionIconLink href={scheduleHref} label="Agendar" icon={<CalendarPlus className="h-4 w-4" />} tone="green" />
-              <span className="text-[10px] font-semibold text-white/85">Agendar</span>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <ActionIconLink href={prontuarioHref} label="Prontuário" icon={<FileText className="h-4 w-4" />} />
-              <span className="text-[10px] font-semibold text-white/85">Prontuário</span>
-            </div>
+          <div className="mt-2 grid grid-cols-4 gap-2 pb-3">
+            <ActionIconLink href={callHref} label="Ligar" icon={<Phone className="h-4 w-4" />} />
+            <ActionIconLink href={whatsappHref} label="Mensagem" icon={<MessageCircle className="h-4 w-4" />} tone="green" />
+            <ActionIconLink href={scheduleHref} label="Agendar" icon={<CalendarPlus className="h-4 w-4" />} tone="green" />
+            <ActionIconLink href={prontuarioHref} label="Prontuario" icon={<FileText className="h-4 w-4" />} />
           </div>
         </header>
 
-        <section className="px-4 pt-3">
-          <div className="overflow-hidden rounded-xl border border-line wl-surface-card-body">
-            <div className="grid grid-cols-3 divide-x divide-line">
-              <HeaderMetricInline label="Sessões" value={finance.completedSessionsCount} />
-              <HeaderMetricInline label="Última visita" value={lastVisitLabel} />
-              <HeaderMetricInline label="Fidelidade" value={formatStars(finance.fidelityStars)} />
-            </div>
-          </div>
+        <section className="-mx-4 px-0 pb-2 pt-2">
+          <MetricsStripCard
+            sessions={finance.completedSessionsCount}
+            lastVisit={lastVisitLabel}
+            loyalty={formatStars(finance.fidelityStars)}
+          />
         </section>
 
         <div className="space-y-4 px-4 pt-4">
+        <SectionCard title="Perfil e identificacao" icon={<UserRound className="h-4 w-4" />}>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-4">
+            <NameMetaField label="Codigo interno" value={clientCode} />
+            <NameMetaField label="Nome curto" value={shortName} />
+            <NameMetaField label="Primeiro nome" value={firstName} />
+            <NameMetaField label="Sobrenome" value={lastName} />
+            <NameMetaField label="Nome publico" value={publicName || "-"} />
+            <NameMetaField label="Nome no sistema" value={internalName} />
+            <NameMetaField label="Referencia interna" value={internalReference} />
+            <NameMetaField label="Cliente desde" value={formatShortDate(client.created_at)} />
+          </div>
+          <div className="border-t border-line">
+            <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nascimento" value={formatBirthDateWithAge(birthDate)} />
+            <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF" value={formatCpf(client.cpf)} />
+          </div>
+        </SectionCard>
 
         <SectionCard title="Contato" icon={<Phone className="h-4 w-4" />}>
-          {primaryPhone ? (
-            <SectionRow
-              icon={<Phone className="h-4 w-4" />}
-              label="Telefone principal"
-              value={<span>{formatBrazilPhone(primaryPhone.number_raw)}</span>}
-              meta={
-                <div className="flex flex-wrap items-center gap-2">
-                  {primaryPhone.is_whatsapp ? <Chip tone="success">WhatsApp</Chip> : null}
-                  {phones.length > 1 ? <Chip>{phones.length} nÃºmeros</Chip> : null}
-                </div>
-              }
-            />
-          ) : null}
-
-          {phones.filter((phone) => !phone.is_primary).map((phone) => (
-            <SectionRow
-              key={phone.id}
-              icon={<Phone className="h-4 w-4" />}
-              label={phone.label || "Telefone adicional"}
-              value={<span>{formatBrazilPhone(phone.number_raw)}</span>}
-              meta={phone.is_whatsapp ? <Chip tone="success">WhatsApp</Chip> : null}
-            />
-          ))}
+          {phones.length > 0 ? (
+            phones.map((phone, index) => (
+              <SectionRow
+                key={phone.id}
+                icon={<Phone className="h-4 w-4" />}
+                label={
+                  phone.is_primary
+                    ? "Telefone principal"
+                    : formatChannelLabel(phone.label) || `Telefone ${index + 1}`
+                }
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <span>{formatBrazilPhone(phone.number_raw)}</span>
+                    {phone.is_whatsapp ? <WhatsAppIcon className="h-4 w-4 text-[#25D366]" /> : null}
+                  </span>
+                }
+                meta={phone.is_primary ? <Chip>Principal</Chip> : null}
+              />
+            ))
+          ) : (
+            <SectionRow icon={<Phone className="h-4 w-4" />} label="Telefone" value={client.phone || "Nao informado"} />
+          )}
 
           {emails.length > 0 ? (
-            emails.map((email) => (
+            emails.map((email, index) => (
               <SectionRow
                 key={email.id}
                 icon={<Mail className="h-4 w-4" />}
-                label={email.label || (email.is_primary ? "E-mail principal" : "E-mail")}
+                label={
+                  email.is_primary
+                    ? "E-mail principal"
+                    : formatChannelLabel(email.label) || `E-mail ${index + 1}`
+                }
                 value={email.email}
                 meta={email.is_primary ? <Chip>Principal</Chip> : null}
               />
             ))
           ) : (
-            <SectionRow icon={<Mail className="h-4 w-4" />} label="E-mail" value={client.email || "NÃ£o informado"} />
+            <SectionRow icon={<Mail className="h-4 w-4" />} label="E-mail" value={client.email || "Nao informado"} />
           )}
-          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nascimento" value={formatBirthDateWithAge(birthDate)} />
-          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF" value={formatCpf(client.cpf)} />
-          <SectionRow icon={<Briefcase className="h-4 w-4" />} label="ProfissÃ£o" value={client.profissao || "NÃ£o informada"} />
-          <SectionRow
-            icon={<Share2 className="h-4 w-4" />}
-            label="Aceita novidades"
-            value={client.marketing_opt_in ? "Sim, aceita receber novidades" : "NÃ£o configurado / sem aceite"}
-          />
         </SectionCard>
 
-        <SectionCard title="EndereÃ§os" icon={<MapPin className="h-4 w-4" />}>
+        <SectionCard title="Enderecos" icon={<MapPin className="h-4 w-4" />}>
           {addresses.length > 0 ? (
             addresses.map((address) => {
               const addressLine =
@@ -591,62 +718,77 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                   address.address_cidade,
                   address.address_estado,
                   address.address_cep,
-                ]) || "EndereÃ§o nÃ£o informado";
+                ]) || "Endereco nao informado";
 
               return (
                 <SectionRow
                   key={address.id}
                   icon={<MapPin className="h-4 w-4" />}
-                  label={address.label || "EndereÃ§o"}
+                  label={formatChannelLabel(address.label) || "Endereco"}
                   value={addressLine}
                   meta={
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
                       {address.is_primary ? <Chip>Principal</Chip> : null}
-                      {address.referencia ? <span>ReferÃªncia: {address.referencia}</span> : null}
+                      {address.referencia ? <span>Referencia: {address.referencia}</span> : null}
                     </div>
                   }
                 />
               );
             })
           ) : (
-            <SectionRow icon={<MapPin className="h-4 w-4" />} label="Principal" value={legacyAddress || "Nenhum endereÃ§o cadastrado"} />
+            <SectionRow icon={<MapPin className="h-4 w-4" />} label="Principal" value={legacyAddress || "Nenhum endereco cadastrado"} />
           )}
         </SectionCard>
 
-        <SectionCard title="Origem & indicaÃ§Ã£o" icon={<Sparkles className="h-4 w-4" />}>
-          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nome pÃºblico" value={publicName || "NÃ£o informado"} />
-          <SectionRow icon={<Sparkles className="h-4 w-4" />} label="Como conheceu" value={client.como_conheceu || "NÃ£o informado"} />
-          <SectionRow icon={<UserRound className="h-4 w-4" />} label="ReferÃªncia interna" value={client.internal_reference || "NÃ£o informada"} />
-          <SectionRow icon={<Share2 className="h-4 w-4" />} label="IndicaÃ§Ãµes feitas" value={finance.referralsCount + " cliente(s)"} />
-        </SectionCard>
-
-        <SectionCard title="PreferÃªncias & cuidados" icon={<HeartPulse className="h-4 w-4" />}>
-          <SectionRow icon={<HeartPulse className="h-4 w-4" />} label="PreferÃªncias de atendimento" value={client.preferences_notes || "NÃ£o informadas"} />
-          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="ContraindicaÃ§Ãµes" value={client.contraindications || "Nenhuma registrada"} />
-          <SectionRow icon={<FileText className="h-4 w-4" />} label="HistÃ³rico clÃ­nico" value={client.clinical_history || "NÃ£o informado"} />
-          <SectionRow
-            icon={<Sparkles className="h-4 w-4" />}
-            label="Tags de saÃºde"
-            value={
-              healthTags.length > 0 || healthItems.length > 0 ? (
+        <SectionCard title="Saude e cuidados" icon={<HeartPulse className="h-4 w-4" />}>
+          <SectionRow icon={<HeartPulse className="h-4 w-4" />} label="Preferencias de atendimento" value={client.preferences_notes || "Nao informadas"} />
+          <SectionRow icon={<FileText className="h-4 w-4" />} label="Historico clinico" value={client.clinical_history || "Nao informado"} />
+          <div className="border-t border-line px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">Alergias</p>
+            <div className="mt-2">
+              <ClinicalItemsList
+                items={allergyItems}
+                toneClass="border-red-200 bg-red-50/40"
+                emptyText="Nenhuma alergia cadastrada."
+              />
+            </div>
+          </div>
+          <div className="border-t border-line px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">Condicoes e atencoes</p>
+            <div className="mt-2">
+              <ClinicalItemsList
+                items={conditionItems}
+                toneClass="border-orange-200 bg-orange-50/40"
+                emptyText="Nenhuma condicao cadastrada."
+              />
+            </div>
+          </div>
+          <div className="border-t border-line px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">Contraindicacoes</p>
+            <div className="mt-2">
+              <ClinicalItemsList
+                items={contraindicationItems}
+                toneClass="border-amber-200 bg-amber-50/40"
+                emptyText={client.contraindications || "Nenhuma contraindicacao cadastrada."}
+              />
+            </div>
+          </div>
+          {healthTags.length > 0 ? (
+            <SectionRow
+              icon={<Sparkles className="h-4 w-4" />}
+              label="Tags de saude (legado)"
+              value={
                 <div className="flex flex-wrap gap-2">
                   {healthTags.map((tag) => (
                     <Chip key={tag}>{tag}</Chip>
                   ))}
-                  {healthItems.map((item) => (
-                    <Chip key={item.id} tone={item.type === "allergy" ? "danger" : item.type === "condition" ? "warning" : "default"}>
-                      {item.label}
-                    </Chip>
-                  ))}
                 </div>
-              ) : (
-                "Nenhuma informaÃ§Ã£o estruturada"
-              )
-            }
-          />
+              }
+            />
+          ) : null}
           <SectionRow
             icon={<ExternalLink className="h-4 w-4" />}
-            label="Anamnese anexada"
+            label="Formulario inicial"
             value={
               anamnesis.anamneseUrl ? (
                 <a className="inline-flex items-center gap-1 text-studio-green underline" href={anamnesis.anamneseUrl} target="_blank" rel="noreferrer">
@@ -657,54 +799,87 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               )
             }
           />
-          {client.is_minor ? (
-            <>
-              <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="Sim" />
-              <SectionRow icon={<UserRound className="h-4 w-4" />} label="ResponsÃ¡vel" value={client.guardian_name || "NÃ£o informado"} />
-              <SectionRow icon={<Phone className="h-4 w-4" />} label="Telefone do responsÃ¡vel" value={client.guardian_phone || "NÃ£o informado"} />
-              <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF do responsÃ¡vel" value={formatCpf(client.guardian_cpf)} />
-            </>
-          ) : (
-            <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="NÃ£o" />
-          )}
+          <SectionRow
+            icon={<FileText className="h-4 w-4" />}
+            label="Status do formulario"
+            value={formatAnamneseStatus(anamnesis.initialFormStatus)}
+            meta={
+              <div className="text-xs text-muted">
+                Enviado: {formatDateTime(anamnesis.initialFormSentAt)} | Respondido: {formatDateTime(anamnesis.initialFormAnsweredAt)}
+              </div>
+            }
+          />
+        </SectionCard>
+
+        <SectionCard title="Comercial e relacionamento" icon={<Sparkles className="h-4 w-4" />}>
+          <SectionRow icon={<Sparkles className="h-4 w-4" />} label="Cliente VIP" value={client.is_vip ? "Sim" : "Nao"} />
+          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Marcar atencao" value={client.needs_attention ? "Sim" : "Nao"} />
+          <SectionRow
+            icon={<Share2 className="h-4 w-4" />}
+            label="Aceita novidades"
+            value={client.marketing_opt_in ? "Sim, aceita receber novidades" : "Nao"}
+          />
+          <SectionRow icon={<Share2 className="h-4 w-4" />} label="Indicacoes feitas" value={finance.referralsCount + " cliente(s)"} />
+        </SectionCard>
+
+        <SectionCard title="Responsavel legal" icon={<ShieldAlert className="h-4 w-4" />}>
+          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value={client.is_minor ? "Sim" : "Nao"} />
+          <SectionRow
+            icon={<ShieldAlert className="h-4 w-4" />}
+            label="Modo de definicao"
+            value={client.is_minor_override === null ? "Automatico pela data de nascimento" : "Override manual aplicado"}
+          />
+          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Responsavel" value={client.guardian_name || "Nao informado"} />
+          <SectionRow icon={<Phone className="h-4 w-4" />} label="Telefone do responsavel" value={client.guardian_phone || "Nao informado"} />
+          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF do responsavel" value={formatCpf(client.guardian_cpf)} />
+          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Relacao" value={client.guardian_relationship || "Nao informada"} />
+        </SectionCard>
+
+        <SectionCard title="Dados adicionais" icon={<Briefcase className="h-4 w-4" />}>
+          <SectionRow icon={<Briefcase className="h-4 w-4" />} label="Profissao" value={client.profissao || "Nao informada"} />
+          <SectionRow icon={<Sparkles className="h-4 w-4" />} label="Como conheceu" value={client.como_conheceu || "Nao informado"} />
         </SectionCard>
 
         <NotesSection clientId={client.id} initialNotes={anamnesis.observations} />
 
         <SectionCard title="Resumo financeiro" icon={<CircleDollarSign className="h-4 w-4" />}>
-          <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:grid-cols-2">
-            <MetricCard label="Total gasto (lifetime)" value={currencyFormatter.format(finance.totalSpentLifetime)} />
-            <MetricCard label="Ticket mÃ©dio por sessÃ£o" value={currencyFormatter.format(finance.averageTicket)} />
-            <MetricCard label="Pacotes adquiridos" value={finance.packagesAcquired + " pacote(s)"} />
-            <MetricCard label="Descontos concedidos" value={"- " + currencyFormatter.format(finance.discountsGranted)} />
-            <MetricCard label="LTV estimado (12 meses)" value={currencyFormatter.format(finance.estimatedLtv12Months)} />
-            <MetricCard label="Fidelidade" value={formatStars(finance.fidelityStars)} />
-          </div>
+          <div className="divide-y divide-line">
+            <FinancialListRow label="Total gasto (lifetime)" value={currencyFormatter.format(finance.totalSpentLifetime)} accent />
+            <FinancialListRow label="Ticket medio por sessao" value={currencyFormatter.format(finance.averageTicket)} />
+            <FinancialListRow label="Pacotes adquiridos" value={finance.packagesAcquired + " pacote(s)"} />
+            <FinancialListRow label="Descontos concedidos" value={"- " + currencyFormatter.format(finance.discountsGranted)} />
+            <FinancialListRow label="LTV estimado (12 meses)" value={currencyFormatter.format(finance.estimatedLtv12Months)} />
+            <FinancialListRow label="Fidelidade" value={formatStars(finance.fidelityStars)} />
 
-          <div className="border-t border-line px-4 py-4">
-            <div className="mb-3 flex items-center gap-2">
-              <CircleDollarSign className="h-4 w-4 text-studio-green" />
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">MÃ©todos de pagamento</p>
-            </div>
-            {paymentMethods.length > 0 ? (
-              <div className="space-y-3">
-                {paymentMethods.map((method) => (
-                  <PaymentMethodBar key={method.key} method={method} />
-                ))}
+            <div className="px-4 py-3.5">
+              <div className="mb-3 flex items-center gap-2">
+                <CircleDollarSign className="h-4 w-4 text-studio-green" />
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">Metodos de pagamento</p>
               </div>
-            ) : (
-              <p className="text-sm text-muted">Nenhum pagamento consolidado ainda.</p>
-            )}
-          </div>
+              {paymentMethods.length > 0 ? (
+                <div className="space-y-3">
+                  {paymentMethods.map((method) => (
+                    <PaymentMethodBar key={method.key} method={method} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted">Nenhum pagamento consolidado ainda.</p>
+              )}
+            </div>
 
-          <div className="grid grid-cols-1 gap-3 border-t border-line px-4 py-4 sm:grid-cols-2">
-            <MetricCard label="Intervalo mÃ©dio entre sessÃµes" value={finance.averageIntervalDays === null ? "-" : finance.averageIntervalDays + " dias"} />
-            <MetricCard label="Dias sem aparecer" value={finance.daysSinceLastVisit === null ? "-" : finance.daysSinceLastVisit + " dias"} />
+            <FinancialListRow
+              label="Intervalo medio entre sessoes"
+              value={finance.averageIntervalDays === null ? "-" : finance.averageIntervalDays + " dias"}
+            />
+            <FinancialListRow
+              label="Dias sem aparecer"
+              value={finance.daysSinceLastVisit === null ? "-" : finance.daysSinceLastVisit + " dias"}
+            />
           </div>
         </SectionCard>
 
         <SectionCard
-          title="ProntuÃ¡rio"
+          title="Prontuario"
           icon={<FileText className="h-4 w-4" />}
           action={
             <Link href={prontuarioHref} className="inline-flex items-center gap-1 text-xs font-extrabold text-studio-green hover:underline">
@@ -714,16 +889,16 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         >
           <div className="space-y-3 px-4 py-4">
             <p className="text-sm text-studio-text">
-              {prontuarioEntries.length} registro(s) de sessÃ£o disponÃ­veis, incluindo anamnese base e evoluÃ§Ãµes jÃ¡ feitas nos atendimentos.
+              {prontuarioEntries.length} registro(s) de sessao disponiveis, incluindo anamnese base e evolucoes ja feitas nos atendimentos.
             </p>
             <Link href={prontuarioHref} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-studio-green px-4 py-3 text-sm font-extrabold text-white shadow-soft transition hover:bg-studio-green-dark">
-              Abrir prontuÃ¡rio completo
+              Abrir prontuario completo
               <FileText className="h-4 w-4" />
             </Link>
           </div>
         </SectionCard>
 
-        <SectionCard title="HistÃ³rico recente" icon={<CalendarPlus className="h-4 w-4" />}>
+        <SectionCard title="Historico recente" icon={<CalendarPlus className="h-4 w-4" />}>
           <div className="space-y-3 px-4 py-4">
             {recentHistory.length > 0 ? (
               recentHistory.map((appointment) => (
@@ -732,11 +907,11 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                     <div>
                       <p className="text-sm font-extrabold text-studio-text">{appointment.service_name}</p>
                       <p className="text-xs text-muted">
-                        {formatShortDate(appointment.start_time)} â€¢ {appointment.is_home_visit ? "DomicÃ­lio" : "EstÃºdio"}
+                        {formatShortDate(appointment.start_time)} - {appointment.is_home_visit ? "Domicilio" : "Estudio"}
                       </p>
                     </div>
                     <Chip tone={appointment.status === "completed" ? "success" : "dom"}>
-                      {appointment.status === "completed" ? "ConcluÃ­do" : appointment.status || "Agendado"}
+                      {appointment.status === "completed" ? "Concluido" : appointment.status || "Agendado"}
                     </Chip>
                   </div>
                 </div>
@@ -747,12 +922,12 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
           </div>
         </SectionCard>
 
-        <SectionCard title="EvoluÃ§Ãµes recentes" icon={<Sparkles className="h-4 w-4" />}>
+        <SectionCard title="Evolucoes recentes" icon={<Sparkles className="h-4 w-4" />}>
           <div className="space-y-3 px-4 py-4">
             {prontuarioEntries.length > 0 ? (
               prontuarioEntries.slice(0, 4).map((entry) => <HistoryItem key={entry.appointmentId} entry={entry} />)
             ) : (
-              <p className="text-sm text-muted">Nenhuma evoluÃ§Ã£o registrada ainda.</p>
+              <p className="text-sm text-muted">Nenhuma evolucao registrada ainda.</p>
             )}
           </div>
         </SectionCard>
