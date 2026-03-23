@@ -10,6 +10,7 @@ import {
   mapMercadoPagoUserMessage,
   mapProviderStatusToInternal,
   parseApiPayload,
+  parseIsoDate,
   parseNumericAmount,
   resolvePayerEmail,
   splitName,
@@ -333,8 +334,14 @@ export async function createPixOrderForAppointment({
     },
   });
 
+  const createdAtTime = Date.parse(orderData.createdAt);
+  const maxExpiresAt = new Date((Number.isFinite(createdAtTime) ? createdAtTime : Date.now()) + defaultPixTtlMs)
+    .toISOString();
+  const providerExpiresAt = parseIsoDate(orderData.expiresAt ?? null);
   const expiresAt =
-    orderData.expiresAt ?? new Date(new Date(orderData.createdAt).getTime() + defaultPixTtlMs).toISOString();
+    providerExpiresAt && Date.parse(providerExpiresAt) < Date.parse(maxExpiresAt)
+      ? providerExpiresAt
+      : maxExpiresAt;
 
   return ok({
     id: orderData.paymentId,

@@ -391,7 +391,9 @@ export async function createAppointmentImpl(
     }
   }
 
-  revalidatePath(`/?view=day&date=${parsed.data.date}`);
+  const dayViewPath = `/?view=day&date=${parsed.data.date}`;
+  revalidatePath("/");
+  revalidatePath(dayViewPath);
   if (responseMode === "json" && appointmentId) {
     return {
       appointmentId,
@@ -399,7 +401,7 @@ export async function createAppointmentImpl(
       startTimeIso: startDateTime.toISOString(),
     };
   }
-  redirect(`/?view=day&date=${parsed.data.date}&created=1`);
+  redirect(`${dayViewPath}&created=1`);
 }
 
 

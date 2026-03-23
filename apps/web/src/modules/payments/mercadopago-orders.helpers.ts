@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { normalizePhoneDigits } from "../../shared/phone";
 
 export const minimumTransactionAmount = 1;
-export const defaultPixTtlMs = 24 * 60 * 60 * 1000;
+export const defaultPixTtlMs = 15 * 60 * 1000;
 
 export function normalizeMercadoPagoToken(value: string | undefined | null) {
   if (!value) return "";
