@@ -119,7 +119,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 }
 
 function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={cn("min-h-[108px] w-full rounded-2xl border border-[#E7EAE6] bg-white px-4 py-3 text-[14px] text-[#0B1C13] outline-none transition focus:border-[#0B1C13]", props.className)} />;
+  return <textarea {...props} className={cn("min-h-27 w-full rounded-2xl border border-[#E7EAE6] bg-white px-4 py-3 text-[14px] text-[#0B1C13] outline-none transition focus:border-[#0B1C13]", props.className)} />;
 }
 
 function ToggleChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -140,7 +140,9 @@ export default function AnamneseInicialDemoPage() {
     if (saved) {
       try {
         setForm({ ...INITIAL_STATE, ...JSON.parse(saved) });
-      } catch {}
+      } catch {
+        // Ignore invalid localStorage payload for this demo page.
+      }
     }
   }, []);
 
@@ -149,7 +151,7 @@ export default function AnamneseInicialDemoPage() {
   }, [form]);
 
   const progress = Math.round(((stepIndex + 1) / STEPS.length) * 100);
-  const step = STEPS[stepIndex];
+  const step = STEPS[Math.min(stepIndex, STEPS.length - 1)]!;
   const nextDisabled = useMemo(() => {
     if (step.key === "identificacao") return !form.nome || !form.whatsapp || !form.nascimento;
     if (step.key === "objetivo") return !form.objetivoPrincipal || !form.queixaPrincipal;
@@ -172,14 +174,14 @@ export default function AnamneseInicialDemoPage() {
 
   return (
     <div className="min-h-screen bg-[#F3F1EA] px-4 py-8 text-[#0B1C13]">
-      <div className="mx-auto max-w-[760px]">
-        <div className="overflow-hidden rounded-[32px] border border-[#E9ECE7] bg-[#FCFAF6] shadow-[0_24px_60px_-32px_rgba(11,28,19,.28)]">
+      <div className="mx-auto max-w-190">
+        <div className="overflow-hidden rounded-4xl border border-[#E9ECE7] bg-[#FCFAF6] shadow-[0_24px_60px_-32px_rgba(11,28,19,.28)]">
           <div className="border-b border-[#ECEEEA] px-5 py-5 sm:px-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8A928D]">Estúdio Corpo & Alma Humanizado</div>
                 <h1 className="mt-2 font-serif text-[34px] leading-none text-[#0B1C13]">Ficha inicial da cliente</h1>
-                <p className="mt-3 max-w-[520px] text-[13px] leading-6 text-[#69716D]">Pensamos essa anamnese para ser completa sem ficar cansativa. Leva poucos minutos e ajuda a Jana a preparar um atendimento muito mais seguro e personalizado.</p>
+                <p className="mt-3 max-w-130 text-[13px] leading-6 text-[#69716D]">Pensamos essa anamnese para ser completa sem ficar cansativa. Leva poucos minutos e ajuda a Jana a preparar um atendimento muito mais seguro e personalizado.</p>
               </div>
               <div className="hidden rounded-[20px] border border-[#ECEEEA] bg-white px-4 py-3 text-right sm:block">
                 <div className="text-[10px] uppercase tracking-[0.12em] text-[#8A928D]">Progresso</div>
@@ -280,11 +282,11 @@ export default function AnamneseInicialDemoPage() {
                 <div>
                   <div className="text-[12px] font-semibold text-[#0B1C13]">Pressão preferida</div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {[
+                    {([
                       ["leve", "Leve"],
                       ["moderada", "Moderada"],
                       ["firme", "Firme"],
-                    ].map(([value, label]) => <ToggleChip key={value} active={form.pressaoPreferida === value} onClick={() => update("pressaoPreferida", value)}>{label}</ToggleChip>)}
+                    ] as const).map(([value, label]) => <ToggleChip key={value} active={form.pressaoPreferida === value} onClick={() => update("pressaoPreferida", value)}>{label}</ToggleChip>)}
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -300,7 +302,7 @@ export default function AnamneseInicialDemoPage() {
 
             {step.key === "termos" && (
               <div className="space-y-5">
-                <div className="rounded-[24px] border border-[#EAEDE8] bg-[#FFFEFC] p-4">
+                <div className="rounded-3xl border border-[#EAEDE8] bg-[#FFFEFC] p-4">
                   <div className="text-[13px] font-semibold text-[#0B1C13]">Resumo rápido da sua ficha</div>
                   <div className="mt-3 grid gap-2 text-[12px] text-[#5F6763] sm:grid-cols-2">
                     <div><span className="font-semibold text-[#0B1C13]">Nome:</span> {form.nome || "—"}</div>
