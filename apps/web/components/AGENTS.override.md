@@ -14,6 +14,8 @@ Escopo: `apps/web/components`.
    system).
 2. Nao duplicar logica de dominio em multiplos componentes.
 3. Evitar side effects inesperados em render.
+4. Componentes visuais de dashboard devem respeitar variantes V2 de
+   `docs/ui-system/v2-component-surface-standards.md`.
 
 ## Qualidade
 

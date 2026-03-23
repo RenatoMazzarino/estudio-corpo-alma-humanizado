@@ -14,6 +14,10 @@ Escopo: composicao de tela do atendimento no dashboard.
 2. Acao critica (finalizar, cobrar, estornar) deve ter estado de loading/erro
    claro.
 3. Realtime deve evitar refresh global quando patch local for suficiente.
+4. Mudanca visual deve respeitar contrato V2 em
+   `docs/ui-system/v2-component-surface-standards.md`.
+5. Checkout de cobranca no atendimento deve reutilizar o mesmo contrato de
+   componente/base visual do checkout de `novo` (sem duplicar variante local).
 
 ## Checklist minimo de validacao
 

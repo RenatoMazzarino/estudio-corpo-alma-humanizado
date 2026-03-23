@@ -2,6 +2,16 @@
 
 Status: active Owner: engenharia de plataforma
 
+## 2026-03-23
+
+1. Atualizados overrides de `docs/*` para exigir sincronizacao entre plano
+   principal, anexo tecnico e matriz canonica quando houver mudanca de baseline
+   da migracao mobile.
+2. Atualizados overrides de dashboard/componentes para reforcar contrato visual
+   V2 e uso de `FooterRail`/componentes base.
+3. Atualizada governanca para explicitar sincronizacao obrigatoria com
+   `docs/ui-system/*` e `docs/plans/*` em mudancas de alto impacto.
+
 ## 2026-03-22
 
 1. Adicionado contrato visual V2 no `AGENTS.md` raiz para o escopo do

@@ -1,31 +1,34 @@
-# Paleta de cores
+# Paleta de Cores (V2)
 
-Fonte: Auditoria Visual PDF.
+Fonte canonica: `apps/web/app/globals.css`.
 
-Marca:
+## Marca
 
-- Verde Estúdio: `#5D6E56`
-- Verde Escuro: `#495744`
-- Verde Claro: `#F3F6F4`
-- Acento: `#D4A373`
-- Domicílio (oficial): `#C0A4B0`
-- Domicílio (texto/contraste): `#8F7483`
+1. `--color-studio-green: #5D6E56` (primaria)
+2. `--color-studio-green-dark: #495744` (contraste da primaria)
+3. `--color-studio-accent: #D4A373` (acento)
+4. `--color-studio-pink: #C0A4B0` (secundaria/domicilio)
+5. `--color-dom: #C0A4B0`
+6. `--color-dom-strong: #8F7483`
 
-Neutros:
+## Neutros e texto
 
-- Paper: `#FAF9F6`
-- Texto Principal: `#2C3333`
-- Texto Muted: `#868E96`
-- Linha: `rgba(44,51,51,0.06)`
+1. `--color-studio-bg: #F7F2EA`
+2. `--color-paper: var(--surface-card)`
+3. `--color-studio-text: #2C3333`
+4. `--color-text-muted: #868E96`
+5. `--color-line: rgba(44, 51, 51, 0.06)`
 
-Estados:
+## Estados
 
-- OK: `#16A34A`
-- Warn: `#F59E0B`
-- Danger: `#DC2626`
-- Domicílio: `#C0A4B0`
+1. `--color-ok: #16A34A`
+2. `--color-warn: #F59E0B`
+3. `--color-danger: #DC2626`
 
-Regra:
+## Regras de uso
 
-- Domicílio sempre roxo (`dom`). Studio sempre verde.
-- Pills: fundo claro + texto forte da mesma cor.
+1. Studio: verde primario.
+2. Domicilio: cor secundaria (`--color-dom`).
+3. Acao positiva: verde; destrutiva: danger.
+4. Header de modal/tela: `wl-sheet-header-surface`.
+5. Header de card: `wl-surface-card-header`.

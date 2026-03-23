@@ -16,7 +16,7 @@ Escopo: telas autenticadas do estudio.
 
 1. Preservar guards de auth do dashboard.
 2. Evitar regressao de UX em fluxo de alta frequencia (agenda/atendimento).
-3. Manter consistencia visual com `AppShell` e `ModulePage`.
+3. Manter consistencia visual com shell V2 (`header + content + footer rail`).
 4. Para mudanca visual V2, seguir obrigatoriamente
    `docs/ui-system/v2-component-surface-standards.md`.
 5. Nao criar variacao local de header/card/modal sem antes tentar encaixar em:
@@ -24,6 +24,8 @@ Escopo: telas autenticadas do estudio.
    - Header de modal
    - Header de card 1 ou 2
    - Header de accordion 1 ou 2
+6. Rodapes de modulo/modal devem usar contrato de `FooterRail` antes de criar
+   variante local.
 
 ## Validacao recomendada
 

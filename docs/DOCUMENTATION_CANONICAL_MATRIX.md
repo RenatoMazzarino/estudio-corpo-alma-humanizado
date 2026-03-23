@@ -1,6 +1,6 @@
-﻿# Matriz de Documentacao Canonica (v2)
+# Matriz de Documentacao Canonica (v2)
 
-Data de referencia: 2026-03-10  
+Data de referencia: 2026-03-23  
 Escopo: docs ativas, docs legadas, `README.md`, `MANUAL_RAPIDO.md` e
 `apps/web/README.md`.
 
@@ -34,23 +34,20 @@ Classificar o que e:
 - Tema: setup geral e visao macro.
 - Fonte de verdade: parcial.
 - Status: atual.
-- Acao: manter como entrypoint do monorepo.
 
 ### `MANUAL_RAPIDO.md`
 
 - Categoria: canonico.
-- Tema: operacao local, comandos e setup Windows.
+- Tema: operacao local, comandos e setup.
 - Fonte de verdade: parcial.
 - Status: atual.
-- Acao: atualizar sempre que stack e comandos mudarem.
 
 ### `apps/web/README.md`
 
 - Categoria: ativo.
-- Tema: escopo do app web, auth e scripts.
+- Tema: escopo do app web e scripts.
 - Fonte de verdade: parcial.
 - Status: atual.
-- Acao: manter enxuto e alinhado ao app.
 
 ## 2) Documentacao ativa (operacao e integracoes)
 
@@ -64,7 +61,7 @@ Classificar o que e:
 
 - `docs/integrations/INTEGRATIONS_GUIA_OPERACIONAL.md`: canonico operacional.
 - `docs/integrations/INTEGRATIONS_TECNICO.md`: canonico tecnico.
-- `docs/integrations/WEBHOOK_OPERACIONAL.md`: canonico para runbook webhook MP.
+- `docs/integrations/WEBHOOK_OPERACIONAL.md`: canonico para webhook MP.
 
 ### Engenharia e governanca
 
@@ -78,71 +75,45 @@ Classificar o que e:
 
 ### Runbooks ativos
 
-- `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md`: canonico.
-- `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`: canonico.
-- `docs/runbooks/WORKSPACE_MULTI_REPO_ANDROID_AWS_DB_2026-03-20.md`: canonico.
 - `docs/runbooks/TESTES_VALIDACAO_LOCAL_E_CI.md`: canonico.
-- `docs/runbooks/WL5_WL10_ROLLOUT_REMOTE_MAIN_2026-03-19.md`: canonico.
-- `docs/runbooks/WHITE_LABEL_TENANT_ONBOARDING_BACKOFFICE_2026-03-19.md`:
-  canonico.
+- `docs/runbooks/WORKSPACE_MULTI_REPO_ANDROID_AWS_DB_2026-03-20.md`: canonico.
+- `docs/runbooks/VERCEL_VSCODE_SEM_CONFLITO.md`: canonico.
+- `docs/runbooks/WHATSAPP_PROFILE_FIRST_ENV_STRATEGY.md`: canonico.
 
-### Marca e UI system
+### UI system e contrato visual
 
-- `docs/branding/BRAND_TOKENS.md`: canonico para identidade visual.
-- `docs/ui-system/*`: referencia ativa para padrao de UI.
-- `docs/ui-system/v2-component-surface-standards.md`: canonico para padrao
-  visual V2 de headers, cards, sheets e accordions.
+- `docs/ui-system/v2-component-surface-standards.md`: canonico para V2 visual.
+- `docs/ui-system/*`: ativo; deve refletir tokens/componentes reais do codigo.
 
-## 3) Relatorios e planos ativos/parciais
+## 3) Planos e relatorios ativos
 
-### Ativos
+### Planos
 
-- `docs/plans/PLANO_ENTERPRISE_REALTIME_EDGE_PUSH_LOADING_2026-03-10.md`
 - `docs/plans/PLANO_REESCRITA_REPO_ANDROID_NATIVO_2026-03-20.md`
+  - Status: canonico.
+  - Observacao: baseline atualizado em 2026-03-23.
 - `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`
-- `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md`
-- `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`
+  - Status: canonico.
+  - Observacao: baseline atualizado em 2026-03-23.
+
+### Relatorios de referencia ativa
+
+- `docs/reports/AUDITORIA_REESCRITA_MIGRACAO_MOBILE_BASELINE_2026-03-23.md`
 - `docs/reports/RELATORIO_AUDITORIA_COMPONENTES_BOTOES_V2_2026-03-22.md`
+- `docs/reports/RELATORIO_PADRONIZACAO_COMPONENTES_REESCRITA_V2_2026-03-20.md`
 
 Uso: apoiar estrategia, rollout e validacao.
 
-### Historicos
+## 4) Historico/legado
 
-- `docs/plans/PLANO_IMPLANTACAO_ATENDIMENTO_V1_UNIFICADO.md`
-- `docs/reports/ERROR_CATALOG_AGENDA_PAYMENTS_2026-02-13.md`
-- Demais relatorios datados de execucao ja concluida.
+- `docs/legacy/**`
+- planos/relatorios de ciclos encerrados sem impacto em runtime atual
 
-Uso: referencia e rastreabilidade, nao decisao de runtime.
-
-## 4) Legado (`docs/legacy/agenda-v1-ui`)
-
-### Status geral
-
-- Categoria: historico.
-- Fonte de verdade: nao.
-- Uso permitido: contexto, auditoria e trilha de evolucao.
-
-### Indice canonico do legado
-
-- `docs/legacy/agenda-v1-ui/LEGACY_REFERENCE_INDEX.md`
-
-### Subgrupos legados
-
-- `diagnostics/*`: auditorias, inventarios e planos antigos.
-- `ui-decisions/*`: planos/relatorios de execucao visual antiga.
-- `reports/*`: auditorias e rascunhos de PR da fase anterior.
-- `MASTER_PLAN_ENTERPRISE.md` e `POST_EXECUTION_REPORT*.md`: historico.
+Categoria: historico. Nao usar como fonte primaria de decisao.
 
 ## 5) Regra pratica de governanca
 
 1. Em conflito entre doc e codigo, codigo vence.
 2. Em conflito entre doc e ambiente real, ambiente real vence.
-3. Documento canonico deve ser atualizado no mesmo PR da mudanca tecnica.
-4. Documento historico nao deve receber regra nova de operacao.
-
-## 6) Acoes recomendadas continuas
-
-1. Sincronizar `INTEGRATIONS_*` e `API_GUIDE` quando mudar webhook/API.
-2. Sincronizar `MANUAL_RAPIDO.md` quando mudar setup local.
-3. Rodar `pnpm agents:check` ao alterar AGENTS/overrides.
-4. Manter `docs/legacy` apenas como historico.
+3. Documento canonico deve ser atualizado no mesmo bloco tecnico da mudanca.
+4. Documento historico nao recebe regra nova de operacao.

@@ -1,19 +1,33 @@
-# Tipografia
+# Tipografia (V2)
 
-Fonte oficial:
+Fonte canonica: `apps/web/app/globals.css`.
 
-- Títulos: Playfair Display (`font-serif`)
-- UI/Texto: Lato (`font-sans`)
+## Familias
 
-Escala recomendada:
+1. Sans/UI: `--font-sans` (runtime white-label via tenant)
+2. Serif/titulos: `--font-serif` (runtime white-label via tenant)
+3. Assinatura especial: `--font-signature`
 
-- H1 (título de tela): `text-2xl`, `leading-tight`, `font-serif`
-- Título de seção/label: `text-[11px]` ou `text-xs`, `uppercase`,
-  `tracking-widest`, `font-extrabold`
-- Corpo: `text-sm`, `font-normal`
-- Subtexto/ajuda: `text-xs`, `text-muted`
+## Classes principais
 
-Regras:
+1. `wl-typo-h1`
+2. `wl-typo-h2`
+3. `wl-typo-day-number`
+4. `wl-typo-card-name-xs|sm|md|lg`
+5. `wl-typo-card-service`
+6. `wl-typo-card-time`
+7. `wl-typo-card-price`
+8. `wl-typo-card-status`
+9. `wl-typo-title`
+10. `wl-typo-body`
+11. `wl-typo-body-sm`
+12. `wl-typo-body-strong`
+13. `wl-typo-label`
+14. `wl-typo-chip`
+15. `wl-typo-button`
 
-- Labels sempre em caixa-alta e tracking consistente.
-- Evitar tamanhos fora da escala.
+## Regras
+
+1. Titulos estruturais de cards/etapas usam serif.
+2. Conteudo operacional e labels usam sans.
+3. Nao introduzir tamanho fora dos tokens `--type-size-*` sem justificativa.

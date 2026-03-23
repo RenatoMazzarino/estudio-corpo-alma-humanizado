@@ -1,7 +1,7 @@
 # Anexo de Padronizacao, Higiene, Erros e Loading da Reescrita
 
 Status: ativo  
-Data base: 2026-03-20  
+Data base: 2026-03-23  
 Escopo: apoio obrigatorio ao plano principal de reescrita Android nativa
 
 ## 1) Objetivo deste anexo
@@ -9,6 +9,22 @@ Escopo: apoio obrigatorio ao plano principal de reescrita Android nativa
 1. garantir que a reescrita entregue paridade funcional sem copiar problemas antigos.
 2. transformar o novo repo em base mais limpa, previsivel e reutilizavel.
 3. servir como checklist tecnico de qualidade para cada fase.
+
+## 1.1) Atualizacao de baseline (auditoria 2026-03-23)
+
+Inventario reconfirmado no repo web:
+
+1. `apps/web/app/(dashboard)`: 13 paginas reais.
+2. `apps/web/app/(public)`: 4 paginas reais.
+3. `apps/web/app/api/**/route.ts`: 22 endpoints.
+4. `apps/web/app/**/loading.tsx`: 11 pontos oficiais de loading.
+5. `apps/web/src/modules`: 14 modulos ativos.
+
+Situacao macro de maturidade V2 no web:
+
+1. alto: `agenda`, `novo`.
+2. medio-alto: `atendimento`.
+3. medio/heterogeneo: `clientes`, `catalogo`, `configuracoes`.
 
 ## 2) Inventario real da origem web (fonte de convergencia)
 
@@ -73,16 +89,24 @@ Categorias obrigatorias para convergencia:
 
 ## 2.5) Hotspots de legado/fallback para tratamento na migracao
 
-Arquivos com sinal de legado/fallback que exigem revisao de convergencia:
+Arquivos/padroes com sinal de legado/fallback que exigem revisao de convergencia:
 
 1. `apps/web/src/modules/clients/profile-data.ts`
    (`legacyNotes`, `legacy-phone`, `legacy-email`)
-2. `apps/web/app/(dashboard)/atendimento/[id]/actions/checklist-evolution.ts` (`legacyInsert`)
+2. `apps/web/app/(dashboard)/atendimento/[id]/actions/checklist-evolution.ts`
+   (`legacyInsert`)
 3. `apps/web/src/modules/notifications/whatsapp-automation-appointments.ts`
    (fallbacks e compatibilidade legada)
-4. `apps/web/src/modules/tenancy/runtime.ts` (fallback canonico de runtime)
+4. `apps/web/src/modules/tenancy/runtime.ts`
+   (fallback canonico de runtime, manter governado)
 5. `apps/web/app/api/mercadopago/webhook/mercadopago-webhook.helpers.ts`
    (fallback numerico/mensagem)
+6. `apps/web/app/(dashboard)/catalogo/catalogo-view.tsx`
+   (`window.confirm` em fluxo critico; migrar para dialog canonico)
+7. `apps/web/app/(dashboard)/clientes/**`
+   (uso recorrente de `router.refresh()` em cenarios que aceitam patch local)
+8. `apps/web/app/(dashboard)/configuracoes/**`
+   (acoplamento de muitos contextos/configs numa tela longa unica)
 
 Regra:
 
@@ -96,14 +120,16 @@ Dashboard (`apps/web/app/(dashboard)`):
 1. `/(dashboard)`
 2. `/(dashboard)/clientes`
 3. `/(dashboard)/novo`
-4. `/(dashboard)/atendimento`
+4. `/(dashboard)/atendimento/[id]`
 5. `/(dashboard)/caixa`
 6. `/(dashboard)/catalogo`
 7. `/(dashboard)/mensagens`
 8. `/(dashboard)/configuracoes`
-9. `/(dashboard)/bloqueios`
-10. `/(dashboard)/admin`
-11. `/(dashboard)/menu`
+9. `/(dashboard)/menu`
+10. `/(dashboard)/clientes/novo`
+11. `/(dashboard)/clientes/[id]`
+12. `/(dashboard)/clientes/[id]/editar`
+13. `/(dashboard)/clientes/[id]/prontuario`
 
 Publico:
 
@@ -114,6 +140,26 @@ Publico:
 5. `/comprovante/[id]`
 6. `/comprovante/pagamento/[paymentId]`
 7. paginas legais
+
+## 2.7) Classificacao de maturidade V2 por modulo (web baseline)
+
+1. `agenda`: V2 consolidada para cabecalho/cards/modais/rodape e loading de
+   transicao.
+2. `novo`: V2 consolidada para etapas, cards e fluxo de revisao/cobranca.
+3. `atendimento`: V2 parcial-alta; falta consolidar todo o checkout no mesmo
+   componente base de cobranca.
+4. `clientes`: funcional, mas com heterogeneidade visual/composicional.
+5. `catalogo`: funcional, mas com interacoes legacy e padrao visual antigo em
+   pontos do fluxo.
+6. `configuracoes`: funcional, mas com excesso de acoplamento e baixa
+   modularidade de UI.
+
+Regra de prioridade para migracao:
+
+1. fechar baseline web V2 de `atendimento`.
+2. reescrever `clientes`.
+3. reescrever `catalogo`.
+4. refatorar `configuracoes`.
 
 ## 3) Arquitetura de reutilizacao obrigatoria no novo repo
 

@@ -12,12 +12,16 @@ Escopo: relatorios tecnicos e operacionais.
 1. Relatorio deve separar fato, inferencia e recomendacao.
 2. Toda conclusao critica deve citar evidencia (log, teste, query, deploy).
 3. Relatorio de auditoria deve indicar pendencias abertas e impacto.
+4. Relatorio de baseline para migracao mobile deve incluir classificacao por
+   maturidade de modulo e riscos residuais.
 
 ## Checklist minimo de validacao
 
 1. Evidencias referenciadas.
 2. Data/hora e ambiente dos achados.
 3. Proxima acao recomendada com prioridade.
+4. Quando houver inventario numerico (rotas/endpoints/loading), registrar a
+   contagem usada na auditoria.
 
 ## Regra de maturidade (V1 final de producao)
 

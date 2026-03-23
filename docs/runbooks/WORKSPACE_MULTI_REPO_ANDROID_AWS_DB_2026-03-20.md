@@ -1,7 +1,7 @@
 # Workspace Multi-Repo + AWS DB (Android/Web)
 
 Status: active  
-Ultima revisao: 2026-03-20
+Ultima revisao: 2026-03-23
 
 ## Objetivo
 
@@ -44,6 +44,15 @@ Resultado pratico:
 1. editou em um repo, reflete no outro automaticamente;
 2. apos `checkout/merge/rebase`, o hook local reaplica o hardlink para manter
    o espelhamento.
+
+Atualizacao operacional (2026-03-23):
+
+1. baseline da reescrita foi auditado de novo no repo web.
+2. sempre que atualizar o plano principal/anexo, validar no repo irmao:
+   - conteudo refletido do hardlink
+   - data base igual nos dois arquivos
+   - status dos modulos (agenda/novo/atendimento/clientes/catalogo/configuracoes)
+     consistente entre repos.
 
 Script usado neste repo:
 

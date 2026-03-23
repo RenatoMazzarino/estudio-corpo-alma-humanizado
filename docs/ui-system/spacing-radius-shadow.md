@@ -1,19 +1,25 @@
-# Espaçamento, raio e sombra
+# Espacamento, Raio e Sombra (V2)
 
-Espaçamento padrão:
+Fonte canonica: `apps/web/app/globals.css`.
 
-- Header: `px-6` + `safe-top` + `pb-4`
-- Cards: `p-4`
-- Seções: `mb-6`
-- Form: `space-y-4`
+## Espacamentos base
 
-Raios:
+1. Header de tela: `safe-top` + `px-6`.
+2. Conteudo de modulo: padding lateral consistente por tela (`px-4`/`px-5`).
+3. Secoes internas: usar separacao por bloco em vez de nesting excessivo.
 
-- Superfícies principais: `rounded-3xl`
-- Inputs/cards menores: `rounded-2xl`
-- Chips: `rounded-full`
+## Raios
 
-Sombras:
+1. Card principal: `--radius-card` (`wl-radius-card`).
+2. Controle/botao/input: `--radius-control` (`wl-radius-control`).
+3. Sheet bottom: `--radius-sheet` (`wl-radius-sheet`).
 
-- `shadow-soft` para cards/headers
-- `shadow-float` para FAB/overlays
+## Sombras
+
+1. `--shadow-soft` para cards/superficies.
+2. `--shadow-float` para overlays/fabs.
+
+## Regra V2
+
+1. Nao usar raio custom local fora dos tokens.
+2. Nao misturar varios niveis de card aninhado sem necessidade funcional.

@@ -1,7 +1,7 @@
 # Plano de Reescrita do Repo para Android Nativo
 
-Status: pronto para execucao continua
-Data base: 2026-03-20
+Status: ativo (baseline auditado em 2026-03-23)
+Data base: 2026-03-23
 Escopo: reescrever o produto web atual para Android nativo
 Backend alvo: AWS + Aurora PostgreSQL
 Perfil: producao enterprise (sem MVP)
@@ -23,6 +23,68 @@ O que esta fechado:
    - banco: Aurora PostgreSQL
 4. white-label e obrigatorio desde a primeira entrega funcional.
 5. criterio final e paridade de resultado de negocio com o web atual.
+
+## 0.1) Delta de baseline confirmado em 2026-03-23
+
+Auditoria integral realizada no repo web para reduzir risco de drift na
+reescrita mobile/backend.
+
+Inventario validado:
+
+1. rotas dashboard (`apps/web/app/(dashboard)`): 13 paginas (`page.tsx`).
+2. rotas publicas (`apps/web/app/(public)`): 4 paginas (`page.tsx`).
+3. endpoints internos/webhooks (`apps/web/app/api/**/route.ts`): 22.
+4. loading pages oficiais (`apps/web/app/**/loading.tsx`): 11.
+5. modulos de dominio ativos (`apps/web/src/modules`): 14.
+
+Modulo com maior maturidade de reescrita visual/estrutural:
+
+1. agenda
+2. novo agendamento
+3. atendimento
+
+Modulo ainda com concentracao de legado visual/estrutural:
+
+1. clientes
+2. catalogo
+3. configuracoes
+
+## 0.2) Matriz de prioridade real para a fase de migracao
+
+Classificacao atual (fonte: codigo em `main` na data de auditoria):
+
+1. `agenda`: alto nivel de V2 no web, pronto para virar baseline de paridade.
+2. `novo`: alto nivel de V2 no web, com fluxo financeiro/cobranca consolidado.
+3. `atendimento`: V2 parcial-alta, exige fechamento do checkout unificado e
+   hardening final.
+4. `clientes`: fluxo funcional, padrao visual/estrutura ainda heterogeneos.
+5. `catalogo`: fluxo funcional, ainda com pontos de UX legada e confirmacoes
+   inline.
+6. `configuracoes`: funcional, mas com tela extensa e acoplamento alto.
+
+## 0.3) Escopo restante obrigatorio para reescrita sem regressao
+
+A partir desta auditoria, a trilha de migracao fica granular em 5 frentes:
+
+1. fechar `atendimento` V2 no web como baseline definitivo (checkout, evolucao,
+   agenda da cliente e modais auxiliares) e congelar contrato.
+2. reescrever `clientes` no web V2 para eliminar legado visual/composicional e
+   travar contrato funcional para mobile.
+3. reescrever `catalogo` no web V2 e remover variacoes locais fora do contrato.
+4. refatorar `configuracoes` em modulos menores antes da migracao 1:1 para
+   Android.
+5. atualizar docs canonicos de UI + governanca a cada bloco concluido para
+   evitar divergencia entre codigo e plano.
+
+## 0.4) Regra de congelamento de baseline por fase
+
+Para cada frente acima:
+
+1. so migrar para Android/backend apos validacao de paridade no web V2.
+2. cada fase fecha com checklist de aceite (funcional, visual, contratos,
+   loading, erros).
+3. proibido iniciar migracao de modulo com contrato visual/fluxo ainda em
+   mudanca semanal.
 
 ## 1) O que foi corrigido nesta versao do plano
 
@@ -238,28 +300,39 @@ Regra:
 
 ### 4.1 Dashboard interno
 
+Baseline confirmado no web (`13` paginas reais em `main`):
+
 1. `/(dashboard)` -> app `features/operations`; backend `routes/dashboard.ts`;
-   status `em implementacao`.
+   status `em mapeamento`.
+1. `/(dashboard)/novo` -> app `features/appointments`; backend
+   `routes/appointments.ts`; status `em validacao` (V2 web alta maturidade).
+1. `/(dashboard)/atendimento/[id]` -> app `features/attendance`; backend
+   `routes/attendance.ts`; status `em implementacao` (V2 web parcial-alta).
 1. `/(dashboard)/clientes` -> app `features/clients`; backend
    `routes/clients.ts`; status `em implementacao`.
-1. `/(dashboard)/novo` -> app `features/appointments`; backend
-   `routes/appointments.ts`; status `em mapeamento`.
-1. `/(dashboard)/atendimento` -> app `features/attendance`; backend
-   `routes/attendance.ts`; status `em mapeamento`.
-1. `/(dashboard)/mensagens` -> app `features/messages`; backend
-   `routes/messages.ts`; status `em mapeamento`.
-1. `/(dashboard)/caixa` -> app `features/finance`; backend
-   `routes/finance.ts`; status `em mapeamento`.
+1. `/(dashboard)/clientes/novo` -> app `features/clients`; backend
+   `routes/clients.ts`; status `em implementacao`.
+1. `/(dashboard)/clientes/[id]` -> app `features/clients`; backend
+   `routes/clients.ts`; status `em implementacao`.
+1. `/(dashboard)/clientes/[id]/editar` -> app `features/clients`; backend
+   `routes/clients.ts`; status `em implementacao`.
+1. `/(dashboard)/clientes/[id]/prontuario` -> app `features/clients`; backend
+   `routes/clients.ts`; status `em implementacao`.
 1. `/(dashboard)/catalogo` -> app `features/services`; backend
    `routes/services.ts`; status `em implementacao`.
 1. `/(dashboard)/configuracoes` -> app `features/settings`; backend
    `routes/settings.ts`; status `em implementacao`.
-1. `/(dashboard)/bloqueios` -> app `features/schedule_blocks`; backend
-   `routes/schedule-blocks.ts`; status `em implementacao`.
-1. `/(dashboard)/admin` -> app `features/admin`; backend `routes/admin.ts`;
-   status `em implementacao`.
+1. `/(dashboard)/mensagens` -> app `features/messages`; backend
+   `routes/messages.ts`; status `em mapeamento`.
+1. `/(dashboard)/caixa` -> app `features/finance`; backend
+   `routes/finance.ts`; status `em mapeamento`.
 1. `/(dashboard)/menu` -> app `features/menu`; backend `routes/menu.ts`;
-   status `em implementacao`.
+   status `em mapeamento`.
+
+Rotas removidas da matriz por nao existirem no baseline atual:
+
+1. `/(dashboard)/bloqueios`
+2. `/(dashboard)/admin`
 
 ### 4.2 Fluxos publicos obrigatorios
 

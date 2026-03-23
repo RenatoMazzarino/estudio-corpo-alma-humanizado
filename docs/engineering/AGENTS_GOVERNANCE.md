@@ -1,6 +1,6 @@
 # AGENTS Governance
 
-Status: active Owner: engenharia de plataforma Ultima revisao: 2026-03-10
+Status: active Owner: engenharia de plataforma Ultima revisao: 2026-03-23
 
 ## Objetivo
 
@@ -50,6 +50,16 @@ verdadeiras:
 2. Rodar `pnpm agents:check`.
 3. Conferir mapa de precedencia em `docs/engineering/AGENTS_PRECEDENCE_MAP.md`.
 4. Atualizar `docs/engineering/AGENTS_CHANGELOG.md` com resumo da mudanca.
+
+## Sincronizacao obrigatoria com docs de produto
+
+Quando a mudanca de agente impactar padrao visual V2 ou trilha de migracao
+mobile:
+
+1. atualizar docs afetadas em `docs/ui-system/*` e/ou `docs/plans/*`;
+2. atualizar `docs/README.md` e `docs/DOCUMENTATION_CANONICAL_MATRIX.md` quando
+   houver novo artefato ativo;
+3. evitar regra de agente que contradiga documento canonico ativo.
 
 ## Governanca de subagentes
 

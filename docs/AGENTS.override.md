@@ -1,6 +1,6 @@
 # AGENTS.override.md (docs)
 
-Escopo: `docs/*`. Owner: engenharia de plataforma Ultima revisao: 2026-03-10
+Escopo: `docs/*`. Owner: engenharia de plataforma Ultima revisao: 2026-03-23
 
 ## Objetivo
 
@@ -18,6 +18,13 @@ Escopo: `docs/*`. Owner: engenharia de plataforma Ultima revisao: 2026-03-10
 4. Nao incluir segredos em docs.
 5. Documento ativo deve declarar status no topo (`active`, `reference` ou
    `legacy`) quando fizer sentido.
+6. Mudanca estrutural de UI V2 em dashboard deve atualizar:
+   - `docs/ui-system/*` relevante
+   - `docs/ui-system/v2-component-surface-standards.md` quando houver nova variante
+7. Mudanca em baseline de migracao mobile deve atualizar, no mesmo bloco:
+   - `docs/plans/PLANO_REESCRITA_REPO_ANDROID_NATIVO_2026-03-20.md`
+   - `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`
+   - indice/matriz canonica (`docs/README.md`, `docs/DOCUMENTATION_CANONICAL_MATRIX.md`)
 
 ## Arquivos de alto impacto
 
@@ -37,6 +44,10 @@ Escopo: `docs/*`. Owner: engenharia de plataforma Ultima revisao: 2026-03-10
    - fases
    - criterio de validacao
    - criterio de go/no-go
+5. Auditoria de baseline deve registrar:
+   - contagem de rotas/endpoints/loading
+   - classificacao de maturidade por modulo
+   - riscos residuais e proxima acao priorizada
 
 ## Regra de maturidade (V1 final de producao)
 
