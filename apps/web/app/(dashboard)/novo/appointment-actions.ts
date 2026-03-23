@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServiceClient } from "../../../lib/supabase/service";
 import {
+  cancelAppointment as cancelAppointmentImpl,
   createAppointment as createAppointmentImpl,
   triggerCreatedNotificationsForAppointment,
   updateInternalAppointment as updateAppointmentImpl,
@@ -204,6 +205,78 @@ export async function createAppointmentForImmediateCharge(formData: FormData): P
   }
 }
 
+export async function createAppointmentForReview(formData: FormData): Promise<{
+  ok: boolean;
+  error?: string;
+  data?: {
+    appointmentId: string;
+    date: string;
+    startTimeIso: string;
+    attendance: Awaited<ReturnType<typeof getAttendance>>;
+  };
+}> {
+  const { tenantId } = await requireDashboardAccessForServerAction();
+
+  const payload = cloneFormData(formData);
+  payload.set("response_mode", "json");
+  payload.delete("defer_lifecycle_notifications");
+
+  try {
+    const result = await createAppointmentImpl(payload, tenantId);
+    if (!result || typeof result !== "object" || !("appointmentId" in result)) {
+      return { ok: false, error: "Nao foi possivel criar o agendamento." };
+    }
+
+    const attendance = await getAttendance(result.appointmentId);
+    if (!attendance) {
+      return { ok: false, error: "Agendamento criado, mas nao foi possivel carregar os detalhes." };
+    }
+
+    return {
+      ok: true,
+      data: {
+        appointmentId: result.appointmentId,
+        date: result.date,
+        startTimeIso: result.startTimeIso,
+        attendance,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Falha ao criar agendamento.",
+    };
+  }
+}
+
+export async function cancelImmediateChargeAppointment(input: { appointmentId: string }): Promise<{
+  ok: boolean;
+  error?: string;
+  data?: { appointmentId: string };
+}> {
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  const parsed = z.object({ appointmentId: z.string().uuid() }).safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Agendamento invalido." };
+  }
+
+  const result = await cancelAppointmentImpl(parsed.data.appointmentId, tenantId, { notifyClient: false });
+  if (!result.ok) {
+    const message =
+      typeof result.error?.message === "string" && result.error.message.trim().length > 0
+        ? result.error.message.trim()
+        : "Nao foi possivel cancelar o agendamento agora.";
+    return { ok: false, error: message };
+  }
+
+  return {
+    ok: true,
+    data: {
+      appointmentId: result.data.id,
+    },
+  };
+}
+
 export async function updateAppointment(formData: FormData): Promise<void> {
   const { tenantId } = await requireDashboardAccessForServerAction();
   return updateAppointmentImpl(formData, tenantId);
@@ -251,7 +324,7 @@ export async function recordBookingChargePayment(input: {
   amount: number;
 }) {
   await requireDashboardAccessForServerAction();
-  return recordPayment(input);
+  return recordPayment(input, { skipRevalidate: true });
 }
 
 export async function createBookingPixPayment(input: {
@@ -270,7 +343,7 @@ export async function createBookingPixPayment(input: {
     payerPhone: input.payerPhone ?? "",
     payerEmail: input.payerEmail ?? null,
     attempt: input.attempt ?? 0,
-  });
+  }, { skipRevalidate: true });
 }
 
 export async function pollBookingPixPaymentStatus(input: { appointmentId: string }) {
@@ -290,7 +363,7 @@ export async function createBookingPointPayment(input: {
     amount: input.amount,
     cardMode: input.cardMode,
     attempt: input.attempt ?? 0,
-  });
+  }, { skipRevalidate: true });
 }
 
 export async function pollBookingPointPaymentStatus(input: { appointmentId: string; orderId: string }) {
@@ -298,7 +371,7 @@ export async function pollBookingPointPaymentStatus(input: { appointmentId: stri
   return getAttendancePointPaymentStatus({
     appointmentId: input.appointmentId,
     orderId: input.orderId,
-  });
+  }, { skipRevalidate: true });
 }
 
 export async function finalizeCreatedAppointmentNotifications(input: {

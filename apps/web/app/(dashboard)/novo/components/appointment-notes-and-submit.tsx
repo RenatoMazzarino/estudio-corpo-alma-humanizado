@@ -1,6 +1,10 @@
 "use client";
 
 import { Check } from "lucide-react";
+import {
+  appointmentFormButtonPrimaryClass,
+  appointmentFormSectionHeaderPrimaryClass,
+} from "../appointment-form.styles";
 
 type AppointmentNotesAndSubmitProps = {
   showNotes: boolean;
@@ -33,17 +37,19 @@ export function AppointmentNotesAndSubmit({
     <>
       {showNotes ? (
         <section className={`${sectionCardClass} overflow-hidden`}>
-          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
-            <div className={sectionNumberClass}>5</div>
-            <h2 className={`${sectionHeaderTextClass} leading-none`}>Observacoes</h2>
+          <div className={appointmentFormSectionHeaderPrimaryClass}>
+            <div className="flex min-w-0 items-center gap-2">
+              <div className={sectionNumberClass}>5</div>
+              <h2 className={`${sectionHeaderTextClass} leading-none`}>Observacoes</h2>
+            </div>
           </div>
           <div className="space-y-3 px-4 py-4 wl-surface-card-body">
             <textarea
               name="internalNotes"
-              rows={2}
+              rows={5}
               value={internalNotes}
               onChange={(event) => onChangeInternalNotesAction(event.target.value)}
-              className={`${inputClass} resize-none`}
+              className={`${inputClass} min-h-36 resize-y`}
               placeholder="Observacao do agendamento (ex.: ajustes de atendimento). Para historico da cliente, use o modulo Prontuario."
             />
             <p className="text-[10px] text-muted ml-1">Use este campo apenas para observacoes deste agendamento.</p>
@@ -54,7 +60,7 @@ export function AppointmentNotesAndSubmit({
       {isEditing ? (
         <button
           type="submit"
-          className="w-full h-14 bg-studio-green text-white font-bold rounded-2xl shadow-lg shadow-green-900/10 text-sm uppercase tracking-wide hover:bg-studio-green-dark transition-all flex items-center justify-center gap-2 mb-4"
+          className={`${appointmentFormButtonPrimaryClass} mb-4 w-full gap-2 rounded-xl`}
         >
           <Check className="w-5 h-5" />
           Agendar
@@ -64,9 +70,9 @@ export function AppointmentNotesAndSubmit({
           type="button"
           onClick={onOpenConfirmationPromptAction}
           disabled={!canOpenConfirmation}
-          className={`w-full h-14 font-bold rounded-2xl text-sm uppercase tracking-wide transition-all flex items-center justify-center gap-2 mb-4 ${
+          className={`mb-4 w-full gap-2 rounded-xl ${
             canOpenConfirmation
-              ? "bg-studio-green text-white shadow-lg shadow-green-900/10 hover:bg-studio-green-dark"
+              ? appointmentFormButtonPrimaryClass
               : "bg-stone-200 text-stone-500 cursor-not-allowed"
           }`}
         >

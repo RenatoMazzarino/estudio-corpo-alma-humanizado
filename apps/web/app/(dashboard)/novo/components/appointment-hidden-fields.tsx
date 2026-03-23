@@ -6,6 +6,11 @@ type AppointmentHiddenFieldsProps = {
   isEditing: boolean;
   appointmentId?: string;
   returnTo?: string;
+  clientName: string;
+  clientPhone: string;
+  selectedServiceId: string;
+  selectedDate: string;
+  selectedTime: string;
   resolvedClientId: string | null;
   clientSelectionMode: "idle" | "existing" | "new";
   clientFirstName: string;
@@ -38,6 +43,11 @@ export function AppointmentHiddenFields({
   isEditing,
   appointmentId,
   returnTo,
+  clientName,
+  clientPhone,
+  selectedServiceId,
+  selectedDate,
+  selectedTime,
   resolvedClientId,
   clientSelectionMode,
   clientFirstName,
@@ -69,6 +79,11 @@ export function AppointmentHiddenFields({
     <>
       {isEditing && <input type="hidden" name="appointmentId" value={appointmentId ?? ""} />}
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
+      <input type="hidden" name="clientName" value={clientName} />
+      <input type="hidden" name="clientPhone" value={clientPhone} />
+      <input type="hidden" name="serviceId" value={selectedServiceId} />
+      <input type="hidden" name="date" value={selectedDate} />
+      <input type="hidden" name="time" value={selectedTime} />
       <input type="hidden" name="clientId" value={resolvedClientId ?? ""} />
       <input type="hidden" name="client_first_name" value={clientSelectionMode === "new" ? clientFirstName : ""} />
       <input type="hidden" name="client_last_name" value={clientSelectionMode === "new" ? clientLastName : ""} />

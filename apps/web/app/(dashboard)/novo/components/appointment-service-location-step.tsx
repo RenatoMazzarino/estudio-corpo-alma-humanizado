@@ -2,6 +2,10 @@
 
 import { useEffect, useState, type ChangeEventHandler, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import {
+  appointmentFormHeaderIconButtonClass,
+  appointmentFormSectionHeaderPrimaryClass,
+} from "../appointment-form.styles";
 
 type ServiceOption = {
   id: string;
@@ -87,7 +91,7 @@ export function AppointmentServiceLocationStep({
     <div className="space-y-4">
       <section className={`${sectionCardClass} overflow-hidden`}>
         <div
-          className={`flex h-11 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header ${
+          className={`${appointmentFormSectionHeaderPrimaryClass} ${
             selectedService ? "cursor-pointer" : ""
           }`}
           onClick={() => {
@@ -108,7 +112,7 @@ export function AppointmentServiceLocationStep({
                   event.stopPropagation();
                   onClearSelectedServiceAction();
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-studio-green transition hover:bg-paper"
+                className={appointmentFormHeaderIconButtonClass}
                 aria-label="Limpar servico"
                 title="Limpar servico"
               >
@@ -116,7 +120,7 @@ export function AppointmentServiceLocationStep({
               </button>
             ) : null}
             {selectedService ? (
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-studio-green">
+              <span className={appointmentFormHeaderIconButtonClass}>
                 {isServiceAccordionOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </span>
             ) : null}
@@ -162,16 +166,13 @@ export function AppointmentServiceLocationStep({
       </section>
 
       <section className={`${sectionCardClass} overflow-hidden`}>
-        <div className="flex h-11 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header !bg-dom/20">
+        <div className={`${appointmentFormSectionHeaderPrimaryClass} bg-dom!`}>
           <div className="flex min-w-0 items-center gap-2">
-            <h2 className={`${sectionHeaderTextClass} leading-none text-dom-strong`}>{localTitle}</h2>
+            <h2 className="wl-typo-card-name-md font-bold leading-none text-white!">{localTitle}</h2>
           </div>
 
           {selectedService && canHomeVisit ? (
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] font-semibold uppercase tracking-wide ${isHomeVisit ? "text-dom-strong" : "text-muted"}`}>
-                {isHomeVisit ? "Ligado" : "Desligado"}
-              </span>
               <button
                 type="button"
                 role="switch"
@@ -184,7 +185,7 @@ export function AppointmentServiceLocationStep({
                   }
                 }}
                 className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
-                  isHomeVisit ? "border-dom bg-dom" : "border-line bg-white"
+                  isHomeVisit ? "border-dom-strong bg-dom-strong" : "border-line bg-white"
                 }`}
               >
                 <span
@@ -195,9 +196,9 @@ export function AppointmentServiceLocationStep({
               </button>
             </div>
           ) : selectedService ? (
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Indisponivel neste servico</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-dom-strong">Indisponivel neste servico</span>
           ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Selecione servico</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-dom-strong">Selecione servico</span>
           )}
         </div>
 

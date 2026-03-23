@@ -8,6 +8,7 @@ import {
   pollBookingPointPaymentStatus,
 } from "../appointment-actions";
 import type {
+  BookingConfirmationStep,
   BookingPixPaymentData,
   BookingPointPaymentData,
   ChargeBookingState,
@@ -20,7 +21,7 @@ interface UseAppointmentChargePaymentFlowParams {
   chargeBookingState: ChargeBookingState | null;
   chargeNowMethodDraft: ChargeNowMethodDraft | null;
   chargeNowDraftAmount: number;
-  confirmationSheetStep: "review" | "creating_charge" | "charge_payment";
+  confirmationSheetStep: BookingConfirmationStep;
   chargePixPayment: BookingPixPaymentData | null;
   chargePointPayment: BookingPointPaymentData | null;
   chargePointAttempt: number;
@@ -332,6 +333,7 @@ export function useAppointmentChargePaymentFlow({
     if (confirmationSheetStep !== "charge_payment") return;
     if (chargeNowMethodDraft !== "pix_mp") return;
     if (!chargeBookingState || !chargePixPayment) return;
+    if (getRemainingSeconds(chargePixPayment.expires_at) <= 0) return;
 
     const interval = window.setInterval(() => {
       void handleVerifyChargePixNow();

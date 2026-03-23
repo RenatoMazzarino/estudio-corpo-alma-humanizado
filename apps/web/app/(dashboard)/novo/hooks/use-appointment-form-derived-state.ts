@@ -45,7 +45,6 @@ interface UseAppointmentFormDerivedStateParams {
   hasChargeNowAmountModeChoice: boolean;
   chargeNowAmountError: string | null;
   chargeNowAmountMode: "full" | "signal";
-  chargeNowSignalValueConfirmed: boolean;
   selectedAddressId: string | null;
   clientAddresses: ClientAddress[];
   resolvedClientIdFallback: string | null;
@@ -82,7 +81,6 @@ export function useAppointmentFormDerivedState({
   hasChargeNowAmountModeChoice,
   chargeNowAmountError,
   chargeNowAmountMode,
-  chargeNowSignalValueConfirmed,
   selectedAddressId,
   clientAddresses,
   resolvedClientIdFallback,
@@ -178,7 +176,7 @@ export function useAppointmentFormDerivedState({
     (chargeNowMethodDraft === "waiver" ||
       (hasChargeNowAmountModeChoice &&
         !chargeNowAmountError &&
-        (chargeNowAmountMode === "full" || chargeNowSignalValueConfirmed)));
+        (chargeNowAmountMode === "full" || chargeNowAmountMode === "signal")));
   const canOpenConfirmation = isEditing
     ? true
     : isStep4Unlocked &&

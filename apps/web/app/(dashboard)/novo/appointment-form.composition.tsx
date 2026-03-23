@@ -1,18 +1,27 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
-import { ChevronLeft } from "lucide-react";
+import { parseISO } from "date-fns";
+import { CheckCircle2, ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FooterRail } from "../../../components/ui/footer-rail";
+import { BlockingOverlay } from "../../../components/ui/loading-system";
 import { AppointmentFormSections } from "./components/appointment-form-sections";
 import { AppointmentHiddenFields } from "./components/appointment-hidden-fields";
 import {
+  appointmentFormButtonPrimaryClass as buttonPrimaryClass,
+  appointmentFormButtonSecondaryClass as buttonSecondaryClass,
+  appointmentFormHeaderIconButtonClass as headerIconButtonClass,
   appointmentFormInputClass as inputClass,
   appointmentFormInputWithIconClass as inputWithIconClass,
   appointmentFormLabelClass as labelClass,
   appointmentFormSectionCardClass as sectionCardClass,
+  appointmentFormSectionHeaderPrimaryClass as sectionHeaderPrimaryClass,
   appointmentFormSectionHeaderTextClass as sectionHeaderTextClass,
   appointmentFormSectionNumberClass as sectionNumberClass,
+  appointmentFormScreenHeaderClass as screenHeaderClass,
+  appointmentFormScreenHeaderTabsClass as screenHeaderTabsClass,
+  appointmentFormScreenHeaderTopRowClass as screenHeaderTopRowClass,
   appointmentFormSelectClass as selectClass,
 } from "./appointment-form.styles";
 import {
@@ -36,7 +45,6 @@ import {
 import { Toast, useToast } from "../../../components/ui/toast";
 import { formatCep } from "../../../src/shared/address/cep";
 import { formatCpf, normalizeCpfDigits } from "../../../src/shared/cpf";
-import { formatMinutesSeconds } from "../../../src/shared/datetime";
 import { formatBrazilPhone } from "../../../src/shared/phone";
 import type {
   AppointmentFormProps,
@@ -45,9 +53,32 @@ import type {
   DisplacementEstimate,
 } from "./appointment-form.types";
 
-const formatCountdown = formatMinutesSeconds;
 const CREATE_FLOW_STEPS = ["client", "service", "agenda", "finance"] as const;
 type CreateFlowStep = (typeof CREATE_FLOW_STEPS)[number];
+
+type BookingSuccessState = {
+  appointmentId: string;
+  attendanceCode: string | null;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  clientCpf: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  isHomeVisit: boolean;
+  addressLabel: string;
+  notes: string;
+  subtotal: number;
+  discount: number;
+  discountType: "value" | "pct";
+  discountInput: string | number;
+  total: number;
+  chargeTiming: "at_attendance" | "charge_now";
+  chargeMethod: "cash" | "pix_mp" | "card" | "waiver" | null;
+  chargeNowAmount: number;
+  items: Array<{ id: string; label: string; qty: number; amount: number }>;
+};
 
 export function AppointmentForm({
   services,
@@ -79,10 +110,12 @@ export function AppointmentForm({
   const clientCreateFirstNameInputRef = useRef<HTMLInputElement | null>(null);
   const [isSendPromptOpen, setIsSendPromptOpen] = useState(false);
   const [activeCreateStep, setActiveCreateStep] = useState<CreateFlowStep>("client");
+  const [bookingSuccessState, setBookingSuccessState] = useState<BookingSuccessState | null>(null);
+  const [isRouteTransitionLoading, setIsRouteTransitionLoading] = useState(false);
+  const contentScrollRef = useRef<HTMLDivElement | null>(null);
   const initialTimeRef = useRef(initialAppointment?.time ?? "");
   const selectedTimeRef = useRef(initialAppointment?.time ?? "");
   const previousClientIdRef = useRef<string | null>(initialSelectedClientId);
-  const [isFooterSummaryExpanded, setIsFooterSummaryExpanded] = useState(false);
 
   const [selectedServiceId, setSelectedServiceId] = useState<string>(initialAppointment?.serviceId ?? "");
   const [displayedPrice, setDisplayedPrice] = useState<string>("");
@@ -124,8 +157,6 @@ export function AppointmentForm({
     setChargeNowCustomAmount,
     chargeNowMethodDraft,
     setChargeNowMethodDraft,
-    chargeNowSignalValueConfirmed,
-    setChargeNowSignalValueConfirmed,
     confirmationSheetStep,
     setConfirmationSheetStep,
     creatingChargeBooking,
@@ -253,17 +284,22 @@ export function AppointmentForm({
     activeMonth,
     availableSlots,
     blockStatus,
+    checkScheduleDayBlockStatus,
     handleChangeScheduleMonth,
     handleSelectScheduleDay,
     hasBlocks,
+    hasSelectedTimeBlock,
     hasShiftBlock,
     isLoadingMonthAvailability,
     isLoadingSlots,
     isScheduleDayDisabled,
+    monthCalendarOverview,
+    selectedDateBlockTitle,
   } = useInternalScheduleAvailability({
     safeDate,
     initialDate: initialAppointment?.date ?? null,
     selectedDate,
+    selectedTime,
     selectedServiceId,
     selectedServiceAcceptsHomeVisit: Boolean(selectedService?.accepts_home_visit),
     hasLocationChoice,
@@ -388,7 +424,6 @@ export function AppointmentForm({
     setChargeNowSignalPercent,
     setChargeNowCustomAmount,
     setChargeNowMethodDraft,
-    setChargeNowSignalValueConfirmed,
     setConfirmationSheetStep,
     setChargeBookingState,
     setChargeFlowError,
@@ -509,7 +544,6 @@ export function AppointmentForm({
     hasChargeNowAmountModeChoice,
     chargeNowAmountError,
     chargeNowAmountMode,
-    chargeNowSignalValueConfirmed,
     selectedAddressId,
     clientAddresses,
     resolvedClientIdFallback: exactClientMatch?.id ?? null,
@@ -541,10 +575,12 @@ export function AppointmentForm({
     handleSendChargePixViaWhatsapp,
     handleStartChargeCard,
     handleVerifyChargeCardNow,
+    handleVerifyChargePixNow,
     handleBeginImmediateCharge,
     handleConfirmManualCharge,
     handleOpenCheckoutAfterConfirmation,
     handleSwitchChargeToAttendance,
+    handleCancelChargeBooking,
     handleConfirmationSheetClose,
     handleSchedule,
     handleOpenConfirmationPrompt,
@@ -570,8 +606,6 @@ export function AppointmentForm({
     hasLocationChoice,
     chargeNowMethodDraft,
     hasChargeNowAmountModeChoice,
-    chargeNowAmountMode,
-    chargeNowSignalValueConfirmed,
     chargeNowAmountError,
     chargeNowDraftAmount,
     chargeBookingState,
@@ -594,6 +628,40 @@ export function AppointmentForm({
     setFinishingChargeFlow,
     setIsSendPromptOpen,
     showToast,
+    onBookingSuccessAction: ({ appointmentId, attendanceCode }) => {
+      setBookingSuccessState({
+        appointmentId,
+        attendanceCode,
+        clientName: clientDisplayPreviewLabel || clientName || "Cliente",
+        clientPhone: resolvedClientPhone || clientPhone || "--",
+        clientEmail: selectedClientRecord?.email?.trim() || clientEmail.trim() || "--",
+        clientCpf: clientCpf || "--",
+        serviceName: selectedService?.name || "Servico nao informado",
+        date: selectedDate || safeDate,
+        time: selectedTime || "--:--",
+        isHomeVisit,
+        addressLabel: addressLabel || "",
+        notes: internalNotes.trim(),
+        subtotal: scheduleSubtotal,
+        discount: effectiveScheduleDiscount,
+        discountType: scheduleDiscountType,
+        discountInput: effectiveScheduleDiscountInputValue,
+        total: scheduleTotal,
+        chargeTiming: collectionTimingDraft === "charge_now" ? "charge_now" : "at_attendance",
+        chargeMethod: chargeNowMethodDraft,
+        chargeNowAmount: chargeNowDraftAmount,
+        items: financeDraftItems.map((item, index) => ({
+          id: `${item.type}-${item.label}-${index}`,
+          label: item.label,
+          qty: item.qty,
+          amount: item.amount,
+        })),
+      });
+      setActiveCreateStep("finance");
+      setIsSendPromptOpen(false);
+      setConfirmationSheetStep("review");
+      setChargeFlowError(null);
+    },
   });
 
   const createStepLabelMap: Record<CreateFlowStep, string> = {
@@ -654,32 +722,54 @@ export function AppointmentForm({
     handleSchedule();
   };
 
-  const handleOpenFooterReview = () => {
-    if (!canOpenConfirmation) {
-      showToast({
-        title: "Novo agendamento",
-        message: "Finalize os dados financeiros para revisar e confirmar.",
-        tone: "warning",
-        durationMs: 2600,
-      });
-      return;
-    }
-    setIsFooterSummaryExpanded(true);
+  const handleViewAgendaFromSuccess = () => {
+    if (!bookingSuccessState) return;
+    const dateParam = bookingSuccessState.date || safeDate;
+    setIsRouteTransitionLoading(true);
+    window.setTimeout(() => setIsRouteTransitionLoading(false), 6000);
+    router.push(
+      `/?view=day&date=${encodeURIComponent(dateParam)}&focusAppointment=${encodeURIComponent(
+        bookingSuccessState.appointmentId
+      )}`
+    );
+  };
+
+  const handleCreateAnotherFromSuccess = () => {
+    setBookingSuccessState(null);
+    setIsSendPromptOpen(false);
+    setChargeFlowError(null);
+    setConfirmationSheetStep("review");
+    setChargeBookingState(null);
+    setChargePixPayment(null);
+    setChargePointPayment(null);
+    setActiveCreateStep("client");
+    router.push(`/novo?fresh=${Date.now()}`);
   };
 
   useEffect(() => {
-    if (activeCreateStep !== "finance" && isFooterSummaryExpanded) {
-      setIsFooterSummaryExpanded(false);
-    }
-  }, [activeCreateStep, isFooterSummaryExpanded]);
+    if (!bookingSuccessState) return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+    const shellScroll = document.querySelector("[data-shell-scroll]") as HTMLElement | null;
+    shellScroll?.scrollTo({ top: 0, behavior: "auto" });
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [bookingSuccessState]);
 
   return (
-    <form ref={formRef} action={formAction} className={isEditing ? "space-y-6" : "flex h-full min-h-0 flex-col"}>
+    <form
+      ref={formRef}
+      action={formAction}
+      className={isEditing ? "relative space-y-6" : "relative flex h-full min-h-0 flex-col"}
+    >
       <Toast toast={toast} />
       <AppointmentHiddenFields
         isEditing={isEditing}
         appointmentId={initialAppointment?.id}
         returnTo={returnTo}
+        clientName={clientName}
+        clientPhone={clientPhone}
+        selectedServiceId={selectedServiceId}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
         resolvedClientId={resolvedClientId}
         clientSelectionMode={clientSelectionMode}
         clientFirstName={clientFirstName}
@@ -709,30 +799,40 @@ export function AppointmentForm({
       />
 
       {!isEditing ? (
-        <header className="z-30 -mx-6 bg-studio-green text-white safe-top safe-top-6 px-6 pb-0 pt-5">
-          <div className="mb-4 flex items-center gap-3">
+        <header className={screenHeaderClass}>
+          <div className={screenHeaderTopRowClass}>
             <button
               type="button"
               onClick={() => router.push(returnTo ?? "/")}
-              className="wl-header-icon-button-strong inline-flex h-9 w-9 items-center justify-center rounded-full transition"
+              className={headerIconButtonClass}
               aria-label="Voltar"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <h1 className="wl-typo-card-name-md text-white font-bold">Agendamento Interno</h1>
+            <h1 className="wl-typo-card-name-lg text-white font-bold">Agendamento Interno</h1>
           </div>
 
-          <div className="border-b border-white/25 pb-0.5">
+          <div
+            className={`${screenHeaderTabsClass} ${
+              bookingSuccessState ? "pointer-events-none opacity-85" : ""
+            }`}
+          >
             <div className="no-scrollbar flex items-center gap-6 overflow-x-auto">
               {CREATE_FLOW_STEPS.map((step) => {
-                const isActive = activeCreateStep === step;
+                const isDisabled = Boolean(bookingSuccessState);
+                const isActive = !isDisabled && activeCreateStep === step;
                 return (
                   <button
                     key={step}
                     type="button"
+                    disabled={isDisabled}
                     onClick={() => setActiveCreateStep(step)}
                     className={`relative pb-2 text-[13px] font-semibold transition-colors ${
-                      isActive ? "text-white" : "text-white/75 hover:text-white"
+                      isDisabled
+                        ? "cursor-not-allowed text-white/45"
+                        : isActive
+                          ? "text-white"
+                          : "text-white/75 hover:text-white"
                     }`}
                   >
                     {createStepLabelMap[step]}
@@ -749,7 +849,120 @@ export function AppointmentForm({
         </header>
       ) : null}
 
-      <div className={isEditing ? "space-y-6" : "min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 pt-4"}>
+      <div
+        ref={contentScrollRef}
+        className={isEditing ? "space-y-6" : "min-h-0 flex-1 space-y-4 overflow-y-auto pb-6 pt-4"}
+      >
+      {bookingSuccessState ? (
+        <section className="space-y-4 pt-10">
+          <div className="px-2 pt-4 text-center">
+            <div
+              className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-studio-green"
+              style={{ animation: "bounce 0.8s ease-out 1" }}
+            >
+              <CheckCircle2 className="h-9 w-9" />
+            </div>
+            <p className="wl-typo-card-name-md text-studio-text">Agendamento realizado com sucesso.</p>
+            <p className="mt-1 text-xs text-muted">Revise os dados e siga para a agenda.</p>
+          </div>
+
+          <div className={`${sectionCardClass} overflow-hidden`}>
+            <div className={sectionHeaderPrimaryClass}>
+              <h2 className={`${sectionHeaderTextClass} leading-none`}>Resumo do agendamento</h2>
+            </div>
+            <div className="wl-surface-card-body divide-y divide-line text-sm">
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Codigo</span>
+                <span className="font-semibold text-studio-text">
+                  {bookingSuccessState.attendanceCode || bookingSuccessState.appointmentId}
+                </span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Cliente</span>
+                <span className="text-right font-semibold text-studio-text">{bookingSuccessState.clientName}</span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Servico</span>
+                <span className="text-right font-semibold text-studio-text">{bookingSuccessState.serviceName}</span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Quando</span>
+                <span className="font-semibold text-studio-text">
+                  {bookingSuccessState.date} - {bookingSuccessState.time}
+                </span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Local</span>
+                <span className="font-semibold text-studio-text">
+                  {bookingSuccessState.isHomeVisit ? "Domicilio" : "Estudio"}
+                </span>
+              </div>
+              {bookingSuccessState.isHomeVisit && bookingSuccessState.addressLabel ? (
+                <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                  <span className="text-muted">Endereco</span>
+                  <span className="text-right font-semibold text-studio-text">{bookingSuccessState.addressLabel}</span>
+                </div>
+              ) : null}
+              {bookingSuccessState.notes ? (
+                <div className="px-4 py-3">
+                  <p className="text-muted">Observacao</p>
+                  <p className="mt-1 font-semibold text-studio-text">{bookingSuccessState.notes}</p>
+                </div>
+              ) : null}
+              {bookingSuccessState.discount > 0 ? (
+                <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                  <span className="text-muted">
+                    Desconto
+                    {bookingSuccessState.discountType === "pct"
+                      ? ` (${String(bookingSuccessState.discountInput)}%)`
+                      : ""}
+                  </span>
+                  <span className="font-semibold text-studio-text">
+                    - R$ {bookingSuccessState.discount.toFixed(2).replace(".", ",")}
+                  </span>
+                </div>
+              ) : null}
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Total</span>
+                <span className="font-bold text-studio-text">
+                  R$ {bookingSuccessState.total.toFixed(2).replace(".", ",")}
+                </span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                <span className="text-muted">Cobranca</span>
+                <span className="font-semibold text-studio-text">
+                  {bookingSuccessState.chargeTiming === "charge_now" ? "No agendamento" : "No atendimento"}
+                </span>
+              </div>
+              {bookingSuccessState.chargeTiming === "charge_now" ? (
+                <>
+                  <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                    <span className="text-muted">Forma</span>
+                    <span className="font-semibold text-studio-text">
+                      {bookingSuccessState.chargeMethod === "pix_mp"
+                        ? "Pix"
+                        : bookingSuccessState.chargeMethod === "card"
+                          ? "Cartao"
+                          : bookingSuccessState.chargeMethod === "cash"
+                            ? "Dinheiro"
+                            : bookingSuccessState.chargeMethod === "waiver"
+                              ? "Cortesia"
+                              : "--"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto] gap-3 px-4 py-3">
+                    <span className="text-muted">Valor cobrado agora</span>
+                    <span className="font-semibold text-studio-text">
+                      R$ {bookingSuccessState.chargeNowAmount.toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : (
+      <>
       <AppointmentFormSections
         showClientStep={isEditing || activeCreateStep === "client"}
         clientStepProps={{
@@ -880,6 +1093,10 @@ export function AppointmentForm({
           blockStatus,
           hasShiftBlock,
           hasBlocks,
+          monthCalendarOverview,
+          selectedDateBlockTitle,
+          onCheckScheduleDayBlockStatus: checkScheduleDayBlockStatus,
+          hasSelectedTimeBlock,
           finalPrice,
           priceOverride,
           displayedPrice,
@@ -928,9 +1145,6 @@ export function AppointmentForm({
           onChangeChargeNowCustomAmount: setChargeNowCustomAmount,
           chargeNowAmountError,
           chargeNowDraftAmount,
-          chargeNowSignalValueConfirmed,
-          onConfirmSignalValue: () => setChargeNowSignalValueConfirmed(true),
-          onResetSignalValueConfirmation: () => setChargeNowSignalValueConfirmed(false),
           onClearChargeFlowError: () => setChargeFlowError(null),
         }}
         overlaysProps={{
@@ -1055,7 +1269,6 @@ export function AppointmentForm({
             chargeNowMethodDraft,
             chargeNowDraftAmount,
             chargePixPayment,
-            chargePixAttempt,
             runningChargeAction,
             chargePixRemainingSeconds,
             pointEnabled,
@@ -1081,14 +1294,21 @@ export function AppointmentForm({
             chargeNowAmountError,
             creatingChargeBooking,
             isCourtesyDraft,
-            formatCountdownAction: formatCountdown,
             onCloseAction: handleConfirmationSheetClose,
-            onCreateChargePixNowAction: (attempt) => handleCreateChargePixNow(attempt),
+            onBackToFinanceAction: () => {
+              setIsSendPromptOpen(false);
+              setConfirmationSheetStep("review");
+              setChargeFlowError(null);
+              setActiveCreateStep("finance");
+            },
             onCopyChargePixCodeAction: handleCopyChargePixCode,
             onSendChargePixViaWhatsappAction: handleSendChargePixViaWhatsapp,
+            onCreateChargePixAction: () => handleCreateChargePixNow(chargePixAttempt + 1),
             onStartChargeCardAction: (mode) => handleStartChargeCard(mode),
             onVerifyChargeCardNowAction: handleVerifyChargeCardNow,
+            onVerifyChargePixNowAction: handleVerifyChargePixNow,
             onSwitchChargeToAttendanceAction: handleSwitchChargeToAttendance,
+            onCancelChargeBookingAction: handleCancelChargeBooking,
             onEditPaymentAction: () => {
               setIsSendPromptOpen(false);
               setConfirmationSheetStep("review");
@@ -1098,7 +1318,6 @@ export function AppointmentForm({
               setActiveCreateStep("finance");
             },
             onConfirmManualChargeAction: handleConfirmManualCharge,
-            onClearChargeFlowErrorAction: () => setChargeFlowError(null),
             onBeginImmediateChargeAction: handleBeginImmediateCharge,
             onScheduleAction: handleSchedule,
           },
@@ -1120,7 +1339,7 @@ export function AppointmentForm({
 
       {!isEditing && activeCreateStep === "service" && !isStep2Unlocked ? (
         <section className={`${sectionCardClass} overflow-hidden`}>
-          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+          <div className={sectionHeaderPrimaryClass}>
             <h2 className={`${sectionHeaderTextClass} leading-none`}>Servico e local</h2>
           </div>
           <div className="px-4 py-4 wl-surface-card-body">
@@ -1131,7 +1350,7 @@ export function AppointmentForm({
 
       {!isEditing && activeCreateStep === "agenda" && !isStep3Unlocked ? (
         <section className={`${sectionCardClass} overflow-hidden`}>
-          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+          <div className={sectionHeaderPrimaryClass}>
             <h2 className={`${sectionHeaderTextClass} leading-none`}>Dia</h2>
           </div>
           <div className="px-4 py-4 wl-surface-card-body">
@@ -1144,7 +1363,7 @@ export function AppointmentForm({
 
       {!isEditing && activeCreateStep === "finance" && !isStep4Unlocked ? (
         <section className={`${sectionCardClass} overflow-hidden`}>
-          <div className="flex h-11 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+          <div className={sectionHeaderPrimaryClass}>
             <h2 className={`${sectionHeaderTextClass} leading-none`}>Financeiro</h2>
           </div>
           <div className="px-4 py-4 wl-surface-card-body">
@@ -1152,95 +1371,79 @@ export function AppointmentForm({
           </div>
         </section>
       ) : null}
+      </>
+      )}
 
       </div>
 
-      {!isEditing ? (
-        <div className="shrink-0 -mx-6 border-t border-line bg-[rgba(247,242,234,0.96)] px-6 pb-3 pt-3 safe-bottom">
-          <div className="mb-2 flex items-center justify-end">
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-[0.12em] text-muted">Total</div>
-              <div className="mt-1 text-[16px] font-semibold text-studio-text">
-                R$ {scheduleTotal.toFixed(2).replace(".", ",")}
+      {!isEditing && !bookingSuccessState ? (
+        <FooterRail
+          className="-mx-6"
+          surfaceClassName="bg-[rgba(247,242,234,0.96)]"
+          paddingXClassName="px-6"
+          summary={
+            <div className="flex items-center justify-end">
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-muted">Total</div>
+                <div className="mt-1 text-[16px] font-semibold text-studio-text">
+                  R$ {scheduleTotal.toFixed(2).replace(".", ",")}
+                </div>
               </div>
             </div>
-          </div>
-          <div
-            id="novo-agendamento-resumo-expandido"
-            className={`overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-out ${
-              isFooterSummaryExpanded ? "mb-3 max-h-72 opacity-100" : "max-h-0 opacity-0"
+          }
+          rowClassName="grid grid-cols-[auto_1fr] gap-3"
+        >
+          <button
+            type="button"
+            onClick={handleBackCreateStep}
+            disabled={activeCreateStepIndex <= 0}
+            className={`${buttonSecondaryClass} ${
+              activeCreateStepIndex <= 0 ? "bg-stone-200 text-stone-500" : "bg-white text-studio-text"
             }`}
           >
-            <div className="space-y-2 rounded-xl border border-line bg-white/70 px-3 py-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted">Cliente</span>
-                <span className="font-semibold text-studio-text">{clientDisplayPreviewLabel || "Cliente"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted">Servico</span>
-                <span className="font-semibold text-studio-text">{selectedService?.name || "--"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted">Dia</span>
-                <span className="font-semibold text-studio-text">
-                  {selectedDate ? format(parseISO(`${selectedDate}T00:00:00`), "dd/MM/yyyy") : "--"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted">Horario</span>
-                <span className="font-semibold text-studio-text">{selectedTime || "--:--"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted">Local</span>
-                <span className="font-semibold text-studio-text">
-                  {isHomeVisit ? `Domicilio${addressLabel ? ` - ${addressLabel}` : ""}` : "Estudio"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3 border-t border-line pt-2">
-                <span className="text-muted">Cobranca</span>
-                <span className="font-semibold text-studio-text">
-                  {collectionTimingDraft === "charge_now" ? "No agendamento" : "No atendimento"}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-[auto_1fr] gap-3">
+            Voltar
+          </button>
+          {activeCreateStep === "finance" ? (
             <button
               type="button"
-              onClick={handleBackCreateStep}
-              disabled={activeCreateStepIndex <= 0}
-              className={`h-12 rounded-[18px] border border-line px-4 text-[13px] font-semibold ${
-                activeCreateStepIndex <= 0 ? "bg-stone-200 text-stone-500" : "bg-white text-studio-text"
-              }`}
+              onClick={handleOpenConfirmationPrompt}
+              className={buttonPrimaryClass}
             >
-              Voltar
+              Revisar
             </button>
-            {activeCreateStep === "finance" && !isFooterSummaryExpanded ? (
-              <button
-                type="button"
-                onClick={handleOpenFooterReview}
-                className="h-12 rounded-[18px] bg-studio-green px-5 text-[13px] font-semibold text-white shadow-[0_10px_22px_-14px_rgba(11,28,19,.6)]"
-              >
-                Revisar
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleCreatePrimaryAction}
-                className="h-12 rounded-[18px] bg-studio-green px-5 text-[13px] font-semibold text-white shadow-[0_10px_22px_-14px_rgba(11,28,19,.6)]"
-              >
-                {activeCreateStep === "finance"
-                  ? collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver"
-                    ? "Confirmar e abrir checkout"
-                    : isCourtesyDraft
-                      ? "Confirmar e agendar cortesia"
-                      : "Confirmar e agendar"
-                  : "Continuar"}
-              </button>
-            )}
-          </div>
-        </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleCreatePrimaryAction}
+              className={buttonPrimaryClass}
+            >
+              Continuar
+            </button>
+          )}
+        </FooterRail>
       ) : null}
+
+      {!isEditing && bookingSuccessState ? (
+        <FooterRail
+          className="-mx-6"
+          surfaceClassName="bg-[rgba(247,242,234,0.96)]"
+          paddingXClassName="px-6"
+          rowClassName="grid grid-cols-2 gap-3"
+        >
+          <button type="button" onClick={handleCreateAnotherFromSuccess} className={buttonSecondaryClass}>
+            Novo agendamento
+          </button>
+          <button type="button" onClick={handleViewAgendaFromSuccess} className={buttonPrimaryClass}>
+            Ver agendamento
+          </button>
+        </FooterRail>
+      ) : null}
+
+      <BlockingOverlay
+        visible={isRouteTransitionLoading}
+        label="Abrindo agenda..."
+        variant="brand-draw"
+      />
     </form>
   );
 }

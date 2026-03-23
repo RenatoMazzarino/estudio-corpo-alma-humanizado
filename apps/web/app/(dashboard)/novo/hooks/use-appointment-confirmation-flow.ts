@@ -1,8 +1,9 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import {
+  cancelImmediateChargeAppointment,
   createAppointmentForImmediateCharge,
+  createAppointmentForReview,
   createBookingPixPayment,
-  createBookingPointPayment,
   finalizeCreatedAppointmentNotifications,
   getBookingChargeContext,
   recordBookingChargePayment,
@@ -13,7 +14,6 @@ import type {
   BookingPixPaymentData,
   BookingPointPaymentData,
   ChargeBookingState,
-  ChargeNowAmountMode,
   ChargeNowMethodDraft,
   ClientRecordLite,
   ClientSelectionMode,
@@ -44,8 +44,6 @@ type Params = {
   hasLocationChoice: boolean;
   chargeNowMethodDraft: ChargeNowMethodDraft | null;
   hasChargeNowAmountModeChoice: boolean;
-  chargeNowAmountMode: ChargeNowAmountMode;
-  chargeNowSignalValueConfirmed: boolean;
   chargeNowAmountError: string | null;
   chargeNowDraftAmount: number;
   chargeBookingState: ChargeBookingState | null;
@@ -68,6 +66,7 @@ type Params = {
   setFinishingChargeFlow: (value: boolean) => void;
   setIsSendPromptOpen: (value: boolean) => void;
   showToast: (feedback: UserFeedback) => void;
+  onBookingSuccessAction: (payload: { appointmentId: string; attendanceCode: string | null }) => void;
 };
 
 export function useAppointmentConfirmationFlow({
@@ -92,8 +91,6 @@ export function useAppointmentConfirmationFlow({
   hasLocationChoice,
   chargeNowMethodDraft,
   hasChargeNowAmountModeChoice,
-  chargeNowAmountMode,
-  chargeNowSignalValueConfirmed,
   chargeNowAmountError,
   chargeNowDraftAmount,
   chargeBookingState,
@@ -116,6 +113,7 @@ export function useAppointmentConfirmationFlow({
   setFinishingChargeFlow,
   setIsSendPromptOpen,
   showToast,
+  onBookingSuccessAction,
 }: Params) {
   const openWhatsappFromForm = useCallback(
     (message: string) => {
@@ -133,6 +131,19 @@ export function useAppointmentConfirmationFlow({
     [clientPhone, resolvedClientPhone, showToast]
   );
 
+  const getActionErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (
+      error &&
+      typeof error === "object" &&
+      "message" in error &&
+      typeof (error as { message?: unknown }).message === "string" &&
+      (error as { message: string }).message.trim().length > 0
+    ) {
+      return (error as { message: string }).message.trim();
+    }
+    return fallback;
+  }, []);
+
   const buildAgendaDayReturnUrl = useCallback(
     (appointmentId?: string | null) => {
       const dateParam = selectedDate || safeDate;
@@ -147,21 +158,25 @@ export function useAppointmentConfirmationFlow({
     [safeDate, selectedDate]
   );
 
-  const finalizeChargeFlow = useCallback(
-    (appointmentId: string) => {
-      setIsSendPromptOpen(false);
-      setConfirmationSheetStep("review");
-      setChargeFlowError(null);
-      router.push(buildAgendaDayReturnUrl(appointmentId));
+  const closeConfirmationSheet = useCallback(() => {
+    setChargeFlowError(null);
+    setIsSendPromptOpen(false);
+    setConfirmationSheetStep("review");
+  }, [setChargeFlowError, setConfirmationSheetStep, setIsSendPromptOpen]);
+
+  const finishFlowWithSuccess = useCallback(
+    (payload: { appointmentId: string; attendanceCode: string | null }) => {
+      closeConfirmationSheet();
+      onBookingSuccessAction(payload);
     },
-    [buildAgendaDayReturnUrl, router, setChargeFlowError, setConfirmationSheetStep, setIsSendPromptOpen]
+    [closeConfirmationSheet, onBookingSuccessAction]
   );
 
   const refreshChargeBookingState = useCallback(
     async (appointmentId: string) => {
       const context = await getBookingChargeContext(appointmentId);
       if (!context.ok) {
-        setChargeFlowError(context.error ?? "Não foi possível atualizar o checkout.");
+        setChargeFlowError(context.error ?? "Nao foi possivel atualizar o checkout.");
         return null;
       }
       const next = {
@@ -192,8 +207,8 @@ export function useAppointmentConfirmationFlow({
     });
     if (!result.ok) {
       showToast({
-        title: "Automação",
-        message: "Agendamento criado, mas não foi possível acionar a automação agora.",
+        title: "Automacao",
+        message: "Agendamento criado, mas nao foi possivel acionar a automacao agora.",
         tone: "warning",
         durationMs: 2600,
       });
@@ -208,11 +223,14 @@ export function useAppointmentConfirmationFlow({
     await ensureChargeNotificationsDispatched();
     setChargePixPayment(null);
     setChargePointPayment(null);
-    finalizeChargeFlow(chargeBookingState.appointmentId);
+    finishFlowWithSuccess({
+      appointmentId: chargeBookingState.appointmentId,
+      attendanceCode: chargeBookingState.attendanceCode ?? null,
+    });
   }, [
     chargeBookingState,
     ensureChargeNotificationsDispatched,
-    finalizeChargeFlow,
+    finishFlowWithSuccess,
     setChargePixPayment,
     setChargePointPayment,
   ]);
@@ -240,6 +258,7 @@ export function useAppointmentConfirmationFlow({
     handleSendChargePixViaWhatsapp,
     handleStartChargeCard,
     handleVerifyChargeCardNow,
+    handleVerifyChargePixNow,
   } = useAppointmentChargePaymentFlow({
     chargeBookingState,
     chargeNowMethodDraft,
@@ -286,18 +305,31 @@ export function useAppointmentConfirmationFlow({
       });
       return;
     }
-    if (chargeNowMethodDraft !== "waiver" && chargeNowAmountMode === "signal" && !chargeNowSignalValueConfirmed) {
-      showToast({
-        title: "Financeiro",
-        message: "Confirme o valor do sinal para continuar.",
-        tone: "warning",
-        durationMs: 2600,
-      });
-      return;
-    }
     if (chargeNowAmountError) {
       showToast({ title: "Financeiro", message: chargeNowAmountError, tone: "warning", durationMs: 2600 });
       return;
+    }
+    if (chargeNowMethodDraft === "pix_mp") {
+      const payerName = (clientPublicFullNamePreview || clientName || "").trim();
+      const payerPhoneDigits = (resolvedClientPhone || clientPhone || "").replace(/\D/g, "");
+      if (payerName.length < 2) {
+        showToast({
+          title: "Financeiro",
+          message: "Informe o nome da cliente antes de iniciar o checkout PIX.",
+          tone: "warning",
+          durationMs: 2600,
+        });
+        return;
+      }
+      if (payerPhoneDigits.length < 10) {
+        showToast({
+          title: "Financeiro",
+          message: "Informe um WhatsApp valido da cliente para gerar o checkout PIX.",
+          tone: "warning",
+          durationMs: 2600,
+        });
+        return;
+      }
     }
 
     setChargePixPayment(null);
@@ -309,29 +341,49 @@ export function useAppointmentConfirmationFlow({
     setRunningChargeAction(false);
     setChargeFlowError(null);
     setConfirmationSheetStep("creating_charge");
+    let createdAppointmentId: string | null = chargeBookingState?.appointmentId ?? null;
+    let nextState: ChargeBookingState | null = chargeBookingState;
+
     try {
-      const formData = new FormData(formRef.current);
-      formData.set("payment_collection_timing", "charge_now");
-      const result = await createAppointmentForImmediateCharge(formData);
-      if (!result.ok || !result.data) {
-        setChargeFlowError(result.error ?? "Não foi possível criar o agendamento para cobrança.");
+      if (!nextState) {
+        const formData = new FormData(formRef.current);
+        formData.set("payment_collection_timing", "charge_now");
+        const result = await createAppointmentForImmediateCharge(formData);
+        if (!result.ok || !result.data) {
+          const createBookingError = (result.error ?? "").trim();
+          if (
+            createBookingError.toLowerCase().includes("dados inv") ||
+            createBookingError.toLowerCase().includes("dados incomplet")
+          ) {
+            setChargeFlowError("Revise cliente, servico, dia e horario antes de iniciar o checkout.");
+          } else {
+            setChargeFlowError(createBookingError || "Nao foi possivel criar o agendamento para cobranca.");
+          }
+          setConfirmationSheetStep("review");
+          return;
+        }
+
+        const attendance = result.data.attendance;
+        nextState = {
+          appointmentId: result.data.appointmentId,
+          date: result.data.date,
+          startTimeIso: result.data.startTimeIso,
+          attendanceCode: attendance?.appointment?.attendance_code ?? null,
+          appointmentPaymentStatus: attendance?.appointment?.payment_status ?? null,
+          checkout: attendance?.checkout ?? null,
+          checkoutItems: attendance?.checkoutItems ?? [],
+          payments: attendance?.payments ?? [],
+        };
+        createdAppointmentId = nextState.appointmentId;
+        setChargeBookingState(nextState);
+        setChargeNotificationsDispatched(false);
+      }
+
+      if (!nextState) {
+        setChargeFlowError("Nao foi possivel preparar o checkout agora.");
         setConfirmationSheetStep("review");
         return;
       }
-
-      const attendance = result.data.attendance;
-      const nextState: ChargeBookingState = {
-        appointmentId: result.data.appointmentId,
-        date: result.data.date,
-        startTimeIso: result.data.startTimeIso,
-        attendanceCode: attendance?.appointment?.attendance_code ?? null,
-        appointmentPaymentStatus: attendance?.appointment?.payment_status ?? null,
-        checkout: attendance?.checkout ?? null,
-        checkoutItems: attendance?.checkoutItems ?? [],
-        payments: attendance?.payments ?? [],
-      };
-      setChargeBookingState(nextState);
-      setChargeNotificationsDispatched(false);
 
       if (chargeNowMethodDraft === "cash") {
         setRunningChargeAction(true);
@@ -347,14 +399,19 @@ export function useAppointmentConfirmationFlow({
           const errorMessage =
             typeof paymentResult.error?.message === "string" && paymentResult.error.message.trim().length > 0
               ? paymentResult.error.message
-              : "Não foi possível registrar o pagamento em dinheiro.";
+              : "Nao foi possivel registrar o pagamento em dinheiro.";
           setChargeFlowError(errorMessage);
           setConfirmationSheetStep("charge_payment");
           return;
         }
         await refreshChargeBookingState(nextState.appointmentId);
         await ensureChargeNotificationsDispatched();
-        finalizeChargeFlow(nextState.appointmentId);
+        setChargePixPayment(null);
+        setChargePointPayment(null);
+        finishFlowWithSuccess({
+          appointmentId: nextState.appointmentId,
+          attendanceCode: nextState.attendanceCode ?? null,
+        });
         return;
       }
 
@@ -370,7 +427,12 @@ export function useAppointmentConfirmationFlow({
           attempt: 0,
         });
         if (!pixResult.ok || !pixResult.data) {
-          setChargeFlowError("Não foi possível gerar o PIX agora.");
+          setChargeFlowError(
+            getActionErrorMessage(
+              (pixResult as { error?: unknown }).error,
+              "Nao foi possivel gerar o PIX agora."
+            )
+          );
           return;
         }
         setChargePixPayment(pixResult.data as BookingPixPaymentData);
@@ -380,30 +442,16 @@ export function useAppointmentConfirmationFlow({
 
       if (chargeNowMethodDraft === "card") {
         setConfirmationSheetStep("charge_payment");
-        setRunningChargeAction(true);
-        const pointResult = await createBookingPointPayment({
-          appointmentId: nextState.appointmentId,
-          amount: chargeNowDraftAmount,
-          cardMode: "credit",
-          attempt: 1,
-        });
-        if (!pointResult.ok || !pointResult.data) {
-          setChargeFlowError("Não foi possível iniciar a cobrança no cartão.");
-          return;
-        }
-        setChargePointAttempt(1);
-        const nextPoint = pointResult.data as BookingPointPaymentData;
-        setChargePointPayment(nextPoint);
-        if (nextPoint.internal_status === "paid") {
-          await refreshChargeBookingState(nextState.appointmentId);
-          setChargePointPayment(null);
-          await ensureChargeNotificationsDispatched();
-          finalizeChargeFlow(nextState.appointmentId);
-        }
+        setChargePointAttempt(0);
+        setChargePointPayment(null);
         return;
       }
 
       setConfirmationSheetStep("review");
+    } catch (error) {
+      const message = getActionErrorMessage(error, "Falha inesperada ao iniciar cobranca.");
+      setChargeFlowError(message);
+      setConfirmationSheetStep(createdAppointmentId ? "charge_payment" : "review");
     } finally {
       setCreatingChargeBooking(false);
       setRunningChargeAction(false);
@@ -411,9 +459,8 @@ export function useAppointmentConfirmationFlow({
   }, [
     chargeNowMethodDraft,
     hasChargeNowAmountModeChoice,
-    chargeNowAmountMode,
-    chargeNowSignalValueConfirmed,
     chargeNowAmountError,
+    chargeBookingState,
     setChargePixPayment,
     setChargePixAttempt,
     setChargePixRemainingSeconds,
@@ -428,7 +475,7 @@ export function useAppointmentConfirmationFlow({
     setChargeBookingState,
     setChargeNotificationsDispatched,
     chargeNowDraftAmount,
-    finalizeChargeFlow,
+    finishFlowWithSuccess,
     refreshChargeBookingState,
     ensureChargeNotificationsDispatched,
     clientPublicFullNamePreview,
@@ -437,6 +484,7 @@ export function useAppointmentConfirmationFlow({
     clientPhone,
     clientEmail,
     selectedClientRecord?.email,
+    getActionErrorMessage,
   ]);
 
   const handleSwitchChargeToAttendance = useCallback(async () => {
@@ -446,17 +494,62 @@ export function useAppointmentConfirmationFlow({
       await ensureChargeNotificationsDispatched();
       setChargePixPayment(null);
       setChargePointPayment(null);
-      finalizeChargeFlow(chargeBookingState.appointmentId);
+      finishFlowWithSuccess({
+        appointmentId: chargeBookingState.appointmentId,
+        attendanceCode: chargeBookingState.attendanceCode ?? null,
+      });
     } finally {
       setFinishingChargeFlow(false);
     }
   }, [
     chargeBookingState,
     ensureChargeNotificationsDispatched,
-    finalizeChargeFlow,
+    finishFlowWithSuccess,
     setChargePixPayment,
     setChargePointPayment,
     setFinishingChargeFlow,
+  ]);
+
+  const handleCancelChargeBooking = useCallback(async () => {
+    if (!chargeBookingState) return;
+
+    setRunningChargeAction(true);
+    setChargeFlowError(null);
+    try {
+      const result = await cancelImmediateChargeAppointment({
+        appointmentId: chargeBookingState.appointmentId,
+      });
+
+      if (!result.ok) {
+        setChargeFlowError(result.error ?? "Nao foi possivel cancelar o agendamento.");
+        return;
+      }
+
+      setChargePixPayment(null);
+      setChargePointPayment(null);
+      setIsSendPromptOpen(false);
+      setConfirmationSheetStep("review");
+      showToast({
+        title: "Agendamento cancelado",
+        message: "O agendamento e a cobranca foram cancelados.",
+        tone: "success",
+        durationMs: 2400,
+      });
+      router.push(buildAgendaDayReturnUrl());
+    } finally {
+      setRunningChargeAction(false);
+    }
+  }, [
+    buildAgendaDayReturnUrl,
+    chargeBookingState,
+    router,
+    setChargeFlowError,
+    setChargePixPayment,
+    setChargePointPayment,
+    setConfirmationSheetStep,
+    setIsSendPromptOpen,
+    setRunningChargeAction,
+    showToast,
   ]);
 
   const handleConfirmManualCharge = useCallback(async () => {
@@ -561,37 +654,92 @@ export function useAppointmentConfirmationFlow({
 
   const handleConfirmationSheetClose = useCallback(() => {
     if (confirmationSheetStep === "charge_payment" && chargeBookingState) {
-      void handleSwitchChargeToAttendance();
+      void handleCancelChargeBooking();
       return;
     }
-    setIsSendPromptOpen(false);
-    setConfirmationSheetStep("review");
-    setChargeFlowError(null);
+    closeConfirmationSheet();
   }, [
     chargeBookingState,
+    closeConfirmationSheet,
     confirmationSheetStep,
-    handleSwitchChargeToAttendance,
-    setChargeFlowError,
-    setConfirmationSheetStep,
-    setIsSendPromptOpen,
+    handleCancelChargeBooking,
   ]);
 
   const handleSchedule = useCallback(() => {
-    if (duplicateCpfClient) {
-      showToast({
-        title: "CPF já cadastrado",
-        message: `O CPF informado já pertence ao cliente ${duplicateCpfClient.name}. Escolha vincular ao cliente existente ou informe outro CPF.`,
-        tone: "warning",
-        durationMs: 3200,
-      });
-      clientCpfInputRef.current?.focus();
-      return;
-    }
+    const submit = async () => {
+      if (duplicateCpfClient) {
+        showToast({
+          title: "CPF ja cadastrado",
+          message: `O CPF informado ja pertence ao cliente ${duplicateCpfClient.name}. Escolha vincular ao cliente existente ou informe outro CPF.`,
+          tone: "warning",
+          durationMs: 3200,
+        });
+        clientCpfInputRef.current?.focus();
+        return;
+      }
 
-    if (!formRef.current) return;
-    setIsSendPromptOpen(false);
-    formRef.current.requestSubmit();
-  }, [clientCpfInputRef, duplicateCpfClient, formRef, setIsSendPromptOpen, showToast]);
+      if (!formRef.current) return;
+      if (!formRef.current.reportValidity()) return;
+
+      const formData = new FormData(formRef.current);
+      formData.set("payment_collection_timing", "at_attendance");
+
+      setCreatingChargeBooking(true);
+      setRunningChargeAction(false);
+      setChargeFlowError(null);
+      setConfirmationSheetStep("creating_charge");
+
+      try {
+        const result = await createAppointmentForReview(formData);
+        if (!result.ok || !result.data) {
+          const message = (result.error ?? "").trim();
+          setChargeFlowError(message || "Nao foi possivel criar o agendamento.");
+          setConfirmationSheetStep("review");
+          return;
+        }
+
+        const attendance = result.data.attendance;
+        const nextState: ChargeBookingState = {
+          appointmentId: result.data.appointmentId,
+          date: result.data.date,
+          startTimeIso: result.data.startTimeIso,
+          attendanceCode: attendance?.appointment?.attendance_code ?? null,
+          appointmentPaymentStatus: attendance?.appointment?.payment_status ?? null,
+          checkout: attendance?.checkout ?? null,
+          checkoutItems: attendance?.checkoutItems ?? [],
+          payments: attendance?.payments ?? [],
+        };
+
+        setChargeBookingState(nextState);
+        setChargeNotificationsDispatched(true);
+        setChargePixPayment(null);
+        setChargePointPayment(null);
+        finishFlowWithSuccess({
+          appointmentId: nextState.appointmentId,
+          attendanceCode: nextState.attendanceCode ?? null,
+        });
+      } finally {
+        setCreatingChargeBooking(false);
+        setRunningChargeAction(false);
+      }
+    };
+
+    void submit();
+  }, [
+    clientCpfInputRef,
+    duplicateCpfClient,
+    finishFlowWithSuccess,
+    formRef,
+    setChargeBookingState,
+    setChargeFlowError,
+    setChargeNotificationsDispatched,
+    setChargePixPayment,
+    setChargePointPayment,
+    setConfirmationSheetStep,
+    setCreatingChargeBooking,
+    setRunningChargeAction,
+    showToast,
+  ]);
 
   const handleOpenConfirmationPrompt = useCallback(() => {
     if (!formRef.current) return;
@@ -599,7 +747,7 @@ export function useAppointmentConfirmationFlow({
       showToast({
         title: "Finalize o financeiro",
         message:
-          "Escolha quando cobrar e, se for cobrança no agendamento, defina a forma de pagamento e o valor para liberar a confirmação.",
+          "Escolha quando cobrar e, se for cobranca no agendamento, defina a forma de pagamento e o valor para liberar a confirmacao.",
         tone: "warning",
         durationMs: 3200,
       });
@@ -608,7 +756,7 @@ export function useAppointmentConfirmationFlow({
     if (isLocationChoiceRequired && !hasLocationChoice) {
       showToast({
         title: "Local do atendimento",
-        message: "Escolha se o atendimento será no estúdio ou em domicílio para continuar.",
+        message: "Escolha se o atendimento sera no estudio ou em domicilio para continuar.",
         tone: "warning",
         durationMs: 2600,
       });
@@ -643,14 +791,17 @@ export function useAppointmentConfirmationFlow({
     handleCreateChargePixNow,
     handleCopyChargePixCode,
     handleSendChargePixViaWhatsapp,
+    handleVerifyChargePixNow,
     handleStartChargeCard,
     handleVerifyChargeCardNow,
     handleBeginImmediateCharge,
     handleConfirmManualCharge,
     handleOpenCheckoutAfterConfirmation,
     handleSwitchChargeToAttendance,
+    handleCancelChargeBooking,
     handleConfirmationSheetClose,
     handleSchedule,
     handleOpenConfirmationPrompt,
   };
 }
+

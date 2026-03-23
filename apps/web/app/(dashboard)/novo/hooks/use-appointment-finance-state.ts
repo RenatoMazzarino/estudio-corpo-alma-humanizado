@@ -25,14 +25,13 @@ export function useAppointmentFinanceState({ isEditing, signalPercentage }: Para
   const [scheduleDiscountType, setScheduleDiscountType] = useState<"value" | "pct">("value");
   const [scheduleDiscountValue, setScheduleDiscountValue] = useState<string>("");
   const [collectionTimingDraft, setCollectionTimingDraft] = useState<CollectionTimingDraft | null>(
-    isEditing ? "at_attendance" : null
+    "at_attendance"
   );
   const [chargeNowAmountMode, setChargeNowAmountMode] = useState<ChargeNowAmountMode>("full");
   const [hasChargeNowAmountModeChoice, setHasChargeNowAmountModeChoice] = useState<boolean>(isEditing);
   const [chargeNowSignalPercent, setChargeNowSignalPercent] = useState<number>(Math.max(0, signalPercentage ?? 30));
   const [chargeNowCustomAmount, setChargeNowCustomAmount] = useState<string>("");
   const [chargeNowMethodDraft, setChargeNowMethodDraft] = useState<ChargeNowMethodDraft | null>(null);
-  const [chargeNowSignalValueConfirmed, setChargeNowSignalValueConfirmed] = useState(false);
   const [confirmationSheetStep, setConfirmationSheetStep] = useState<BookingConfirmationStep>("review");
   const [creatingChargeBooking, setCreatingChargeBooking] = useState(false);
   const [runningChargeAction, setRunningChargeAction] = useState(false);
@@ -91,8 +90,6 @@ export function useAppointmentFinanceState({ isEditing, signalPercentage }: Para
     setChargeNowCustomAmount,
     chargeNowMethodDraft,
     setChargeNowMethodDraft,
-    chargeNowSignalValueConfirmed,
-    setChargeNowSignalValueConfirmed,
     confirmationSheetStep,
     setConfirmationSheetStep,
     creatingChargeBooking,

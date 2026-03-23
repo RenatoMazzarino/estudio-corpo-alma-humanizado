@@ -1,5 +1,10 @@
 import { Search, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import {
+  appointmentFormButtonPrimaryClass,
+  appointmentFormButtonSecondaryClass,
+  appointmentFormHeaderIconButtonClass,
+} from "../appointment-form.styles";
 import type { AddressModalStep, AddressSearchResult } from "../appointment-form.types";
 
 type CepLookupResult = {
@@ -112,7 +117,7 @@ export function AddressCreateModal({
 
   return createPortal(
     <div className="absolute inset-0 z-50 flex items-center justify-center overflow-hidden overscroll-contain bg-black/45 px-4 py-6">
-      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl wl-surface-modal shadow-float">
+      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-xl wl-surface-modal shadow-float">
         <div className="wl-sheet-header-surface flex items-start justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <p className="text-[11px] font-extrabold uppercase tracking-widest text-white/85">Endereco</p>
@@ -131,7 +136,7 @@ export function AddressCreateModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-studio-green transition hover:bg-paper"
+            className={`${appointmentFormHeaderIconButtonClass} h-9 w-9 shrink-0`}
             aria-label="Fechar"
             title="Fechar"
           >
@@ -199,7 +204,7 @@ export function AddressCreateModal({
                       onOpenFormStep();
                     }}
                     disabled={cepDraftStatus === "loading"}
-                    className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 disabled:opacity-70"
+                    className={`${appointmentFormButtonPrimaryClass} h-11 w-full rounded-xl`}
                   >
                     {cepDraftStatus === "loading" ? "Buscando..." : "Buscar CEP"}
                   </button>
@@ -332,7 +337,7 @@ export function AddressCreateModal({
                   type="button"
                   onClick={onBackToChooser}
                   disabled={addressSavePending}
-                  className="wl-typo-button h-11 w-full rounded-xl border border-line bg-white text-studio-text disabled:opacity-70"
+                  className={`${appointmentFormButtonSecondaryClass} h-11 w-full rounded-xl`}
                 >
                   Voltar para busca
                 </button>
@@ -340,7 +345,7 @@ export function AddressCreateModal({
                   type="button"
                   onClick={onSave}
                   disabled={addressSavePending}
-                  className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 disabled:opacity-70"
+                  className={`${appointmentFormButtonPrimaryClass} h-11 w-full rounded-xl`}
                 >
                   {addressSavePending ? "Salvando..." : "Salvar endereco"}
                 </button>

@@ -2,11 +2,18 @@
 
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Copy, Phone, X } from "lucide-react";
-import Image from "next/image";
+import { useMemo } from "react";
 import { createPortal } from "react-dom";
-import { PaymentMethodIcon } from "../../../../components/ui/payment-method-icon";
+import { AttendancePaymentMethodSection } from "../../atendimento/[id]/components/attendance-payment-method-section";
+import { BottomSheetHeaderV2 } from "../../../../components/ui/bottom-sheet-header-v2";
+import { FooterRail } from "../../../../components/ui/footer-rail";
 import { formatCurrencyLabel } from "../../../../src/shared/currency";
+import {
+  appointmentFormButtonDangerClass,
+  appointmentFormButtonPrimaryClass,
+  appointmentFormButtonSecondaryClass,
+  appointmentFormSectionHeaderSecondaryClass
+} from "../appointment-form.styles";
 import type {
   BookingConfirmationStep,
   BookingPixPaymentData,
@@ -32,7 +39,6 @@ type AppointmentConfirmationSheetProps = {
   chargeNowMethodDraft: ChargeNowMethodDraft | null;
   chargeNowDraftAmount: number;
   chargePixPayment: BookingPixPaymentData | null;
-  chargePixAttempt: number;
   runningChargeAction: boolean;
   chargePixRemainingSeconds: number;
   pointEnabled: boolean;
@@ -58,17 +64,18 @@ type AppointmentConfirmationSheetProps = {
   chargeNowAmountError: string | null;
   creatingChargeBooking: boolean;
   isCourtesyDraft: boolean;
-  formatCountdownAction: (seconds: number) => string;
   onCloseAction: () => void;
-  onCreateChargePixNowAction: (attempt: number) => void | Promise<void>;
+  onBackToFinanceAction: () => void;
   onCopyChargePixCodeAction: () => void | Promise<void>;
   onSendChargePixViaWhatsappAction: () => void;
+  onCreateChargePixAction: () => void | Promise<void>;
   onStartChargeCardAction: (mode: "debit" | "credit") => void | Promise<void>;
   onVerifyChargeCardNowAction: () => void | Promise<void>;
+  onVerifyChargePixNowAction: () => void | Promise<void>;
   onSwitchChargeToAttendanceAction: () => void | Promise<void>;
+  onCancelChargeBookingAction: () => void | Promise<void>;
   onEditPaymentAction: () => void;
   onConfirmManualChargeAction: () => void | Promise<void>;
-  onClearChargeFlowErrorAction: () => void;
   onBeginImmediateChargeAction: () => void | Promise<void>;
   onScheduleAction: () => void;
 };
@@ -82,7 +89,6 @@ export function AppointmentConfirmationSheet({
   chargeNowMethodDraft,
   chargeNowDraftAmount,
   chargePixPayment,
-  chargePixAttempt,
   runningChargeAction,
   chargePixRemainingSeconds,
   pointEnabled,
@@ -108,384 +114,280 @@ export function AppointmentConfirmationSheet({
   chargeNowAmountError,
   creatingChargeBooking,
   isCourtesyDraft,
-  formatCountdownAction,
   onCloseAction,
-  onCreateChargePixNowAction,
+  onBackToFinanceAction,
   onCopyChargePixCodeAction,
   onSendChargePixViaWhatsappAction,
+  onCreateChargePixAction,
   onStartChargeCardAction,
   onVerifyChargeCardNowAction,
+  onVerifyChargePixNowAction,
   onSwitchChargeToAttendanceAction,
+  onCancelChargeBookingAction,
   onEditPaymentAction,
   onConfirmManualChargeAction,
-  onClearChargeFlowErrorAction,
   onBeginImmediateChargeAction,
   onScheduleAction,
 }: AppointmentConfirmationSheetProps) {
-  if (!portalTarget || !open) return null;
-
-  const headerKicker = step === "charge_payment" ? "Cobrança no agendamento" : "Confirmar agendamento";
   const headerTitle =
     step === "creating_charge"
       ? "Criando agendamento..."
       : step === "charge_payment"
         ? "Pagamento do agendamento"
-        : "Revisar dados antes de criar";
+        : "Revisao do agendamento";
+
   const headerDescription =
     step === "creating_charge"
       ? "Estamos criando o agendamento e preparando o checkout."
       : step === "charge_payment"
-        ? "Finalize a cobrança agora ou jogue para pagar no atendimento."
-          : "Confira os dados do agendamento antes de confirmar.";
+        ? "Finalize a cobranca agora ou mova para pagar no atendimento."
+        : "Confira os dados antes de confirmar.";
+
+  const shouldChargeNow = collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver";
+  const canRunChargeNow =
+    !creatingChargeBooking &&
+    isChargeNowMethodChosen &&
+    isChargeNowAmountConfirmed &&
+    chargeNowAmountError == null;
+  const hasFixedFooter = step === "review" || (step === "charge_payment" && Boolean(chargeBookingState));
+  const isPixExpired = chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0;
+  const canRunChargeActions = !(runningChargeAction || finishingChargeFlow);
+  const isPixFlow = chargeNowMethodDraft === "pix_mp";
+  const canConfirmManualCharge = canRunChargeActions && !(isPixFlow && isPixExpired);
+  const chargeMethod = useMemo(
+    () => (chargeNowMethodDraft && chargeNowMethodDraft !== "waiver" ? chargeNowMethodDraft : "cash"),
+    [chargeNowMethodDraft]
+  );
+
+  const reviewPrimaryLabel = shouldChargeNow
+    ? "Confirmar e cobrar"
+    : isCourtesyDraft
+      ? "Confirmar e agendar cortesia"
+      : "Confirmar e agendar";
+
+  if (!portalTarget || !open) return null;
 
   return createPortal(
-    <div className="absolute inset-0 z-50 flex items-end justify-center overflow-hidden overscroll-contain bg-black/40 px-5 py-5">
-      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-3xl border border-line bg-white p-5 shadow-float">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">{headerKicker}</p>
-            <h3 className="text-lg font-serif text-studio-text">{headerTitle}</h3>
-            <p className="mt-1 text-xs text-muted">{headerDescription}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onCloseAction}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-studio-light text-studio-green"
-          >
-            <X className="h-4 w-4" />
-          </button>
+    <div className="pointer-events-none absolute inset-0 z-50 flex items-end justify-center">
+      <button
+        type="button"
+        aria-label="Fechar revisao do agendamento"
+        onClick={onCloseAction}
+        className="pointer-events-auto absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]"
+      />
+
+      <div className="pointer-events-auto relative flex max-h-[95vh] w-full max-w-105 flex-col overflow-hidden wl-radius-sheet wl-surface-modal shadow-float">
+        <BottomSheetHeaderV2
+          title={headerTitle}
+          subtitle={headerDescription}
+          onCloseAction={onCloseAction}
+        />
+
+        <div
+          className={`max-h-[72vh] overflow-y-auto px-5 pt-5 wl-surface-modal-body ${
+            hasFixedFooter ? "pb-36" : "pb-8"
+          }`}
+        >
+          {chargeFlowError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              {chargeFlowError}
+            </div>
+          )}
+
+          {step === "creating_charge" ? (
+            <div className="rounded-xl border border-stone-100 bg-stone-50/70 p-5 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-studio-green/20 border-t-studio-green" />
+              <p className="mt-3 text-sm font-semibold text-studio-text">Preparando checkout...</p>
+              <p className="mt-1 text-xs text-muted">Isso leva apenas alguns segundos.</p>
+            </div>
+          ) : step === "charge_payment" && chargeBookingState ? (
+            <AttendancePaymentMethodSection
+              viewMode="charge"
+              method={chargeMethod}
+              hideWaiverOption={false}
+              isWaived={chargeBookingState.appointmentPaymentStatus === "waived"}
+              waiverSuccess={false}
+              isFullyPaid={chargeBookingState.appointmentPaymentStatus === "paid"}
+              pointEnabled={pointEnabled}
+              pointTerminalName={pointTerminalName}
+              pointTerminalModel={pointTerminalModel}
+              cashAmount={chargeNowDraftAmount}
+              effectiveChargeAmount={chargeNowDraftAmount}
+              pixPayment={chargePixPayment}
+              pixRemaining={chargePixRemainingSeconds}
+              pixKeyConfigured={false}
+              pixKeyType={null}
+              normalizedPixKeyValue=""
+              pixKeyGenerating={false}
+              pixKeyQrDataUrl={null}
+              pixKeyCode=""
+              pixKeyError={null}
+              pointPayment={chargePointPayment}
+              busy={runningChargeAction || finishingChargeFlow}
+              errorText={chargeFlowError}
+              onSetMethodAction={() => undefined}
+              onSetCashAmountAction={() => undefined}
+              onCreatePixAction={() => void onCreateChargePixAction()}
+              onCopyPixAction={() => void onCopyChargePixCodeAction()}
+              onCopyPixKeyAction={() => undefined}
+              onPointChargeAction={(mode) => void onStartChargeCardAction(mode)}
+              onWaiveAsCourtesyAction={() => undefined}
+              onLeaveOpenAction={() => void onCancelChargeBookingAction()}
+              onResetCurrentChargeAction={onEditPaymentAction}
+              onForceRefreshAction={() => {
+                if (chargeNowMethodDraft === "pix_mp") {
+                  void onVerifyChargePixNowAction();
+                  return;
+                }
+                if (chargeNowMethodDraft === "card") {
+                  void onVerifyChargeCardNowAction();
+                }
+              }}
+              onBackToSelectAction={onEditPaymentAction}
+              menuThirdActionLabel="Cancelar cobranca e agendamento"
+              enableCardSimulation
+              allowCardSendWithoutPoint
+              onSimulateCardApprovedAction={() => void onConfirmManualChargeAction()}
+              onSendPixViaWhatsappAction={onSendChargePixViaWhatsappAction}
+            />
+          ) : (
+            <div className="space-y-4 pb-6">
+              <div className="overflow-hidden rounded-xl border border-line bg-white">
+                <div className={`${appointmentFormSectionHeaderSecondaryClass} px-4`}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Resumo</p>
+                </div>
+                <div className="space-y-2 px-4 py-3 text-sm wl-surface-card-body">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Cliente</span>
+                    <span className="text-right font-semibold text-studio-text">{clientDisplayPreviewLabel || "Cliente"}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Servico</span>
+                    <span className="text-right font-semibold text-studio-text">{selectedServiceName || "Selecione um servico"}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Data</span>
+                    <span className="text-right font-semibold text-studio-text">
+                      {selectedDate
+                        ? `${format(parseISO(selectedDate), "EEEE", { locale: ptBR }).replace(/^./, (char) => char.toUpperCase())}, ${format(parseISO(selectedDate), "dd/MM", { locale: ptBR })}`
+                        : "--"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Horario</span>
+                    <span className="text-right font-semibold text-studio-text">{selectedTime || "--:--"}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-gray-500">Local</span>
+                    <span className="text-right font-semibold text-studio-text">
+                      {isHomeVisit ? `Domicilio${addressLabel ? ` - ${addressLabel}` : ""}` : "Estudio"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-line bg-white">
+                <div className={`${appointmentFormSectionHeaderSecondaryClass} px-4`}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Financeiro</p>
+                </div>
+                <div className="space-y-2 px-4 py-3 text-sm wl-surface-card-body">
+                  {financeDraftItems.length > 0 ? (
+                    financeDraftItems.map((item, index) => (
+                      <div key={`${item.type}-${item.label}-${index}`} className="flex items-center justify-between gap-3">
+                        <span className="text-gray-500">{item.label}</span>
+                        <span className="font-semibold text-studio-text">
+                          R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted">Sem itens financeiros configurados.</p>
+                  )}
+
+                  <div className="flex items-center justify-between gap-3 border-t border-stone-100 pt-1">
+                    <span className="text-gray-500">Subtotal</span>
+                    <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
+                  </div>
+
+                  {effectiveScheduleDiscount > 0 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-500">
+                        Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
+                      </span>
+                      <span className="font-semibold text-studio-text">- R$ {formatCurrencyLabel(effectiveScheduleDiscount)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-gray-500">Cobranca</span>
+                    <span className="font-semibold text-studio-text">
+                      {collectionTimingDraft === "charge_now" ? "Agora" : "No atendimento"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+                    <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
+                    <span className="text-base font-bold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {chargeFlowError && (
-          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
-            {chargeFlowError}
-          </div>
-        )}
+        {step === "review" ? (
+          <FooterRail
+            className="absolute inset-x-0 bottom-0"
+            surfaceClassName="bg-[rgba(250,247,242,0.96)]"
+            paddingXClassName="px-5"
+            rowClassName="grid grid-cols-2 gap-2"
+          >
+            <button
+              type="button"
+              onClick={onBackToFinanceAction}
+              className={`${appointmentFormButtonSecondaryClass} rounded-xl px-3 text-xs uppercase tracking-wide`}
+            >
+              Voltar
+            </button>
 
-        {step === "creating_charge" ? (
-          <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-5 text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-studio-green/20 border-t-studio-green" />
-            <p className="mt-3 text-sm font-semibold text-studio-text">Preparando cobrança...</p>
-            <p className="mt-1 text-xs text-muted">Isso leva apenas alguns segundos.</p>
-          </div>
-        ) : step === "charge_payment" && chargeBookingState ? (
-          <div className="space-y-4">
-            {chargeNowMethodDraft === "pix_mp" ? (
-              <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted">
-                  <PaymentMethodIcon method="pix" className="h-4 w-4" />
-                  PIX Mercado Pago
-                </div>
-                <p className="mt-2 text-xs text-muted">
-                  Valor a cobrar agora: <strong>R$ {formatCurrencyLabel(chargeNowDraftAmount)}</strong>
-                </p>
+            <button
+              type="button"
+              onClick={shouldChargeNow ? () => void onBeginImmediateChargeAction() : onScheduleAction}
+              disabled={shouldChargeNow ? !canRunChargeNow : creatingChargeBooking}
+              className={`${appointmentFormButtonPrimaryClass} rounded-xl px-3 text-xs uppercase tracking-wide`}
+            >
+              {reviewPrimaryLabel}
+            </button>
+          </FooterRail>
+        ) : null}
 
-                {!chargePixPayment ? (
-                  <button
-                    type="button"
-                    onClick={() => void onCreateChargePixNowAction(chargePixAttempt + 1)}
-                    disabled={runningChargeAction}
-                    className="mt-3 h-11 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-70"
-                  >
-                    {runningChargeAction ? "Gerando PIX..." : "Gerar QR Code PIX"}
-                  </button>
-                ) : (
-                  <>
-                    {chargePixPayment.qr_code_base64 && (
-                      <Image
-                        src={`data:image/png;base64,${chargePixPayment.qr_code_base64}`}
-                        alt="QR Code Pix"
-                        width={200}
-                        height={200}
-                        unoptimized
-                        className="mx-auto mt-4 h-44 w-44 rounded-xl border border-line bg-white p-2"
-                      />
-                    )}
-                    <p className="mt-3 text-center text-xs font-semibold text-studio-green">
-                      Tempo restante: {formatCountdownAction(chargePixRemainingSeconds)}
-                    </p>
-                    <div className="mt-2 h-2 rounded-full bg-stone-200">
-                      <div
-                        className="h-full rounded-full bg-studio-green transition-all"
-                        style={{ width: `${Math.max((chargePixRemainingSeconds / (15 * 60)) * 100, 0)}%` }}
-                      />
-                    </div>
-                    <div className="mt-3 break-all rounded-xl border border-line bg-stone-50 px-3 py-2 text-[11px] text-muted">
-                      {chargePixPayment.qr_code}
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void onCopyChargePixCodeAction()}
-                        className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        Copiar chave PIX
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onSendChargePixViaWhatsappAction}
-                        className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-                      >
-                        <Phone className="h-3.5 w-3.5" />
-                        Enviar WhatsApp
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : chargeNowMethodDraft === "card" ? (
-              <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-muted">
-                  <PaymentMethodIcon method="card" className="h-4 w-4" />
-                  Cobrança na maquininha
-                </div>
-                <p className="mt-2 text-xs text-muted">
-                  Valor a cobrar agora: <strong>R$ {formatCurrencyLabel(chargeNowDraftAmount)}</strong>
-                </p>
-                <p className="mt-2 text-xs text-muted">
-                  {pointEnabled ? pointTerminalName || "Maquininha Point configurada" : "Point não configurada"}
-                </p>
-                <p className="text-[11px] text-muted">{pointTerminalModel || "Configure a maquininha em Configurações."}</p>
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void onStartChargeCardAction("debit")}
-                    disabled={!pointEnabled || runningChargeAction}
-                    className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
-                  >
-                    Cobrar no débito
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onStartChargeCardAction("credit")}
-                    disabled={!pointEnabled || runningChargeAction}
-                    className="h-10 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
-                  >
-                    Cobrar no crédito
-                  </button>
-                </div>
-
-                {chargePointPayment && (
-                  <div className="mt-3 rounded-xl border border-line bg-stone-50 px-3 py-2">
-                    <p className="text-xs text-muted">
-                      Cobrança enviada ({chargePointPayment.card_mode === "debit" ? "débito" : "crédito"}). Aguardando confirmação...
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => void onVerifyChargeCardNowAction()}
-                      className="mt-2 h-9 rounded-xl border border-line px-3 text-[11px] font-extrabold uppercase tracking-wide text-studio-green"
-                    >
-                      Verificar agora
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 text-xs text-muted">
-                Finalize a cobrança no atendimento.
-              </div>
-            )}
-
-            <div className={`grid gap-2 ${chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 ? "grid-cols-2" : "grid-cols-1"}`}>
-              <button
-                type="button"
-                onClick={onEditPaymentAction}
-                disabled={runningChargeAction || finishingChargeFlow}
-                className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-70"
-              >
-                Alterar pagamento
-              </button>
-              <button
-                type="button"
-                onClick={() => void onSwitchChargeToAttendanceAction()}
-                disabled={runningChargeAction || finishingChargeFlow}
-                className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text disabled:opacity-70"
-              >
-                {finishingChargeFlow ? "Finalizando..." : "Cancelar cobranca e cobrar no atendimento"}
-              </button>
-              {chargeNowMethodDraft === "pix_mp" && chargePixRemainingSeconds <= 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClearChargeFlowErrorAction();
-                    void onCreateChargePixNowAction(chargePixAttempt + 1);
-                  }}
-                  disabled={runningChargeAction}
-                  className="h-12 w-full rounded-2xl bg-studio-light text-xs font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-60"
-                >
-                  Gerar novo pix
-                </button>
-              )}
-            </div>
+        {step === "charge_payment" && chargeBookingState ? (
+          <FooterRail
+            className="absolute inset-x-0 bottom-0"
+            surfaceClassName="bg-[rgba(250,247,242,0.96)]"
+            paddingXClassName="px-5"
+            rowClassName="grid grid-cols-2 gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => void onSwitchChargeToAttendanceAction()}
+              disabled={!canRunChargeActions}
+              className={`${appointmentFormButtonDangerClass} rounded-xl px-3 text-xs uppercase tracking-wide`}
+            >
+              {finishingChargeFlow ? "Finalizando..." : "Cobrar No Atendimento"}
+            </button>
 
             <button
               type="button"
               onClick={() => void onConfirmManualChargeAction()}
-              disabled={runningChargeAction || finishingChargeFlow}
-              className="h-12 w-full rounded-2xl border border-studio-green bg-studio-light text-xs font-extrabold uppercase tracking-wide text-studio-green disabled:opacity-70"
+              disabled={!canConfirmManualCharge}
+              className={`${appointmentFormButtonPrimaryClass} rounded-xl px-3 text-xs uppercase tracking-wide`}
             >
-              Registrar confirmacao manual
+              {runningChargeAction ? "Registrando..." : "Confirmacao Manual"}
             </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Resumo</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-gray-500">Cliente</span>
-                  <span className="text-right font-semibold text-studio-text">{clientDisplayPreviewLabel || "Cliente"}</span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-gray-500">Serviço</span>
-                  <span className="text-right font-semibold text-studio-text">{selectedServiceName || "Selecione um serviço"}</span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-gray-500">Data</span>
-                  <span className="text-right font-semibold text-studio-text">
-                    {selectedDate
-                      ? `${format(parseISO(selectedDate), "EEEE", { locale: ptBR }).replace(/^./, (char) => char.toUpperCase())}, ${format(parseISO(selectedDate), "dd/MM", { locale: ptBR })}`
-                      : "--"}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-gray-500">Horário</span>
-                  <span className="text-right font-semibold text-studio-text">{selectedTime || "--:--"}</span>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <span className="text-gray-500">Local</span>
-                  <span className="text-right font-semibold text-studio-text">
-                    {isHomeVisit ? `Domicílio${addressLabel ? ` • ${addressLabel}` : ""}` : "Estúdio"}
-                  </span>
-                </div>
-              </div>
-            </div>
+          </FooterRail>
+        ) : null}
 
-            <div className="rounded-2xl border border-stone-100 bg-white p-4">
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-gray-400">Financeiro</p>
-              <div className="space-y-2 text-sm">
-                {financeDraftItems.length > 0 ? (
-                  financeDraftItems.map((item, index) => (
-                    <div key={`${item.type}-${item.label}-${index}`} className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">{item.label}</span>
-                      <span className="font-semibold text-studio-text">
-                        R$ {formatCurrencyLabel(Number(item.amount) * Number(item.qty ?? 1))}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted">Sem itens financeiros configurados.</p>
-                )}
-                <div className="flex items-center justify-between gap-3 border-t border-stone-100 pt-1">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleSubtotal)}</span>
-                </div>
-                {effectiveScheduleDiscount > 0 && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-gray-500">
-                      Desconto {scheduleDiscountType === "pct" ? `(${effectiveScheduleDiscountInputValue}%)` : ""}
-                    </span>
-                    <span className="font-semibold text-studio-text">- R$ {formatCurrencyLabel(effectiveScheduleDiscount)}</span>
-                  </div>
-                )}
-                {collectionTimingDraft === "charge_now" && (
-                  <>
-                    {chargeNowMethodDraft !== "waiver" && (
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-gray-500">Valor total do atendimento</span>
-                        <span className="font-semibold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-gray-500">Forma</span>
-                      <span className="font-semibold text-studio-text">
-                        {chargeNowMethodDraft === "pix_mp"
-                          ? "PIX"
-                          : chargeNowMethodDraft === "card"
-                            ? "Cartão"
-                            : chargeNowMethodDraft === "cash"
-                              ? "Dinheiro"
-                              : "Cortesia"}
-                      </span>
-                    </div>
-                    {chargeNowMethodDraft === "waiver" && (
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-gray-500">Status financeiro</span>
-                        <span className="font-semibold text-sky-700">Cortesia / pagamento liberado</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-gray-500">Cobrança</span>
-                  <span className="font-semibold text-studio-text">
-                    {collectionTimingDraft === "at_attendance" ? "No atendimento" : "Agora (No Agendamento)"}
-                  </span>
-                </div>
-              </div>
-              {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver" ? (
-                <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-gray-500">Valor Cobrado agora</span>
-                    <span className="shrink-0 whitespace-nowrap text-base font-bold text-studio-text">
-                      R$ {formatCurrencyLabel(chargeNowDraftAmount)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-gray-500">Saldo a cobrar</span>
-                    <span className="shrink-0 whitespace-nowrap text-base font-bold text-studio-text">
-                      R$ {formatCurrencyLabel(Math.max(scheduleTotal - chargeNowDraftAmount, 0))}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
-                  <span className="text-sm font-semibold text-gray-500">Total do agendamento</span>
-                  <span className="text-base font-bold text-studio-text">R$ {formatCurrencyLabel(scheduleTotal)}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {collectionTimingDraft === "charge_now" && chargeNowMethodDraft !== "waiver" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => void onBeginImmediateChargeAction()}
-                    disabled={
-                      creatingChargeBooking ||
-                      !isChargeNowMethodChosen ||
-                      !isChargeNowAmountConfirmed ||
-                      Boolean(chargeNowAmountError)
-                    }
-                    className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10 disabled:opacity-70"
-                  >
-                    {creatingChargeBooking ? "Preparando cobrança..." : "Cobrar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onCloseAction}
-                    className="h-12 w-full rounded-2xl border border-line bg-white text-xs font-extrabold uppercase tracking-wide text-studio-text"
-                  >
-                    Cancelar
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={onScheduleAction}
-                    className="h-12 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white shadow-lg shadow-green-900/10"
-                  >
-                    {isCourtesyDraft ? "Confirmar e agendar cortesia" : "Confirmar e agendar"}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>,
     portalTarget

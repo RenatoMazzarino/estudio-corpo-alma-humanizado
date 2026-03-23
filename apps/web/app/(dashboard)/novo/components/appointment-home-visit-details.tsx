@@ -4,6 +4,11 @@ import { MapPin, Plus } from "lucide-react";
 import type { ClientAddress, DisplacementEstimate } from "../appointment-form.types";
 import { buildAddressQuery, formatClientAddress } from "../appointment-form.helpers";
 import { GoogleMapsAddressButton } from "./google-maps-address-button";
+import {
+  appointmentFormButtonInlineClass,
+  appointmentFormHeaderIconButtonClass,
+  appointmentFormSectionHeaderSecondaryClass,
+} from "../appointment-form.styles";
 
 type AppointmentHomeVisitDetailsProps = {
   visible: boolean;
@@ -31,7 +36,7 @@ function ActionButton({ label, onClick }: { label: string; onClick: () => void }
     <button
       type="button"
       onClick={onClick}
-      className="h-9 rounded-xl border border-line bg-white px-3 text-[10px] font-extrabold uppercase tracking-wide text-studio-text transition hover:bg-paper"
+      className={`${appointmentFormButtonInlineClass} h-9 text-[10px] uppercase tracking-wide`}
     >
       {label}
     </button>
@@ -69,14 +74,14 @@ export function AppointmentHomeVisitDetails({
   return (
     <div
       className={`overflow-hidden transition-all duration-300 ${
-        visible ? "mt-6 max-h-200 opacity-100" : "mt-0 max-h-0 opacity-0"
+        visible ? "mt-2 max-h-200 opacity-100" : "mt-0 max-h-0 opacity-0"
       }`}
     >
       <div className="wl-surface-card">
-        <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5 wl-surface-card-header">
+        <div className={`${appointmentFormSectionHeaderSecondaryClass} bg-dom!`}>
           <div className="inline-flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-studio-text" />
-            <p className="wl-typo-label text-studio-text">
+            <MapPin className="h-4 w-4 text-white!" />
+            <p className="wl-typo-label text-white!">
               {showAddressTable ? "Enderecos cadastrados" : "Endereco do atendimento"}
             </p>
           </div>
@@ -84,7 +89,7 @@ export function AppointmentHomeVisitDetails({
           <button
             type="button"
             onClick={onOpenAddressCreateModalAction}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-studio-green transition hover:bg-paper"
+            className={appointmentFormHeaderIconButtonClass}
             aria-label="Cadastrar novo endereco"
             title="Cadastrar novo endereco"
           >
@@ -118,7 +123,7 @@ export function AppointmentHomeVisitDetails({
                       type="checkbox"
                       checked={isSelected}
                       readOnly
-                      className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-studio-green"
+                      className="mt-0.5 h-4 w-4 rounded border-white/60 accent-dom"
                     />
 
                     <div className="min-w-0 flex-1">
@@ -139,7 +144,7 @@ export function AppointmentHomeVisitDetails({
           ) : null}
 
           {showManualAddress ? (
-            <div className="rounded-xl border border-line bg-white px-3 py-3">
+            <div className="rounded-xl border border-line bg-dom px-3 py-3">
               <p className="wl-typo-body-sm-strong text-studio-text">{manualAddressTitle}</p>
               <p className="wl-typo-body-sm pt-1 text-muted leading-snug">{manualAddressText}</p>
               <div className="mt-2 flex justify-end">
@@ -149,7 +154,7 @@ export function AppointmentHomeVisitDetails({
           ) : null}
 
           {!hasSavedAddresses && !showManualAddress ? (
-            <div className="rounded-xl border border-dashed border-line bg-white px-3 py-3">
+            <div className="rounded-xl border border-dashed border-line bg-dom px-3 py-3">
               <p className="wl-typo-body-sm text-muted">
                 Nenhum endereco cadastrado para este cliente. Use o botao + para cadastrar.
               </p>
@@ -208,7 +213,7 @@ export function AppointmentHomeVisitDetails({
                 <button
                   type="button"
                   onClick={onZeroDisplacementFeeAction}
-                  className="h-10 rounded-xl border border-line bg-white px-3 text-[10px] font-extrabold uppercase tracking-wide text-studio-text hover:bg-paper"
+                  className={`${appointmentFormButtonInlineClass} text-[10px] uppercase tracking-wide`}
                 >
                   Zerar
                 </button>

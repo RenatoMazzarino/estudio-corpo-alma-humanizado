@@ -1,9 +1,15 @@
 "use client";
 
-import { Phone } from "lucide-react";
+import { BookUser, Eye, Phone } from "lucide-react";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 import { BottomSheetHeaderV2 } from "../../../../components/ui/bottom-sheet-header-v2";
+import { FooterRail } from "../../../../components/ui/footer-rail";
+import {
+  appointmentFormButtonPrimaryClass,
+  appointmentFormButtonSecondaryClass,
+  appointmentFormSectionHeaderSecondaryClass,
+} from "../appointment-form.styles";
 
 type ClientCreateModalProps = {
   portalTarget: HTMLElement | null;
@@ -83,12 +89,15 @@ export function ClientCreateModal({
 
         <div className="max-h-[72vh] space-y-4 overflow-y-auto px-5 pb-24 pt-5 wl-surface-modal-body">
           {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
           ) : null}
 
-          <div className="overflow-hidden rounded-2xl border border-line wl-surface-card">
-            <div className="border-b border-line px-3 py-2.5 wl-surface-card-header">
-              <p className="wl-typo-label text-studio-text">Dados basicos</p>
+          <div className="overflow-hidden rounded-xl border border-line wl-surface-card">
+            <div className={`${appointmentFormSectionHeaderSecondaryClass} px-3 py-2.5`}>
+              <div className="inline-flex items-center gap-2">
+                <BookUser className="h-4 w-4 text-studio-text" />
+                <p className="wl-typo-label text-studio-text">Dados basicos</p>
+              </div>
             </div>
             <div className="space-y-3 px-3 py-3 wl-surface-card-body">
               <div>
@@ -124,9 +133,12 @@ export function ClientCreateModal({
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-line wl-surface-card">
-            <div className="border-b border-line px-3 py-2.5 wl-surface-card-header">
-              <p className="wl-typo-label text-studio-text">Contato</p>
+          <div className="overflow-hidden rounded-xl border border-line wl-surface-card">
+            <div className={`${appointmentFormSectionHeaderSecondaryClass} px-3 py-2.5`}>
+              <div className="inline-flex items-center gap-2">
+                <Phone className="h-4 w-4 text-studio-text" />
+                <p className="wl-typo-label text-studio-text">Contato</p>
+              </div>
             </div>
             <div className="space-y-3 px-3 py-3 wl-surface-card-body">
               <div>
@@ -174,9 +186,12 @@ export function ClientCreateModal({
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-line wl-surface-card">
-            <div className="border-b border-line px-3 py-2.5 wl-surface-card-header">
-              <p className="wl-typo-label text-studio-text">Pre-visualizacao</p>
+          <div className="overflow-hidden rounded-xl border border-line wl-surface-card">
+            <div className={`${appointmentFormSectionHeaderSecondaryClass} px-3 py-2.5`}>
+              <div className="inline-flex items-center gap-2">
+                <Eye className="h-4 w-4 text-studio-text" />
+                <p className="wl-typo-label text-studio-text">Pre-visualizacao</p>
+              </div>
             </div>
             <div className="space-y-2 px-3 py-3 wl-surface-card-body">
               <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">Nome interno</p>
@@ -187,26 +202,29 @@ export function ClientCreateModal({
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-line bg-studio-bg/95 p-4 backdrop-blur">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onCloseAction}
-              disabled={saving}
-              className="wl-typo-button h-11 w-full rounded-xl border border-line bg-white text-studio-text disabled:opacity-60"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={onSaveAction}
-              disabled={saving}
-              className="wl-typo-button h-11 w-full rounded-xl bg-studio-green text-white shadow-lg shadow-studio-green/30 disabled:opacity-70"
-            >
-              {saving ? "Salvando..." : "Salvar cliente"}
-            </button>
-          </div>
-        </div>
+        <FooterRail
+          className="absolute inset-x-0 bottom-0"
+          surfaceClassName="bg-[rgba(250,247,242,0.96)]"
+          paddingXClassName="px-5"
+          rowClassName="grid grid-cols-2 gap-2"
+        >
+          <button
+            type="button"
+            onClick={onCloseAction}
+            disabled={saving}
+            className={`${appointmentFormButtonSecondaryClass} h-11 w-full rounded-xl`}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onSaveAction}
+            disabled={saving}
+            className={`${appointmentFormButtonPrimaryClass} h-11 w-full rounded-xl`}
+          >
+            {saving ? "Salvando..." : "Salvar cliente"}
+          </button>
+        </FooterRail>
       </div>
     </div>,
     portalTarget

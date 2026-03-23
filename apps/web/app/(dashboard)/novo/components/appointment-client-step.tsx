@@ -4,6 +4,12 @@ import type { RefObject } from "react";
 import { Phone, Search, Sparkles, Trash2 } from "lucide-react";
 import { formatCpf } from "../../../../src/shared/cpf";
 import { formatBrazilPhone } from "../../../../src/shared/phone";
+import {
+  appointmentFormButtonPrimaryClass,
+  appointmentFormButtonSecondaryClass,
+  appointmentFormHeaderIconButtonClass,
+  appointmentFormSectionHeaderPrimaryClass,
+} from "../appointment-form.styles";
 
 type ClientLite = {
   id: string;
@@ -103,7 +109,7 @@ export function AppointmentClientStep({
 
   return (
     <section className={`${sectionCardClass} overflow-hidden`}>
-      <div className="flex h-11 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header">
+      <div className={appointmentFormSectionHeaderPrimaryClass}>
         <div className="flex min-w-0 items-center gap-2">
           <div className={sectionNumberClass}>1</div>
           <h2 className={`${sectionHeaderTextClass} leading-none truncate`}>{clientTitle}</h2>
@@ -113,7 +119,7 @@ export function AppointmentClientStep({
           <button
             type="button"
             onClick={onClearSelectedClientAction}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-studio-green transition hover:bg-paper"
+            className={appointmentFormHeaderIconButtonClass}
             aria-label="Remover cliente selecionado"
             title="Remover cliente selecionado"
           >
@@ -143,7 +149,7 @@ export function AppointmentClientStep({
               />
 
               {!isEditing && isClientDropdownOpen && clientName.trim().length > 0 ? (
-                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl">
+                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
                   {filteredClients.length > 0 ? (
                     <div className="max-h-56 overflow-y-auto p-1.5">
                       {filteredClients.map((client) => (
@@ -196,12 +202,16 @@ export function AppointmentClientStep({
         ) : null}
 
         {isClientReadOnly ? (
-          <div className="px-0.5">
-            <SummaryLine label="WhatsApp" value={clientPhone || "--"} />
-            <SummaryLine label="Email" value={clientEmail || "--"} />
-            <SummaryLine label="CPF" value={clientCpf ? formatCpf(clientCpf) : "--"} />
-            <SummaryLine label="Referencia" value={clientReference || "--"} />
-          </div>
+          <>
+            <input type="hidden" name="clientName" value={clientName} />
+            <input type="hidden" name="clientPhone" value={clientPhone} />
+            <div className="px-0.5">
+              <SummaryLine label="WhatsApp" value={clientPhone || "--"} />
+              <SummaryLine label="Email" value={clientEmail || "--"} />
+              <SummaryLine label="CPF" value={clientCpf ? formatCpf(clientCpf) : "--"} />
+              <SummaryLine label="Referencia" value={clientReference || "--"} />
+            </div>
+          </>
         ) : null}
 
         {shouldShowClientContactFields && !isClientReadOnly ? (
@@ -247,7 +257,7 @@ export function AppointmentClientStep({
                   className={`${inputClass} ${isExistingClientCpfLocked ? "bg-stone-100 text-gray-600" : ""}`}
                 />
                 {duplicateCpfClient ? (
-                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-800">CPF ja cadastrado</p>
                     <p className="mt-1 text-sm font-semibold leading-snug text-amber-900">
                       Este CPF ja esta cadastrado para <strong>{duplicateCpfClient.name}</strong>.
@@ -256,14 +266,14 @@ export function AppointmentClientStep({
                       <button
                         type="button"
                         onClick={onLinkExistingClientByCpfAction}
-                        className="h-10 w-full rounded-xl bg-amber-600 text-[11px] font-extrabold uppercase tracking-wide text-white"
+                        className={appointmentFormButtonPrimaryClass}
                       >
                         Vincular ao cliente existente
                       </button>
                       <button
                         type="button"
                         onClick={onChangeCpfAfterConflictAction}
-                        className="h-10 w-full rounded-xl border border-amber-300 bg-white text-[11px] font-extrabold uppercase tracking-wide text-amber-800"
+                        className={`${appointmentFormButtonSecondaryClass} border-amber-300 text-amber-800`}
                       >
                         Informar novo CPF
                       </button>

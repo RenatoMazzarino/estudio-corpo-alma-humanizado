@@ -107,7 +107,7 @@ export default async function NewAppointment(props: PageProps) {
       : null;
 
   return (
-    <div className="-mx-4 -mt-4 h-full">
+    <div className={appointment ? "-mx-4 h-full" : "-mx-4 flex h-full min-h-0 flex-col overflow-hidden"}>
       {appointment ? (
         <AppHeader
           label="Agendamento Interno"
@@ -125,7 +125,7 @@ export default async function NewAppointment(props: PageProps) {
         />
       ) : null}
 
-      <main className={appointment ? "p-6 pb-6" : "flex h-full min-h-0 flex-col px-6 pb-0"}>
+      <main className={appointment ? "p-6 pb-6" : "flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-0"}>
         <AppointmentForm
           services={services || []}
           clients={clients || []}

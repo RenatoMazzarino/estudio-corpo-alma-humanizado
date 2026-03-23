@@ -27,7 +27,6 @@ type Params = {
   setChargeNowSignalPercent: (value: number) => void;
   setChargeNowCustomAmount: (value: string) => void;
   setChargeNowMethodDraft: (value: "cash" | "pix_mp" | "card" | "waiver" | null) => void;
-  setChargeNowSignalValueConfirmed: (value: boolean) => void;
   setConfirmationSheetStep: (value: BookingConfirmationStep) => void;
   setChargeBookingState: Dispatch<SetStateAction<ChargeBookingState | null>>;
   setChargeFlowError: (value: string | null) => void;
@@ -61,7 +60,6 @@ export function useAppointmentServiceSelection({
   setChargeNowSignalPercent,
   setChargeNowCustomAmount,
   setChargeNowMethodDraft,
-  setChargeNowSignalValueConfirmed,
   setConfirmationSheetStep,
   setChargeBookingState,
   setChargeFlowError,
@@ -87,13 +85,12 @@ export function useAppointmentServiceSelection({
         setScheduleDiscountValue("");
         setSelectedDate("");
         setSelectedTime("");
-        setCollectionTimingDraft(null);
+        setCollectionTimingDraft("at_attendance");
         setChargeNowAmountMode("full");
         setHasChargeNowAmountModeChoice(false);
         setChargeNowSignalPercent(Math.max(0, signalPercentage ?? 30));
         setChargeNowCustomAmount("");
         setChargeNowMethodDraft(null);
-        setChargeNowSignalValueConfirmed(false);
         setConfirmationSheetStep("review");
         setChargeBookingState(null);
         setChargeFlowError(null);
@@ -156,7 +153,6 @@ export function useAppointmentServiceSelection({
       setChargeNowSignalPercent,
       setChargeNowCustomAmount,
       setChargeNowMethodDraft,
-      setChargeNowSignalValueConfirmed,
       setConfirmationSheetStep,
       setChargeBookingState,
       setChargeFlowError,
