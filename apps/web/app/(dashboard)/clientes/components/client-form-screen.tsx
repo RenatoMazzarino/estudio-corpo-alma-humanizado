@@ -17,7 +17,6 @@ import {
 import {
   appointmentFormButtonPrimaryClass,
   appointmentFormHeaderIconButtonClass,
-  appointmentFormScreenHeaderClass,
   appointmentFormScreenHeaderTopRowClass,
 } from "../../novo/appointment-form.styles";
 import { NewClientAddressSection } from "../novo/components/new-client-address-section";
@@ -321,7 +320,7 @@ export function ClientFormScreen({
 
   return (
     <div className="-mx-4 -mt-4 h-full min-h-0">
-      <header className={appointmentFormScreenHeaderClass}>
+      <header className="z-30 min-h-27 bg-studio-green text-white safe-top safe-top-4 px-4 pb-0 pt-4">
         <div className={appointmentFormScreenHeaderTopRowClass}>
           <Link href={backHref} className={appointmentFormHeaderIconButtonClass} aria-label="Voltar">
             <ChevronLeft className="h-4 w-4" />

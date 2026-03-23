@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
@@ -40,9 +40,6 @@ import {
   appointmentFormButtonDangerClass,
   appointmentFormButtonSecondaryClass,
   appointmentFormHeaderIconButtonClass,
-  appointmentFormScreenHeaderClass,
-  appointmentFormScreenHeaderTabsClass,
-  appointmentFormScreenHeaderTopRowClass,
 } from "../../novo/appointment-form.styles";
 import type {
   ClientDetailSnapshot,
@@ -118,7 +115,7 @@ function getLegacyAddress(snapshot: ClientDetailSnapshot) {
 }
 
 function formatStars(value: number) {
-  return "⭐".repeat(Math.max(1, Math.min(5, value)));
+  return "â­".repeat(Math.max(1, Math.min(5, value)));
 }
 
 function ActionIconLink({
@@ -140,7 +137,7 @@ function ActionIconLink({
 
   if (!href) {
     return (
-      <span className={className + " cursor-not-allowed opacity-35"} aria-label={label + " indisponível"}>
+      <span className={className + " cursor-not-allowed opacity-35"} aria-label={label + " indisponÃ­vel"}>
         {icon}
       </span>
     );
@@ -213,6 +210,15 @@ function MetricCard({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-2xl border border-line bg-paper/70 p-3">
       <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <div className="mt-1 text-sm font-semibold text-studio-text">{value}</div>
+    </div>
+  );
+}
+
+function HeaderMetricInline({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="px-3 py-2.5 text-center">
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">{label}</p>
       <div className="mt-1 text-sm font-semibold text-studio-text">{value}</div>
     </div>
   );
@@ -298,11 +304,11 @@ function HistoryItem({ entry }: { entry: ClientProntuarioEntry }) {
         <div>
           <p className="text-sm font-extrabold text-studio-text">{entry.serviceName}</p>
           <p className="text-xs text-muted">
-            {formatShortDate(entry.startTime)} • {entry.isHomeVisit ? "Domicílio" : "Estúdio"}
+            {formatShortDate(entry.startTime)} â€¢ {entry.isHomeVisit ? "DomicÃ­lio" : "EstÃºdio"}
           </p>
         </div>
         <Chip tone={entry.status === "completed" ? "success" : "dom"}>
-          {entry.status === "completed" ? "Concluído" : entry.status || "Registrado"}
+          {entry.status === "completed" ? "ConcluÃ­do" : entry.status || "Registrado"}
         </Chip>
       </div>
       {entry.evolutionText ? (
@@ -310,7 +316,7 @@ function HistoryItem({ entry }: { entry: ClientProntuarioEntry }) {
       ) : entry.internalNotes ? (
         <p className="mt-2 line-clamp-3 text-sm leading-6 text-studio-text">{entry.internalNotes}</p>
       ) : (
-        <p className="mt-2 text-sm text-muted">Sem evolução textual registrada nesta sessão.</p>
+        <p className="mt-2 text-sm text-muted">Sem evoluÃ§Ã£o textual registrada nesta sessÃ£o.</p>
       )}
     </div>
   );
@@ -339,6 +345,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   const paymentMethods = finance.paymentMethods;
   const recentHistory = history.slice(0, 6);
   const healthTags = [...anamnesis.healthTags];
+  const lastVisitLabel = recentHistory[0] ? formatShortDate(recentHistory[0].start_time) : "-";
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -361,7 +368,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         await navigator.share({
-          title: "Cliente • " + client.name,
+          title: "Cliente â€¢ " + client.name,
           text: "Perfil interno de " + client.name,
           url,
         });
@@ -370,7 +377,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
       }
       showToast("Link do perfil pronto para compartilhar.", "success");
     } catch {
-      showToast("Não foi possível compartilhar agora.", "error");
+      showToast("NÃ£o foi possÃ­vel compartilhar agora.", "error");
     }
   };
 
@@ -378,7 +385,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     setMenuOpen(false);
     const phone = primaryPhone?.number_raw ?? client.phone ?? "";
     if (!phone || !navigator.clipboard?.writeText) {
-      showToast("Telefone principal indisponível para cópia.", "info");
+      showToast("Telefone principal indisponÃ­vel para cÃ³pia.", "info");
       return;
     }
 
@@ -386,7 +393,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
       await navigator.clipboard.writeText(phone);
       showToast("Telefone principal copiado.", "success");
     } catch {
-      showToast("Não foi possível copiar o telefone.", "error");
+      showToast("NÃ£o foi possÃ­vel copiar o telefone.", "error");
     }
   };
 
@@ -398,7 +405,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         showToast(result.error.message ?? "Falha ao excluir cliente.", "error");
         return;
       }
-      showToast("Cliente excluído com sucesso.", "success");
+      showToast("Cliente excluÃ­do com sucesso.", "success");
       router.push("/clientes");
       router.refresh();
     } catch {
@@ -412,108 +419,115 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
   return (
     <>
       <div className="pb-10">
-        <header className={`${appointmentFormScreenHeaderClass} sticky top-0 z-30 -mx-4 -mt-4`}>
-          <div className="px-4 pb-4">
-            <div className={`${appointmentFormScreenHeaderTopRowClass} justify-between`}>
+        <header className="sticky top-0 z-30 -mx-4 -mt-4 bg-studio-green text-white safe-top safe-top-4 px-4 pb-3 pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2.5">
               <button
                 type="button"
                 onClick={() => router.push("/clientes")}
-                className={appointmentFormHeaderIconButtonClass}
+                className={`${appointmentFormHeaderIconButtonClass} mt-0.5 shrink-0`}
                 aria-label="Voltar para clientes"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
 
-              <div ref={menuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen((current) => !current)}
-                  className={appointmentFormHeaderIconButtonClass}
-                  aria-label="Abrir ações do cliente"
-                >
-                  <EllipsisVertical className="h-4 w-4" />
-                </button>
-
-                {menuOpen ? (
-                  <div className="absolute right-0 top-10 z-20 min-w-52 overflow-hidden rounded-xl border border-line wl-surface-card-body shadow-soft">
-                    <Link
-                      href={editHref}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper"
-                    >
-                      <PencilLine className="h-4 w-4" />
-                      Editar cadastro
-                    </Link>
-                    <button type="button" onClick={handleShare} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper">
-                      <Share2 className="h-4 w-4" />
-                      Compartilhar perfil
-                    </button>
-                    <Link href={prontuarioHref} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper" onClick={() => setMenuOpen(false)}>
-                      <FileText className="h-4 w-4" />
-                      Abrir prontuário
-                    </Link>
-                    <button type="button" onClick={handleCopyPhone} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper">
-                      <Copy className="h-4 w-4" />
-                      Copiar telefone
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setDeleteOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-bold text-red-600 transition hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Excluir cliente
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className={appointmentFormScreenHeaderTabsClass}>
-              <div className="flex items-center gap-2 pb-2">
-                {client.is_vip ? <Chip tone="success">VIP</Chip> : null}
-                {client.needs_attention ? <Chip tone="danger">Atencao</Chip> : null}
-                {client.is_minor ? <Chip tone="warning">Menor</Chip> : null}
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-start gap-4">
-              <div className="relative flex h-18 w-18 shrink-0 items-center justify-center overflow-hidden rounded-full bg-studio-green text-xl font-serif font-bold text-white shadow-soft ring-4 ring-white/80">
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/35 bg-studio-green-dark text-base font-serif font-bold text-white">
                 {client.avatar_url ? (
-                  <Image src={client.avatar_url} alt={client.name} fill sizes="72px" className="object-cover" unoptimized />
+                  <Image src={client.avatar_url} alt={client.name} fill sizes="48px" className="object-cover" unoptimized />
                 ) : (
                   initials
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-2xl font-serif text-studio-text">{client.name}</h1>
-                </div>
-                <p className="mt-1 text-sm font-semibold text-muted">Cliente desde {formatShortDate(client.created_at)}</p>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted">
-                  {publicName ? <span className="rounded-full border border-line/60 bg-white/85 px-2.5 py-1 font-semibold">Nome público: {publicName}</span> : null}
-                  {client.profissao ? <span className="rounded-full border border-line/60 bg-white/85 px-2.5 py-1 font-semibold">{client.profissao}</span> : null}
+
+              <div className="min-w-0">
+                <h1 className="truncate wl-typo-card-name-md text-white">{client.name}</h1>
+                <p className="mt-0.5 text-xs text-white/85">Cliente desde {formatShortDate(client.created_at)}</p>
+                {publicName ? <p className="truncate text-[11px] text-white/75">{publicName}</p> : null}
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {client.is_vip ? <Chip tone="success">VIP</Chip> : null}
+                  {client.needs_attention ? <Chip tone="danger">Atencao</Chip> : null}
+                  {client.is_minor ? <Chip tone="warning">Menor</Chip> : null}
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2.5">
-              <ActionIconLink href={callHref} label="Ligar" icon={<Phone className="h-4 w-4" />} />
-              <ActionIconLink href={whatsappHref} label="WhatsApp" icon={<MessageCircle className="h-4 w-4" />} tone="green" />
-              <ActionIconLink href={scheduleHref} label="Agendar" icon={<CalendarPlus className="h-4 w-4" />} tone="green" />
-              <ActionIconLink href={prontuarioHref} label="Prontuário" icon={<FileText className="h-4 w-4" />} />
-            </div>
+            <div ref={menuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((current) => !current)}
+                className={appointmentFormHeaderIconButtonClass}
+                aria-label="Abrir ações do cliente"
+              >
+                <EllipsisVertical className="h-4 w-4" />
+              </button>
 
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              <MetricCard label="Sessões" value={finance.completedSessionsCount} />
-              <MetricCard label="Última visita" value={finance.daysSinceLastVisit === null ? "-" : finance.daysSinceLastVisit + " dia(s)"} />
-              <MetricCard label="Fidelidade" value={formatStars(finance.fidelityStars)} />
+              {menuOpen ? (
+                <div className="absolute right-0 top-10 z-20 min-w-52 overflow-hidden rounded-xl border border-line wl-surface-card-body shadow-soft">
+                  <Link
+                    href={editHref}
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper"
+                  >
+                    <PencilLine className="h-4 w-4" />
+                    Editar cadastro
+                  </Link>
+                  <button type="button" onClick={handleShare} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper">
+                    <Share2 className="h-4 w-4" />
+                    Compartilhar perfil
+                  </button>
+                  <Link href={prontuarioHref} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper" onClick={() => setMenuOpen(false)}>
+                    <FileText className="h-4 w-4" />
+                    Abrir prontuário
+                  </Link>
+                  <button type="button" onClick={handleCopyPhone} className="flex w-full items-center gap-2 border-b border-line px-3 py-2.5 text-left text-[13px] font-bold text-studio-text transition hover:bg-paper">
+                    <Copy className="h-4 w-4" />
+                    Copiar telefone
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setDeleteOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] font-bold text-red-600 transition hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir cliente
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <ActionIconLink href={callHref} label="Ligar" icon={<Phone className="h-4 w-4" />} />
+              <span className="text-[10px] font-semibold text-white/85">Ligar</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <ActionIconLink href={whatsappHref} label="Mensagem" icon={<MessageCircle className="h-4 w-4" />} tone="green" />
+              <span className="text-[10px] font-semibold text-white/85">Mensagem</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <ActionIconLink href={scheduleHref} label="Agendar" icon={<CalendarPlus className="h-4 w-4" />} tone="green" />
+              <span className="text-[10px] font-semibold text-white/85">Agendar</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <ActionIconLink href={prontuarioHref} label="Prontuário" icon={<FileText className="h-4 w-4" />} />
+              <span className="text-[10px] font-semibold text-white/85">Prontuário</span>
             </div>
           </div>
         </header>
+
+        <section className="px-4 pt-3">
+          <div className="overflow-hidden rounded-xl border border-line wl-surface-card-body">
+            <div className="grid grid-cols-3 divide-x divide-line">
+              <HeaderMetricInline label="Sessões" value={finance.completedSessionsCount} />
+              <HeaderMetricInline label="Última visita" value={lastVisitLabel} />
+              <HeaderMetricInline label="Fidelidade" value={formatStars(finance.fidelityStars)} />
+            </div>
+          </div>
+        </section>
 
         <div className="space-y-4 px-4 pt-4">
 
@@ -526,7 +540,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               meta={
                 <div className="flex flex-wrap items-center gap-2">
                   {primaryPhone.is_whatsapp ? <Chip tone="success">WhatsApp</Chip> : null}
-                  {phones.length > 1 ? <Chip>{phones.length} números</Chip> : null}
+                  {phones.length > 1 ? <Chip>{phones.length} nÃºmeros</Chip> : null}
                 </div>
               }
             />
@@ -553,19 +567,19 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
               />
             ))
           ) : (
-            <SectionRow icon={<Mail className="h-4 w-4" />} label="E-mail" value={client.email || "Não informado"} />
+            <SectionRow icon={<Mail className="h-4 w-4" />} label="E-mail" value={client.email || "NÃ£o informado"} />
           )}
           <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nascimento" value={formatBirthDateWithAge(birthDate)} />
           <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF" value={formatCpf(client.cpf)} />
-          <SectionRow icon={<Briefcase className="h-4 w-4" />} label="Profissão" value={client.profissao || "Não informada"} />
+          <SectionRow icon={<Briefcase className="h-4 w-4" />} label="ProfissÃ£o" value={client.profissao || "NÃ£o informada"} />
           <SectionRow
             icon={<Share2 className="h-4 w-4" />}
             label="Aceita novidades"
-            value={client.marketing_opt_in ? "Sim, aceita receber novidades" : "Não configurado / sem aceite"}
+            value={client.marketing_opt_in ? "Sim, aceita receber novidades" : "NÃ£o configurado / sem aceite"}
           />
         </SectionCard>
 
-        <SectionCard title="Endereços" icon={<MapPin className="h-4 w-4" />}>
+        <SectionCard title="EndereÃ§os" icon={<MapPin className="h-4 w-4" />}>
           {addresses.length > 0 ? (
             addresses.map((address) => {
               const addressLine =
@@ -577,42 +591,42 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                   address.address_cidade,
                   address.address_estado,
                   address.address_cep,
-                ]) || "Endereço não informado";
+                ]) || "EndereÃ§o nÃ£o informado";
 
               return (
                 <SectionRow
                   key={address.id}
                   icon={<MapPin className="h-4 w-4" />}
-                  label={address.label || "Endereço"}
+                  label={address.label || "EndereÃ§o"}
                   value={addressLine}
                   meta={
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
                       {address.is_primary ? <Chip>Principal</Chip> : null}
-                      {address.referencia ? <span>Referência: {address.referencia}</span> : null}
+                      {address.referencia ? <span>ReferÃªncia: {address.referencia}</span> : null}
                     </div>
                   }
                 />
               );
             })
           ) : (
-            <SectionRow icon={<MapPin className="h-4 w-4" />} label="Principal" value={legacyAddress || "Nenhum endereço cadastrado"} />
+            <SectionRow icon={<MapPin className="h-4 w-4" />} label="Principal" value={legacyAddress || "Nenhum endereÃ§o cadastrado"} />
           )}
         </SectionCard>
 
-        <SectionCard title="Origem & indicação" icon={<Sparkles className="h-4 w-4" />}>
-          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nome público" value={publicName || "Não informado"} />
-          <SectionRow icon={<Sparkles className="h-4 w-4" />} label="Como conheceu" value={client.como_conheceu || "Não informado"} />
-          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Referência interna" value={client.internal_reference || "Não informada"} />
-          <SectionRow icon={<Share2 className="h-4 w-4" />} label="Indicações feitas" value={finance.referralsCount + " cliente(s)"} />
+        <SectionCard title="Origem & indicaÃ§Ã£o" icon={<Sparkles className="h-4 w-4" />}>
+          <SectionRow icon={<UserRound className="h-4 w-4" />} label="Nome pÃºblico" value={publicName || "NÃ£o informado"} />
+          <SectionRow icon={<Sparkles className="h-4 w-4" />} label="Como conheceu" value={client.como_conheceu || "NÃ£o informado"} />
+          <SectionRow icon={<UserRound className="h-4 w-4" />} label="ReferÃªncia interna" value={client.internal_reference || "NÃ£o informada"} />
+          <SectionRow icon={<Share2 className="h-4 w-4" />} label="IndicaÃ§Ãµes feitas" value={finance.referralsCount + " cliente(s)"} />
         </SectionCard>
 
-        <SectionCard title="Preferências & cuidados" icon={<HeartPulse className="h-4 w-4" />}>
-          <SectionRow icon={<HeartPulse className="h-4 w-4" />} label="Preferências de atendimento" value={client.preferences_notes || "Não informadas"} />
-          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Contraindicações" value={client.contraindications || "Nenhuma registrada"} />
-          <SectionRow icon={<FileText className="h-4 w-4" />} label="Histórico clínico" value={client.clinical_history || "Não informado"} />
+        <SectionCard title="PreferÃªncias & cuidados" icon={<HeartPulse className="h-4 w-4" />}>
+          <SectionRow icon={<HeartPulse className="h-4 w-4" />} label="PreferÃªncias de atendimento" value={client.preferences_notes || "NÃ£o informadas"} />
+          <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="ContraindicaÃ§Ãµes" value={client.contraindications || "Nenhuma registrada"} />
+          <SectionRow icon={<FileText className="h-4 w-4" />} label="HistÃ³rico clÃ­nico" value={client.clinical_history || "NÃ£o informado"} />
           <SectionRow
             icon={<Sparkles className="h-4 w-4" />}
-            label="Tags de saúde"
+            label="Tags de saÃºde"
             value={
               healthTags.length > 0 || healthItems.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -626,7 +640,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                   ))}
                 </div>
               ) : (
-                "Nenhuma informação estruturada"
+                "Nenhuma informaÃ§Ã£o estruturada"
               )
             }
           />
@@ -646,12 +660,12 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
           {client.is_minor ? (
             <>
               <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="Sim" />
-              <SectionRow icon={<UserRound className="h-4 w-4" />} label="Responsável" value={client.guardian_name || "Não informado"} />
-              <SectionRow icon={<Phone className="h-4 w-4" />} label="Telefone do responsável" value={client.guardian_phone || "Não informado"} />
-              <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF do responsável" value={formatCpf(client.guardian_cpf)} />
+              <SectionRow icon={<UserRound className="h-4 w-4" />} label="ResponsÃ¡vel" value={client.guardian_name || "NÃ£o informado"} />
+              <SectionRow icon={<Phone className="h-4 w-4" />} label="Telefone do responsÃ¡vel" value={client.guardian_phone || "NÃ£o informado"} />
+              <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="CPF do responsÃ¡vel" value={formatCpf(client.guardian_cpf)} />
             </>
           ) : (
-            <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="Não" />
+            <SectionRow icon={<ShieldAlert className="h-4 w-4" />} label="Menor de idade" value="NÃ£o" />
           )}
         </SectionCard>
 
@@ -660,7 +674,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         <SectionCard title="Resumo financeiro" icon={<CircleDollarSign className="h-4 w-4" />}>
           <div className="grid grid-cols-1 gap-3 px-4 py-4 sm:grid-cols-2">
             <MetricCard label="Total gasto (lifetime)" value={currencyFormatter.format(finance.totalSpentLifetime)} />
-            <MetricCard label="Ticket médio por sessão" value={currencyFormatter.format(finance.averageTicket)} />
+            <MetricCard label="Ticket mÃ©dio por sessÃ£o" value={currencyFormatter.format(finance.averageTicket)} />
             <MetricCard label="Pacotes adquiridos" value={finance.packagesAcquired + " pacote(s)"} />
             <MetricCard label="Descontos concedidos" value={"- " + currencyFormatter.format(finance.discountsGranted)} />
             <MetricCard label="LTV estimado (12 meses)" value={currencyFormatter.format(finance.estimatedLtv12Months)} />
@@ -670,7 +684,7 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
           <div className="border-t border-line px-4 py-4">
             <div className="mb-3 flex items-center gap-2">
               <CircleDollarSign className="h-4 w-4 text-studio-green" />
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">Métodos de pagamento</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted">MÃ©todos de pagamento</p>
             </div>
             {paymentMethods.length > 0 ? (
               <div className="space-y-3">
@@ -684,13 +698,13 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
           </div>
 
           <div className="grid grid-cols-1 gap-3 border-t border-line px-4 py-4 sm:grid-cols-2">
-            <MetricCard label="Intervalo médio entre sessões" value={finance.averageIntervalDays === null ? "-" : finance.averageIntervalDays + " dias"} />
+            <MetricCard label="Intervalo mÃ©dio entre sessÃµes" value={finance.averageIntervalDays === null ? "-" : finance.averageIntervalDays + " dias"} />
             <MetricCard label="Dias sem aparecer" value={finance.daysSinceLastVisit === null ? "-" : finance.daysSinceLastVisit + " dias"} />
           </div>
         </SectionCard>
 
         <SectionCard
-          title="Prontuário"
+          title="ProntuÃ¡rio"
           icon={<FileText className="h-4 w-4" />}
           action={
             <Link href={prontuarioHref} className="inline-flex items-center gap-1 text-xs font-extrabold text-studio-green hover:underline">
@@ -700,16 +714,16 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
         >
           <div className="space-y-3 px-4 py-4">
             <p className="text-sm text-studio-text">
-              {prontuarioEntries.length} registro(s) de sessão disponíveis, incluindo anamnese base e evoluções já feitas nos atendimentos.
+              {prontuarioEntries.length} registro(s) de sessÃ£o disponÃ­veis, incluindo anamnese base e evoluÃ§Ãµes jÃ¡ feitas nos atendimentos.
             </p>
             <Link href={prontuarioHref} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-studio-green px-4 py-3 text-sm font-extrabold text-white shadow-soft transition hover:bg-studio-green-dark">
-              Abrir prontuário completo
+              Abrir prontuÃ¡rio completo
               <FileText className="h-4 w-4" />
             </Link>
           </div>
         </SectionCard>
 
-        <SectionCard title="Histórico recente" icon={<CalendarPlus className="h-4 w-4" />}>
+        <SectionCard title="HistÃ³rico recente" icon={<CalendarPlus className="h-4 w-4" />}>
           <div className="space-y-3 px-4 py-4">
             {recentHistory.length > 0 ? (
               recentHistory.map((appointment) => (
@@ -718,11 +732,11 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
                     <div>
                       <p className="text-sm font-extrabold text-studio-text">{appointment.service_name}</p>
                       <p className="text-xs text-muted">
-                        {formatShortDate(appointment.start_time)} • {appointment.is_home_visit ? "Domicílio" : "Estúdio"}
+                        {formatShortDate(appointment.start_time)} â€¢ {appointment.is_home_visit ? "DomicÃ­lio" : "EstÃºdio"}
                       </p>
                     </div>
                     <Chip tone={appointment.status === "completed" ? "success" : "dom"}>
-                      {appointment.status === "completed" ? "Concluído" : appointment.status || "Agendado"}
+                      {appointment.status === "completed" ? "ConcluÃ­do" : appointment.status || "Agendado"}
                     </Chip>
                   </div>
                 </div>
@@ -733,12 +747,12 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
           </div>
         </SectionCard>
 
-        <SectionCard title="Evoluções recentes" icon={<Sparkles className="h-4 w-4" />}>
+        <SectionCard title="EvoluÃ§Ãµes recentes" icon={<Sparkles className="h-4 w-4" />}>
           <div className="space-y-3 px-4 py-4">
             {prontuarioEntries.length > 0 ? (
               prontuarioEntries.slice(0, 4).map((entry) => <HistoryItem key={entry.appointmentId} entry={entry} />)
             ) : (
-              <p className="text-sm text-muted">Nenhuma evolução registrada ainda.</p>
+              <p className="text-sm text-muted">Nenhuma evoluÃ§Ã£o registrada ainda.</p>
             )}
           </div>
         </SectionCard>
@@ -757,5 +771,6 @@ export function ClientProfile({ snapshot }: { snapshot: ClientDetailSnapshot }) 
     </>
   );
 }
+
 
 

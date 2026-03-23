@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckSquare, Search, SlidersHorizontal, Square, Upload, User, UserPlus, X } from "lucide-react";
+import { Bell, CheckSquare, Search, SlidersHorizontal, Square, Upload, User, UserPlus, X } from "lucide-react";
 
 import { ModulePage } from "../../../components/ui/module-page";
 import { FloatingActionMenu } from "../../../components/ui/floating-action-menu";
@@ -16,7 +16,6 @@ import {
   appointmentFormButtonPrimaryClass,
   appointmentFormButtonSecondaryClass,
   appointmentFormHeaderIconButtonClass,
-  appointmentFormScreenHeaderClass,
   appointmentFormScreenHeaderTabsClass,
   appointmentFormScreenHeaderTopRowClass,
 } from "../novo/appointment-form.styles";
@@ -345,10 +344,10 @@ export function ClientsView({
   return (
     <>
       <ModulePage
-        className="-mx-4 -mt-4"
+        className="min-h-0"
         contentClassName="flex-1 min-h-0"
         header={
-          <header className={appointmentFormScreenHeaderClass}>
+          <header className="z-30 min-h-27 bg-studio-green text-white safe-top safe-top-4 px-4 pb-0 pt-4">
             <div className={`${appointmentFormScreenHeaderTopRowClass} justify-between`}>
               <div className="flex min-w-0 items-center gap-2.5">
                 <div className="relative h-8 w-8 overflow-hidden rounded-full border border-line bg-[#0B1C13] text-[#FCFAF6]">
@@ -376,15 +375,20 @@ export function ClientsView({
                 <button
                   type="button"
                   className={appointmentFormHeaderIconButtonClass}
+                  aria-label="Notificacoes"
+                  onClick={() => showToast("Notificacoes em breve.", "info")}
+                >
+                  <Bell className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className={appointmentFormHeaderIconButtonClass}
                   aria-label="Importar contatos"
                   onClick={() => void handleOpenImportModal()}
                   disabled={isImporting}
                 >
                   <Upload className="h-4 w-4" />
                 </button>
-                <Link href="/clientes/novo" className={appointmentFormHeaderIconButtonClass} aria-label="Novo cliente">
-                  <UserPlus className="h-4 w-4" />
-                </Link>
               </div>
             </div>
 
@@ -404,11 +408,11 @@ export function ClientsView({
                   <button
                     type="button"
                     onClick={() => setFiltersOpen((prev) => !prev)}
-                    className={`${appointmentFormHeaderIconButtonClass} gap-1 px-2 text-[11px] font-bold`}
+                    className={appointmentFormHeaderIconButtonClass}
                     aria-label="Filtrar clientes"
+                    title={`Filtro ativo: ${activeFilterLabel}`}
                   >
                     <SlidersHorizontal className="h-4 w-4" />
-                    {activeFilterLabel}
                   </button>
 
                   {filtersOpen ? (
