@@ -2,6 +2,8 @@
 
 import { createPortal } from "react-dom";
 import { Loader2 } from "lucide-react";
+import { BottomSheetHeaderV2 } from "../../../../../components/ui/bottom-sheet-header-v2";
+import { FooterRail } from "../../../../../components/ui/footer-rail";
 import { AttendancePaymentCompositionPanel } from "./attendance-payment-composition-panel";
 import { AttendancePaymentMethodSection } from "./attendance-payment-method-section";
 import { AttendancePaymentSuccessPanel } from "./attendance-payment-success-panel";
@@ -14,6 +16,14 @@ export function AttendancePaymentModal(
 
   if (!controller.open) return null;
 
+  const manualRegisterDisabled =
+    controller.busy ||
+    controller.isFullyPaid ||
+    controller.isWaived ||
+    controller.method === "waiver" ||
+    controller.effectiveChargeAmount <= 0;
+  const isSelectStep = controller.checkoutStep === "select";
+
   const modalNode = (
     <div
       className={
@@ -22,40 +32,33 @@ export function AttendancePaymentModal(
           : `${controller.portalTarget ? "absolute" : "fixed"} inset-0 z-50 flex items-end justify-center pointer-events-none`
       }
     >
-      {!controller.isEmbedded && (
+      {!controller.isEmbedded ? (
         <button
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto"
+          type="button"
+          aria-label="Fechar checkout"
+          className="pointer-events-auto absolute inset-0 bg-studio-text/45 backdrop-blur-[2px]"
           onClick={controller.handleDismiss}
-          aria-label="Fechar modal"
         />
-      )}
+      ) : null}
+
       <div
-        className={`relative w-full flex flex-col ${
+        className={`pointer-events-auto relative flex w-full flex-col overflow-hidden ${
           controller.isEmbedded
-            ? "rounded-2xl border border-line bg-white shadow-soft"
-            : "max-w-105 rounded-t-3xl bg-white shadow-float max-h-[90vh] pointer-events-auto"
+            ? "wl-surface-card max-h-[90vh]"
+            : "max-h-[95vh] max-w-105 wl-radius-sheet wl-surface-modal shadow-float"
         }`}
       >
-        <div className="flex items-center justify-center px-6 pt-4 pb-2">
-          <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-200" />
-        </div>
+        <BottomSheetHeaderV2
+          title="Checkout do atendimento"
+          subtitle="Registre pagamentos, desconto e composicao financeira."
+          onCloseAction={controller.handleDismiss}
+        />
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-serif font-bold text-studio-text">Pagamento</h2>
-              <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted mt-1">
-                Registro financeiro da sessão
-              </p>
-            </div>
-            <button
-              className="rounded-full border border-line px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-gray-500"
-              onClick={controller.handleDismiss}
-            >
-              Fechar
-            </button>
-          </div>
-
+        <div
+          className={`max-h-[72vh] overflow-y-auto px-5 pt-5 wl-surface-modal-body ${
+            controller.isSuccessState ? "pb-8" : "pb-36"
+          }`}
+        >
           {controller.isSuccessState ? (
             <AttendancePaymentSuccessPanel
               waiverSuccess={controller.waiverSuccess}
@@ -69,41 +72,45 @@ export function AttendancePaymentModal(
               successResolveLabel={controller.successResolveLabel}
               onSendReceipt={() => void controller.handleSendReceiptFromSuccess()}
               onResolve={() => void controller.resolveCheckoutSuccess()}
+              onCreateSameClientAppointment={controller.onCreateSameClientAppointment}
             />
           ) : (
             <>
-              <AttendancePaymentCompositionPanel
-                serviceItems={controller.serviceItems}
-                displacementItems={controller.displacementItems}
-                otherItems={controller.otherItems}
-                checkoutSaving={controller.checkoutSaving}
-                newItem={controller.newItem}
-                discountTypeInput={controller.discountTypeInput}
-                discountValueInput={controller.discountValueInput}
-                discountReasonInput={controller.discountReasonInput}
-                appliedDiscountAmount={controller.appliedDiscountAmount}
-                appliedDiscountType={controller.appliedDiscountType}
-                appliedDiscountValue={controller.appliedDiscountValue}
-                appliedDiscountReason={controller.appliedDiscountReason}
-                paidTotal={controller.paidTotal}
-                totalLabel={controller.formatCurrency(controller.total)}
-                effectiveChargeAmountLabel={controller.formatCurrency(controller.effectiveChargeAmount)}
-                formatCurrency={controller.formatCurrency}
-                isRemovableItem={controller.isRemovableItem}
-                onAddItem={controller.handleAddItem}
-                onRemoveItem={(index) => void controller.handleRemoveItem(index)}
-                onChangeNewItemLabel={(label) =>
-                  controller.setNewItem((current) => ({ ...current, label }))
-                }
-                onChangeNewItemAmount={(amount) =>
-                  controller.setNewItem((current) => ({ ...current, amount }))
-                }
-                onChangeDiscountType={controller.setDiscountTypeInput}
-                onChangeDiscountValue={controller.setDiscountValueInput}
-                onChangeDiscountReason={controller.setDiscountReasonInput}
-              />
+              {isSelectStep ? (
+                <AttendancePaymentCompositionPanel
+                  serviceItems={controller.serviceItems}
+                  displacementItems={controller.displacementItems}
+                  otherItems={controller.otherItems}
+                  checkoutSaving={controller.checkoutSaving}
+                  newItem={controller.newItem}
+                  discountTypeInput={controller.discountTypeInput}
+                  discountValueInput={controller.discountValueInput}
+                  discountReasonInput={controller.discountReasonInput}
+                  appliedDiscountAmount={controller.appliedDiscountAmount}
+                  appliedDiscountType={controller.appliedDiscountType}
+                  appliedDiscountValue={controller.appliedDiscountValue}
+                  appliedDiscountReason={controller.appliedDiscountReason}
+                  paidTotal={controller.paidTotal}
+                  totalLabel={controller.formatCurrency(controller.total)}
+                  effectiveChargeAmountLabel={controller.formatCurrency(controller.effectiveChargeAmount)}
+                  formatCurrency={controller.formatCurrency}
+                  isRemovableItem={controller.isRemovableItem}
+                  onAddItem={controller.handleAddItem}
+                  onRemoveItem={(index) => void controller.handleRemoveItem(index)}
+                  onChangeNewItemLabel={(label) =>
+                    controller.setNewItem((current) => ({ ...current, label }))
+                  }
+                  onChangeNewItemAmount={(amount) =>
+                    controller.setNewItem((current) => ({ ...current, amount }))
+                  }
+                  onChangeDiscountType={controller.setDiscountTypeInput}
+                  onChangeDiscountValue={controller.setDiscountValueInput}
+                  onChangeDiscountReason={controller.setDiscountReasonInput}
+                />
+              ) : null}
 
               <AttendancePaymentMethodSection
+                viewMode={isSelectStep ? "select" : "charge"}
                 method={controller.method}
                 hideWaiverOption={controller.hideWaiverOption}
                 isWaived={controller.isWaived}
@@ -113,6 +120,7 @@ export function AttendancePaymentModal(
                 pointTerminalName={controller.pointTerminalName}
                 pointTerminalModel={controller.pointTerminalModel}
                 cashAmount={controller.cashAmount}
+                effectiveChargeAmount={controller.effectiveChargeAmount}
                 pixPayment={controller.pixPayment}
                 pixRemaining={controller.pixRemaining}
                 pixKeyConfigured={controller.pixKeyConfigured}
@@ -130,24 +138,67 @@ export function AttendancePaymentModal(
                 onCreatePixAction={() => void controller.handleCreatePix()}
                 onCopyPixAction={() => void controller.handleCopyPix()}
                 onCopyPixKeyAction={() => void controller.handleCopyPixKey()}
-                onRegisterCashAction={() => void controller.handleRegisterCash()}
-                onRegisterPixKeyAction={() => void controller.handleRegisterPixKey()}
                 onPointChargeAction={(cardMode) => void controller.handlePointCharge(cardMode)}
                 onWaiveAsCourtesyAction={() => void controller.handleWaiveAsCourtesy()}
+                onLeaveOpenAction={controller.handleDismiss}
+                onResetCurrentChargeAction={controller.handleResetActiveCharge}
+                onForceRefreshAction={() => void controller.handleForceRefreshStatus()}
+                onBackToSelectAction={controller.handleBackToSelectStep}
               />
             </>
           )}
         </div>
+
+        {!controller.isSuccessState ? (
+          <FooterRail
+            className="absolute inset-x-0 bottom-0"
+            surfaceClassName="bg-[rgba(250,247,242,0.96)]"
+            paddingXClassName="px-5"
+            rowClassName="grid grid-cols-2 gap-2"
+          >
+            <button
+              type="button"
+              onClick={controller.handleDismiss}
+              className="wl-typo-button inline-flex h-12 items-center justify-center rounded-xl border border-line bg-white px-4 text-studio-text transition hover:bg-paper"
+            >
+              Deixar em aberto
+            </button>
+            {isSelectStep ? (
+              <button
+                type="button"
+                onClick={() => void controller.handleStartChargeFlow()}
+                disabled={
+                  controller.busy ||
+                  controller.isSuccessState ||
+                  controller.isFullyPaid ||
+                  controller.isWaived
+                }
+                className="wl-typo-button inline-flex h-12 items-center justify-center rounded-xl bg-studio-green px-5 text-white shadow-[0_10px_22px_-14px_rgba(11,28,19,.6)] transition hover:bg-studio-green-dark disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {controller.busy ? "Processando..." : "Cobrar"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void controller.handleRegisterManualForCurrentMethod()}
+                disabled={manualRegisterDisabled}
+                className="wl-typo-button inline-flex h-12 items-center justify-center rounded-xl bg-studio-green px-5 text-white shadow-[0_10px_22px_-14px_rgba(11,28,19,.6)] transition hover:bg-studio-green-dark disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {controller.busy ? "Registrando..." : "Confirmacao manual"}
+              </button>
+            )}
+          </FooterRail>
+        ) : null}
       </div>
 
-      {controller.busy && (
+      {controller.busy ? (
         <div className="absolute inset-0 z-90 flex items-center justify-center bg-black/35 backdrop-blur-sm">
           <div className="rounded-2xl bg-white px-5 py-4 text-center shadow-float">
             <Loader2 className="mx-auto h-6 w-6 animate-spin text-studio-green" />
             <p className="mt-3 text-sm font-bold text-studio-text">{controller.stageMessages[controller.stageIndex]}</p>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 

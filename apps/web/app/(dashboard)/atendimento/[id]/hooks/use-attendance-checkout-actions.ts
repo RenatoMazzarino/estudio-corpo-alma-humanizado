@@ -1,5 +1,6 @@
 import type { AttendanceOverview, CheckoutItem } from "../../../../../lib/attendance/attendance-types";
 import {
+  cancelAttendancePendingCharges,
   createAttendancePixPayment,
   createAttendancePointPayment,
   getAttendancePixPaymentStatus,
@@ -23,7 +24,6 @@ interface UseAttendanceCheckoutActionsParams {
   publicBaseUrl: string;
   messageTemplates: AutoMessageTemplates;
   showToast: (input: UserFeedback) => void;
-  refreshPage: () => void;
 }
 
 export function useAttendanceCheckoutActions({
@@ -33,7 +33,6 @@ export function useAttendanceCheckoutActions({
   publicBaseUrl,
   messageTemplates,
   showToast,
-  refreshPage,
 }: UseAttendanceCheckoutActionsParams) {
   const handleSaveItems = async (
     items: Array<{ type: CheckoutItem["type"]; label: string; qty: number; amount: number }>
@@ -44,7 +43,6 @@ export function useAttendanceCheckoutActions({
       return false;
     }
     showToast(feedbackById("generic_saved", { tone: "success", message: "Itens atualizados." }));
-    refreshPage();
     return true;
   };
 
@@ -60,7 +58,6 @@ export function useAttendanceCheckoutActions({
       return false;
     }
     showToast(feedbackById("generic_saved", { tone: "success", message: "Desconto aplicado." }));
-    refreshPage();
     return true;
   };
 
@@ -75,7 +72,6 @@ export function useAttendanceCheckoutActions({
       return { ok: false, paymentId: null };
     }
     showToast(feedbackById("payment_recorded"));
-    refreshPage();
     return { ok: true, paymentId: result.data.paymentId };
   };
 
@@ -90,7 +86,20 @@ export function useAttendanceCheckoutActions({
       return { ok: false, paymentId: null };
     }
     showToast(feedbackById("payment_recorded"));
-    refreshPage();
+    return { ok: true, paymentId: result.data.paymentId };
+  };
+
+  const handleRegisterManualPayment = async (method: "pix" | "card" | "cash", amount: number) => {
+    const result = await recordPayment({
+      appointmentId: appointment.id,
+      method,
+      amount,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      return { ok: false, paymentId: null };
+    }
+    showToast(feedbackById("payment_recorded"));
     return { ok: true, paymentId: result.data.paymentId };
   };
 
@@ -114,7 +123,6 @@ export function useAttendanceCheckoutActions({
       return { ok: false as const };
     }
     showToast(feedbackById("payment_pix_generated"));
-    refreshPage();
     return { ok: true as const, data: result.data };
   };
 
@@ -128,10 +136,8 @@ export function useAttendanceCheckoutActions({
     const status = result.data.internal_status;
     if (status === "paid") {
       showToast(feedbackById("payment_recorded"));
-      refreshPage();
     } else if (status === "failed") {
       showToast(feedbackById("payment_pix_failed"));
-      refreshPage();
     }
 
     return { ok: true as const, status };
@@ -152,7 +158,6 @@ export function useAttendanceCheckoutActions({
 
     if (result.data.internal_status === "paid") {
       showToast(feedbackById("payment_recorded"));
-      refreshPage();
     } else {
       showToast(
         feedbackById("payment_pending", {
@@ -179,10 +184,8 @@ export function useAttendanceCheckoutActions({
     const status = result.data.internal_status;
     if (status === "paid") {
       showToast(feedbackById("payment_recorded"));
-      refreshPage();
     } else if (status === "failed") {
       showToast(feedbackById("payment_card_declined"));
-      refreshPage();
     }
 
     return { ok: true as const, status, paymentId: result.data.id };
@@ -246,8 +249,29 @@ export function useAttendanceCheckoutActions({
         message: "Pagamento liberado como cortesia.",
       })
     );
-    refreshPage();
     return { ok: true as const };
+  };
+
+  const handleCancelPendingCharges = async (methods?: Array<"pix" | "card">) => {
+    const result = await cancelAttendancePendingCharges({
+      appointmentId: appointment.id,
+      methods,
+    });
+    if (!result.ok) {
+      showToast(feedbackFromError(result.error, "attendance"));
+      return { ok: false as const, cancelledCount: 0 };
+    }
+
+    if (result.data.cancelledCount > 0) {
+      showToast(
+        feedbackById("generic_saved", {
+          tone: "success",
+          message: "Cobranca pendente descartada.",
+        })
+      );
+    }
+
+    return { ok: true as const, cancelledCount: result.data.cancelledCount };
   };
 
   return {
@@ -255,11 +279,13 @@ export function useAttendanceCheckoutActions({
     handleSetDiscount,
     handleRegisterCashPayment,
     handleRegisterPixKeyPayment,
+    handleRegisterManualPayment,
     handleCreatePixPayment,
     handlePollPixStatus,
     handleCreatePointPayment,
     handlePollPointStatus,
     handleSendReceipt,
     handleWaiveCheckoutPayment,
+    handleCancelPendingCharges,
   };
 }

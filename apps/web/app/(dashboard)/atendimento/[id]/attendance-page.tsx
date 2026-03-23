@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type UIEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Pause, Play } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import type { AttendanceOverview } from "../../../../lib/attendance/attendance-types";
 import {
   finishAttendance,
@@ -20,18 +18,18 @@ import { computeElapsedSeconds } from "../../../../lib/attendance/attendance-dom
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { feedbackById, feedbackFromError } from "../../../../src/shared/feedback/user-feedback";
 import type { AutoMessageTemplates } from "../../../../src/shared/auto-messages.types";
-import { ModuleHeader } from "../../../../components/ui/module-header";
 import { ModulePage } from "../../../../components/ui/module-page";
+import { FooterRail } from "../../../../components/ui/footer-rail";
 import { SlideConfirmButton } from "./components/slide-confirm-button";
 import { useAttendanceCheckoutActions } from "./hooks/use-attendance-checkout-actions";
 import { useSupabaseRealtimeRefresh } from "../../../../src/shared/realtime/use-supabase-realtime-refresh";
 import {
-  formatAppointmentContext,
+  formatAppointmentDateTime,
   formatDateToUrlParam,
   formatSignedCountdown,
   getHeaderPaymentStatusMeta,
-  getInitials,
 } from "./attendance-page.helpers";
+import { SpotifyBrandIcon } from "./components/session-stage.helpers";
 
 interface AttendancePageProps {
   data: AttendanceOverview;
@@ -59,7 +57,6 @@ export function AttendancePage({
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("return");
-  const [headerCompact, setHeaderCompact] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const { toast, showToast } = useToast();
 
@@ -110,30 +107,19 @@ export function AttendancePage({
   const elapsedForCounter = isActiveSession ? elapsedSeconds : currentElapsed;
   const countdownSeconds = plannedSeconds - elapsedForCounter;
   const countdownLabel = formatSignedCountdown(countdownSeconds);
-  const counterProgress =
-    plannedSeconds > 0 ? Math.min((elapsedForCounter / plannedSeconds) * 100, 100) : 0;
   const isOvertime = countdownSeconds < 0;
+  const progressPercent =
+    plannedSeconds > 0 ? Math.min(Math.round((elapsedForCounter / plannedSeconds) * 100), 100) : 0;
   const clientName = appointment.clients?.name ?? "Cliente";
-  const clientId = appointment.clients?.id ?? null;
-  const clientInitials = getInitials(clientName);
   const contactPhone = appointment.clients?.phone ?? null;
-  const clientAvatarUrl = appointment.clients?.avatar_url ?? null;
-  const clientTags = Array.isArray(appointment.clients?.health_tags)
-    ? appointment.clients.health_tags
-        .filter((tag): tag is string => typeof tag === "string")
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    : [];
-  const visibleClientTags = clientTags.slice(0, 3);
-  const hiddenClientTagsCount = Math.max(clientTags.length - visibleClientTags.length, 0);
   const primarySlideLabel = hasSessionStarted ? "Encerrar e cobrar" : "Iniciar atendimento";
   const primarySlideHint = "Arraste para a direita";
-  const headerAppointmentContext = formatAppointmentContext(appointment.start_time, appointment.service_name);
+  const headerDateTime = formatAppointmentDateTime(appointment.start_time);
+  const headerSummaryLine = [appointment.service_name, headerDateTime].filter(Boolean).join(" - ");
   const headerPaymentStatus = getHeaderPaymentStatusMeta(appointment.payment_status);
-
-  const handleBodyScroll = (event: UIEvent<HTMLElement>) => {
-    const top = event.currentTarget.scrollTop;
-    setHeaderCompact(top > 24);
+  const handleOpenSpotifyFromHeader = () => {
+    if (typeof window === "undefined") return;
+    window.open("https://open.spotify.com", "_blank", "noopener,noreferrer");
   };
 
   const handleToggleTimer = async () => {
@@ -229,12 +215,14 @@ export function AttendancePage({
     handleSetDiscount,
     handleRegisterCashPayment,
     handleRegisterPixKeyPayment,
+    handleRegisterManualPayment,
     handleCreatePixPayment,
     handlePollPixStatus,
     handleCreatePointPayment,
     handlePollPointStatus,
     handleSendReceipt,
     handleWaiveCheckoutPayment,
+    handleCancelPendingCharges,
   } = useAttendanceCheckoutActions({
     appointment,
     clientName,
@@ -242,7 +230,6 @@ export function AttendancePage({
     publicBaseUrl,
     messageTemplates,
     showToast,
-    refreshPage: () => router.refresh(),
   });
 
   const handleFinish = async () => {
@@ -278,6 +265,17 @@ export function AttendancePage({
     setPaymentModalOpen(false);
     setBubbleVisible(true);
     router.push(buildAgendaReturnUrl(), { scroll: false });
+  };
+
+  const handleCreateSameClientAppointment = () => {
+    const params = new URLSearchParams();
+    const clientId = appointment.clients?.id;
+    const dateParam = formatDateToUrlParam(appointment.start_time);
+    if (clientId) params.set("clientId", clientId);
+    if (dateParam) params.set("date", dateParam);
+    setPaymentModalOpen(false);
+    setBubbleVisible(true);
+    router.push(`/novo?${params.toString()}`, { scroll: false });
   };
 
   const handlePrimaryAction = async () => {
@@ -321,7 +319,10 @@ export function AttendancePage({
   useSupabaseRealtimeRefresh({
     channelName: `attendance-${appointment.id}`,
     tables: realtimeTables,
-    onRefresh: () => router.refresh(),
+    onRefresh: () => {
+      if (paymentModalOpen) return;
+      router.refresh();
+    },
   });
 
   return (
@@ -330,118 +331,63 @@ export function AttendancePage({
         className="h-full overflow-hidden"
         contentClassName="overflow-hidden"
         header={
-          <ModuleHeader
-            className="rounded-b-[28px]"
-            compact={headerCompact}
-            title={
-              <div className="flex min-w-0 items-center gap-3">
+          <header className="z-30 min-h-27 wl-sheet-header-surface safe-top safe-top-4 px-5 pb-0 pt-4">
+            <div className="mb-2 flex items-start gap-2.5">
+              <button
+                onClick={handleBack}
+                className="wl-header-icon-button-strong inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
+                title="Voltar"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="wl-typo-card-name-md truncate text-white">{clientName}</p>
+                <p className="wl-typo-body truncate text-white/88">{headerSummaryLine}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
                 <button
-                  onClick={handleBack}
-                  className="h-10 w-10 shrink-0 rounded-full border border-line bg-white text-gray-600 flex items-center justify-center shadow-sm hover:bg-studio-light transition"
-                  title="Voltar"
+                  type="button"
+                  onClick={handleOpenSpotifyFromHeader}
+                  className="wl-header-icon-button-strong inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
+                  title="Abrir Spotify"
+                  aria-label="Abrir Spotify"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <SpotifyBrandIcon className="h-5 w-5" />
                 </button>
-                {clientAvatarUrl ? (
-                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-line">
-                    <Image src={clientAvatarUrl} alt={clientName} fill sizes="44px" className="object-cover" unoptimized />
-                  </div>
-                ) : (
-                  <div className="h-11 w-11 shrink-0 rounded-full bg-studio-light text-studio-green flex items-center justify-center font-serif font-bold text-base">
-                    {clientInitials}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
-                  {clientId ? (
-                    <Link href={`/clientes/${clientId}`} className="block">
-                      <p className="truncate text-lg font-bold text-studio-text hover:text-studio-green transition">
-                        {clientName}
-                      </p>
-                    </Link>
-                  ) : (
-                    <p className="truncate text-lg font-bold text-studio-text">{clientName}</p>
-                  )}
-                    {headerCompact && (
-                      <span
-                        className={`shrink-0 rounded-xl border border-line bg-paper px-3 py-1 text-sm font-black tabular-nums ${
-                          isOvertime ? "text-red-600" : "text-studio-text"
-                        }`}
-                      >
-                        {countdownLabel}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
-                    <p className="min-w-0 flex-1 truncate text-[11px] font-extrabold uppercase tracking-widest text-muted">
-                      {headerAppointmentContext}
-                    </p>
-                    <span
-                      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] ${headerPaymentStatus.className}`}
-                    >
-                      Pagamento: {headerPaymentStatus.label}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            }
-            bottomSlot={
-              headerCompact ? undefined : (
-              <div className="rounded-2xl border border-line bg-paper px-3 py-3">
-                {visibleClientTags.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {visibleClientTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full border border-studio-green/25 bg-studio-light px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-studio-green"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    {hiddenClientTagsCount > 0 && (
-                      <span className="rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-muted">
-                        +{hiddenClientTagsCount}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div className="flex items-center justify-between gap-3">
-                  <span
-                    className={`text-2xl font-black tabular-nums leading-none ${
-                      isOvertime ? "text-red-600" : "text-studio-text"
-                    }`}
+                {canToggleTimerFromHeader && (
+                  <button
+                    onClick={handleToggleTimer}
+                    className="wl-header-icon-button-strong inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
+                    title={isTimerRunning ? "Pausar cronometro" : "Retomar cronometro"}
                   >
-                    {countdownLabel}
-                  </span>
-                  {canToggleTimerFromHeader ? (
-                    <button
-                      onClick={handleToggleTimer}
-                      className="h-10 w-10 rounded-xl border border-studio-green/20 bg-studio-green text-white flex items-center justify-center"
-                    >
-                      {isTimerRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                      Inicie no rodapé
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-200">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      isOvertime ? "bg-red-500 animate-pulse" : "bg-studio-green animate-pulse"
-                    }`}
-                    style={{ width: `${isOvertime ? 100 : counterProgress}%` }}
-                  />
-                </div>
+                    {isTimerRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                )}
               </div>
-              )
-            }
-          />
+            </div>
+
+            <div className="space-y-1.5 border-b border-white/25 pb-2 pt-1">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[24px] font-black tabular-nums leading-none text-white">{countdownLabel}</span>
+                <span
+                  className={`wl-radius-control inline-flex h-7 items-center gap-1 border px-2 text-[10px] font-bold uppercase tracking-[0.03em] ${headerPaymentStatus.className}`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${headerPaymentStatus.dotClass}`} />
+                  {headerPaymentStatus.label}
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                <div
+                  className={`h-full transition-all duration-700 ${isOvertime ? "bg-red-400" : "bg-white/90"}`}
+                  style={{ width: `${isOvertime ? 100 : progressPercent}%` }}
+                />
+              </div>
+            </div>
+          </header>
         }
       >
         <div className="flex min-h-0 flex-1 flex-col">
-          <main onScroll={handleBodyScroll} className="flex-1 overflow-y-auto px-5 pt-5 pb-6">
+          <main className="flex-1 overflow-y-auto px-5 pt-5 pb-6">
             <SessionStage
               checklistEnabled={checklistEnabled}
               checklist={data.checklist}
@@ -456,13 +402,13 @@ export function AttendancePage({
             />
           </main>
 
-          <footer className="shrink-0 border-t border-line bg-white px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+          <FooterRail paddingXClassName="px-4">
             <SlideConfirmButton
               label={primarySlideLabel}
               hint={primarySlideHint}
               onConfirmAction={handlePrimaryAction}
             />
-          </footer>
+          </FooterRail>
         </div>
 
         <AttendancePaymentModal
@@ -481,12 +427,15 @@ export function AttendancePage({
           onSetDiscount={handleSetDiscount}
           onRegisterCashPayment={handleRegisterCashPayment}
           onRegisterPixKeyPayment={handleRegisterPixKeyPayment}
+          onRegisterManualPayment={handleRegisterManualPayment}
           onCreatePixPayment={handleCreatePixPayment}
           onPollPixStatus={handlePollPixStatus}
           onCreatePointPayment={handleCreatePointPayment}
           onPollPointStatus={handlePollPointStatus}
           onWaivePayment={handleWaiveCheckoutPayment}
+          onCancelPendingCharges={handleCancelPendingCharges}
           onSendReceipt={handleSendReceipt}
+          onCreateSameClientAppointment={handleCreateSameClientAppointment}
           onReceiptPromptResolved={handleReceiptPromptResolved}
         />
         <Toast toast={toast} />
@@ -494,3 +443,4 @@ export function AttendancePage({
     </div>
   );
 }
+

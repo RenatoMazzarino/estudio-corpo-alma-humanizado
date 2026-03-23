@@ -57,11 +57,14 @@ export function getHistoryLocationLabel(isHomeVisit: boolean | null) {
 }
 
 export function getHistoryHeadlineTag(history: ClientHistoryEntry) {
-  if (history.timeline === "future") {
-    return { label: "Agendado", badgeClass: "bg-sky-50 text-sky-700 border-sky-200" };
-  }
   if (history.appointment_status === "no_show") {
     return { label: "No-show", badgeClass: "bg-rose-50 text-rose-700 border-rose-200" };
+  }
+  if (history.appointment_status === "completed") {
+    return { label: "Concluído", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  }
+  if (history.timeline === "future") {
+    return { label: "Agendado", badgeClass: "bg-sky-50 text-sky-700 border-sky-200" };
   }
   return { label: "Concluído", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200" };
 }
@@ -119,12 +122,12 @@ export function blobToBase64(blob: Blob): Promise<string> {
       const raw = typeof reader.result === "string" ? reader.result : "";
       const base64 = raw.includes(",") ? raw.split(",")[1] : raw;
       if (!base64) {
-        reject(new Error("Falha ao processar áudio."));
+        reject(new Error("Falha ao processar audio."));
         return;
       }
       resolve(base64);
     };
-    reader.onerror = () => reject(new Error("Falha ao processar áudio."));
+    reader.onerror = () => reject(new Error("Falha ao processar audio."));
     reader.readAsDataURL(blob);
   });
 }

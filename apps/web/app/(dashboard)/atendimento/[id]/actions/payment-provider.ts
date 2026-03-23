@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { createServiceClient } from "../../../../../lib/supabase/service";
 import { AppError } from "../../../../../src/shared/errors/AppError";
 import { mapSupabaseError } from "../../../../../src/shared/errors/mapSupabaseError";
 import { fail, ok, type ActionResult } from "../../../../../src/shared/errors/result";
@@ -17,6 +18,10 @@ import {
 } from "../../../../../src/modules/payments/mercadopago-orders";
 import { getSettings } from "../../../../../src/modules/settings/repository";
 
+type PaymentProviderActionOptions = {
+  skipRevalidate?: boolean;
+};
+
 export async function createAttendancePixPaymentImpl(payload: {
   appointmentId: string;
   amount: number;
@@ -24,7 +29,7 @@ export async function createAttendancePixPaymentImpl(payload: {
   payerPhone: string;
   payerEmail?: string | null;
   attempt?: number;
-}, tenantId: string): Promise<ActionResult<{
+}, tenantId: string, options?: PaymentProviderActionOptions): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -85,7 +90,9 @@ export async function createAttendancePixPaymentImpl(payload: {
     },
   });
 
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  if (!options?.skipRevalidate) {
+    revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  }
   return ok(result.data);
 }
 
@@ -104,13 +111,70 @@ export async function getAttendancePixPaymentStatusImpl(payload: {
   });
 }
 
+export async function cancelAttendancePendingChargesImpl(payload: {
+  appointmentId: string;
+  methods?: Array<"pix" | "card">;
+}, tenantId: string, options?: PaymentProviderActionOptions): Promise<ActionResult<{ cancelledCount: number }>> {
+  const parsed = appointmentIdSchema
+    .extend({
+      methods: z.array(z.enum(["pix", "card"])).min(1).optional(),
+    })
+    .safeParse(payload);
+
+  if (!parsed.success) {
+    return fail(new AppError("Dados invÃ¡lidos", "VALIDATION_ERROR", 400, parsed.error));
+  }
+
+  const methods = parsed.data.methods?.length ? parsed.data.methods : ["pix", "card"];
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("appointment_payments")
+    .update({
+      status: "failed",
+      paid_at: null,
+    })
+    .eq("appointment_id", parsed.data.appointmentId)
+    .eq("tenant_id", tenantId)
+    .eq("status", "pending")
+    .in("method", methods)
+    .select("id, method, provider_order_id");
+
+  const mapped = mapSupabaseError(error);
+  if (mapped) return fail(mapped);
+
+  const cancelledRows = Array.isArray(data) ? data : [];
+  const cancelledCount = cancelledRows.length;
+  if (cancelledCount > 0) {
+    await insertAttendanceEvent({
+      tenantId,
+      appointmentId: parsed.data.appointmentId,
+      eventType: "payment_charge_cancelled",
+      payload: {
+        methods,
+        cancelled_count: cancelledCount,
+        payments: cancelledRows.map((item) => ({
+          id: item.id,
+          method: item.method,
+          provider_order_id: item.provider_order_id,
+        })),
+      },
+    });
+  }
+
+  if (!options?.skipRevalidate) {
+    revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  }
+
+  return ok({ cancelledCount });
+}
+
 export async function createAttendancePointPaymentImpl(payload: {
   appointmentId: string;
   amount: number;
   cardMode: PointCardMode;
   terminalId?: string | null;
   attempt?: number;
-}, tenantId: string): Promise<ActionResult<{
+}, tenantId: string, options?: PaymentProviderActionOptions): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -187,14 +251,16 @@ export async function createAttendancePointPaymentImpl(payload: {
     },
   });
 
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  if (!options?.skipRevalidate) {
+    revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  }
   return ok(result.data);
 }
 
 export async function getAttendancePointPaymentStatusImpl(payload: {
   appointmentId: string;
   orderId: string;
-}, tenantId: string): Promise<ActionResult<{
+}, tenantId: string, options?: PaymentProviderActionOptions): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -252,6 +318,8 @@ export async function getAttendancePointPaymentStatusImpl(payload: {
     },
   });
 
-  revalidatePath(`/atendimento/${resolvedAppointmentId}`);
+  if (!options?.skipRevalidate) {
+    revalidatePath(`/atendimento/${resolvedAppointmentId}`);
+  }
   return ok(result.data);
 }

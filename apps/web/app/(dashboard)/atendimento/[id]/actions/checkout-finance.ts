@@ -26,6 +26,10 @@ function roundCurrency(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+type CheckoutFinanceActionOptions = {
+  skipRevalidate?: boolean;
+};
+
 export async function setCheckoutItemsImpl(payload: {
   appointmentId: string;
   items: Array<{ type: "service" | "fee" | "addon" | "adjustment"; label: string; qty?: number; amount: number; metadata?: Record<string, unknown> }>;
@@ -112,7 +116,7 @@ export async function recordPaymentImpl(payload: {
   method: "pix" | "card" | "cash" | "other";
   amount: number;
   transactionId?: string | null;
-}, tenantId: string): Promise<ActionResult<{ paymentId: string }>> {
+}, tenantId: string, options?: CheckoutFinanceActionOptions): Promise<ActionResult<{ paymentId: string }>> {
   const parsed = recordPaymentSchema.safeParse(payload);
   if (!parsed.success) {
     return fail(new AppError("Dados inválidos", "VALIDATION_ERROR", 400, parsed.error));
@@ -185,7 +189,9 @@ export async function recordPaymentImpl(payload: {
     payload: { method: parsed.data.method, amount: requestedAmount },
   });
 
-  revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  if (!options?.skipRevalidate) {
+    revalidatePath(`/atendimento/${parsed.data.appointmentId}`);
+  }
   return ok({ paymentId: data?.id ?? parsed.data.appointmentId });
 }
 

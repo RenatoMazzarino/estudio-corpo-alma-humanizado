@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CheckoutItem } from "../../../../../lib/attendance/attendance-types";
 import {
   ATTENDANCE_PIX_RECEIVER_CITY,
@@ -37,11 +37,13 @@ export function useAttendancePaymentModalController({
   onSetDiscount,
   onRegisterCashPayment,
   onRegisterPixKeyPayment,
+  onRegisterManualPayment,
   onCreatePixPayment,
   onPollPixStatus,
   onCreatePointPayment,
   onPollPointStatus,
   onWaivePayment,
+  onCancelPendingCharges,
   onSendReceipt,
   onAutoSendReceipt,
   receiptFlowMode = "manual",
@@ -50,6 +52,7 @@ export function useAttendancePaymentModalController({
   hideWaiverOption = false,
   initialMethod = "cash",
   successResolveLabel = "Voltar para agenda",
+  onCreateSameClientAppointment,
   onReceiptPromptResolved,
 }: AttendancePaymentModalProps) {
   const [method, setMethod] = useState<"cash" | "pix_mp" | "pix_key" | "card" | "waiver">("cash");
@@ -83,7 +86,9 @@ export function useAttendancePaymentModalController({
   const [autoReceiptStatus, setAutoReceiptStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
   const [autoReceiptMessage, setAutoReceiptMessage] = useState<string | null>(null);
   const [pixRemaining, setPixRemaining] = useState(0);
+  const [checkoutStep, setCheckoutStep] = useState<"select" | "charge">("select");
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const didInitOpenRef = useRef(false);
   const normalizedPixKeyValue = normalizePixKeyForCharge(pixKeyValue, pixKeyType);
   const pixKeyConfigured = normalizedPixKeyValue.length > 0;
 
@@ -114,7 +119,14 @@ export function useAttendancePaymentModalController({
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      didInitOpenRef.current = false;
+      return;
+    }
+    if (didInitOpenRef.current) return;
+    didInitOpenRef.current = true;
+
+    setCheckoutStep("select");
     setMethod(appointmentPaymentStatus === "waived" ? "waiver" : initialMethod);
     setDraftItems(items.map((item) => ({ type: item.type, label: item.label, qty: item.qty, amount: item.amount })));
     setAppliedDiscountType(checkout?.discount_type ?? null);
@@ -391,6 +403,144 @@ export function useAttendancePaymentModalController({
     }
   }, [discountReasonInput, discountTypeInput, discountValueInput, onSetDiscount, paidTotal, subtotal]);
 
+  const handleBackToSelectStep = useCallback(() => {
+    setCheckoutStep("select");
+    setErrorText(null);
+  }, [setErrorText]);
+
+  const handleRegisterManualForCurrentMethod = useCallback(async () => {
+    if (isFullyPaid || isWaived || effectiveChargeAmount <= 0) return;
+    const mappedMethod: "pix" | "card" | "cash" =
+      method === "card" ? "card" : method === "cash" ? "cash" : "pix";
+
+    setBusy(true);
+    setErrorText(null);
+    try {
+      const result = await onRegisterManualPayment(mappedMethod, effectiveChargeAmount);
+      if (!result.ok) {
+        setErrorText("Nao foi possivel registrar manualmente este pagamento.");
+        return;
+      }
+      if (result.paymentId) {
+        setReceiptPromptPaymentId(result.paymentId);
+        setReceiptSent(false);
+        setAutoReceiptStatus("idle");
+        setAutoReceiptMessage(null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    effectiveChargeAmount,
+    isFullyPaid,
+    isWaived,
+    method,
+    onRegisterManualPayment,
+    setAutoReceiptMessage,
+    setAutoReceiptStatus,
+    setBusy,
+    setErrorText,
+    setReceiptPromptPaymentId,
+    setReceiptSent,
+  ]);
+
+  const handleResetActiveCharge = useCallback(async () => {
+    setBusy(true);
+    setErrorText(null);
+    try {
+      if (onCancelPendingCharges) {
+        const methods: Array<"pix" | "card"> = [];
+        if (method === "pix_mp") methods.push("pix");
+        if (method === "card") methods.push("card");
+        if (methods.length > 0) {
+          await onCancelPendingCharges(methods);
+        }
+      }
+      setPixPayment(null);
+      setPointPayment(null);
+    } finally {
+      setBusy(false);
+    }
+  }, [method, onCancelPendingCharges, setBusy, setErrorText, setPixPayment, setPointPayment]);
+
+  const handleForceRefreshStatus = useCallback(async () => {
+    setErrorText(null);
+    if (method === "pix_mp" && pixPayment) {
+      const result = await onPollPixStatus();
+      if (!result.ok) return;
+      if (result.status === "paid") {
+        setReceiptPromptPaymentId(pixPayment.id);
+        setReceiptSent(false);
+        setAutoReceiptStatus("idle");
+        setAutoReceiptMessage(null);
+        setPixPayment(null);
+      }
+      if (result.status === "failed") {
+        setErrorText("O Pix nao foi aprovado. Gere um novo codigo para continuar.");
+      }
+      return;
+    }
+
+    if (method === "card" && pointPayment) {
+      const result = await onPollPointStatus(pointPayment.order_id);
+      if (!result.ok) return;
+      if (result.status === "paid") {
+        setReceiptPromptPaymentId(result.paymentId ?? pointPayment.id);
+        setReceiptSent(false);
+        setAutoReceiptStatus("idle");
+        setAutoReceiptMessage(null);
+        setPointPayment(null);
+      }
+      if (result.status === "failed") {
+        setErrorText("Cobranca nao concluida na maquininha. Tente novamente.");
+      }
+    }
+  }, [
+    method,
+    onPollPixStatus,
+    onPollPointStatus,
+    pixPayment,
+    pointPayment,
+    setAutoReceiptMessage,
+    setAutoReceiptStatus,
+    setErrorText,
+    setPixPayment,
+    setPointPayment,
+    setReceiptPromptPaymentId,
+    setReceiptSent,
+  ]);
+
+  const handleStartChargeFlow = useCallback(async () => {
+    if (isFullyPaid || isWaived || isSuccessState) return;
+    setErrorText(null);
+
+    if (method === "waiver") {
+      await handleWaiveAsCourtesy();
+      return;
+    }
+
+    if (method === "cash") {
+      await handleRegisterManualForCurrentMethod();
+      return;
+    }
+
+    setCheckoutStep("charge");
+
+    if (method === "pix_mp" && !pixPayment) {
+      await handleCreatePix();
+    }
+  }, [
+    handleCreatePix,
+    handleRegisterManualForCurrentMethod,
+    handleWaiveAsCourtesy,
+    isFullyPaid,
+    isSuccessState,
+    isWaived,
+    method,
+    pixPayment,
+    setErrorText,
+  ]);
+
   useEffect(() => {
     if (!open || isSuccessState || checkoutSaving) return;
 
@@ -500,6 +650,12 @@ export function useAttendancePaymentModalController({
     handleAddItem,
     isRemovableItem,
     handleRemoveItem,
+    handleRegisterManualForCurrentMethod,
+    handleResetActiveCharge,
+    handleForceRefreshStatus,
+    handleStartChargeFlow,
+    handleBackToSelectStep,
+    onCreateSameClientAppointment,
     stageMessages,
     formatCurrency,
     hideWaiverOption,
@@ -510,5 +666,6 @@ export function useAttendancePaymentModalController({
     onClose,
     successResolveLabel,
     receiptFlowMode,
+    checkoutStep,
   };
 }

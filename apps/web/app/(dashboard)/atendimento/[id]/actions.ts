@@ -37,6 +37,7 @@ import {
   waiveCheckoutPaymentImpl,
 } from "./actions/checkout-finance";
 import {
+  cancelAttendancePendingChargesImpl,
   createAttendancePixPaymentImpl,
   createAttendancePointPaymentImpl,
   getAttendancePixPaymentStatusImpl,
@@ -145,9 +146,9 @@ export async function recordPayment(payload: {
   method: "pix" | "card" | "cash" | "other";
   amount: number;
   transactionId?: string | null;
-}): Promise<ActionResult<{ paymentId: string }>> {
+}, options?: { skipRevalidate?: boolean }): Promise<ActionResult<{ paymentId: string }>> {
   const { tenantId } = await requireDashboardAccessForServerAction();
-  return recordPaymentImpl(payload, tenantId);
+  return recordPaymentImpl(payload, tenantId, options);
 }
 
 export async function waiveCheckoutPayment(payload: {
@@ -165,7 +166,7 @@ export async function createAttendancePixPayment(payload: {
   payerPhone: string;
   payerEmail?: string | null;
   attempt?: number;
-}): Promise<ActionResult<{
+}, options?: { skipRevalidate?: boolean }): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -178,7 +179,15 @@ export async function createAttendancePixPayment(payload: {
   expires_at: string;
 }>> {
   const { tenantId } = await requireDashboardAccessForServerAction();
-  return createAttendancePixPaymentImpl(payload, tenantId);
+  return createAttendancePixPaymentImpl(payload, tenantId, options);
+}
+
+export async function cancelAttendancePendingCharges(payload: {
+  appointmentId: string;
+  methods?: Array<"pix" | "card">;
+}, options?: { skipRevalidate?: boolean }): Promise<ActionResult<{ cancelledCount: number }>> {
+  const { tenantId } = await requireDashboardAccessForServerAction();
+  return cancelAttendancePendingChargesImpl(payload, tenantId, options);
 }
 
 export async function getAttendancePixPaymentStatus(payload: {
@@ -194,7 +203,7 @@ export async function createAttendancePointPayment(payload: {
   cardMode: PointCardMode;
   terminalId?: string | null;
   attempt?: number;
-}): Promise<ActionResult<{
+}, options?: { skipRevalidate?: boolean }): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -205,13 +214,13 @@ export async function createAttendancePointPayment(payload: {
   card_mode: PointCardMode;
 }>> {
   const { tenantId } = await requireDashboardAccessForServerAction();
-  return createAttendancePointPaymentImpl(payload, tenantId);
+  return createAttendancePointPaymentImpl(payload, tenantId, options);
 }
 
 export async function getAttendancePointPaymentStatus(payload: {
   appointmentId: string;
   orderId: string;
-}): Promise<ActionResult<{
+}, options?: { skipRevalidate?: boolean }): Promise<ActionResult<{
   id: string;
   order_id: string;
   internal_status: "paid" | "pending" | "failed";
@@ -223,7 +232,7 @@ export async function getAttendancePointPaymentStatus(payload: {
   appointment_id: string | null;
 }>> {
   const { tenantId } = await requireDashboardAccessForServerAction();
-  return getAttendancePointPaymentStatusImpl(payload, tenantId);
+  return getAttendancePointPaymentStatusImpl(payload, tenantId, options);
 }
 
 export async function confirmCheckout(payload: { appointmentId: string }): Promise<ActionResult<{ appointmentId: string }>> {

@@ -54,7 +54,7 @@ export function TimerBubble() {
   const ringProgress = session ? progress : 0;
   const paused = Boolean(session?.pausedAt) || isPaused;
 
-  const title = paused ? "Sessão pausada" : "Sessão ativa";
+  const title = paused ? "Sessao pausada" : "Sessao ativa";
   const subtitle = isOvertime ? "Tempo excedido" : "Tempo restante";
   const timeLabel = formatTimeSigned(remainingSeconds);
   const sessionPath = session?.appointmentId ? `/atendimento/${session.appointmentId}` : null;
@@ -122,7 +122,7 @@ export function TimerBubble() {
   return (
     <div
       ref={bubbleRef}
-      className="absolute z-40 w-44 touch-none select-none rounded-[30px] border border-studio-green/20 bg-white/95 p-3 shadow-float backdrop-blur-md"
+      className="wl-radius-card wl-surface-modal absolute z-40 w-48 touch-none select-none overflow-hidden border border-line/70 shadow-float"
       style={bubblePosition ? { left: bubblePosition.x, top: bubblePosition.y } : undefined}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -141,62 +141,63 @@ export function TimerBubble() {
       }}
       onDragStart={(event) => event.preventDefault()}
     >
-      <button
-        type="button"
-        onClick={handleClose}
-        onPointerDown={(event) => event.stopPropagation()}
-        className="absolute -top-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full border border-line bg-white text-muted shadow-soft"
-        aria-label="Fechar contador"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted">{title}</p>
+      <div className="wl-sheet-header-surface flex items-center justify-between px-3 py-2">
+        <p className="wl-typo-body-sm-strong uppercase tracking-[0.08em] text-white">{title}</p>
+        <button
+          type="button"
+          onClick={handleClose}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="wl-header-icon-button-strong inline-flex h-7 w-7 items-center justify-center rounded-full"
+          aria-label="Fechar contador"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      <div className="mt-2 flex justify-center">
-        <TimerProgressRing progress={ringProgress} pulseActive={!paused}>
-          <div className="text-center">
-            <p
-              className={`text-2xl font-black tabular-nums leading-none ${
-                isOvertime ? "text-red-600" : "text-studio-text"
-              }`}
-            >
-              {timeLabel}
-            </p>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">{subtitle}</p>
-          </div>
-        </TimerProgressRing>
-      </div>
+      <div className="wl-surface-modal-body p-3">
+        <div className="flex justify-center">
+          <TimerProgressRing progress={ringProgress} pulseActive={!paused}>
+            <div className="text-center">
+              <p
+                className={`text-[1.4rem] font-black tabular-nums leading-none ${
+                  isOvertime ? "text-red-600" : "text-studio-text"
+                }`}
+              >
+                {timeLabel}
+              </p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">{subtitle}</p>
+            </div>
+          </TimerProgressRing>
+        </div>
 
-      {canOpenSession && (
+        {canOpenSession && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              router.push(sessionPath!);
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="wl-radius-control mt-2 flex h-8 w-full items-center justify-center gap-1.5 border border-line bg-paper text-[10px] font-bold uppercase tracking-[0.12em] text-studio-green"
+          >
+            Voltar ao atendimento
+            <MoveUpRight className="h-3 w-3" />
+          </button>
+        )}
+
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            router.push(sessionPath!);
+            handleTogglePause();
           }}
           onPointerDown={(event) => event.stopPropagation()}
-          className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-line bg-paper text-[10px] font-extrabold uppercase tracking-[0.12em] text-studio-green"
+          className="wl-radius-control mt-3 flex h-9 w-full items-center justify-center gap-2 bg-studio-green text-[11px] font-bold uppercase tracking-[0.08em] text-white"
         >
-          Voltar ao atendimento
-          <MoveUpRight className="h-3 w-3" />
+          {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          {paused ? "Retomar" : "Pausar"}
         </button>
-      )}
-
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          handleTogglePause();
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-        className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-studio-green/20 bg-studio-light text-[11px] font-extrabold uppercase tracking-wider text-studio-green"
-      >
-        {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-        {paused ? "Retomar" : "Pausar"}
-      </button>
+      </div>
     </div>
   );
 }

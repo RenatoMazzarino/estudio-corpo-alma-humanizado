@@ -14,6 +14,7 @@ interface AttendancePaymentSuccessPanelProps {
   successResolveLabel: string;
   onSendReceipt: () => void;
   onResolve: () => void;
+  onCreateSameClientAppointment?: () => void;
 }
 
 export function AttendancePaymentSuccessPanel({
@@ -28,6 +29,7 @@ export function AttendancePaymentSuccessPanel({
   successResolveLabel,
   onSendReceipt,
   onResolve,
+  onCreateSameClientAppointment,
 }: AttendancePaymentSuccessPanelProps) {
   return (
     <section className="mt-5 flex min-h-[58vh] flex-col items-center justify-center px-1 pb-1 text-center animate-in zoom-in duration-300">
@@ -100,7 +102,7 @@ export function AttendancePaymentSuccessPanel({
         </div>
       )}
 
-      {!waiverSuccess && receiptFlowMode === "manual" && (
+      {!waiverSuccess && (
         <button
           className="mt-5 w-full h-12 rounded-2xl border border-stone-200 bg-white text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors disabled:opacity-60"
           onClick={onSendReceipt}
@@ -110,8 +112,26 @@ export function AttendancePaymentSuccessPanel({
         </button>
       )}
 
+      {onCreateSameClientAppointment ? (
+        <button
+          className="mt-3 w-full h-12 rounded-2xl bg-studio-green text-white font-bold uppercase tracking-widest text-xs hover:bg-studio-green-dark transition-colors disabled:opacity-60"
+          onClick={onCreateSameClientAppointment}
+          disabled={resolvingReceiptPrompt || (!waiverSuccess && autoReceiptStatus === "sending")}
+        >
+          Fazer novo agendamento
+        </button>
+      ) : null}
+
       <button
-        className="mt-3 w-full h-12 rounded-2xl bg-studio-green text-white font-bold uppercase tracking-widest text-xs hover:bg-studio-green-dark transition-colors disabled:opacity-60"
+        className="mt-3 w-full h-12 rounded-2xl border border-line bg-white text-studio-text font-bold uppercase tracking-widest text-xs disabled:opacity-60"
+        type="button"
+        disabled
+      >
+        Agendar tarefa (em construção)
+      </button>
+
+      <button
+        className="mt-3 w-full h-12 rounded-2xl border border-line bg-white text-studio-text font-bold uppercase tracking-widest text-xs hover:bg-stone-50 transition-colors disabled:opacity-60"
         onClick={onResolve}
         disabled={resolvingReceiptPrompt || (!waiverSuccess && autoReceiptStatus === "sending")}
       >

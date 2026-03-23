@@ -176,7 +176,7 @@ export async function getAttendanceOverview(tenantId: string, appointmentId: str
       .eq("tenant_id", tenantId)
       .eq("client_id", clientId)
       .order("start_time", { ascending: false })
-      .limit(20);
+      .limit(100);
 
     const historyAppointments = (historyAppointmentsData ?? []).filter((item) => item.id !== appointmentId);
     const historyAppointmentIds = historyAppointments.map((item) => item.id);

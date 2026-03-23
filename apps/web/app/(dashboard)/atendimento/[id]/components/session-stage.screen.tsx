@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, useEffect, useMemo, useState } from "react";
-import { ChevronDown, Mic, NotebookPen, Pause, Pencil, Play, RotateCw, SkipBack, SkipForward, Sparkles, Square, SquareCheckBig } from "lucide-react";
+import { ChevronDown, Mic, NotebookPen, Pencil, RotateCw, Sparkles, Square, SquareCheckBig } from "lucide-react";
 import type {
   ChecklistItem,
   ClientHistoryEntry,
@@ -10,7 +10,6 @@ import { SessionHistoryNotesModal } from "./session-history-notes-modal";
 import { SessionHistoryPanel } from "./session-history-panel";
 import {
   HistoryFilter,
-  SpotifyBrandIcon,
 } from "./session-stage.helpers";
 import { useSessionStageMedia } from "./use-session-stage-media";
 
@@ -46,23 +45,8 @@ export function SessionStage({
     isEditing,
     setIsEditing,
     recordingError,
-    spotifyState,
-    spotifyLoading,
-    spotifyActionBusy,
-    spotifyPlaylistConfigured,
-    spotifyConnected,
-    spotifyHasDevice,
-    spotifyCanSkip,
-    spotifyCanTogglePlayback,
-    spotifyToggleAction,
-    spotifyToggleLabel,
-    spotifyHeaderSummary,
     noteLocked,
-    evolutionHeaderSummary,
     stopAudioRecording,
-    handleOpenSpotify,
-    handleSpotifyAction,
-    refreshSpotifyState,
     handleStructureWithFlora,
     handleSaveEvolution,
     startAudioRecording,
@@ -79,7 +63,6 @@ export function SessionStage({
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<ClientHistoryEntry | null>(null);
   const [isChecklistOpen, setIsChecklistOpen] = useState(false);
-  const [isSpotifyOpen, setIsSpotifyOpen] = useState(false);
   const [isEvolutionOpen, setIsEvolutionOpen] = useState(false);
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -88,53 +71,45 @@ export function SessionStage({
     setPortalTarget(document.getElementById("app-frame"));
   }, []);
 
-  const completedChecklistCount = useMemo(
-    () => checklist.filter((item) => Boolean(item.completed_at)).length,
-    [checklist]
-  );
   const allHistory = useMemo(
     () =>
       [...clientHistory]
         .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()),
     [clientHistory]
   );
-  const visibleHistory = useMemo(
-    () =>
-      allHistory.filter((item) => {
-        if (item.timeline !== "past") return true;
-        return item.appointment_status === "completed" || item.appointment_status === "no_show";
-      }),
-    [allHistory]
-  );
+
   const filteredHistory = useMemo(() => {
+    const isCanceled = (status: string | null) => status === "canceled_by_client" || status === "canceled_by_studio";
+    const isCompletedLike = (status: string | null) => status === "completed" || status === "no_show";
+    const historyForDisplay = allHistory.filter((item) => !isCanceled(item.appointment_status));
+
     switch (historyFilter) {
       case "past":
-        return visibleHistory.filter((item) => item.timeline === "past");
+        return historyForDisplay.filter((item) => isCompletedLike(item.appointment_status));
       case "scheduled":
-        return visibleHistory
-          .filter((item) => item.timeline === "future")
+        return historyForDisplay
+          .filter((item) => !isCompletedLike(item.appointment_status))
           .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       default:
-        return visibleHistory;
+        return historyForDisplay;
     }
-  }, [visibleHistory, historyFilter]);
+  }, [allHistory, historyFilter]);
   const historyCounters = useMemo(
-    () => ({
-      all: visibleHistory.length,
-      past: visibleHistory.filter((item) => item.timeline === "past").length,
-      scheduled: visibleHistory.filter((item) => item.timeline === "future").length,
-    }),
-    [visibleHistory]
-  );
+    () => {
+      const isCanceled = (status: string | null) => status === "canceled_by_client" || status === "canceled_by_studio";
+      const isCompletedLike = (status: string | null) => status === "completed" || status === "no_show";
+      const historyForDisplay = allHistory.filter((item) => !isCanceled(item.appointment_status));
+      const pastCount = historyForDisplay.filter((item) => isCompletedLike(item.appointment_status)).length;
+      const scheduledCount = historyForDisplay.length - pastCount;
 
-  const checklistSourceLabel = (source: string | null) => {
-    if (!source) return "manual";
-    const normalized = source.replace(/_/g, " ").trim().toLowerCase();
-    if (normalized === "service preset") return "serviço";
-    if (normalized === "default") return "padrão";
-    if (normalized === "tenant setting") return "configuração";
-    return normalized;
-  };
+      return {
+        all: historyForDisplay.length,
+        past: pastCount,
+        scheduled: scheduledCount,
+      };
+    },
+    [allHistory]
+  );
 
   const toggleHistoryAccordion = (appointmentId: string) => {
     setExpandedHistoryId((current) => (current === appointmentId ? null : appointmentId));
@@ -159,164 +134,44 @@ export function SessionStage({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-white bg-white p-4 shadow-soft">
-        <button
-          type="button"
-          onClick={() => setIsSpotifyOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left"
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1DB954]/10">
-              <SpotifyBrandIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="truncate text-sm font-bold text-studio-text">Player Spotify</h2>
-              <p className="mt-0.5 truncate text-[10px] font-extrabold uppercase tracking-wider text-muted">
-                {spotifyHeaderSummary}
-              </p>
-            </div>
-          </div>
-          <ChevronDown
-            className={`h-4 w-4 text-muted transition-transform ${isSpotifyOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-
-        {isSpotifyOpen && (
-          <div className="mt-3">
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => void refreshSpotifyState()}
-              disabled={spotifyLoading || spotifyActionBusy}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-studio-text disabled:opacity-50"
-              aria-label="Atualizar estado do player"
-            >
-              <RotateCw className={`h-3.5 w-3.5 ${spotifyLoading ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenSpotify}
-              className="h-8 shrink-0 rounded-lg border border-studio-green/25 bg-white px-2.5 text-[10px] font-extrabold uppercase tracking-wider text-studio-green"
-            >
-              Abrir app
-            </button>
-          </div>
-
-          <div className="mt-2 rounded-2xl border border-line bg-paper p-3">
-            <p className="truncate text-sm font-bold text-studio-text">
-              {spotifyState?.trackName
-                ? spotifyState.artistName
-                  ? `${spotifyState.trackName} • ${spotifyState.artistName}`
-                  : spotifyState.trackName
-                : "Nenhuma faixa em reprodução."}
-            </p>
-            <p className="mt-1 truncate text-[11px] text-muted">
-              {spotifyState?.deviceName
-                ? `Dispositivo: ${spotifyState.deviceName}`
-                : spotifyConnected
-                  ? "Conta conectada"
-                  : "Conta não conectada"}
-            </p>
-
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => void handleSpotifyAction("previous")}
-                disabled={!spotifyCanSkip}
-                className="h-10 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center disabled:opacity-50"
-                aria-label="Faixa anterior"
-              >
-                <SkipBack className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSpotifyAction(spotifyToggleAction)}
-                disabled={!spotifyCanTogglePlayback}
-                className="h-10 rounded-xl border border-studio-green/25 bg-studio-light text-[10px] font-extrabold uppercase tracking-wider text-studio-green inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                {spotifyToggleAction === "pause" ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                {spotifyToggleLabel}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSpotifyAction("next")}
-                disabled={!spotifyCanSkip}
-                className="h-10 rounded-xl border border-line bg-white text-[10px] font-extrabold uppercase tracking-wider text-studio-text inline-flex items-center justify-center disabled:opacity-50"
-                aria-label="Próxima faixa"
-              >
-                <SkipForward className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <p className="mt-2 text-[10px] font-semibold text-muted">
-            {spotifyLoading
-              ? "Sincronizando Spotify..."
-              : spotifyConnected
-                ? spotifyState?.isPlaying
-                  ? `Tocando agora${spotifyState?.deviceName ? ` no dispositivo ${spotifyState.deviceName}` : ""}.`
-                  : spotifyHasDevice
-                    ? "Player conectado. Toque em play para retomar."
-                    : "Abra o Spotify no celular e inicie uma música para habilitar os controles."
-                : spotifyState?.message ?? "Spotify não conectado."}
-          </p>
-          <p className="mt-1 text-[10px] text-muted">
-            {spotifyState?.message && spotifyConnected
-              ? spotifyState.message
-              : spotifyPlaylistConfigured
-                ? "Conta conectada. Use os controles para tocar, pausar e trocar a faixa."
-                : "Defina uma playlist padrão em Configurações para fallback de reprodução."}
-          </p>
-          </div>
-        )}
-      </div>
-
       {checklistEnabled && (
-        <div className="rounded-3xl border border-white bg-white p-4 shadow-soft">
+        <div className="wl-surface-card shadow-soft">
         <button
           type="button"
           onClick={() => setIsChecklistOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left"
+          className="flex h-12 w-full items-center justify-between gap-3 border-b border-line px-3 text-left wl-surface-card-header"
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-studio-green/10 text-studio-green">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-studio-green/10 text-studio-green">
               <SquareCheckBig className="h-4 w-4" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-studio-text">Checklist inicial</h2>
-              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                {completedChecklistCount}/{checklist.length} itens concluídos
-              </p>
-            </div>
+            <h2 className="wl-typo-card-name-md truncate text-studio-text">Checklist inicial</h2>
           </div>
-          <ChevronDown
-            className={`h-4 w-4 text-muted transition-transform ${isChecklistOpen ? "rotate-180" : ""}`}
-          />
+          <span className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full">
+            <ChevronDown className={`h-4 w-4 transition-transform ${isChecklistOpen ? "rotate-180" : ""}`} />
+          </span>
         </button>
 
           {isChecklistOpen && (
-            <div className="mt-3">
+            <div className="px-3 pb-3 pt-3 wl-surface-card-body">
             {checklist.length === 0 ? (
-              <p className="text-xs text-muted">Nenhum item cadastrado.</p>
+              <p className="wl-typo-body-sm text-muted">Nenhum item cadastrado.</p>
             ) : (
-              <div className="space-y-2">
+              <div>
                 {checklist.map((item) => (
                   <label
                     key={item.id}
-                    className="flex items-center justify-between rounded-2xl border border-line bg-white p-3.5"
+                    className="flex items-center gap-3 border-b border-line py-2.5 last:border-b-0"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <input
                         type="checkbox"
-                        className="h-5 w-5 shrink-0 accent-studio-green"
+                        className="h-4 w-4 shrink-0 accent-studio-green"
                         checked={Boolean(item.completed_at)}
                         onChange={(event) => onToggleChecklistAction(item.id, event.target.checked)}
                       />
-                      <span className="truncate text-sm font-bold text-studio-text">{item.label}</span>
+                      <span className="wl-typo-body truncate text-studio-text">{item.label}</span>
                     </div>
-                    <span className="ml-2 shrink-0 text-[10px] font-extrabold uppercase text-muted">
-                      {checklistSourceLabel(item.source)}
-                    </span>
                   </label>
                 ))}
               </div>
@@ -326,39 +181,37 @@ export function SessionStage({
         </div>
       )}
 
-      <div className="rounded-3xl border border-white bg-white p-4 shadow-soft">
+      <div className="wl-surface-card shadow-soft">
         <button
           type="button"
           onClick={() => setIsEvolutionOpen((current) => !current)}
-          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left"
+          className="flex h-12 w-full items-center justify-between gap-3 border-b border-line px-3 text-left wl-surface-card-header"
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-studio-green/10 text-studio-green">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-studio-green/10 text-studio-green">
               <NotebookPen className="h-4 w-4" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-studio-text">Evolução</h2>
-              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">
-                {evolutionHeaderSummary}
-              </p>
-            </div>
+            <h2 className="wl-typo-card-name-md truncate text-studio-text">Evolucao</h2>
           </div>
-          <ChevronDown
-            className={`h-4 w-4 text-muted transition-transform ${isEvolutionOpen ? "rotate-180" : ""}`}
-          />
+          <span className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full">
+            <ChevronDown className={`h-4 w-4 transition-transform ${isEvolutionOpen ? "rotate-180" : ""}`} />
+          </span>
         </button>
 
-        {isEvolutionOpen && (
-          <div className="mt-3">
+          {isEvolutionOpen && (
+          <div className="px-3 pb-3 pt-3 wl-surface-card-body">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-xs text-muted">Grave áudio ou escreva manualmente. Estruture com IA quando quiser.</p>
+            <p className="wl-typo-body-sm text-muted">
+              Registre a evoluÃ§Ã£o da sessÃ£o. Esse texto alimenta o prontuÃ¡rio e deve refletir conduta, resposta e
+              orientaÃ§Ãµes.
+            </p>
             <div className="flex items-center gap-2">
               {noteLocked && (
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  aria-label="Editar evolução"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-studio-text"
+                  aria-label="Editar evoluÃ§Ã£o"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-studio-green"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -368,7 +221,7 @@ export function SessionStage({
                 onClick={handleStructureWithFlora}
                 disabled={!evolutionText.trim() || isStructuring || isTranscribing || noteLocked}
                 aria-label="Organizar texto com Flora"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-studio-green/30 bg-white text-studio-green disabled:opacity-50"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-studio-green disabled:opacity-50"
               >
                 <Sparkles className="h-4 w-4" />
               </button>
@@ -376,11 +229,11 @@ export function SessionStage({
                 type="button"
                 onClick={isRecording ? stopAudioRecording : startAudioRecording}
                 disabled={isStructuring || isTranscribing || noteLocked}
-                aria-label={isRecording ? "Parar gravação" : "Iniciar gravação"}
-                className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
+                aria-label={isRecording ? "Parar gravaÃ§Ã£o" : "Iniciar gravaÃ§Ã£o"}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border ${
                   isRecording
                     ? "animate-pulse border-red-200 bg-red-50 text-red-600"
-                    : "border-studio-green/30 bg-white text-studio-green"
+                    : "border-line bg-white text-studio-green"
                 } disabled:opacity-50`}
               >
                 {isRecording ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
@@ -390,10 +243,10 @@ export function SessionStage({
 
           <div className="relative mt-4">
             <textarea
-              className={`w-full min-h-44 rounded-2xl p-4 text-sm text-studio-text border border-line resize-y ${
+              className={`w-full min-h-52 rounded-2xl border border-line p-4 text-sm text-studio-text resize-y ${
                 noteLocked ? "bg-stone-50" : "bg-paper focus:outline-none focus:ring-2 focus:ring-studio-green/20"
               }`}
-              placeholder={noteLocked ? "Clique no ícone de edição para atualizar a evolução." : "Descreva a evolução da sessão..."}
+              placeholder={noteLocked ? "Clique no Ã­cone de ediÃ§Ã£o para atualizar a evoluÃ§Ã£o." : "Descreva a evoluÃ§Ã£o da sessÃ£o..."}
               value={evolutionText}
               onChange={(event) => {
                 if (!noteLocked) onChangeEvolutionTextAction(event.target.value);
@@ -404,7 +257,7 @@ export function SessionStage({
               <div className="absolute inset-0 rounded-2xl bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
                 <div className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold text-studio-text">
                   <RotateCw className="h-3.5 w-3.5 animate-spin text-studio-green" />
-                  Transcrevendo seu áudio com Flora...
+                  Transcrevendo seu Ã¡udio com Flora...
                 </div>
               </div>
             )}
@@ -412,13 +265,13 @@ export function SessionStage({
           <div className="mt-2 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-muted">
               {isTranscribing
-                ? "Áudio recebido. Flora está transcrevendo sem estruturar."
+                ? "Ãudio recebido. Flora estÃ¡ transcrevendo sem estruturar."
                 : isStructuring
-                ? "Flora está organizando sua evolução..."
+                ? "Flora estÃ¡ organizando sua evoluÃ§Ã£o..."
                 : isRecording
                   ? "Gravando. Toque no quadrado para encerrar."
                   : noteLocked
-                    ? "Evolução salva para esta sessão. Clique no lápis para editar."
+                    ? "EvoluÃ§Ã£o salva para esta sessÃ£o. Clique no lÃ¡pis para editar."
                     : "Use o microfone para gravar e depois a varinha para estruturar, se quiser."}
             </p>
           </div>
@@ -432,7 +285,7 @@ export function SessionStage({
                 disabled={isRecording || isTranscribing || isStructuring}
                 className="h-12 w-full rounded-2xl bg-studio-green text-white font-extrabold text-xs shadow-lg shadow-green-200 active:scale-95 transition disabled:opacity-50"
               >
-                Salvar evolução
+                Salvar evoluÃ§Ã£o
               </button>
             </div>
           )}
@@ -462,3 +315,5 @@ export function SessionStage({
     </div>
   );
 }
+
+

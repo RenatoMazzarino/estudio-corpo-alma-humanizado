@@ -40,6 +40,10 @@ export interface AttendancePaymentModalProps {
   onSetDiscount: (type: "value" | "pct" | null, value: number | null, reason?: string) => Promise<boolean>;
   onRegisterCashPayment: (amount: number) => Promise<{ ok: boolean; paymentId?: string | null }>;
   onRegisterPixKeyPayment: (amount: number) => Promise<{ ok: boolean; paymentId?: string | null }>;
+  onRegisterManualPayment: (
+    method: "pix" | "card" | "cash",
+    amount: number
+  ) => Promise<{ ok: boolean; paymentId?: string | null }>;
   onCreatePixPayment: (amount: number, attempt: number) => Promise<{ ok: boolean; data?: PixPaymentData }>;
   onPollPixStatus: () => Promise<{ ok: boolean; status: InternalStatus }>;
   onCreatePointPayment: (
@@ -51,6 +55,7 @@ export interface AttendancePaymentModalProps {
     orderId: string
   ) => Promise<{ ok: boolean; status: InternalStatus; paymentId?: string | null }>;
   onWaivePayment: () => Promise<{ ok: boolean }>;
+  onCancelPendingCharges?: (methods?: Array<"pix" | "card">) => Promise<{ ok: boolean; cancelledCount: number }>;
   onSendReceipt: (paymentId: string) => Promise<void>;
   onAutoSendReceipt?: (paymentId: string) => Promise<{ ok?: boolean; message?: string } | void>;
   receiptFlowMode?: ReceiptFlowMode;
@@ -59,6 +64,7 @@ export interface AttendancePaymentModalProps {
   hideWaiverOption?: boolean;
   initialMethod?: "cash" | "pix_mp" | "pix_key" | "card" | "waiver";
   successResolveLabel?: string;
+  onCreateSameClientAppointment?: () => void;
   onReceiptPromptResolved?: (payload: {
     paymentId?: string | null;
     sentReceipt: boolean;
