@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
-import { AppHeader } from "../../../../components/ui/app-header";
 import { Toast, useToast } from "../../../../components/ui/toast";
 import { fetchAddressByCep, normalizeCep } from "../../../../src/shared/address/cep";
 import { formatCpf } from "../../../../src/shared/cpf";
@@ -15,6 +14,12 @@ import type { ActionResult } from "../../../../src/shared/errors/result";
 import {
   composeInternalClientName,
 } from "../../../../src/modules/clients/name-profile";
+import {
+  appointmentFormButtonPrimaryClass,
+  appointmentFormHeaderIconButtonClass,
+  appointmentFormScreenHeaderClass,
+  appointmentFormScreenHeaderTopRowClass,
+} from "../../novo/appointment-form.styles";
 import { NewClientAddressSection } from "../novo/components/new-client-address-section";
 import { NewClientContactChannelsSection } from "../novo/components/new-client-contact-channels-section";
 import { NewClientExtraDataSection } from "../novo/components/new-client-extra-data-section";
@@ -315,23 +320,21 @@ export function ClientFormScreen({
   };
 
   return (
-    <div className="-mx-4 -mt-4">
-      <AppHeader
-        label="Clientes"
-        title={title}
-        subtitle={subtitle}
-        leftSlot={
-          <Link
-            href={backHref}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-studio-light text-studio-green transition hover:bg-studio-green hover:text-white"
-            aria-label="Voltar"
-          >
-            <ChevronLeft size={20} />
+    <div className="-mx-4 -mt-4 h-full min-h-0">
+      <header className={appointmentFormScreenHeaderClass}>
+        <div className={appointmentFormScreenHeaderTopRowClass}>
+          <Link href={backHref} className={appointmentFormHeaderIconButtonClass} aria-label="Voltar">
+            <ChevronLeft className="h-4 w-4" />
           </Link>
-        }
-      />
+          <div className="min-w-0">
+            <h1 className="truncate wl-typo-card-name-lg font-bold text-white">{title}</h1>
+            <p className="truncate text-xs text-white/80">{subtitle}</p>
+          </div>
+        </div>
+        <div className="border-b border-white/25 pb-1" />
+      </header>
 
-      <main className="p-6 pb-28">
+      <main className="min-h-0 overflow-y-auto px-4 pb-28 pt-4">
         <form
           action={
             submitMode === "form-action"
@@ -353,12 +356,9 @@ export function ClientFormScreen({
           <input type="hidden" name="health_tags" value={healthTagsCombined.join(", ")} />
           <input type="hidden" name="health_items_json" value={JSON.stringify(healthItemsPayload)} />
 
-          <section className="space-y-4 rounded-3xl border border-white bg-white p-5 shadow-soft">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Cliente</p>
-                <h2 className="text-lg font-serif text-studio-text">Dados principais</h2>
-              </div>
+          <section className="wl-surface-card space-y-4 overflow-hidden px-3 py-3">
+            <div className="-mx-3 -mt-3 mb-1 flex h-12 items-center border-b border-line px-3 wl-surface-card-header">
+              <h2 className="wl-typo-card-name-md font-bold text-studio-text">Dados principais</h2>
             </div>
 
             <div className="flex items-center gap-4">
@@ -382,7 +382,7 @@ export function ClientFormScreen({
                   value={firstName}
                   onChange={(event) => setFirstName(event.target.value)}
                   placeholder="Ex: Renato"
-                  className="mt-2 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                  className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
                   required
                 />
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -390,17 +390,17 @@ export function ClientFormScreen({
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     placeholder="Sobrenome"
-                    className="w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                    className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
                     required
                   />
                   <input
                     value={reference}
                     onChange={(event) => setReference(event.target.value)}
                     placeholder="Referência (uso interno)"
-                    className="w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+                    className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-studio-green/20"
                   />
                 </div>
-                <div className="mt-2 rounded-2xl border border-line bg-studio-light px-3 py-2">
+                <div className="mt-2 rounded-xl border border-line wl-surface-card-body px-3 py-2">
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted">
                     Nome no sistema
                   </p>
@@ -443,7 +443,7 @@ export function ClientFormScreen({
                   type="date"
                   value={birthDate}
                   onChange={(event) => setBirthDate(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm"
+                  className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
                 />
               </div>
               <div>
@@ -453,7 +453,7 @@ export function ClientFormScreen({
                   value={cpf}
                   onChange={(event) => setCpf(formatCpf(event.target.value))}
                   inputMode="numeric"
-                  className="mt-2 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm"
+                  className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
                 />
               </div>
             </div>
@@ -464,7 +464,7 @@ export function ClientFormScreen({
                 value={primaryEmailValue}
                 onChange={(event) => setEmails((current) => syncPrimaryEmail(current, event.target.value))}
                 placeholder="cliente@email.com"
-                className="mt-2 w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm"
+                className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
               />
             </div>
           </section>
@@ -549,7 +549,7 @@ export function ClientFormScreen({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-2xl bg-studio-green py-4 font-extrabold text-white shadow-soft disabled:opacity-60"
+            className={`${appointmentFormButtonPrimaryClass} w-full`}
           >
             {isSubmitting ? "Salvando..." : submitLabel}
           </button>
@@ -560,3 +560,4 @@ export function ClientFormScreen({
     </div>
   );
 }
+

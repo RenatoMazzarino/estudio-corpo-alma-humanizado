@@ -42,102 +42,103 @@ export function NewClientHealthSection({
   onChangeAnamneseUrlAction,
 }: NewClientHealthSectionProps) {
   return (
-    <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Saúde & Cuidados</p>
-        <h2 className="text-lg font-serif text-studio-text">Tags e informações</h2>
+    <section className="wl-surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+        <p className="wl-typo-card-name-sm font-bold text-studio-text">Saude e cuidados</p>
       </div>
 
-      <div>
-        <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Alergias</label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {allergyTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => onRemoveAllergyTagAction(tag)}
-              className="px-3 py-1 rounded-full bg-red-50 text-red-600 text-[11px] font-extrabold border border-red-100"
-            >
-              {tag}
-            </button>
-          ))}
+      <div className="space-y-3 px-3 py-3">
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Alergias</label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {allergyTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onRemoveAllergyTagAction(tag)}
+                className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-bold text-red-600"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+          <input
+            value={allergyInput}
+            onChange={(event) => onChangeAllergyInputAction(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onAddAllergyTagAction();
+              }
+            }}
+            placeholder="Adicionar alergia e pressionar Enter"
+            className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+          />
         </div>
+
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Condicoes e atencoes</label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {conditionTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onRemoveConditionTagAction(tag)}
+                className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1 text-[11px] font-bold text-orange-700"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+          <input
+            value={conditionInput}
+            onChange={(event) => onChangeConditionInputAction(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onAddConditionTagAction();
+              }
+            }}
+            placeholder="Adicionar condicao e pressionar Enter"
+            className="mt-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+          />
+        </div>
+
+        <textarea
+          name="contraindications"
+          value={contraindications}
+          onChange={(event) => onChangeContraindicationsAction(event.target.value)}
+          placeholder="Contraindicacoes"
+          rows={3}
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+
+        <textarea
+          name="preferences_notes"
+          value={preferencesNotes}
+          onChange={(event) => onChangePreferencesNotesAction(event.target.value)}
+          placeholder="Preferencias"
+          rows={3}
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+
+        <textarea
+          name="clinical_history"
+          value={clinicalHistory}
+          onChange={(event) => onChangeClinicalHistoryAction(event.target.value)}
+          placeholder="Historico clinico / anamnese"
+          rows={3}
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+
         <input
-          value={allergyInput}
-          onChange={(event) => onChangeAllergyInputAction(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              onAddAllergyTagAction();
-            }
-          }}
-          placeholder="Adicionar alergia e pressione Enter"
-          className="mt-2 w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
+          name="anamnese_url"
+          value={anamneseUrl}
+          onChange={(event) => onChangeAnamneseUrlAction(event.target.value)}
+          placeholder="Link da anamnese (opcional)"
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
         />
       </div>
-
-      <div>
-        <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">Condições & Atenções</label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {conditionTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => onRemoveConditionTagAction(tag)}
-              className="px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-[11px] font-extrabold border border-orange-100"
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-        <input
-          value={conditionInput}
-          onChange={(event) => onChangeConditionInputAction(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              onAddConditionTagAction();
-            }
-          }}
-          placeholder="Adicionar condição e pressione Enter"
-          className="mt-2 w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-        />
-      </div>
-
-      <textarea
-        name="contraindications"
-        value={contraindications}
-        onChange={(event) => onChangeContraindicationsAction(event.target.value)}
-        placeholder="Contraindicações"
-        rows={3}
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
-
-      <textarea
-        name="preferences_notes"
-        value={preferencesNotes}
-        onChange={(event) => onChangePreferencesNotesAction(event.target.value)}
-        placeholder="Preferências"
-        rows={3}
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
-
-      <textarea
-        name="clinical_history"
-        value={clinicalHistory}
-        onChange={(event) => onChangeClinicalHistoryAction(event.target.value)}
-        placeholder="Histórico clínico / anamnese"
-        rows={3}
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
-
-      <input
-        name="anamnese_url"
-        value={anamneseUrl}
-        onChange={(event) => onChangeAnamneseUrlAction(event.target.value)}
-        placeholder="Link da anamnese (opcional)"
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
     </section>
   );
 }

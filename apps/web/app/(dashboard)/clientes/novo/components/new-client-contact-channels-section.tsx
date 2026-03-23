@@ -27,144 +27,147 @@ export function NewClientContactChannelsSection({
 }: NewClientContactChannelsSectionProps) {
   return (
     <>
-      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Contato</p>
-            <h2 className="text-lg font-serif text-studio-text">Telefones</h2>
-          </div>
+      <section className="wl-surface-card overflow-hidden">
+        <div className="flex h-10 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header">
+          <p className="wl-typo-card-name-sm font-bold text-studio-text">Telefones</p>
           <button
             type="button"
             onClick={() =>
-              onChangePhonesAction([...phones, { id: createIdAction(), label: "Outro", number: "", isPrimary: false, isWhatsapp: false }])
+              onChangePhonesAction([
+                ...phones,
+                { id: createIdAction(), label: "Outro", number: "", isPrimary: false, isWhatsapp: false },
+              ])
             }
-            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+            className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
             aria-label="Adicionar telefone"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
 
-        {phones.map((phone) => (
-          <div key={phone.id} className="border border-line rounded-2xl p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-muted" />
-              <input
-                value={phone.number}
-                onChange={(event) =>
-                  onChangePhonesAction(
-                    phones.map((item) =>
-                      item.id === phone.id ? { ...item, number: formatBrazilPhone(event.target.value) } : item
+        <div className="space-y-3 px-3 py-3">
+          {phones.map((phone) => (
+            <div key={phone.id} className="rounded-xl border border-line wl-surface-card-body p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-muted" />
+                <input
+                  value={phone.number}
+                  onChange={(event) =>
+                    onChangePhonesAction(
+                      phones.map((item) =>
+                        item.id === phone.id ? { ...item, number: formatBrazilPhone(event.target.value) } : item
+                      )
                     )
-                  )
-                }
-                placeholder="(00) 00000-0000"
-                inputMode="numeric"
-                className="flex-1 px-3 py-2 rounded-xl bg-paper border border-line text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => onChangePhonesAction(phones.filter((item) => item.id !== phone.id))}
-                className="text-muted hover:text-danger"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                  }
+                  placeholder="(00) 00000-0000"
+                  inputMode="numeric"
+                  className="flex-1 rounded-xl border border-line wl-surface-input px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => onChangePhonesAction(phones.filter((item) => item.id !== phone.id))}
+                  className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={phone.label}
+                  onChange={(event) =>
+                    onChangePhonesAction(
+                      phones.map((item) => (item.id === phone.id ? { ...item, label: event.target.value } : item))
+                    )
+                  }
+                  placeholder="Etiqueta"
+                  className="min-w-[136px] flex-1 rounded-xl border border-line wl-surface-input px-3 py-2 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => onSetPhonePrimaryAction(phone.id)}
+                  className={`rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
+                    phone.isPrimary ? "border-studio-green bg-studio-green text-white" : "border-line bg-white text-muted"
+                  }`}
+                >
+                  Principal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSetPhoneWhatsappAction(phone.id)}
+                  className={`rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
+                    phone.isWhatsapp ? "border-studio-green bg-studio-green text-white" : "border-line bg-white text-muted"
+                  }`}
+                >
+                  WhatsApp
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={phone.label}
-                onChange={(event) =>
-                  onChangePhonesAction(
-                    phones.map((item) => (item.id === phone.id ? { ...item, label: event.target.value } : item))
-                  )
-                }
-                placeholder="Etiqueta"
-                className="flex-1 px-3 py-2 rounded-xl bg-paper border border-line text-[11px]"
-              />
-              <button
-                type="button"
-                onClick={() => onSetPhonePrimaryAction(phone.id)}
-                className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border ${
-                  phone.isPrimary ? "bg-studio-green text-white border-studio-green" : "bg-white text-muted border-line"
-                }`}
-              >
-                Principal
-              </button>
-              <button
-                type="button"
-                onClick={() => onSetPhoneWhatsappAction(phone.id)}
-                className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border ${
-                  phone.isWhatsapp ? "bg-studio-green text-white border-studio-green" : "bg-white text-muted border-line"
-                }`}
-              >
-                WhatsApp
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
-      <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Contato</p>
-            <h2 className="text-lg font-serif text-studio-text">Emails</h2>
-          </div>
+      <section className="wl-surface-card overflow-hidden">
+        <div className="flex h-10 items-center justify-between gap-2 border-b border-line px-3 wl-surface-card-header">
+          <p className="wl-typo-card-name-sm font-bold text-studio-text">Emails</p>
           <button
             type="button"
-            onClick={() => onChangeEmailsAction([...emails, { id: createIdAction(), label: "Outro", email: "", isPrimary: false }])}
-            className="w-9 h-9 rounded-full bg-studio-light text-studio-green flex items-center justify-center"
+            onClick={() =>
+              onChangeEmailsAction([...emails, { id: createIdAction(), label: "Outro", email: "", isPrimary: false }])
+            }
+            className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
             aria-label="Adicionar email"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
 
-        {emails.map((email) => (
-          <div key={email.id} className="border border-line rounded-2xl p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-muted" />
-              <input
-                value={email.email}
-                onChange={(event) =>
-                  onChangeEmailsAction(
-                    emails.map((item) => (item.id === email.id ? { ...item, email: event.target.value } : item))
-                  )
-                }
-                placeholder="email@cliente.com"
-                className="flex-1 px-3 py-2 rounded-xl bg-paper border border-line text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => onChangeEmailsAction(emails.filter((item) => item.id !== email.id))}
-                className="text-muted hover:text-danger"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+        <div className="space-y-3 px-3 py-3">
+          {emails.map((email) => (
+            <div key={email.id} className="rounded-xl border border-line wl-surface-card-body p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-muted" />
+                <input
+                  value={email.email}
+                  onChange={(event) =>
+                    onChangeEmailsAction(
+                      emails.map((item) => (item.id === email.id ? { ...item, email: event.target.value } : item))
+                    )
+                  }
+                  placeholder="email@cliente.com"
+                  className="flex-1 rounded-xl border border-line wl-surface-input px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => onChangeEmailsAction(emails.filter((item) => item.id !== email.id))}
+                  className="wl-header-icon-button-strong inline-flex h-8 w-8 items-center justify-center rounded-full"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={email.label}
+                  onChange={(event) =>
+                    onChangeEmailsAction(
+                      emails.map((item) => (item.id === email.id ? { ...item, label: event.target.value } : item))
+                    )
+                  }
+                  placeholder="Etiqueta"
+                  className="min-w-[136px] flex-1 rounded-xl border border-line wl-surface-input px-3 py-2 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => onSetEmailPrimaryAction(email.id)}
+                  className={`rounded-xl border px-3 py-2 text-[11px] font-bold uppercase tracking-wider ${
+                    email.isPrimary ? "border-studio-green bg-studio-green text-white" : "border-line bg-white text-muted"
+                  }`}
+                >
+                  Principal
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={email.label}
-                onChange={(event) =>
-                  onChangeEmailsAction(
-                    emails.map((item) => (item.id === email.id ? { ...item, label: event.target.value } : item))
-                  )
-                }
-                placeholder="Etiqueta"
-                className="flex-1 px-3 py-2 rounded-xl bg-paper border border-line text-[11px]"
-              />
-              <button
-                type="button"
-                onClick={() => onSetEmailPrimaryAction(email.id)}
-                className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border ${
-                  email.isPrimary ? "bg-studio-green text-white border-studio-green" : "bg-white text-muted border-line"
-                }`}
-              >
-                Principal
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
     </>
   );

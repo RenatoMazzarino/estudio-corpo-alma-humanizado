@@ -14,25 +14,26 @@ export function NewClientExtraDataSection({
   onChangeReferralSourceAction,
 }: NewClientExtraDataSectionProps) {
   return (
-    <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Dados adicionais</p>
-        <h2 className="text-lg font-serif text-studio-text">Profissão e origem</h2>
+    <section className="wl-surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+        <p className="wl-typo-card-name-sm font-bold text-studio-text">Dados adicionais</p>
       </div>
-      <input
-        name="profissao"
-        value={profession}
-        onChange={(event) => onChangeProfessionAction(event.target.value)}
-        placeholder="Profissão"
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
-      <input
-        name="como_conheceu"
-        value={referralSource}
-        onChange={(event) => onChangeReferralSourceAction(event.target.value)}
-        placeholder="Como conheceu?"
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
+      <div className="space-y-2 px-3 py-3">
+        <input
+          name="profissao"
+          value={profession}
+          onChange={(event) => onChangeProfessionAction(event.target.value)}
+          placeholder="Profissao"
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+        <input
+          name="como_conheceu"
+          value={referralSource}
+          onChange={(event) => onChangeReferralSourceAction(event.target.value)}
+          placeholder="Como conheceu?"
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+      </div>
     </section>
   );
 }

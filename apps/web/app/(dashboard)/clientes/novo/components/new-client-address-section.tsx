@@ -19,81 +19,82 @@ export function NewClientAddressSection({
   onLookupCepAction,
 }: NewClientAddressSectionProps) {
   return (
-    <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Endereço</p>
-        <h2 className="text-lg font-serif text-studio-text">Principal</h2>
+    <section className="wl-surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+        <p className="wl-typo-card-name-sm font-bold text-studio-text">Endereco principal</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
-          <label className="text-[10px] font-extrabold text-muted uppercase tracking-widest">CEP</label>
+      <div className="space-y-3 px-3 py-3">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400">CEP</label>
+            <input
+              name="address_cep"
+              value={address.cep}
+              onChange={(event) => onChangeAddressAction({ ...address, cep: formatCep(event.target.value) })}
+              inputMode="numeric"
+              className="mt-1 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={onLookupCepAction}
+            className="mt-[22px] h-12 rounded-xl border border-studio-green/10 bg-studio-light text-xs font-bold uppercase tracking-wider text-studio-green"
+          >
+            {cepStatus === "loading" ? "Buscando" : "Buscar"}
+          </button>
+        </div>
+
+        <input
+          name="address_logradouro"
+          value={address.logradouro}
+          onChange={(event) => onChangeAddressAction({ ...address, logradouro: event.target.value })}
+          placeholder="Rua / Avenida"
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+
+        <div className="grid grid-cols-3 gap-3">
           <input
-            name="address_cep"
-            value={address.cep}
-            onChange={(event) => onChangeAddressAction({ ...address, cep: formatCep(event.target.value) })}
-            inputMode="numeric"
-            className="mt-2 w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
+            name="address_numero"
+            value={address.numero}
+            onChange={(event) => onChangeAddressAction({ ...address, numero: event.target.value })}
+            placeholder="Numero"
+            className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+          />
+          <input
+            name="address_complemento"
+            value={address.complemento}
+            onChange={(event) => onChangeAddressAction({ ...address, complemento: event.target.value })}
+            placeholder="Complemento"
+            className="col-span-2 w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
           />
         </div>
-        <button
-          type="button"
-          onClick={onLookupCepAction}
-          className="mt-6 h-11.5 rounded-2xl bg-studio-light text-studio-green font-extrabold text-xs border border-studio-green/10"
-        >
-          {cepStatus === "loading" ? "Buscando" : "Buscar"}
-        </button>
-      </div>
 
-      <input
-        name="address_logradouro"
-        value={address.logradouro}
-        onChange={(event) => onChangeAddressAction({ ...address, logradouro: event.target.value })}
-        placeholder="Rua / Avenida"
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            name="address_bairro"
+            value={address.bairro}
+            onChange={(event) => onChangeAddressAction({ ...address, bairro: event.target.value })}
+            placeholder="Bairro"
+            className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+          />
+          <input
+            name="address_cidade"
+            value={address.cidade}
+            onChange={(event) => onChangeAddressAction({ ...address, cidade: event.target.value })}
+            placeholder="Cidade"
+            className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+          />
+        </div>
 
-      <div className="grid grid-cols-3 gap-3">
         <input
-          name="address_numero"
-          value={address.numero}
-          onChange={(event) => onChangeAddressAction({ ...address, numero: event.target.value })}
-          placeholder="Número"
-          className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-        />
-        <input
-          name="address_complemento"
-          value={address.complemento}
-          onChange={(event) => onChangeAddressAction({ ...address, complemento: event.target.value })}
-          placeholder="Complemento"
-          className="col-span-2 w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
+          name="address_estado"
+          value={address.estado}
+          onChange={(event) => onChangeAddressAction({ ...address, estado: event.target.value.toUpperCase() })}
+          placeholder="UF"
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm uppercase"
         />
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <input
-          name="address_bairro"
-          value={address.bairro}
-          onChange={(event) => onChangeAddressAction({ ...address, bairro: event.target.value })}
-          placeholder="Bairro"
-          className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-        />
-        <input
-          name="address_cidade"
-          value={address.cidade}
-          onChange={(event) => onChangeAddressAction({ ...address, cidade: event.target.value })}
-          placeholder="Cidade"
-          className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-        />
-      </div>
-
-      <input
-        name="address_estado"
-        value={address.estado}
-        onChange={(event) => onChangeAddressAction({ ...address, estado: event.target.value.toUpperCase() })}
-        placeholder="UF"
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm uppercase"
-      />
     </section>
   );
 }

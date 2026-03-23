@@ -18,42 +18,25 @@ export function NewClientPreferencesSection({
   onChangeMarketingOptInAction,
 }: NewClientPreferencesSectionProps) {
   return (
-    <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Sinalizações</p>
-        <h2 className="text-lg font-serif text-studio-text">Preferências do atendimento</h2>
+    <section className="wl-surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+        <p className="wl-typo-card-name-sm font-bold text-studio-text">Preferencias do atendimento</p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <label className="flex items-center gap-2 text-xs font-extrabold text-studio-text">
-          <input
-            type="checkbox"
-            name="is_vip"
-            checked={isVip}
-            onChange={(event) => onChangeIsVipAction(event.target.checked)}
-            className="w-4 h-4"
-          />
-          VIP
+      <div className="space-y-2 px-3 py-3">
+        <label className="flex items-center justify-between rounded-xl border border-line wl-surface-card-body px-3 py-2">
+          <span className="text-sm font-semibold text-studio-text">Cliente VIP</span>
+          <input type="checkbox" name="is_vip" checked={isVip} onChange={(event) => onChangeIsVipAction(event.target.checked)} className="h-4 w-4" />
         </label>
-        <label className="flex items-center gap-2 text-xs font-extrabold text-studio-text">
-          <input
-            type="checkbox"
-            name="needs_attention"
-            checked={needsAttention}
-            onChange={(event) => onChangeNeedsAttentionAction(event.target.checked)}
-            className="w-4 h-4"
-          />
-          Atenção
+
+        <label className="flex items-center justify-between rounded-xl border border-line wl-surface-card-body px-3 py-2">
+          <span className="text-sm font-semibold text-studio-text">Marcar atencao</span>
+          <input type="checkbox" name="needs_attention" checked={needsAttention} onChange={(event) => onChangeNeedsAttentionAction(event.target.checked)} className="h-4 w-4" />
         </label>
-        <label className="flex items-center gap-2 text-xs font-extrabold text-studio-text">
-          <input
-            type="checkbox"
-            name="marketing_opt_in"
-            checked={marketingOptIn}
-            onChange={(event) => onChangeMarketingOptInAction(event.target.checked)}
-            className="w-4 h-4"
-          />
-          Aceita novidades
+
+        <label className="flex items-center justify-between rounded-xl border border-line wl-surface-card-body px-3 py-2">
+          <span className="text-sm font-semibold text-studio-text">Aceita novidades</span>
+          <input type="checkbox" name="marketing_opt_in" checked={marketingOptIn} onChange={(event) => onChangeMarketingOptInAction(event.target.checked)} className="h-4 w-4" />
         </label>
       </div>
     </section>

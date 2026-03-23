@@ -7,19 +7,20 @@ type NewClientNotesSectionProps = {
 
 export function NewClientNotesSection({ notes, onChangeNotesAction }: NewClientNotesSectionProps) {
   return (
-    <section className="bg-white rounded-3xl shadow-soft p-5 border border-white space-y-4">
-      <div>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted">Observações internas</p>
-        <h2 className="text-lg font-serif text-studio-text">Notas do cliente</h2>
+    <section className="wl-surface-card overflow-hidden">
+      <div className="flex h-10 items-center gap-2 border-b border-line px-3 wl-surface-card-header">
+        <p className="wl-typo-card-name-sm font-bold text-studio-text">Observacoes internas</p>
       </div>
-      <textarea
-        name="observacoes_gerais"
-        value={notes}
-        onChange={(event) => onChangeNotesAction(event.target.value)}
-        placeholder="Observações internas do cliente"
-        rows={3}
-        className="w-full px-4 py-3 rounded-2xl bg-paper border border-line text-sm"
-      />
+      <div className="px-3 py-3">
+        <textarea
+          name="observacoes_gerais"
+          value={notes}
+          onChange={(event) => onChangeNotesAction(event.target.value)}
+          placeholder="Observacoes importantes sobre este cliente"
+          rows={5}
+          className="w-full rounded-xl border border-line wl-surface-input px-4 py-3 text-sm"
+        />
+      </div>
     </section>
   );
 }
