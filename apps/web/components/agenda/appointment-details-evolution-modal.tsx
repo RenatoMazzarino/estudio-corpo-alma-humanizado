@@ -1,4 +1,4 @@
-﻿import { Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 interface AppointmentDetailsEvolutionModalProps {
   open: boolean;
@@ -37,7 +37,7 @@ export function AppointmentDetailsEvolutionModal({
         onClick={onClose}
         className="absolute inset-0 bg-black/45 backdrop-blur-sm"
       />
-      <div className="relative z-10 w-full max-w-96 overflow-hidden rounded-3xl border border-line wl-surface-modal shadow-float">
+      <div className="relative z-10 w-full max-w-96 overflow-hidden rounded-3xl wl-surface-modal shadow-float">
         <div className="flex items-center justify-between border-b border-line wl-sheet-header-surface px-4 py-3">
           <div>
             <p className="text-sm font-bold text-white">Evolucao</p>
@@ -70,7 +70,7 @@ export function AppointmentDetailsEvolutionModal({
           <textarea
             value={draft}
             onChange={(event) => onChangeDraft(event.target.value)}
-            className="min-h-44 w-full resize-y rounded-2xl border border-line wl-surface-input p-4 text-sm text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-green/20"
+            className="min-h-44 w-full resize-y rounded-xl border border-line wl-surface-input p-4 text-sm text-studio-text focus:outline-none focus:ring-2 focus:ring-studio-green/20"
             placeholder="Descreva a evolucao da sessao..."
           />
 
@@ -84,7 +84,7 @@ export function AppointmentDetailsEvolutionModal({
             type="button"
             onClick={onSave}
             disabled={!canSave || saving || structuring || actionPending}
-            className="h-11 w-full rounded-2xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
+            className="h-11 w-full rounded-xl bg-studio-green text-xs font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
           >
             {saving ? "Salvando..." : "Salvar evolucao"}
           </button>

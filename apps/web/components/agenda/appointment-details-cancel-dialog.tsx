@@ -1,5 +1,3 @@
-﻿import { X } from "lucide-react";
-
 interface AppointmentDetailsCancelDialogProps {
   open: boolean;
   notifyClientOnCancel: boolean;
@@ -20,24 +18,16 @@ export function AppointmentDetailsCancelDialog({
   if (!open) return null;
 
   return (
-    <div className="pointer-events-auto absolute inset-0 z-60 flex items-center justify-center">
+    <div className="pointer-events-auto fixed inset-0 z-90 flex items-center justify-center">
       <button
         type="button"
         aria-label="Fechar confirmacao"
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
       />
-      <div className="relative mx-6 w-full max-w-xs overflow-hidden rounded-2xl border border-line wl-surface-modal shadow-float">
+      <div className="relative mx-6 w-full max-w-xs overflow-hidden rounded-xl wl-surface-modal shadow-float">
         <div className="border-b border-line wl-sheet-header-surface px-5 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="wl-header-icon-button-strong absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full"
-            aria-label="Fechar"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-          <h3 className="text-sm font-extrabold text-white">Cancelar agendamento?</h3>
+          <h3 className="wl-typo-card-name-md text-white">Cancelar agendamento?</h3>
           <p className="mt-2 text-xs text-white/80">
             Se cancelar, este card some da agenda e o horario fica livre novamente.
           </p>
@@ -59,7 +49,7 @@ export function AppointmentDetailsCancelDialog({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-full border border-line bg-paper px-3 py-2 text-[10px] font-extrabold text-studio-text"
+              className="flex-1 rounded-full border border-line bg-paper px-3 py-2 text-[11px] font-medium text-studio-text"
             >
               Manter
             </button>
@@ -67,7 +57,7 @@ export function AppointmentDetailsCancelDialog({
               type="button"
               onClick={onConfirmCancel}
               disabled={actionPending}
-              className="flex-1 rounded-full bg-red-600 px-3 py-2 text-[10px] font-extrabold text-white transition disabled:opacity-60"
+              className="flex-1 rounded-full bg-red-600 px-3 py-2 text-[11px] font-medium text-white transition disabled:opacity-60"
             >
               Cancelar
             </button>

@@ -7,6 +7,7 @@ import { Toast } from "../ui/toast";
 import { FloatingActionMenu } from "../ui/floating-action-menu";
 import { AppointmentActionSheet } from "./appointment-action-sheet";
 import { AgendaSearchModal, type SearchResults } from "./agenda-search-modal";
+import { AppointmentDetailsCancelDialog } from "./appointment-details-cancel-dialog";
 import { AppointmentDetailsSheet } from "./appointment-details-sheet";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
 import type { AutoMessageTemplates } from "../../src/shared/auto-messages.types";
@@ -29,6 +30,11 @@ type MobileAgendaOverlaysProps = {
   onOpenRecordAction: (payload: { id: string; returnTo: string }) => void;
   onEditAction: (payload: { id: string; returnTo: string }) => void;
   onDeleteAction: (payload: { id: string }) => Promise<void>;
+  deleteConfirmOpen: boolean;
+  notifyClientOnDelete: boolean;
+  onCloseDeleteConfirmAction: () => void;
+  onChangeNotifyClientOnDeleteAction: (checked: boolean) => void;
+  onConfirmDeleteAction: () => void;
   searchOpen: boolean;
   searchTerm: string;
   isSearching: boolean;
@@ -76,6 +82,11 @@ export function MobileAgendaOverlays({
   onOpenRecordAction,
   onEditAction,
   onDeleteAction,
+  deleteConfirmOpen,
+  notifyClientOnDelete,
+  onCloseDeleteConfirmAction,
+  onChangeNotifyClientOnDeleteAction,
+  onConfirmDeleteAction,
   searchOpen,
   searchTerm,
   isSearching,
@@ -121,6 +132,15 @@ export function MobileAgendaOverlays({
         onOpenRecordAction={(payload) => onOpenRecordAction({ id: payload.id, returnTo: payload.returnTo })}
         onEditAction={onEditAction}
         onDeleteAction={onDeleteAction}
+      />
+
+      <AppointmentDetailsCancelDialog
+        open={deleteConfirmOpen}
+        notifyClientOnCancel={notifyClientOnDelete}
+        actionPending={isActionPending}
+        onClose={onCloseDeleteConfirmAction}
+        onChangeNotifyClient={onChangeNotifyClientOnDeleteAction}
+        onConfirmCancel={onConfirmDeleteAction}
       />
 
       <AgendaSearchModal

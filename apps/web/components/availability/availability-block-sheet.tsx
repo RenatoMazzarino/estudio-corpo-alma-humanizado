@@ -4,6 +4,7 @@ import type { PointerEventHandler, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Calendar, CircleAlert } from "lucide-react";
 import { BottomSheetHeaderV2 } from "../ui/bottom-sheet-header-v2";
+import { FooterRail } from "../ui/footer-rail";
 import type { CreateBlockPayload } from "./availability-manager.types";
 
 type AvailabilityBlockSheetProps = {
@@ -215,7 +216,11 @@ export function AvailabilityBlockSheet({
           ) : null}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-line bg-studio-bg/95 p-4 backdrop-blur">
+        <FooterRail
+          className="absolute inset-x-0 bottom-0"
+          surfaceClassName="bg-[rgba(250,247,242,0.96)]"
+          paddingXClassName="px-5"
+        >
           <button
             type="button"
             onClick={onSubmitAction}
@@ -224,10 +229,10 @@ export function AvailabilityBlockSheet({
           >
             Confirmar bloqueio
           </button>
-        </div>
+        </FooterRail>
 
         {loading ? (
-          <div className="pointer-events-none absolute left-0 right-0 top-[94px] flex items-center justify-center">
+          <div className="pointer-events-none absolute left-0 right-0 top-23.5 flex items-center justify-center">
             <div className="inline-flex items-center gap-1 rounded-full border border-line wl-surface-card-body px-2 py-1">
               <CircleAlert className="h-3.5 w-3.5 text-muted" />
               <span className="wl-typo-body-sm text-muted">Salvando...</span>

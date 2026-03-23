@@ -28,6 +28,8 @@ interface MobileAgendaDaySectionProps {
   timeColumnWidth: number;
   timeColumnGap: number;
   loadingAppointmentId: string | null;
+  suppressInlineCardLoading?: boolean;
+  highlightAppointmentId?: string | null;
   daySliderRef: RefObject<HTMLDivElement | null>;
   onDayScroll: (event: UIEvent<HTMLDivElement>) => void;
   onGoToToday: () => void;
@@ -78,6 +80,8 @@ export function MobileAgendaDaySection({
   timeColumnWidth,
   timeColumnGap,
   loadingAppointmentId,
+  suppressInlineCardLoading = false,
+  highlightAppointmentId = null,
   daySliderRef,
   onDayScroll,
   onGoToToday,
@@ -198,7 +202,7 @@ export function MobileAgendaDaySection({
                         return (
                           <div
                             key={item.id}
-                            className="relative z-[1] grid"
+                            className="relative z-1 grid"
                             style={{
                               gridTemplateColumns: `${timeColumnWidth}px minmax(0, 1fr)`,
                               columnGap: timeColumnGap,
@@ -208,9 +212,10 @@ export function MobileAgendaDaySection({
                               <p className="wl-typo-time-major text-studio-text">{startLabel}</p>
                               <p className="wl-typo-time-minor text-muted">{formatAgendaDuration(durationMinutes)}</p>
                             </div>
-                            <div className="h-[122px] min-h-[122px]">
+                            <div className="h-30.5 min-h-30.5">
                               <AppointmentCard
                                 data-card
+                                appointmentId={item.id}
                                 name={item.clientName}
                                 service={item.serviceName}
                                 startLabel={startLabel}
@@ -223,7 +228,8 @@ export function MobileAgendaDaySection({
                                 price={item.price ?? null}
                                 isVip={item.is_vip === true}
                                 durationMinutes={80}
-                                loading={loadingAppointmentId === item.id}
+                                loading={loadingAppointmentId === item.id && !suppressInlineCardLoading}
+                                highlight={highlightAppointmentId === item.id}
                                 onOpenAction={() => onOpenAppointment(item.id)}
                                 onOpenRecordAction={() =>
                                   onOpenRecordFromCard({
@@ -400,6 +406,7 @@ export function MobileAgendaDaySection({
                               <div style={{ height: apptHeight }}>
                                 <AppointmentCard
                                   data-card
+                                  appointmentId={item.id}
                                   name={item.clientName}
                                   service={item.serviceName}
                                   startLabel={startLabel}
@@ -412,7 +419,8 @@ export function MobileAgendaDaySection({
                                   price={item.price ?? null}
                                   isVip={item.is_vip === true}
                                   durationMinutes={durationMinutes}
-                                  loading={loadingAppointmentId === item.id}
+                                  loading={loadingAppointmentId === item.id && !suppressInlineCardLoading}
+                                  highlight={highlightAppointmentId === item.id}
                                   onOpenAction={() => onOpenAppointment(item.id)}
                                   onOpenRecordAction={() =>
                                     onOpenRecordFromCard({

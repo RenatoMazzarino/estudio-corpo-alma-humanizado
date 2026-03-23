@@ -39,6 +39,7 @@ interface MonthCalendarProps {
   footer?: ReactNode;
   enableSwipe?: boolean;
   framed?: boolean;
+  headerSize?: "regular" | "compact";
 }
 
 const weekdayLabels = ["D", "S", "T", "Q", "Q", "S", "S"];
@@ -58,6 +59,7 @@ export function MonthCalendar({
   footer,
   enableSwipe = true,
   framed = true,
+  headerSize = "regular",
 }: MonthCalendarProps) {
   const monthGridDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
@@ -88,6 +90,7 @@ export function MonthCalendar({
 
   const legendNode = legend ? <div className="mt-3">{legend}</div> : null;
 
+  const isCompactHeader = headerSize === "compact";
   return (
     <div
       className={`touch-pan-y ${
@@ -98,30 +101,42 @@ export function MonthCalendar({
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerCancel}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 wl-surface-card-header">
-        <div className="min-w-0 text-center flex-1">
-          <p className="wl-typo-h2 capitalize leading-tight text-studio-text">
+      <div
+        className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-line wl-surface-card-header ${
+          isCompactHeader ? "px-3 py-2" : "px-4 py-3"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => onChangeMonthAction?.(addMonths(currentMonth, -1))}
+          className={`wl-header-icon-button-soft inline-flex items-center justify-center rounded-full transition ${
+            isCompactHeader ? "h-8 w-8" : "h-9 w-9"
+          }`}
+          aria-label="Mes anterior"
+          title="Mes anterior"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <div className="min-w-0 text-center">
+          <p className={`${isCompactHeader ? "wl-typo-card-name-sm" : "wl-typo-h2"} capitalize leading-tight text-studio-text`}>
             {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {headerActions}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onChangeMonthAction?.(addMonths(currentMonth, -1))}
-              className="wl-header-icon-button-soft inline-flex h-9 w-9 items-center justify-center rounded-full transition"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeMonthAction?.(addMonths(currentMonth, 1))}
-              className="wl-header-icon-button-soft inline-flex h-9 w-9 items-center justify-center rounded-full transition"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+
+        <div className="flex items-center justify-end gap-2">
+          {!isCompactHeader ? headerActions : null}
+          <button
+            type="button"
+            onClick={() => onChangeMonthAction?.(addMonths(currentMonth, 1))}
+            className={`wl-header-icon-button-soft inline-flex items-center justify-center rounded-full transition ${
+              isCompactHeader ? "h-8 w-8" : "h-9 w-9"
+            }`}
+            aria-label="Proximo mes"
+            title="Proximo mes"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -163,7 +178,7 @@ export function MonthCalendar({
                 >
                   <span className="wl-typo-body-sm leading-none">{format(day, "d")}</span>
                   {dots.length > 0 ? (
-                    <span className="mt-1 flex items-center gap-[2px]">
+                    <span className="mt-1 flex items-center gap-0.5">
                       {dots.map((dot, index) => (
                         <span
                           key={`${dot.key}-${index}`}

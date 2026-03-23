@@ -33,6 +33,7 @@ interface UseMobileAgendaDetailsParams {
 
 interface UseMobileAgendaDetailsReturn {
   loadingAppointmentId: string | null;
+  detailsBlockingVisible: boolean;
   detailsOpen: boolean;
   setDetailsOpen: Dispatch<SetStateAction<boolean>>;
   detailsAppointmentId: string | null;
@@ -53,30 +54,64 @@ export function useMobileAgendaDetails({
   showToast,
 }: UseMobileAgendaDetailsParams): UseMobileAgendaDetailsReturn {
   const [loadingAppointmentId, setLoadingAppointmentId] = useState<string | null>(null);
+  const [detailsBlockingVisible, setDetailsBlockingVisible] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsAppointmentId, setDetailsAppointmentId] = useState<string | null>(null);
   const [detailsData, setDetailsData] = useState<AttendanceOverview | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const detailsOverlayHideTimeoutRef = useRef<number | null>(null);
+  const detailsAutoOpenTimeoutRef = useRef<number | null>(null);
   const autoOpenedAppointmentRef = useRef<string | null>(null);
-  const pendingAutoOpenAppointmentRef = useRef<string | null>(null);
-  const pendingAutoOpenDelayMsRef = useRef<number>(0);
 
   const refreshAttendanceDetails = useCallback(
     async (appointmentId: string) => {
       setDetailsLoading(true);
+      if (detailsOverlayHideTimeoutRef.current) {
+        window.clearTimeout(detailsOverlayHideTimeoutRef.current);
+        detailsOverlayHideTimeoutRef.current = null;
+      }
+
       let timeoutId: number | null = null;
+      let resolvedData: AttendanceOverview | null = null;
+
       try {
-        const data = await Promise.race([
-          getAttendance(appointmentId),
-          new Promise<null>((_, reject) => {
-            timeoutId = window.setTimeout(() => reject(new Error("details_timeout")), 10000);
-          }),
-        ]);
-        setDetailsData(data ?? null);
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          if (timeoutId) {
+            window.clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+
+          try {
+            const data = await Promise.race([
+              getAttendance(appointmentId),
+              new Promise<null>((_, reject) => {
+                timeoutId = window.setTimeout(() => reject(new Error("details_timeout")), 2400);
+              }),
+            ]);
+            if (data) {
+              resolvedData = data;
+              break;
+            }
+          } catch {
+            if (attempt === 1) {
+              router.refresh();
+            }
+          }
+
+          if (attempt < 5) {
+            await new Promise((resolve) => window.setTimeout(resolve, 300 + attempt * 120));
+          }
+        }
+
+        if (!resolvedData) {
+          throw new Error("details_unavailable");
+        }
+
+        setDetailsData(resolvedData);
       } catch {
         showToast(
           feedbackById("agenda_details_load_failed", {
-            message: "Não foi possível carregar os detalhes agora. Tente abrir novamente.",
+            message: "Nao foi possivel carregar os detalhes agora. Tente abrir novamente.",
           })
         );
         setDetailsData(null);
@@ -86,23 +121,41 @@ export function useMobileAgendaDetails({
         }
         setDetailsLoading(false);
         setLoadingAppointmentId(null);
+        detailsOverlayHideTimeoutRef.current = window.setTimeout(() => {
+          setDetailsBlockingVisible(false);
+          detailsOverlayHideTimeoutRef.current = null;
+        }, 220);
       }
     },
-    [showToast]
+    [router, showToast]
   );
 
   const openDetailsForAppointment = useCallback((appointmentId: string) => {
+    if (detailsOverlayHideTimeoutRef.current) {
+      window.clearTimeout(detailsOverlayHideTimeoutRef.current);
+      detailsOverlayHideTimeoutRef.current = null;
+    }
+    setDetailsBlockingVisible(true);
     setLoadingAppointmentId(appointmentId);
     setDetailsAppointmentId(appointmentId);
     setDetailsOpen(true);
   }, []);
 
   const closeDetails = useCallback(() => {
+    if (detailsOverlayHideTimeoutRef.current) {
+      window.clearTimeout(detailsOverlayHideTimeoutRef.current);
+      detailsOverlayHideTimeoutRef.current = null;
+    }
+    if (detailsAutoOpenTimeoutRef.current) {
+      window.clearTimeout(detailsAutoOpenTimeoutRef.current);
+      detailsAutoOpenTimeoutRef.current = null;
+    }
     setDetailsOpen(false);
     setDetailsAppointmentId(null);
     setDetailsData(null);
     setDetailsLoading(false);
     setLoadingAppointmentId(null);
+    setDetailsBlockingVisible(false);
   }, []);
 
   useEffect(() => {
@@ -127,45 +180,55 @@ export function useMobileAgendaDetails({
 
     const targetAppointment = appointments.find((item) => item.id === appointmentToOpen);
     if (!targetAppointment) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("openAppointment");
-      params.delete("fromAttendance");
-      router.replace(`/?${params.toString()}`, { scroll: false });
-      return;
-    }
-
-    const targetDate = parseAgendaDate(targetAppointment.start_time);
-    if (isValid(targetDate) && !isSameDay(targetDate, selectedDateRef.current)) {
-      setSelectedDate(targetDate);
-      setCurrentMonth(startOfMonth(targetDate));
+      setDetailsBlockingVisible(true);
+      setLoadingAppointmentId(appointmentToOpen);
+    } else {
+      const targetDate = parseAgendaDate(targetAppointment.start_time);
+      if (isValid(targetDate) && !isSameDay(targetDate, selectedDateRef.current)) {
+        setSelectedDate(targetDate);
+        setCurrentMonth(startOfMonth(targetDate));
+      }
     }
 
     autoOpenedAppointmentRef.current = appointmentToOpen;
-    pendingAutoOpenAppointmentRef.current = appointmentToOpen;
-    pendingAutoOpenDelayMsRef.current = searchParams.get("fromAttendance") === "1" ? 80 : 0;
+    const delayMs = searchParams.get("fromAttendance") === "1" ? 120 : 0;
+    if (detailsAutoOpenTimeoutRef.current) {
+      window.clearTimeout(detailsAutoOpenTimeoutRef.current);
+      detailsAutoOpenTimeoutRef.current = null;
+    }
+    detailsAutoOpenTimeoutRef.current = window.setTimeout(() => {
+      openDetailsForAppointment(appointmentToOpen);
+      detailsAutoOpenTimeoutRef.current = null;
+    }, delayMs);
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("openAppointment");
     params.delete("fromAttendance");
     router.replace(`/?${params.toString()}`, { scroll: false });
-  }, [appointments, router, searchParams, selectedDateRef, setCurrentMonth, setSelectedDate]);
+  }, [
+    appointments,
+    openDetailsForAppointment,
+    router,
+    searchParams,
+    selectedDateRef,
+    setCurrentMonth,
+    setSelectedDate,
+  ]);
 
   useEffect(() => {
-    if (searchParams.get("openAppointment")) return;
-    const pendingAppointmentId = pendingAutoOpenAppointmentRef.current;
-    if (!pendingAppointmentId) return;
-
-    pendingAutoOpenAppointmentRef.current = null;
-    const delayMs = pendingAutoOpenDelayMsRef.current;
-    pendingAutoOpenDelayMsRef.current = 0;
-
-    window.setTimeout(() => {
-      openDetailsForAppointment(pendingAppointmentId);
-    }, delayMs);
-  }, [openDetailsForAppointment, searchParams]);
+    return () => {
+      if (detailsOverlayHideTimeoutRef.current) {
+        window.clearTimeout(detailsOverlayHideTimeoutRef.current);
+      }
+      if (detailsAutoOpenTimeoutRef.current) {
+        window.clearTimeout(detailsAutoOpenTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     loadingAppointmentId,
+    detailsBlockingVisible,
     detailsOpen,
     setDetailsOpen,
     detailsAppointmentId,

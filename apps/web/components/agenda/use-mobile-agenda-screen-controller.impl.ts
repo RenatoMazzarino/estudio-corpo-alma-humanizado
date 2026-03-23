@@ -1,7 +1,7 @@
 
 import { format, isSameDay, isSameMonth, isValid, parseISO, startOfMonth } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cancelAppointment } from "../../app/actions";
 import { DEFAULT_PUBLIC_BASE_URL } from "../../src/shared/config";
 import { feedbackById, feedbackFromError } from "../../src/shared/feedback/user-feedback";
@@ -27,6 +27,10 @@ export function useMobileAgendaScreenController({
 }: MobileAgendaProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const suppressRealtimeRefreshUntilRef = useRef<number>(0);
+  const consumedFocusAppointmentRef = useRef<string | null>(null);
+  const highlightClearTimeoutRef = useRef<number | null>(null);
+  const [highlightAppointmentId, setHighlightAppointmentId] = useState<string | null>(null);
 
   const initialView = useMemo<AgendaView>(() => {
     const viewParam = searchParams.get("view");
@@ -98,6 +102,7 @@ export function useMobileAgendaScreenController({
 
   const {
     loadingAppointmentId,
+    detailsBlockingVisible,
     detailsOpen,
     detailsAppointmentId,
     detailsData,
@@ -184,6 +189,39 @@ export function useMobileAgendaScreenController({
       }
     }
   }, [pendingViewRef, searchParams, selectedDateRef, setCurrentMonth, setSelectedDate, setView, view]);
+
+  useEffect(() => {
+    const focusAppointment = searchParams.get("focusAppointment");
+    if (!focusAppointment) return;
+    if (consumedFocusAppointmentRef.current === focusAppointment) return;
+    consumedFocusAppointmentRef.current = focusAppointment;
+
+    suppressRealtimeRefreshUntilRef.current = Date.now() + 7000;
+    setHighlightAppointmentId(focusAppointment);
+
+    if (highlightClearTimeoutRef.current) {
+      window.clearTimeout(highlightClearTimeoutRef.current);
+      highlightClearTimeoutRef.current = null;
+    }
+    highlightClearTimeoutRef.current = window.setTimeout(() => {
+      setHighlightAppointmentId(null);
+      highlightClearTimeoutRef.current = null;
+    }, 2200);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("focusAppointment");
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [searchParams]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightClearTimeoutRef.current) {
+        window.clearTimeout(highlightClearTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     selectedDateRef.current = selectedDate;
@@ -329,6 +367,9 @@ export function useMobileAgendaScreenController({
     channelName: "mobile-agenda-live",
     tables: realtimeTables,
     onRefresh: () => {
+      if (Date.now() < suppressRealtimeRefreshUntilRef.current) {
+        return;
+      }
       router.refresh();
       if (detailsOpen && detailsAppointmentId) {
         void refreshAttendanceDetails(detailsAppointmentId);
@@ -358,6 +399,7 @@ export function useMobileAgendaScreenController({
     isSearching,
     searchResults,
     detailsOpen,
+    detailsBlockingVisible,
     detailsLoading,
     detailsData,
     detailsAttendanceCode,
@@ -389,6 +431,7 @@ export function useMobileAgendaScreenController({
     timeColumnWidth,
     timeColumnGap,
     loadingAppointmentId,
+    highlightAppointmentId,
     daySliderRef,
     handleDayScroll,
     handleGoToToday,

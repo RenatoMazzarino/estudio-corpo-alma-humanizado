@@ -51,7 +51,9 @@ type WeekAppointmentItemProps = {
 };
 
 function formatWeekdayShort(day: Date) {
-  return format(day, "EEE", { locale: ptBR }).replace(".", "").toUpperCase();
+  const label = format(day, "EEE", { locale: ptBR }).replace(".", "").trim();
+  if (!label) return "";
+  return `${label.charAt(0).toUpperCase()}${label.slice(1).toLowerCase()}`;
 }
 
 function resolveDurationMinutes(appointment: Appointment) {
@@ -351,7 +353,6 @@ export function MobileAgendaWeekSection({
 
         <div className="text-center">
           <h2 className="wl-typo-h2 capitalize leading-tight text-studio-text">{rangeLabel}</h2>
-          <p className="wl-typo-body mt-1 text-muted">Visao semanal</p>
         </div>
 
         <button
@@ -375,6 +376,24 @@ export function MobileAgendaWeekSection({
           const isActive = isSameDay(day, selectedDate);
           const dayNumber = format(day, "dd");
           const dayShort = formatWeekdayShort(day);
+          const dayStatusTags = hasAppointments
+            ? [
+                {
+                  label: `${dayAppointments.length} agendamentos`,
+                  className: "border-studio-green/25 bg-studio-green/10 text-studio-green",
+                },
+                ...(hasBlocks
+                  ? [
+                      {
+                        label: `${partialBlocks.length} bloqueio(s)`,
+                        className: "border-amber-300 bg-amber-50 text-amber-700",
+                      },
+                    ]
+                  : []),
+              ]
+            : hasBlocks
+              ? [{ label: `${partialBlocks.length} bloqueio(s)`, className: "border-amber-300 bg-amber-50 text-amber-700" }]
+              : [{ label: "Livre", className: "border-emerald-300 bg-emerald-50 text-emerald-700" }];
 
           return (
             <article
@@ -388,22 +407,20 @@ export function MobileAgendaWeekSection({
                 onClick={() => onOpenDayAction(day)}
                 className="flex w-full items-start justify-between gap-3 border-b border-line px-4 py-3 text-left wl-surface-card-header"
               >
-                <div className="flex items-end gap-2">
+                <div className="flex items-end gap-2.5">
                   <span className="wl-typo-h1 leading-none text-studio-text">{dayNumber}</span>
-                  <span className="wl-typo-label pb-1 text-muted">{dayShort}.</span>
+                  <span className="wl-typo-card-name-md font-bold leading-none text-studio-text">{dayShort}</span>
                 </div>
 
-                <div className="wl-typo-body pt-1 text-right text-muted">
-                  {hasAppointments ? (
-                    <>
-                      <p>{dayAppointments.length} agendamentos</p>
-                      <p>{hasBlocks ? `${partialBlocks.length} bloqueio(s)` : " "}</p>
-                    </>
-                  ) : hasBlocks ? (
-                    <p>{partialBlocks.length} bloqueio(s)</p>
-                  ) : (
-                    <p>Livre</p>
-                  )}
+                <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
+                  {dayStatusTags.map((tag) => (
+                    <span
+                      key={`${day.toISOString()}-${tag.label}`}
+                      className={`wl-typo-chip inline-flex rounded-full border px-2.5 py-1 ${tag.className}`}
+                    >
+                      {tag.label}
+                    </span>
+                  ))}
                 </div>
               </button>
 

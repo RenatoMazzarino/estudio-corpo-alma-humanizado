@@ -37,7 +37,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
   const calendarLegend = (
     <CalendarLegendV2
       items={[
-        { key: "appointments", label: "Atendimento", dotClassName: "bg-studio-green" },
+        { key: "studio", label: "Estudio", dotClassName: "bg-studio-green" },
         { key: "home", label: "Domicilio", dotClassName: "bg-dom" },
         { key: "shift", label: "Plantao", dotClassName: "bg-red-500" },
         { key: "partial", label: "Parcial", dotClassName: "bg-amber-500" },
@@ -70,6 +70,7 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
             const key = format(day, "yyyy-MM-dd");
             const dayAppointments = controller.appointmentsByDate.get(key) ?? [];
             const dayBlocks = controller.blocksByDate.get(key) ?? [];
+            const hasStudioVisit = dayAppointments.some((item) => !item.is_home_visit);
             const hasHomeVisit = dayAppointments.some((item) => item.is_home_visit);
             const hasShiftBlock = dayBlocks.some(
               (item) => (item.block_type ?? "personal") === "shift" && Boolean(item.is_full_day)
@@ -79,8 +80,8 @@ export const AvailabilityManager = forwardRef<AvailabilityManagerHandle>(functio
             );
 
             const dots: MonthCalendarDot[] = [];
-            if (dayAppointments.length > 0) {
-              dots.push({ key: "appointments", className: "bg-studio-green", title: "Atendimento" });
+            if (hasStudioVisit) {
+              dots.push({ key: "studio", className: "bg-studio-green", title: "Estudio" });
             }
             if (hasHomeVisit) dots.push({ key: "home", className: "bg-dom", title: "Domicilio" });
             if (hasShiftBlock) dots.push({ key: "shift", className: "bg-red-500", title: "Plantao" });

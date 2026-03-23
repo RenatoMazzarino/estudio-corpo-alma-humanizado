@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { BadgeCheck, BookOpenText, Home, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 interface AppointmentCardProps {
+  appointmentId?: string;
   name: string;
   service: string;
   startLabel: string;
@@ -17,6 +18,7 @@ interface AppointmentCardProps {
   isVip?: boolean;
   durationMinutes?: number;
   loading?: boolean;
+  highlight?: boolean;
   onOpenAction: () => void;
   onOpenRecordAction?: () => void;
   onEditAction?: () => void;
@@ -44,6 +46,7 @@ function formatPriceLabel(value: number | null | undefined) {
 }
 
 export function AppointmentCard({
+  appointmentId,
   name,
   service,
   startLabel,
@@ -57,6 +60,7 @@ export function AppointmentCard({
   isVip = false,
   durationMinutes = 60,
   loading = false,
+  highlight = false,
   onOpenAction,
   onOpenRecordAction,
   onEditAction,
@@ -242,6 +246,7 @@ export function AppointmentCard({
     <div
       role="button"
       data-card={dataCard ? "" : undefined}
+      data-appointment-id={appointmentId ?? undefined}
       tabIndex={0}
       onClick={(event) => {
         if (event.defaultPrevented || suppressClick.current) {
@@ -277,7 +282,7 @@ export function AppointmentCard({
       aria-busy={loading}
       className={`relative h-full min-h-0 w-full overflow-hidden rounded-xl border border-line border-l-4 wl-surface-card-body ${wrapperPadding} shadow-soft transition active:scale-[0.99] ${
         loading ? "cursor-wait opacity-75" : "cursor-pointer"
-      }`}
+      } ${highlight ? "ring-2 ring-studio-green/60 animate-[pulse_0.75s_ease-in-out_2]" : ""}`}
       style={{
         borderLeftColor: accentColor,
         ...(cardSurfaceStyle ?? {}),

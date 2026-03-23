@@ -32,6 +32,7 @@ export function useAppointmentDetailsSheetController({
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
+  const previousAppointmentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setPortalTarget(document.getElementById("app-frame"));
@@ -46,17 +47,25 @@ export function useAppointmentDetailsSheetController({
       setEvolutionSaving(false);
       setEvolutionStructuring(false);
       dragOffsetRef.current = 0;
+      previousAppointmentIdRef.current = null;
       return;
     }
-    setCancelDialogOpen(false);
-    setNotifyClientOnCancel(false);
-    setDragOffset(0);
-    setPaymentMethod("pix");
-    setEvolutionModalOpen(false);
-    setEvolutionSaving(false);
-    setEvolutionStructuring(false);
-    setEvolutionDraft(details?.evolution?.[0]?.evolution_text?.trim() ?? "");
-    dragOffsetRef.current = 0;
+
+    const currentAppointmentId = details?.appointment?.id ?? null;
+    const hasAppointmentChanged = previousAppointmentIdRef.current !== currentAppointmentId;
+
+    if (hasAppointmentChanged) {
+      setCancelDialogOpen(false);
+      setNotifyClientOnCancel(false);
+      setDragOffset(0);
+      setPaymentMethod("pix");
+      setEvolutionModalOpen(false);
+      setEvolutionSaving(false);
+      setEvolutionStructuring(false);
+      setEvolutionDraft(details?.evolution?.[0]?.evolution_text?.trim() ?? "");
+      dragOffsetRef.current = 0;
+      previousAppointmentIdRef.current = currentAppointmentId;
+    }
   }, [open, details?.appointment?.id, details?.evolution]);
 
   const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {

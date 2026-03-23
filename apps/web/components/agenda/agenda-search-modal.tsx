@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChevronLeft, Search } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
@@ -55,91 +55,102 @@ export function AgendaSearchModal({
   const hasQuery = searchTerm.trim().length >= 3;
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-6">
-      <div className="wl-surface-modal w-full max-h-[80vh] rounded-3xl shadow-float overflow-hidden flex flex-col border border-line">
-        <div className="sticky top-0 wl-sheet-header-surface px-6 pt-5 pb-4 shadow-soft z-10">
+    <div className="absolute inset-0 z-50 flex items-start justify-center bg-black/40 p-6 backdrop-blur-sm">
+      <div className="wl-surface-modal flex max-h-[80vh] w-full flex-col overflow-hidden rounded-xl shadow-float">
+        <div className="wl-sheet-header-surface sticky top-0 z-10 px-5 pb-3 pt-4">
           <div className="flex items-center gap-3">
             <IconButton
               size="sm"
-              icon={<ChevronLeft className="w-4 h-4" />}
+              icon={<ChevronLeft className="h-4 w-4" />}
               aria-label="Voltar"
               onClick={onCloseAction}
             />
-            <Search className="w-4 h-4 text-muted" />
-            <input
-              autoFocus
-              value={searchTerm}
-              onChange={(event) => onSearchTermChangeAction(event.target.value)}
-              placeholder="Buscar em tudo..."
-              className="flex-1 bg-transparent text-sm text-white placeholder:text-white/75 focus:outline-none"
-            />
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <input
+                autoFocus
+                value={searchTerm}
+                onChange={(event) => onSearchTermChangeAction(event.target.value)}
+                placeholder="Buscar em agenda e clientes..."
+                className="w-full rounded-xl wl-surface-input border border-line py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-muted caret-studio-text focus:outline-none focus:ring-1 focus:ring-studio-green"
+              />
+            </div>
             <button
               type="button"
               onClick={onSearchClickAction}
-              className="text-xs font-extrabold text-studio-green px-3 py-1.5 rounded-full bg-studio-light"
+              className="wl-typo-button inline-flex h-8 items-center justify-center rounded-full bg-white px-3 text-studio-green transition hover:bg-paper"
             >
               Buscar
             </button>
           </div>
-          <p className="text-[11px] text-white/80 mt-2">Digite ao menos 3 letras para ver resultados.</p>
+          <p className="mt-2 text-[11px] text-white/80">Digite ao menos 3 letras para ver resultados.</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pt-6 pb-8">
-          {isSearching && <div className="py-6 text-xs text-muted">Buscando...</div>}
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 pb-6 pt-4">
+          {isSearching ? <div className="py-6 text-xs text-muted">Buscando...</div> : null}
 
-          {!isSearching && !hasQuery && (
-            <div className="py-10 text-center text-xs text-muted">Digite para começar a buscar.</div>
-          )}
+          {!isSearching && !hasQuery ? (
+            <div className="py-10 text-center text-xs text-muted">Digite para comecar a buscar.</div>
+          ) : null}
 
-          {!isSearching && hasQuery && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">Agenda</h3>
-                <div className="mt-3 space-y-2">
-                  {results.appointments.length === 0 && (
-                    <p className="text-xs text-muted">Nenhum atendimento encontrado.</p>
+          {!isSearching && hasQuery ? (
+            <>
+              <section className="wl-surface-card overflow-hidden rounded-xl">
+                <div className="wl-surface-card-header flex h-10 items-center border-b border-line px-3">
+                  <h3 className="wl-typo-card-title-sm font-bold text-studio-text">Agendamentos</h3>
+                </div>
+                <div className="wl-surface-card-body">
+                  {results.appointments.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-muted">Nenhum atendimento encontrado.</p>
+                  ) : (
+                    results.appointments.map((item, index) => {
+                      const when = format(parseDate(item.start_time), "dd MMM - HH:mm", { locale: ptBR });
+                      const clientName = item.clients?.name ?? "Cliente";
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => onSelectAppointmentAction(item)}
+                          className={`w-full px-3 py-3 text-left transition hover:bg-paper ${
+                            index < results.appointments.length - 1 ? "border-b border-line" : ""
+                          }`}
+                        >
+                          <p className="wl-typo-card-name-sm text-studio-text">{clientName}</p>
+                          <p className="wl-typo-body-sm mt-0.5 text-muted">{item.service_name}</p>
+                          <p className="wl-typo-body-sm mt-0.5 text-muted">{when}</p>
+                        </button>
+                      );
+                    })
                   )}
-                  {results.appointments.map((item) => {
-                    const when = format(parseDate(item.start_time), "dd MMM • HH:mm", { locale: ptBR });
-                    const clientName = item.clients?.name ?? "Cliente";
-                    return (
+                </div>
+              </section>
+
+              <section className="wl-surface-card overflow-hidden rounded-xl">
+                <div className="wl-surface-card-header flex h-10 items-center border-b border-line px-3">
+                  <h3 className="wl-typo-card-title-sm font-bold text-studio-text">Clientes</h3>
+                </div>
+                <div className="wl-surface-card-body">
+                  {results.clients.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-muted">Nenhum cliente encontrado.</p>
+                  ) : (
+                    results.clients.map((client, index) => (
                       <button
-                        key={item.id}
+                        key={client.id}
                         type="button"
-                        onClick={() => onSelectAppointmentAction(item)}
-                        className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
+                        onClick={() => onSelectClientAction(client)}
+                        className={`w-full px-3 py-3 text-left transition hover:bg-paper ${
+                          index < results.clients.length - 1 ? "border-b border-line" : ""
+                        }`}
                       >
-                        <div className="text-sm font-extrabold text-studio-text">{clientName}</div>
-                        <div className="text-xs text-muted">
-                          {item.service_name} • {when}
-                        </div>
+                        <p className="wl-typo-card-name-sm text-studio-text">{client.name}</p>
+                        {client.phone ? <p className="wl-typo-body-sm mt-0.5 text-muted">{client.phone}</p> : null}
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-studio-green">Clientes</h3>
-                <div className="mt-3 space-y-2">
-                  {results.clients.length === 0 && (
-                    <p className="text-xs text-muted">Nenhum cliente encontrado.</p>
+                    ))
                   )}
-                  {results.clients.map((client) => (
-                    <button
-                      key={client.id}
-                      type="button"
-                      onClick={() => onSelectClientAction(client)}
-                      className="w-full text-left bg-paper rounded-2xl px-4 py-3 border border-line hover:bg-studio-light transition"
-                    >
-                      <div className="text-sm font-extrabold text-studio-text">{client.name}</div>
-                      {client.phone && <div className="text-xs text-muted">{client.phone}</div>}
-                    </button>
-                  ))}
                 </div>
-              </div>
-            </div>
-          )}
+              </section>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

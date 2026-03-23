@@ -4,6 +4,7 @@ import type { PointerEventHandler, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Calendar, CircleAlert, Sparkles, Trash2 } from "lucide-react";
 import { BottomSheetHeaderV2 } from "../ui/bottom-sheet-header-v2";
+import { FooterRail } from "../ui/footer-rail";
 
 type AvailabilityScaleSheetProps = {
   open: boolean;
@@ -190,7 +191,11 @@ export function AvailabilityScaleSheet({
 
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-line bg-studio-bg/95 p-4 backdrop-blur">
+        <FooterRail
+          className="absolute inset-x-0 bottom-0"
+          surfaceClassName="bg-[rgba(250,247,242,0.96)]"
+          paddingXClassName="px-5"
+        >
           {scaleHasShiftBlocks ? (
             <button
               type="button"
@@ -212,7 +217,7 @@ export function AvailabilityScaleSheet({
               Aplicar escala
             </button>
           )}
-        </div>
+        </FooterRail>
       </div>
     </div>,
     portalTarget

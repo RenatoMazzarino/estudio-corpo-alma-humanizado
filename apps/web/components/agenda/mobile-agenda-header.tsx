@@ -89,11 +89,11 @@ export function MobileAgendaHeader({
   return (
     <>
       <header
-        className={`sticky top-0 z-30 bg-studio-green text-white safe-top safe-top-4 px-5 pb-0 transition-all ${
-          headerCompact ? "pt-3" : "pt-4"
+        className={`sticky top-0 z-30 min-h-27 bg-studio-green text-white safe-top safe-top-4 px-5 pb-0 transition-all ${
+          headerCompact ? "pt-4" : "pt-4"
         }`}
       >
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex h-10 items-center justify-between gap-3">
           <div ref={userMenuRef} className="relative">
             <button
               type="button"
@@ -118,7 +118,7 @@ export function MobileAgendaHeader({
                   </span>
                 )}
               </div>
-              <span className="wl-typo-card-name-xs max-w-[150px] truncate text-white">{safeDisplayName}</span>
+              <span className="wl-typo-card-name-xs max-w-37.5 truncate text-white">{safeDisplayName}</span>
               <ChevronDown
                 className={`h-3.5 w-3.5 text-white/80 transition-transform ${isUserMenuOpen ? "rotate-180" : ""}`}
               />

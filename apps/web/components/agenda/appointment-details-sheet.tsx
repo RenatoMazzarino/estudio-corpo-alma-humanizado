@@ -7,6 +7,7 @@ import Image from "next/image";
 import type { AttendanceOverview } from "../../lib/attendance/attendance-types";
 import { WhatsAppIcon } from "../ui/whatsapp-icon";
 import { IconActionButton } from "../ui/icon-action-button";
+import { FooterRail } from "../ui/footer-rail";
 import { AppointmentDetailsActiveView } from "./appointment-details-active-view";
 import { AppointmentDetailsCancelDialog } from "./appointment-details-cancel-dialog";
 import { AppointmentDetailsCompletedView } from "./appointment-details-completed-view";
@@ -269,9 +270,12 @@ export function AppointmentDetailsSheet({
                     <div
                       className="absolute right-0 top-11 z-20 min-w-44 overflow-hidden rounded-xl border border-line wl-surface-card-body shadow-soft"
                       style={{ color: "var(--color-studio-text)" }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
                     >
                       <button
                         type="button"
+                        onPointerDown={(event) => event.stopPropagation()}
                         onClick={() => {
                           setActionsMenuOpen(false);
                           onStartSessionAction();
@@ -284,6 +288,7 @@ export function AppointmentDetailsSheet({
                       </button>
                       <button
                         type="button"
+                        onPointerDown={(event) => event.stopPropagation()}
                         onClick={() => {
                           setActionsMenuOpen(false);
                           const appointmentId = details?.appointment?.id ?? null;
@@ -299,6 +304,7 @@ export function AppointmentDetailsSheet({
                       </button>
                       <button
                         type="button"
+                        onPointerDown={(event) => event.stopPropagation()}
                         onClick={() => {
                           setActionsMenuOpen(false);
                           setCancelDialogOpen(true);
@@ -428,7 +434,7 @@ export function AppointmentDetailsSheet({
         )}
 
         {!isCompleted && (
-          <div className="border-t border-line wl-surface-modal-body px-5 py-4">
+          <FooterRail surfaceClassName="wl-surface-modal-body" paddingXClassName="px-5">
             <button
               type="button"
               onClick={onStartSessionAction}
@@ -437,7 +443,7 @@ export function AppointmentDetailsSheet({
             >
               Ver atendimento
             </button>
-          </div>
+          </FooterRail>
         )}
       </div>
 

@@ -17,6 +17,9 @@ export function MobileAgenda(props: MobileAgendaProps) {
   const controller = useMobileAgendaScreenController(props);
   const [dayLayoutMode, setDayLayoutMode] = useState<AgendaDayLayoutMode>("v1");
   const [isLoadingPreviewVisible, setIsLoadingPreviewVisible] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteAppointmentId, setPendingDeleteAppointmentId] = useState<string | null>(null);
+  const [notifyClientOnDelete, setNotifyClientOnDelete] = useState(false);
   const loadingPreviewTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -26,6 +29,38 @@ export function MobileAgenda(props: MobileAgendaProps) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const targetId = controller.highlightAppointmentId;
+    if (!targetId || controller.view !== "day") return;
+
+    let cancelled = false;
+    let attempt = 0;
+
+    const scrollToTargetCard = () => {
+      if (cancelled) return;
+      const selector = `[data-appointment-id="${targetId}"]`;
+      const target = document.querySelector(selector) as HTMLElement | null;
+      if (target) {
+        target.scrollIntoView({
+          behavior: attempt === 0 ? "auto" : "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+        return;
+      }
+      attempt += 1;
+      if (attempt <= 20) {
+        window.setTimeout(scrollToTargetCard, 120);
+      }
+    };
+
+    scrollToTargetCard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [controller.highlightAppointmentId, controller.view]);
 
   const triggerLoadingPreview = () => {
     if (loadingPreviewTimeoutRef.current) {
@@ -49,14 +84,27 @@ export function MobileAgenda(props: MobileAgendaProps) {
   };
 
   const deleteFromCard = async (payload: { id: string }) => {
+    setPendingDeleteAppointmentId(payload.id);
+    setNotifyClientOnDelete(false);
+    setDeleteConfirmOpen(true);
+    controller.setActionSheet(null);
+  };
+
+  const handleConfirmDeleteFromCard = async () => {
+    if (!pendingDeleteAppointmentId) return;
     controller.setIsActionPending(true);
-    const result = await controller.cancelAppointment(payload.id);
+    const result = await controller.cancelAppointment(pendingDeleteAppointmentId, {
+      notifyClient: notifyClientOnDelete,
+    });
     if (!result.ok) {
       controller.showToast(controller.feedbackFromError(result.error, "agenda"));
     } else {
       controller.showToast(controller.feedbackById("appointment_deleted"));
       controller.setActionSheet(null);
       controller.router.refresh();
+      setDeleteConfirmOpen(false);
+      setPendingDeleteAppointmentId(null);
+      setNotifyClientOnDelete(false);
     }
     controller.setIsActionPending(false);
   };
@@ -110,6 +158,8 @@ export function MobileAgenda(props: MobileAgendaProps) {
             timeColumnWidth={controller.timeColumnWidth}
             timeColumnGap={controller.timeColumnGap}
             loadingAppointmentId={controller.loadingAppointmentId}
+            suppressInlineCardLoading={controller.detailsBlockingVisible}
+            highlightAppointmentId={controller.highlightAppointmentId}
             daySliderRef={controller.daySliderRef}
             onDayScroll={controller.handleDayScroll}
             onGoToToday={controller.handleGoToToday}
@@ -146,8 +196,12 @@ export function MobileAgenda(props: MobileAgendaProps) {
           </section>
 
           <BlockingOverlay
-            visible={isLoadingPreviewVisible}
-            label="Carregando experiencia personalizada..."
+            visible={isLoadingPreviewVisible || controller.detailsBlockingVisible}
+            label={
+              isLoadingPreviewVisible
+                ? "Carregando experiencia personalizada..."
+                : "Abrindo agendamento..."
+            }
             variant="brand-draw"
           />
         </main>
@@ -162,6 +216,15 @@ export function MobileAgenda(props: MobileAgendaProps) {
         onOpenRecordAction={openRecordFromCard}
         onEditAction={editFromCard}
         onDeleteAction={deleteFromCard}
+        deleteConfirmOpen={deleteConfirmOpen}
+        notifyClientOnDelete={notifyClientOnDelete}
+        onCloseDeleteConfirmAction={() => {
+          setDeleteConfirmOpen(false);
+          setPendingDeleteAppointmentId(null);
+          setNotifyClientOnDelete(false);
+        }}
+        onChangeNotifyClientOnDeleteAction={setNotifyClientOnDelete}
+        onConfirmDeleteAction={() => void handleConfirmDeleteFromCard()}
         searchOpen={controller.isSearchOpen}
         searchTerm={controller.searchTerm}
         isSearching={controller.isSearching}

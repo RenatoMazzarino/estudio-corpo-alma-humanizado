@@ -50,14 +50,14 @@ export function AppointmentActionSheet({
           <button
             type="button"
             onClick={() => onOpenRecordAction(actionSheet)}
-            className="w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm font-extrabold text-studio-text transition hover:bg-studio-light"
+            className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-extrabold text-studio-text transition hover:bg-studio-light"
           >
             Ver prontuario
           </button>
           <button
             type="button"
             onClick={() => onEditAction(actionSheet)}
-            className="w-full rounded-2xl border border-line bg-paper px-4 py-3 text-sm font-extrabold text-studio-text transition hover:bg-studio-light"
+            className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-extrabold text-studio-text transition hover:bg-studio-light"
           >
             Editar agendamento
           </button>
@@ -65,14 +65,14 @@ export function AppointmentActionSheet({
             type="button"
             disabled={isActionPending}
             onClick={() => void onDeleteAction(actionSheet)}
-            className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100 disabled:opacity-60"
+            className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100 disabled:opacity-60"
           >
             Excluir agendamento
           </button>
           <button
             type="button"
             onClick={onCloseAction}
-            className="w-full rounded-2xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
+            className="w-full rounded-xl bg-studio-light px-4 py-3 text-sm font-extrabold text-studio-green"
           >
             Cancelar
           </button>
