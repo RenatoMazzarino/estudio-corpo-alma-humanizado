@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, MessageCircle, Users, Wallet } from "lucide-react";
+import { FooterRail } from "./footer-rail";
 
 interface BottomNavProps {
   className?: string;
@@ -13,33 +14,36 @@ export function BottomNav({ className = "" }: BottomNavProps) {
   const isActive = (path: string) => pathname === path;
 
   const itemClass = (path: string) =>
-    `flex flex-col items-center gap-0.5 w-16 transition ${
-      isActive(path) ? "text-studio-green" : "text-muted hover:text-studio-green"
+    `flex w-16 flex-col items-center gap-0.5 transition ${
+      isActive(path) ? "text-white" : "text-white/70 hover:text-white"
     }`;
 
   const labelClass = (path: string) =>
-    `text-[10px] ${isActive(path) ? "font-extrabold" : "font-medium"}`;
+    `text-[9px] ${isActive(path) ? "font-extrabold" : "font-medium"}`;
 
   return (
-    <nav
-      className={`bg-white border-t border-line h-12 px-2 flex justify-around items-center z-40 w-full safe-bottom ${className}`}
+    <FooterRail
+      className={`[--footer-action-row-height:2.4rem] [--footer-rail-padding-y:0.55rem] z-40 w-full border-white/20 ${className}`}
+      surfaceClassName="!bg-studio-green"
+      paddingXClassName="px-2"
+      rowClassName="flex items-center justify-around"
     >
       <Link href="/" className={itemClass("/")}>
-        <Calendar size={18} />
+        <Calendar size={20} />
         <span className={labelClass("/")}>Agenda</span>
       </Link>
       <Link href="/mensagens" className={itemClass("/mensagens")}>
-        <MessageCircle size={18} />
+        <MessageCircle size={20} />
         <span className={labelClass("/mensagens")}>Mensagens</span>
       </Link>
       <Link href="/clientes" className={itemClass("/clientes")}>
-        <Users size={18} />
+        <Users size={20} />
         <span className={labelClass("/clientes")}>Clientes</span>
       </Link>
       <Link href="/caixa" className={itemClass("/caixa")}>
-        <Wallet size={18} />
+        <Wallet size={20} />
         <span className={labelClass("/caixa")}>Financeiro</span>
       </Link>
-    </nav>
+    </FooterRail>
   );
 }

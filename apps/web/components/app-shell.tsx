@@ -26,7 +26,7 @@ export function AppShell({ children, themeStyle }: AppShellProps) {
     return routesWithBottomNav.has(pathname);
   };
   const showBottomNav = canShowBottomNav();
-  const navHeight = showBottomNav ? "calc(48px + env(safe-area-inset-bottom))" : "0px";
+  const navHeight = showBottomNav ? "calc(var(--footer-rail-height) + env(safe-area-inset-bottom))" : "0px";
   const isFullBleed = pathname === "/" || pathname === "/clientes";
 
   return (
