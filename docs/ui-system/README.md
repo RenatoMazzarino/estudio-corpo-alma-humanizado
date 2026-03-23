@@ -1,39 +1,41 @@
-# UI System — Estúdio Corpo & Alma (v1.0)
+# UI System - Estudio Corpo & Alma (v1.0)
 
-Este diretório transforma as referências visuais (HTMLs e Auditoria Visual PDF)
-em um guia técnico reutilizável.
+Este diretorio transforma referencias visuais (HTMLs e auditoria visual) em
+guia tecnico reutilizavel.
 
-Referências obrigatórias:
+Referencias obrigatorias:
 
-- `docs/legacy/agenda-v1-ui/ui-decisions/Auditoria Visual – Estúdio Corpo`
-  `& Alma Humanizado.pdf`
+- `docs/legacy/agenda-v1-ui/ui-decisions/`
+  `Auditoria Visual - Estudio Corpo & Alma Humanizado.pdf`
 - HTMLs em `docs/legacy/agenda-v1-ui/ui-decisions/`
 
-Regra-mãe:
+Regra-mae:
 
-- UI só usa dados persistidos ou derivados determinísticos.
-- Tokens, tipografia, spacing, radius e sombras devem ser consistentes com o
-  PDF.
+- UI so usa dados persistidos ou derivados deterministicos.
+- Tokens, tipografia, spacing, radius e sombras devem ser consistentes com a
+  base oficial.
 
 Frame mobile:
 
-- O app sempre renderiza dentro de um frame centralizado (mobile-only).
-- O frame ocupa 100% da altura do viewport (sem bordas arredondadas).
-- Toda rolagem é interna ao frame.
+- O app sempre renderiza dentro de um frame centralizado (mobile-first).
+- O frame ocupa 100% da altura util do viewport.
+- Toda rolagem e interna ao frame.
 
-Layout padrão de páginas (3 partes):
+Layout padrao de paginas (3 partes):
 
 - **Header / Content / Navigation** como estrutura fixa.
-- `AppShell` controla frame + scroll único; `ModulePage` organiza header e
-  conteúdo.
-- BottomNav fica fora do container de scroll para manter fixo e evitar “zonas
-  mortas”.
+- `AppShell` controla frame + scroll unico; `ModulePage` organiza header e
+  conteudo.
+- BottomNav fica fora do container de scroll para manter fixo e evitar area
+  morta.
 
 Arquivos principais:
 
-- `tokens.md`: mapeamento de tokens e variáveis reais no código.
-- `typography.md`: escala tipográfica e usos.
+- `tokens.md`: mapeamento de tokens e variaveis reais no codigo.
+- `typography.md`: escala tipografica e usos.
 - `colors.md`: paleta oficial com hex e usos.
-- `spacing-radius-shadow.md`: espaçamentos, raios e sombras.
-- `components/*`: componentes canônicos.
-- `patterns/*`: padrões de tela e estados.
+- `spacing-radius-shadow.md`: espacamentos, raios e sombras.
+- `v2-component-surface-standards.md`: contrato visual V2 para headers, cards,
+  sheets e accordions.
+- `components/*`: componentes canonicos.
+- `patterns/*`: padroes de tela e estados.

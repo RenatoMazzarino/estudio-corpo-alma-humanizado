@@ -11,8 +11,14 @@ Escopo: criacao de novo agendamento pelo dashboard.
 
 1. Validacao de etapa deve ser centralizada e deterministica.
 2. Nao persistir agendamento parcial sem status explicito.
-3. Integração com automacao deve disparar somente apos confirmacao de
+3. Integracao com automacao deve disparar somente apos confirmacao de
    persistencia.
+4. Para UI V2, usar `docs/ui-system/v2-component-surface-standards.md` como
+   contrato visual obrigatorio.
+5. Etapas/cards/modais deste fluxo devem usar apenas os niveis canonicos:
+   - Header de card 1 ou 2
+   - Header de modal 1
+   - Header de accordion 1 ou 2
 
 ## Checklist minimo de validacao
 

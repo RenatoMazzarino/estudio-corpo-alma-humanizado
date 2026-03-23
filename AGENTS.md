@@ -380,3 +380,12 @@ Sempre que subagentes forem usados:
    - se algo deve ficar no repo ou apenas no config pessoal do usuario.
 5. Se a mudanca for pequena e de baixo risco, o agente ainda deve avisar o
    usuario; a diferenca e que a proposta pode ser curta.
+
+## 31) Contrato visual V2 (dashboard)
+
+1. Mudanca de UI em `apps/web/app/(dashboard)/*` deve respeitar o contrato
+   canonico em `docs/ui-system/v2-component-surface-standards.md`.
+2. Nao criar variacao visual local de header/card/modal/accordion sem encaixe
+   em variante canonica definida no documento acima.
+3. Em caso de necessidade real de nova variante, registrar primeiro no
+   documento canonico e depois aplicar no codigo.

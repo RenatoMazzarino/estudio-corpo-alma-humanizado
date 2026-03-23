@@ -1,4 +1,4 @@
-# Matriz de Documentacao Canonica (v2)
+﻿# Matriz de Documentacao Canonica (v2)
 
 Data de referencia: 2026-03-10  
 Escopo: docs ativas, docs legadas, `README.md`, `MANUAL_RAPIDO.md` e
@@ -90,6 +90,8 @@ Classificar o que e:
 
 - `docs/branding/BRAND_TOKENS.md`: canonico para identidade visual.
 - `docs/ui-system/*`: referencia ativa para padrao de UI.
+- `docs/ui-system/v2-component-surface-standards.md`: canonico para padrao
+  visual V2 de headers, cards, sheets e accordions.
 
 ## 3) Relatorios e planos ativos/parciais
 
@@ -100,6 +102,7 @@ Classificar o que e:
 - `docs/plans/ANEXO_PADRONIZACAO_HIGIENE_ERROS_LOADING_REESCRITA_2026-03-20.md`
 - `docs/reports/VALIDACAO_E2E_TESTES_E_DOCUMENTACAO_2026-03-03.md`
 - `docs/reports/WHATSAPP_TECH_PROVIDER_COEXISTENCE_READINESS_2026-02-23.md`
+- `docs/reports/RELATORIO_AUDITORIA_COMPONENTES_BOTOES_V2_2026-03-22.md`
 
 Uso: apoiar estrategia, rollout e validacao.
 

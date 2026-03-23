@@ -2,6 +2,17 @@
 
 Status: active Owner: engenharia de plataforma
 
+## 2026-03-22
+
+1. Adicionado contrato visual V2 no `AGENTS.md` raiz para o escopo do
+   dashboard.
+2. Atualizados overrides de `apps/web/app/(dashboard)` e
+   `apps/web/app/(dashboard)/novo` com referencia obrigatoria ao padrao visual
+   V2.
+3. Incluida referencia canonica ao documento
+   `docs/ui-system/v2-component-surface-standards.md` para reduzir divergencia
+   visual entre header/card/modal/accordion.
+
 ## 2026-03-18
 
 1. Habilitado `multi_agent` no `.codex/config.toml` do repo.
